@@ -17,72 +17,72 @@
       {
         "digest": "eac196208110c08061fa43c3e507db5b66d1ddfe567219ca83278f1cacc4709c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/claude-plan.md"
+        "path": "specs/feature/072-claw-worker-platform-access/claude-plan.md"
       },
       {
         "digest": "f0b95b59b5dafe616ed0842d7ba85b78e67d85124c67d958472944574b5b73d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/claude-spec.md"
+        "path": "specs/feature/072-claw-worker-platform-access/claude-spec.md"
       },
       {
         "digest": "63c1d22ab74bf90194968e09068e2ca055baa232374ccc645ea79c4dfbe4628e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
+        "path": "specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
       },
       {
         "digest": "a7ea085170f06c6a1cba5044035bf571f8b34facdf5cdc2208abacb129b25a66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
       },
       {
         "digest": "5e94dd4c8f76302482c37a48bf86bd7d023d03c386a02242157fcb43d58b252a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
       },
       {
         "digest": "39c435f2013e9209831eabe38144f1d922ea32f2da6d50d1867df1742746abd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/index.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/index.md"
       },
       {
         "digest": "c40e98b6acef60015dc47dc6fe5739f83d4eff97bb0895f8fe23692763c63a6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
       },
       {
         "digest": "78e65406d9f71324270119fc501dcdb5a8d91e2c6662cf16ff8df7ab709ed8fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
       },
       {
         "digest": "65b1736c334f461d001b4d1df8117cc8be38c855c8f956d256a0f9d44e9c1df7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
       },
       {
         "digest": "06892d30f71cd892ad51e073c7a35941a5369b251609605bf9f7bf139ae7027e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
       },
       {
         "digest": "96a1644a32fb0fd8f8a0e780c6995c76b2af71bf2b8d64753381d2fc14b865ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
       },
       {
         "digest": "6c11b8a3f8d2cb99d798cc09d8c0c7a7a6f9db8640093b359ef7a4cf1d0c3c46",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
       },
       {
         "digest": "29752edaca969f8c9bed80ae5b89de99da6cf1c5dbaec14d48d69cc09bcfa885",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
       },
       {
         "digest": "c9811b6ce7c1a909b254a41e4af8c50a48ef45d30cf43aa65295ce0fb7ed452e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
       }
     ],
     "predecessors": [],
@@ -113,72 +113,72 @@
       {
         "digest": "eac196208110c08061fa43c3e507db5b66d1ddfe567219ca83278f1cacc4709c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/claude-plan.md"
+        "path": "specs/feature/072-claw-worker-platform-access/claude-plan.md"
       },
       {
         "digest": "f0b95b59b5dafe616ed0842d7ba85b78e67d85124c67d958472944574b5b73d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/claude-spec.md"
+        "path": "specs/feature/072-claw-worker-platform-access/claude-spec.md"
       },
       {
         "digest": "63c1d22ab74bf90194968e09068e2ca055baa232374ccc645ea79c4dfbe4628e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
+        "path": "specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
       },
       {
         "digest": "a7ea085170f06c6a1cba5044035bf571f8b34facdf5cdc2208abacb129b25a66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
       },
       {
         "digest": "5e94dd4c8f76302482c37a48bf86bd7d023d03c386a02242157fcb43d58b252a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
       },
       {
         "digest": "39c435f2013e9209831eabe38144f1d922ea32f2da6d50d1867df1742746abd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/index.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/index.md"
       },
       {
         "digest": "c40e98b6acef60015dc47dc6fe5739f83d4eff97bb0895f8fe23692763c63a6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
       },
       {
         "digest": "78e65406d9f71324270119fc501dcdb5a8d91e2c6662cf16ff8df7ab709ed8fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
       },
       {
         "digest": "65b1736c334f461d001b4d1df8117cc8be38c855c8f956d256a0f9d44e9c1df7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
       },
       {
         "digest": "06892d30f71cd892ad51e073c7a35941a5369b251609605bf9f7bf139ae7027e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
       },
       {
         "digest": "96a1644a32fb0fd8f8a0e780c6995c76b2af71bf2b8d64753381d2fc14b865ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
       },
       {
         "digest": "6c11b8a3f8d2cb99d798cc09d8c0c7a7a6f9db8640093b359ef7a4cf1d0c3c46",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
       },
       {
         "digest": "29752edaca969f8c9bed80ae5b89de99da6cf1c5dbaec14d48d69cc09bcfa885",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
       },
       {
         "digest": "c9811b6ce7c1a909b254a41e4af8c50a48ef45d30cf43aa65295ce0fb7ed452e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -210,84 +210,84 @@
       {
         "digest": "eac196208110c08061fa43c3e507db5b66d1ddfe567219ca83278f1cacc4709c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/claude-plan.md"
+        "path": "specs/feature/072-claw-worker-platform-access/claude-plan.md"
       },
       {
         "digest": "f0b95b59b5dafe616ed0842d7ba85b78e67d85124c67d958472944574b5b73d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/claude-spec.md"
+        "path": "specs/feature/072-claw-worker-platform-access/claude-spec.md"
       },
       {
         "digest": "63c1d22ab74bf90194968e09068e2ca055baa232374ccc645ea79c4dfbe4628e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
+        "path": "specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
       },
       {
         "digest": "a7ea085170f06c6a1cba5044035bf571f8b34facdf5cdc2208abacb129b25a66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
       },
       {
         "digest": "5e94dd4c8f76302482c37a48bf86bd7d023d03c386a02242157fcb43d58b252a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
       },
       {
         "digest": "39c435f2013e9209831eabe38144f1d922ea32f2da6d50d1867df1742746abd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/index.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/index.md"
       },
       {
         "digest": "c40e98b6acef60015dc47dc6fe5739f83d4eff97bb0895f8fe23692763c63a6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
       },
       {
         "digest": "78e65406d9f71324270119fc501dcdb5a8d91e2c6662cf16ff8df7ab709ed8fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
       },
       {
         "digest": "65b1736c334f461d001b4d1df8117cc8be38c855c8f956d256a0f9d44e9c1df7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
       },
       {
         "digest": "06892d30f71cd892ad51e073c7a35941a5369b251609605bf9f7bf139ae7027e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
       },
       {
         "digest": "96a1644a32fb0fd8f8a0e780c6995c76b2af71bf2b8d64753381d2fc14b865ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
       },
       {
         "digest": "6c11b8a3f8d2cb99d798cc09d8c0c7a7a6f9db8640093b359ef7a4cf1d0c3c46",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
       },
       {
         "digest": "29752edaca969f8c9bed80ae5b89de99da6cf1c5dbaec14d48d69cc09bcfa885",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
       },
       {
         "digest": "c9811b6ce7c1a909b254a41e4af8c50a48ef45d30cf43aa65295ce0fb7ed452e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/072-claw-worker-platform-access/spec.md",
     "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.791672Z",
+      "last_evidence_at": "2026-10-06T03:28:15.216961Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-08T19:28:50+07:00",
       "spec_last_changed_at": "2026-04-08T19:28:50+07:00"
@@ -314,7 +314,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.791672Z"
+    "updated_at": "2026-10-06T03:28:15.216961Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -324,7 +324,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.791672Z",
+    "reconciled_at": "2026-10-06T03:28:15.216961Z",
     "sources": [
       {
         "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
@@ -334,72 +334,72 @@
       {
         "digest": "eac196208110c08061fa43c3e507db5b66d1ddfe567219ca83278f1cacc4709c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/claude-plan.md"
+        "path": "specs/feature/072-claw-worker-platform-access/claude-plan.md"
       },
       {
         "digest": "f0b95b59b5dafe616ed0842d7ba85b78e67d85124c67d958472944574b5b73d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/claude-spec.md"
+        "path": "specs/feature/072-claw-worker-platform-access/claude-spec.md"
       },
       {
         "digest": "63c1d22ab74bf90194968e09068e2ca055baa232374ccc645ea79c4dfbe4628e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
+        "path": "specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
       },
       {
         "digest": "a7ea085170f06c6a1cba5044035bf571f8b34facdf5cdc2208abacb129b25a66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
       },
       {
         "digest": "5e94dd4c8f76302482c37a48bf86bd7d023d03c386a02242157fcb43d58b252a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
       },
       {
         "digest": "39c435f2013e9209831eabe38144f1d922ea32f2da6d50d1867df1742746abd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/index.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/index.md"
       },
       {
         "digest": "c40e98b6acef60015dc47dc6fe5739f83d4eff97bb0895f8fe23692763c63a6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
       },
       {
         "digest": "78e65406d9f71324270119fc501dcdb5a8d91e2c6662cf16ff8df7ab709ed8fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
       },
       {
         "digest": "65b1736c334f461d001b4d1df8117cc8be38c855c8f956d256a0f9d44e9c1df7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
       },
       {
         "digest": "06892d30f71cd892ad51e073c7a35941a5369b251609605bf9f7bf139ae7027e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
       },
       {
         "digest": "96a1644a32fb0fd8f8a0e780c6995c76b2af71bf2b8d64753381d2fc14b865ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
       },
       {
         "digest": "6c11b8a3f8d2cb99d798cc09d8c0c7a7a6f9db8640093b359ef7a4cf1d0c3c46",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
       },
       {
         "digest": "29752edaca969f8c9bed80ae5b89de99da6cf1c5dbaec14d48d69cc09bcfa885",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
       },
       {
         "digest": "c9811b6ce7c1a909b254a41e4af8c50a48ef45d30cf43aa65295ce0fb7ed452e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -449,72 +449,72 @@
       {
         "digest": "eac196208110c08061fa43c3e507db5b66d1ddfe567219ca83278f1cacc4709c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/claude-plan.md"
+        "path": "specs/feature/072-claw-worker-platform-access/claude-plan.md"
       },
       {
         "digest": "f0b95b59b5dafe616ed0842d7ba85b78e67d85124c67d958472944574b5b73d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/claude-spec.md"
+        "path": "specs/feature/072-claw-worker-platform-access/claude-spec.md"
       },
       {
         "digest": "63c1d22ab74bf90194968e09068e2ca055baa232374ccc645ea79c4dfbe4628e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
+        "path": "specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
       },
       {
         "digest": "a7ea085170f06c6a1cba5044035bf571f8b34facdf5cdc2208abacb129b25a66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
       },
       {
         "digest": "5e94dd4c8f76302482c37a48bf86bd7d023d03c386a02242157fcb43d58b252a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
       },
       {
         "digest": "39c435f2013e9209831eabe38144f1d922ea32f2da6d50d1867df1742746abd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/index.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/index.md"
       },
       {
         "digest": "c40e98b6acef60015dc47dc6fe5739f83d4eff97bb0895f8fe23692763c63a6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
       },
       {
         "digest": "78e65406d9f71324270119fc501dcdb5a8d91e2c6662cf16ff8df7ab709ed8fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
       },
       {
         "digest": "65b1736c334f461d001b4d1df8117cc8be38c855c8f956d256a0f9d44e9c1df7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
       },
       {
         "digest": "06892d30f71cd892ad51e073c7a35941a5369b251609605bf9f7bf139ae7027e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
       },
       {
         "digest": "96a1644a32fb0fd8f8a0e780c6995c76b2af71bf2b8d64753381d2fc14b865ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
       },
       {
         "digest": "6c11b8a3f8d2cb99d798cc09d8c0c7a7a6f9db8640093b359ef7a4cf1d0c3c46",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
       },
       {
         "digest": "29752edaca969f8c9bed80ae5b89de99da6cf1c5dbaec14d48d69cc09bcfa885",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
       },
       {
         "digest": "c9811b6ce7c1a909b254a41e4af8c50a48ef45d30cf43aa65295ce0fb7ed452e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -532,7 +532,7 @@
     "unresolved": 171
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.791672Z",
+  "updated_at": "2026-10-06T03:28:15.216961Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

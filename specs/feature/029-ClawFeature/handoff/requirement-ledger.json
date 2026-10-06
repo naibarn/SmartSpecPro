@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L8"
+        "specs/feature/029-ClawFeature/spec.md#L8"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L8",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L8",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L45"
+        "specs/feature/029-ClawFeature/spec.md#L45"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L45",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L45",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L53"
+        "specs/feature/029-ClawFeature/spec.md#L53"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L53",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L53",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L98"
+        "specs/feature/029-ClawFeature/spec.md#L98"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L98",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L178"
+        "specs/feature/029-ClawFeature/spec.md#L178"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L178",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L188"
+        "specs/feature/029-ClawFeature/spec.md#L188"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L188",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L190"
+        "specs/feature/029-ClawFeature/spec.md#L190"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L190",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L197"
+        "specs/feature/029-ClawFeature/spec.md#L197"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L197",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L206"
+        "specs/feature/029-ClawFeature/spec.md#L206"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L206",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L396"
+        "specs/feature/029-ClawFeature/spec.md#L396"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L396",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L399"
+        "specs/feature/029-ClawFeature/spec.md#L399"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L399",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L409"
+        "specs/feature/029-ClawFeature/spec.md#L409"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L409",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L448"
+        "specs/feature/029-ClawFeature/spec.md#L448"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L448",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L448",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L449"
+        "specs/feature/029-ClawFeature/spec.md#L449"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L449",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L547"
+        "specs/feature/029-ClawFeature/spec.md#L547"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L547",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L547",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L599"
+        "specs/feature/029-ClawFeature/spec.md#L599"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L599",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L599",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L729"
+        "specs/feature/029-ClawFeature/spec.md#L729"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L729",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L729",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L781"
+        "specs/feature/029-ClawFeature/spec.md#L781"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L781",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L781",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L808"
+        "specs/feature/029-ClawFeature/spec.md#L808"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L808",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L808",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L810"
+        "specs/feature/029-ClawFeature/spec.md#L810"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L810",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L810",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1010"
+        "specs/feature/029-ClawFeature/spec.md#L1010"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1010",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1010",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1079"
+        "specs/feature/029-ClawFeature/spec.md#L1079"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1079",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1079",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1436"
+        "specs/feature/029-ClawFeature/spec.md#L1436"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1436",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1436",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1437"
+        "specs/feature/029-ClawFeature/spec.md#L1437"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1437",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1526"
+        "specs/feature/029-ClawFeature/spec.md#L1526"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1526",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1567"
+        "specs/feature/029-ClawFeature/spec.md#L1567"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1567",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1567",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1590"
+        "specs/feature/029-ClawFeature/spec.md#L1590"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1590",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1590",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1603"
+        "specs/feature/029-ClawFeature/spec.md#L1603"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1603",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1634"
+        "specs/feature/029-ClawFeature/spec.md#L1634"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1634",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1635"
+        "specs/feature/029-ClawFeature/spec.md#L1635"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1635",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1635",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1637"
+        "specs/feature/029-ClawFeature/spec.md#L1637"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1637",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1663"
+        "specs/feature/029-ClawFeature/spec.md#L1663"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1663",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1663",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1666"
+        "specs/feature/029-ClawFeature/spec.md#L1666"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1666",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1687"
+        "specs/feature/029-ClawFeature/spec.md#L1687"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1687",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1687",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1705"
+        "specs/feature/029-ClawFeature/spec.md#L1705"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1705",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1705",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1768"
+        "specs/feature/029-ClawFeature/spec.md#L1768"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1768",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1768",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1774"
+        "specs/feature/029-ClawFeature/spec.md#L1774"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1774",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1775"
+        "specs/feature/029-ClawFeature/spec.md#L1775"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1775",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1775",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1776"
+        "specs/feature/029-ClawFeature/spec.md#L1776"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1776",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1776",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1777"
+        "specs/feature/029-ClawFeature/spec.md#L1777"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1777",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1778"
+        "specs/feature/029-ClawFeature/spec.md#L1778"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1778",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1784"
+        "specs/feature/029-ClawFeature/spec.md#L1784"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1784",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1784",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1785"
+        "specs/feature/029-ClawFeature/spec.md#L1785"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1785",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1785",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1786"
+        "specs/feature/029-ClawFeature/spec.md#L1786"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1786",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1786",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1787"
+        "specs/feature/029-ClawFeature/spec.md#L1787"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1787",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1787",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1788"
+        "specs/feature/029-ClawFeature/spec.md#L1788"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1788",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1788",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1789"
+        "specs/feature/029-ClawFeature/spec.md#L1789"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1789",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1790"
+        "specs/feature/029-ClawFeature/spec.md#L1790"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1790",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1790",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1791"
+        "specs/feature/029-ClawFeature/spec.md#L1791"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1791",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1791",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1797"
+        "specs/feature/029-ClawFeature/spec.md#L1797"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1797",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1797",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1798"
+        "specs/feature/029-ClawFeature/spec.md#L1798"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1798",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1798",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1799"
+        "specs/feature/029-ClawFeature/spec.md#L1799"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1799",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1799",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1800"
+        "specs/feature/029-ClawFeature/spec.md#L1800"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1800",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1800",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1801"
+        "specs/feature/029-ClawFeature/spec.md#L1801"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1801",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1801",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1802"
+        "specs/feature/029-ClawFeature/spec.md#L1802"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1802",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1802",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1803"
+        "specs/feature/029-ClawFeature/spec.md#L1803"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1803",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1803",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1809"
+        "specs/feature/029-ClawFeature/spec.md#L1809"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1809",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1809",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1810"
+        "specs/feature/029-ClawFeature/spec.md#L1810"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1810",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1810",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1811"
+        "specs/feature/029-ClawFeature/spec.md#L1811"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1811",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1811",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1812"
+        "specs/feature/029-ClawFeature/spec.md#L1812"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1812",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1812",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1813"
+        "specs/feature/029-ClawFeature/spec.md#L1813"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1813",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1813",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1814"
+        "specs/feature/029-ClawFeature/spec.md#L1814"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1814",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1815"
+        "specs/feature/029-ClawFeature/spec.md#L1815"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1815",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1815",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1816"
+        "specs/feature/029-ClawFeature/spec.md#L1816"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1816",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1816",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1817"
+        "specs/feature/029-ClawFeature/spec.md#L1817"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1817",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1817",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1818"
+        "specs/feature/029-ClawFeature/spec.md#L1818"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1818",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1818",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1833"
+        "specs/feature/029-ClawFeature/spec.md#L1833"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1833",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1833",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1844"
+        "specs/feature/029-ClawFeature/spec.md#L1844"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1844",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1844",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1851"
+        "specs/feature/029-ClawFeature/spec.md#L1851"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1851",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1851",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1852"
+        "specs/feature/029-ClawFeature/spec.md#L1852"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1852",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1852",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1859"
+        "specs/feature/029-ClawFeature/spec.md#L1859"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1859",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1859",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1861"
+        "specs/feature/029-ClawFeature/spec.md#L1861"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1861",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1861",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1868"
+        "specs/feature/029-ClawFeature/spec.md#L1868"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1868",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1868",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1870"
+        "specs/feature/029-ClawFeature/spec.md#L1870"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1870",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1870",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1879"
+        "specs/feature/029-ClawFeature/spec.md#L1879"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1879",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1879",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1911"
+        "specs/feature/029-ClawFeature/spec.md#L1911"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L1911",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1911",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L2094"
+        "specs/feature/029-ClawFeature/spec.md#L2094"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L2094",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L2094",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L2102"
+        "specs/feature/029-ClawFeature/spec.md#L2102"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L2102",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L2102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L2131"
+        "specs/feature/029-ClawFeature/spec.md#L2131"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/spec.md#L2131",
+      "authority_source": "specs/feature/029-ClawFeature/spec.md#L2131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

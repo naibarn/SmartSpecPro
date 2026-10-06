@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L12"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L12"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L12",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L12",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L13"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L13"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L13",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L13",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L21"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L21"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L21",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L21",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L75"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L75",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L94"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L94"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L94",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L95"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L95"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L95",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L96"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L96"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L96",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L97"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L97"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L97",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L97",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L98"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L98"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L98",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L99"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L99",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L100"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L100"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L100",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L120"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L120"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L120",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L120",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L121"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L121"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L121",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L122"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L122"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L122",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L126"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L126"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L126",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L127"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L127"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L127",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L128"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L128"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L128",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L194"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L194"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L194",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L211"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L211"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L211",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L222"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L222"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L222",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L222",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L249"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L249"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L249",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L312"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L312"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L312",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L312",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L335"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L335"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L335",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L391"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L391"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L391",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L393"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L393"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L393",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L393",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L394"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L394"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L394",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L394",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L395"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L395"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L395",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L395",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L396"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L396"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L396",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L397"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L397"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L397",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L398"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L398"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L398",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L398",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L399"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L399"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L399",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L400"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L400"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L400",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L400",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L401"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L401"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L401",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L402"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L402"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L402",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L406"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L406"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L406",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L406",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L415"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L415"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L415",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L419"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L419"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L419",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L424"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L424"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L424",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L424",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L425"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L425"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L425",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L426"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L426"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L426",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L427"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L427"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L427",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L427",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L451"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L451"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L451",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L466"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L466"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L466",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L466",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L473"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L473"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L473",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L473",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L475"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L475"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L475",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L475",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L494"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L494"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L494",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L494",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L511"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L511"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L511",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L532"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L532"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L532",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L532",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L560"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L560"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L560",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L560",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L594"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L594"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L594",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L594",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L597"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L597"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L597",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L597",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L602"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L602"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L602",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L636"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L636"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L636",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L643"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L643"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L643",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L647"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L647"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L647",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L647",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L680"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L680"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L680",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L680",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L688"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L688"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L688",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L689"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L689"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L689",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L689",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L690"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L690"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L690",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L691"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L691"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L691",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L692"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L692"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L692",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L693"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L693"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L693",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L693",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L694"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L694"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L694",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L694",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L695"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L695"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L695",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L695",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L696"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L696"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L696",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L696",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L697"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L697"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L697",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L699"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L699"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L699",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L701"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L701"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L701",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L702"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L702"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L702",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L702",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L703"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L703"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L703",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L704"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L704"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L704",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L704",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L705"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L705"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L705",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L705",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L706"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L706"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L706",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L706",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L714"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L714"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L714",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L714",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L715"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L715"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L715",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L715",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L716"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L716"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L716",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L716",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L717"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L717"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L717",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L717",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L721"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L721"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L721",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L722"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L722"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L722",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L722",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L723"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L723"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L723",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L724"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L724"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L724",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L725"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L725"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L725",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L725",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L726"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L726"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L726",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L726",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L727"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L727"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L727",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L727",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L737"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L737"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L737",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L737",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L738"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L738"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L738",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L738",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L739"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L739"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L739",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L739",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L740"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L740"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L740",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L741"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L741"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L741",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L742"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L742"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L742",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L742",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L743"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L743"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L743",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L743",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L744"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L744"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L744",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L744",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L750"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L750"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L750",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L750",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L751"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L751"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L751",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L751",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L752"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L752"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L752",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L752",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L753"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L753"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L753",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L753",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L754"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L754"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L754",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L754",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L756"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L756"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L756",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L760"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L760"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L760",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L760",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L762"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L762"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L762",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L762",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L764"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L764"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L764",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L764",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L765"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L765"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L765",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L765",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L766"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L766"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L766",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L766",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L767"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L767"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L767",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L767",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L768"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L768"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L768",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L768",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L769"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L769"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L769",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L769",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L770"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L770"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L770",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L770",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L774"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L774"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L774",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L775"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L775"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L775",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L775",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L776"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L776"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L776",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L776",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L777"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L777"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L777",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L778"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L778"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L778",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L779"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L779"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L779",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L780"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L780"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L780",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L780",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L782"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L782"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L782",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L782",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L834"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L834"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L834",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L834",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L854"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L854"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L854",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L854",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L858"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L858"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L858",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L858",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L860"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L860"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L860",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L860",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L870"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L870"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L870",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L870",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L874"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L874"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L874",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L874",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L910"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L910"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L910",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L910",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L929"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L929"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L929",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L929",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L937"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L937"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L937",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L937",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L955"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L955"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L955",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L955",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L957"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L957"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L957",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L957",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L959"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L959"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L959",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L959",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L960"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L960"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L960",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L960",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L961"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L961"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L961",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L961",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L962"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L962"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L962",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L962",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L963"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L963"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L963",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L963",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L964"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L964"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L964",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L964",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L965"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L965"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L965",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L965",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L969"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L969"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L969",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L969",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L970"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L970"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L970",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L971"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L971"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L971",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L971",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L972"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L972"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L972",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L972",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L973"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L973"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L973",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L973",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L979"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L979"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L979",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L979",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L986"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L986"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L986",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L986",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L994"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L994"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L994",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L994",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L995"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L995"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L995",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L995",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L996"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L996"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L996",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L997"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L997"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L997",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1003"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1003"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1003",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1017"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1017"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1017",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1017",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1028"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1028"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1028",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1028",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1036"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1036"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1036",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1036",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1059"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1059"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1059",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1059",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1087"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1087"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1087",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1087",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1108"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1108"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1108",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1123"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1123"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1123",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1129"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1129"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1129",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1139"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1139"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1139",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1141"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1141"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1141",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1154"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1154"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1154",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1155"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1155"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1155",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1176"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1176"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1176",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1178"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1178"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1178",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1179"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1179"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1179",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1180"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1180"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1180",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1181"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1181"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1181",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3569,9 +3569,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1182"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1182"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1182",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3591,9 +3591,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1183"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1183"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1183",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3613,9 +3613,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1184"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1184"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1184",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3635,9 +3635,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1185"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1185"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1185",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3657,9 +3657,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1186"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1186"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1186",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3679,9 +3679,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1188"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1188"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1188",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3701,9 +3701,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1196"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1196"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1196",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1196",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3723,9 +3723,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1288"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1288"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1288",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3745,9 +3745,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1289"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1289"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1289",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3767,9 +3767,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1290"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1290"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1290",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3789,9 +3789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1291"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1291"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1291",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1291",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3811,9 +3811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1292"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1292"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1292",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3833,9 +3833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1293"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1293"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1293",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3855,9 +3855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1294"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1294"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1294",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3877,9 +3877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1295"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1295"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1295",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3899,9 +3899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1296"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1296"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1296",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3921,9 +3921,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1297"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1297"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1297",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3943,9 +3943,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1298"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1298"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1298",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1298",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3965,9 +3965,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1299"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1299"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1299",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3987,9 +3987,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1300"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1300"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1300",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1300",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4009,9 +4009,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1301"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1301"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1301",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1301",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4031,9 +4031,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1302"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1302"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1302",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4053,9 +4053,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1303"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1303"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1303",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4075,9 +4075,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1304"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1304"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1304",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4097,9 +4097,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1305"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1305"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1305",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1305",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4119,9 +4119,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1306"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1306"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1306",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1306",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4141,9 +4141,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1307"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1307"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1307",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1307",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4163,9 +4163,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1308"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1308"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1308",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1308",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4185,9 +4185,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1309"
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1309"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1309",
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L1309",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

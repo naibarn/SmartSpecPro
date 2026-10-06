@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L75"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L75",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L90"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L90"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L90",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L100"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L100"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L100",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L101"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L101"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L101",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L107"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L107"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L107",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L146"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L146"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L146",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L147"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L147"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L147",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L148"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L148"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L148",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L149"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L149"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L149",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L150"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L150",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L151"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L151"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L151",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L152"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L152"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L152",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L160"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L160"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L160",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L161"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L161"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L161",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L162"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L162"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L162",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L163"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L163"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L163",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L164"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L164"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L164",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L165"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L165"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L165",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L173"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L173"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L173",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L173",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L177"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L177"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L177",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L177",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L178"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L178"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L178",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L179"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L179"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L179",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L180"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L180"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L180",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L181"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L181"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L181",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L182"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L182"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L182",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L183"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L183"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L183",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L190"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L190"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L190",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L191"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L191"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L191",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L193"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L193"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L193",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L193",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L197"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L197"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L197",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L198"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L198"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L198",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L199"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L199"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L199",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L200"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L200"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L200",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L201"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L201"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L201",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L201",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L205"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L205"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L205",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L209"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L209"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L209",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L210"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L210"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L210",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L211"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L211"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L211",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L212"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L212"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L212",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L213"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L213"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L213",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L214"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L214"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L214",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L215"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L215"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L215",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L216"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L216"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L216",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L218"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L218"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L218",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L220"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L220"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L220",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L220",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L221"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L221"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L221",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L222"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L222"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L222",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L222",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L223"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L223"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L223",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L223",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L227"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L227"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L227",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L228"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L228"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L228",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L228",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L229"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L229"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L229",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L230"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L230"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L230",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L231"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L231"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L231",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L232"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L232"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L232",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L330"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L330"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L330",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L378"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L378"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L378",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L379"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L379"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L379",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L450"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L450"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L450",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L450",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L473"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L473"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L473",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L473",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L491"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L491"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L491",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L491",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L495"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L495"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L495",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L495",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L496"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L496"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L496",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L496",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L497"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L497"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L497",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L497",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L498"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L498"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L498",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L499"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L499"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L499",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L499",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L500"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L500"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L500",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L501"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L501"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L501",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L501",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L526"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L526"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L526",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L527"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L527"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L527",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L528"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L528"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L528",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L528",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L529"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L529"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L529",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L534"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L534"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L534",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L534",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L536"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L536"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L536",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L536",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L544"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L544"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L544",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L545"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L545"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L545",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L545",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L546"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L546"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L546",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L546",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L547"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L547"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L547",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L547",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L548"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L548"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L548",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L548",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L549"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L549"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L549",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L550"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L550"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L550",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L550",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L551"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L551"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L551",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L601"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L601"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L601",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L601",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L618"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L618"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L618",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L622"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L622"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L622",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L632"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L632"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L632",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L640"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L640"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L640",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L657"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L657"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L657",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L673"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L673"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L673",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L675"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L675"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L675",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L675",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L691"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L691"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L691",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L708"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L708"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L708",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L710"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L710"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L710",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L710",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L711"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L711"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L711",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L711",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L712"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L712"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L712",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L713"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L713"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L713",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L714"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L714"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L714",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L714",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L715"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L715"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L715",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L715",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L716"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L716"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L716",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L716",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L717"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L717"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L717",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L717",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L719"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L719"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L719",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L719",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L723"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L723"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L723",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L725"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L725"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L725",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L725",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L726"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L726"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L726",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L726",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L727"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L727"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L727",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L727",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L728"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L728"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L728",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L728",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L729"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L729"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L729",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L729",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L730"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L730"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L730",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L730",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L731"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L731"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L731",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L731",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L733"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L733"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L733",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L768"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L768"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L768",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L768",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L821"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L821"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L821",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L821",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L859"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L859"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L859",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L859",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L878"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L878"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L878",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L878",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L879"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L879"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L879",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L879",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L880"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L880"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L880",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L880",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L893"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L893"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L893",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L893",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L899"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L899"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L899",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L899",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L904"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L904"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L904",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L904",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L918"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L918"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L918",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L918",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L919"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L919"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L919",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L919",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L920"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L920"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L920",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L920",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L924"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L924"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L924",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L924",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L952"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L952"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L952",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L952",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L960"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L960"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L960",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L960",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L970"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L970"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L970",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L973"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L973"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L973",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L973",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L974"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L974"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L974",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L974",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1056"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1056"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1056",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1056",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1057"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1057"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1057",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1057",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1058"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1058"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1058",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1058",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1059"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1059"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1059",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1059",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1060"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1060"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1060",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1060",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1061"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1061"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1061",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1061",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1062"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1062"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1062",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1062",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1063"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1063"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1063",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1063",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1064"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1064"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1064",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1064",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1065"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1065"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1065",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1065",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1066"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1066"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1066",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1066",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1067"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1067"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1067",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1067",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1068"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1068"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1068",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1068",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1069"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1069"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1069",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1069",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1070"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1070"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1070",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1070",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1071"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1071"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1071",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1071",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1072"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1072"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1072",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1072",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1073"
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1073"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1073",
+      "authority_source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md#L1073",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

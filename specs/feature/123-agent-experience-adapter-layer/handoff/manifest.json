@@ -17,92 +17,92 @@
       {
         "digest": "3ddf057646c39d46a021e217397767e5e6ac3338027cef0f40d63837b2e60fa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/claude-plan.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/claude-plan.md"
       },
       {
         "digest": "9f85c44cd5864e844c6db0263b3efc595e6a8baa5afbc7ebd379dd9d51d171c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/claude-spec.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/claude-spec.md"
       },
       {
         "digest": "251e50df5614bf8c84f0102c06b63250820207cc945f51e36ae1f35fd2e80aa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/implementation/deep_implement_config.json"
+        "path": "specs/feature/123-agent-experience-adapter-layer/implementation/deep_implement_config.json"
       },
       {
         "digest": "b199f63d5379b951d0a408a2f644b85d8fe59947ada0823833882298b5128b51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/implementation/usage.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/implementation/usage.md"
       },
       {
         "digest": "0e557f6cc81648c08ed63da1a854e9ac9755aaddacc0345d032cfefd11681424",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "725423597781a7f26b5bc013d035c3593800dbd6a62e46cffb8294afbcb6b7ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-1.md"
       },
       {
         "digest": "cc83b3ddb2567d33d23d026075320db88264defa6f522ed732427cae80deec58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-2.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-2.md"
       },
       {
         "digest": "b3cedbc88bfc114195c563d1c5ab02bb6edaad9f6f82c9da8269722e56488094",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "ebd4d18cb261971dd2f8ae7255f55f10d30e5d3c16898b288d2285a36a9dfb3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/self-review-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/self-review-round-1.md"
       },
       {
         "digest": "1e1cf9c3b4d3f2eb948231c588258007df70627339cfb316b331d94f8be54ebd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/index.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/index.md"
       },
       {
         "digest": "d20000a03af69de23f3eba917d52a3c57f8e9e0c4e0982bccc3f9f7ade6941fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-01-shared-contracts-and-flags.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-01-shared-contracts-and-flags.md"
       },
       {
         "digest": "9f2982cb4ef6c774a427f75affa1ad5f4c0ea3d2372d3c8de65ea4e28b065b82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-02-agency-and-team-adapters.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-02-agency-and-team-adapters.md"
       },
       {
         "digest": "887ad7e73a0b8b1c2cd93c2e86de601d3f797aea008c564b82c6f92270e4ae8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-03-golden-fixtures-and-negative-tests.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-03-golden-fixtures-and-negative-tests.md"
       },
       {
         "digest": "72e0b4dc8060fd072fc2ff5af5585ac530b5537d7108831255d96f4b05627d19",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-04-preview-renderer-and-intents.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-04-preview-renderer-and-intents.md"
       },
       {
         "digest": "d6d4f133ee91777ce49eed5efaa0a9da9d4807922adc6eb723cd1feb58b5cb0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-05-artifact-approval-cost-adapters.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-05-artifact-approval-cost-adapters.md"
       },
       {
         "digest": "0c89f8c02d807c393020d498cb742c9ef2bba3a59a0adab70aba39250d655404",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-06-debug-inspector-and-redaction.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-06-debug-inspector-and-redaction.md"
       },
       {
         "digest": "2043748f1cbb2d0bd9ef33e85c89531ef17344990808f77a69bc345f1a699f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-07-runtype-renderer-spike.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-07-runtype-renderer-spike.md"
       },
       {
         "digest": "b109fe0d4642ee0a48b4216ecdb77229c9eff4b3ebf1791809c4932c0062a33f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-08-rollout-metrics-and-release-gates.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-08-rollout-metrics-and-release-gates.md"
       }
     ],
     "predecessors": [],
@@ -133,92 +133,92 @@
       {
         "digest": "3ddf057646c39d46a021e217397767e5e6ac3338027cef0f40d63837b2e60fa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/claude-plan.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/claude-plan.md"
       },
       {
         "digest": "9f85c44cd5864e844c6db0263b3efc595e6a8baa5afbc7ebd379dd9d51d171c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/claude-spec.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/claude-spec.md"
       },
       {
         "digest": "251e50df5614bf8c84f0102c06b63250820207cc945f51e36ae1f35fd2e80aa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/implementation/deep_implement_config.json"
+        "path": "specs/feature/123-agent-experience-adapter-layer/implementation/deep_implement_config.json"
       },
       {
         "digest": "b199f63d5379b951d0a408a2f644b85d8fe59947ada0823833882298b5128b51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/implementation/usage.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/implementation/usage.md"
       },
       {
         "digest": "0e557f6cc81648c08ed63da1a854e9ac9755aaddacc0345d032cfefd11681424",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "725423597781a7f26b5bc013d035c3593800dbd6a62e46cffb8294afbcb6b7ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-1.md"
       },
       {
         "digest": "cc83b3ddb2567d33d23d026075320db88264defa6f522ed732427cae80deec58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-2.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-2.md"
       },
       {
         "digest": "b3cedbc88bfc114195c563d1c5ab02bb6edaad9f6f82c9da8269722e56488094",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "ebd4d18cb261971dd2f8ae7255f55f10d30e5d3c16898b288d2285a36a9dfb3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/self-review-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/self-review-round-1.md"
       },
       {
         "digest": "1e1cf9c3b4d3f2eb948231c588258007df70627339cfb316b331d94f8be54ebd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/index.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/index.md"
       },
       {
         "digest": "d20000a03af69de23f3eba917d52a3c57f8e9e0c4e0982bccc3f9f7ade6941fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-01-shared-contracts-and-flags.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-01-shared-contracts-and-flags.md"
       },
       {
         "digest": "9f2982cb4ef6c774a427f75affa1ad5f4c0ea3d2372d3c8de65ea4e28b065b82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-02-agency-and-team-adapters.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-02-agency-and-team-adapters.md"
       },
       {
         "digest": "887ad7e73a0b8b1c2cd93c2e86de601d3f797aea008c564b82c6f92270e4ae8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-03-golden-fixtures-and-negative-tests.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-03-golden-fixtures-and-negative-tests.md"
       },
       {
         "digest": "72e0b4dc8060fd072fc2ff5af5585ac530b5537d7108831255d96f4b05627d19",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-04-preview-renderer-and-intents.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-04-preview-renderer-and-intents.md"
       },
       {
         "digest": "d6d4f133ee91777ce49eed5efaa0a9da9d4807922adc6eb723cd1feb58b5cb0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-05-artifact-approval-cost-adapters.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-05-artifact-approval-cost-adapters.md"
       },
       {
         "digest": "0c89f8c02d807c393020d498cb742c9ef2bba3a59a0adab70aba39250d655404",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-06-debug-inspector-and-redaction.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-06-debug-inspector-and-redaction.md"
       },
       {
         "digest": "2043748f1cbb2d0bd9ef33e85c89531ef17344990808f77a69bc345f1a699f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-07-runtype-renderer-spike.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-07-runtype-renderer-spike.md"
       },
       {
         "digest": "b109fe0d4642ee0a48b4216ecdb77229c9eff4b3ebf1791809c4932c0062a33f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-08-rollout-metrics-and-release-gates.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-08-rollout-metrics-and-release-gates.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -250,109 +250,109 @@
       {
         "digest": "3ddf057646c39d46a021e217397767e5e6ac3338027cef0f40d63837b2e60fa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/claude-plan.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/claude-plan.md"
       },
       {
         "digest": "9f85c44cd5864e844c6db0263b3efc595e6a8baa5afbc7ebd379dd9d51d171c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/claude-spec.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/claude-spec.md"
       },
       {
         "digest": "251e50df5614bf8c84f0102c06b63250820207cc945f51e36ae1f35fd2e80aa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/implementation/deep_implement_config.json"
+        "path": "specs/feature/123-agent-experience-adapter-layer/implementation/deep_implement_config.json"
       },
       {
         "digest": "b199f63d5379b951d0a408a2f644b85d8fe59947ada0823833882298b5128b51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/implementation/usage.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/implementation/usage.md"
       },
       {
         "digest": "0e557f6cc81648c08ed63da1a854e9ac9755aaddacc0345d032cfefd11681424",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "725423597781a7f26b5bc013d035c3593800dbd6a62e46cffb8294afbcb6b7ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-1.md"
       },
       {
         "digest": "cc83b3ddb2567d33d23d026075320db88264defa6f522ed732427cae80deec58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-2.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-2.md"
       },
       {
         "digest": "b3cedbc88bfc114195c563d1c5ab02bb6edaad9f6f82c9da8269722e56488094",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "ebd4d18cb261971dd2f8ae7255f55f10d30e5d3c16898b288d2285a36a9dfb3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/self-review-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/self-review-round-1.md"
       },
       {
         "digest": "1e1cf9c3b4d3f2eb948231c588258007df70627339cfb316b331d94f8be54ebd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/index.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/index.md"
       },
       {
         "digest": "d20000a03af69de23f3eba917d52a3c57f8e9e0c4e0982bccc3f9f7ade6941fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-01-shared-contracts-and-flags.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-01-shared-contracts-and-flags.md"
       },
       {
         "digest": "9f2982cb4ef6c774a427f75affa1ad5f4c0ea3d2372d3c8de65ea4e28b065b82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-02-agency-and-team-adapters.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-02-agency-and-team-adapters.md"
       },
       {
         "digest": "887ad7e73a0b8b1c2cd93c2e86de601d3f797aea008c564b82c6f92270e4ae8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-03-golden-fixtures-and-negative-tests.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-03-golden-fixtures-and-negative-tests.md"
       },
       {
         "digest": "72e0b4dc8060fd072fc2ff5af5585ac530b5537d7108831255d96f4b05627d19",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-04-preview-renderer-and-intents.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-04-preview-renderer-and-intents.md"
       },
       {
         "digest": "d6d4f133ee91777ce49eed5efaa0a9da9d4807922adc6eb723cd1feb58b5cb0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-05-artifact-approval-cost-adapters.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-05-artifact-approval-cost-adapters.md"
       },
       {
         "digest": "0c89f8c02d807c393020d498cb742c9ef2bba3a59a0adab70aba39250d655404",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-06-debug-inspector-and-redaction.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-06-debug-inspector-and-redaction.md"
       },
       {
         "digest": "2043748f1cbb2d0bd9ef33e85c89531ef17344990808f77a69bc345f1a699f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-07-runtype-renderer-spike.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-07-runtype-renderer-spike.md"
       },
       {
         "digest": "b109fe0d4642ee0a48b4216ecdb77229c9eff4b3ebf1791809c4932c0062a33f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-08-rollout-metrics-and-release-gates.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-08-rollout-metrics-and-release-gates.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/123-agent-experience-adapter-layer/spec.md",
     "digest": "4bc884e1dcd71654e4151720e121ebd7bd3e8723e519171e4939720546913a15",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.145597Z",
+      "last_evidence_at": "2026-10-06T03:28:15.879768Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-06-22T13:52:02+07:00",
       "spec_last_changed_at": "2026-06-23T13:19:21+07:00"
     },
-    "revision": null,
+    "revision": "0.1.0",
     "slug": "123-agent-experience-adapter-layer",
     "spec_id": "123",
     "title": "Feature 123: Agent Experience Adapter Layer"
@@ -374,7 +374,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.145597Z"
+    "updated_at": "2026-10-06T03:28:15.879768Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -384,7 +384,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.145597Z",
+    "reconciled_at": "2026-10-06T03:28:15.879768Z",
     "sources": [
       {
         "digest": "4bc884e1dcd71654e4151720e121ebd7bd3e8723e519171e4939720546913a15",
@@ -394,92 +394,92 @@
       {
         "digest": "3ddf057646c39d46a021e217397767e5e6ac3338027cef0f40d63837b2e60fa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/claude-plan.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/claude-plan.md"
       },
       {
         "digest": "9f85c44cd5864e844c6db0263b3efc595e6a8baa5afbc7ebd379dd9d51d171c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/claude-spec.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/claude-spec.md"
       },
       {
         "digest": "251e50df5614bf8c84f0102c06b63250820207cc945f51e36ae1f35fd2e80aa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/implementation/deep_implement_config.json"
+        "path": "specs/feature/123-agent-experience-adapter-layer/implementation/deep_implement_config.json"
       },
       {
         "digest": "b199f63d5379b951d0a408a2f644b85d8fe59947ada0823833882298b5128b51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/implementation/usage.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/implementation/usage.md"
       },
       {
         "digest": "0e557f6cc81648c08ed63da1a854e9ac9755aaddacc0345d032cfefd11681424",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "725423597781a7f26b5bc013d035c3593800dbd6a62e46cffb8294afbcb6b7ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-1.md"
       },
       {
         "digest": "cc83b3ddb2567d33d23d026075320db88264defa6f522ed732427cae80deec58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-2.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-2.md"
       },
       {
         "digest": "b3cedbc88bfc114195c563d1c5ab02bb6edaad9f6f82c9da8269722e56488094",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "ebd4d18cb261971dd2f8ae7255f55f10d30e5d3c16898b288d2285a36a9dfb3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/self-review-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/self-review-round-1.md"
       },
       {
         "digest": "1e1cf9c3b4d3f2eb948231c588258007df70627339cfb316b331d94f8be54ebd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/index.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/index.md"
       },
       {
         "digest": "d20000a03af69de23f3eba917d52a3c57f8e9e0c4e0982bccc3f9f7ade6941fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-01-shared-contracts-and-flags.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-01-shared-contracts-and-flags.md"
       },
       {
         "digest": "9f2982cb4ef6c774a427f75affa1ad5f4c0ea3d2372d3c8de65ea4e28b065b82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-02-agency-and-team-adapters.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-02-agency-and-team-adapters.md"
       },
       {
         "digest": "887ad7e73a0b8b1c2cd93c2e86de601d3f797aea008c564b82c6f92270e4ae8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-03-golden-fixtures-and-negative-tests.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-03-golden-fixtures-and-negative-tests.md"
       },
       {
         "digest": "72e0b4dc8060fd072fc2ff5af5585ac530b5537d7108831255d96f4b05627d19",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-04-preview-renderer-and-intents.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-04-preview-renderer-and-intents.md"
       },
       {
         "digest": "d6d4f133ee91777ce49eed5efaa0a9da9d4807922adc6eb723cd1feb58b5cb0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-05-artifact-approval-cost-adapters.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-05-artifact-approval-cost-adapters.md"
       },
       {
         "digest": "0c89f8c02d807c393020d498cb742c9ef2bba3a59a0adab70aba39250d655404",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-06-debug-inspector-and-redaction.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-06-debug-inspector-and-redaction.md"
       },
       {
         "digest": "2043748f1cbb2d0bd9ef33e85c89531ef17344990808f77a69bc345f1a699f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-07-runtype-renderer-spike.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-07-runtype-renderer-spike.md"
       },
       {
         "digest": "b109fe0d4642ee0a48b4216ecdb77229c9eff4b3ebf1791809c4932c0062a33f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-08-rollout-metrics-and-release-gates.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-08-rollout-metrics-and-release-gates.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -745,92 +745,92 @@
       {
         "digest": "3ddf057646c39d46a021e217397767e5e6ac3338027cef0f40d63837b2e60fa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/claude-plan.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/claude-plan.md"
       },
       {
         "digest": "9f85c44cd5864e844c6db0263b3efc595e6a8baa5afbc7ebd379dd9d51d171c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/claude-spec.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/claude-spec.md"
       },
       {
         "digest": "251e50df5614bf8c84f0102c06b63250820207cc945f51e36ae1f35fd2e80aa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/implementation/deep_implement_config.json"
+        "path": "specs/feature/123-agent-experience-adapter-layer/implementation/deep_implement_config.json"
       },
       {
         "digest": "b199f63d5379b951d0a408a2f644b85d8fe59947ada0823833882298b5128b51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/implementation/usage.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/implementation/usage.md"
       },
       {
         "digest": "0e557f6cc81648c08ed63da1a854e9ac9755aaddacc0345d032cfefd11681424",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "725423597781a7f26b5bc013d035c3593800dbd6a62e46cffb8294afbcb6b7ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-1.md"
       },
       {
         "digest": "cc83b3ddb2567d33d23d026075320db88264defa6f522ed732427cae80deec58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-2.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/plan-spec-alignment-round-2.md"
       },
       {
         "digest": "b3cedbc88bfc114195c563d1c5ab02bb6edaad9f6f82c9da8269722e56488094",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "ebd4d18cb261971dd2f8ae7255f55f10d30e5d3c16898b288d2285a36a9dfb3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/reviews/self-review-round-1.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/reviews/self-review-round-1.md"
       },
       {
         "digest": "1e1cf9c3b4d3f2eb948231c588258007df70627339cfb316b331d94f8be54ebd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/index.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/index.md"
       },
       {
         "digest": "d20000a03af69de23f3eba917d52a3c57f8e9e0c4e0982bccc3f9f7ade6941fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-01-shared-contracts-and-flags.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-01-shared-contracts-and-flags.md"
       },
       {
         "digest": "9f2982cb4ef6c774a427f75affa1ad5f4c0ea3d2372d3c8de65ea4e28b065b82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-02-agency-and-team-adapters.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-02-agency-and-team-adapters.md"
       },
       {
         "digest": "887ad7e73a0b8b1c2cd93c2e86de601d3f797aea008c564b82c6f92270e4ae8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-03-golden-fixtures-and-negative-tests.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-03-golden-fixtures-and-negative-tests.md"
       },
       {
         "digest": "72e0b4dc8060fd072fc2ff5af5585ac530b5537d7108831255d96f4b05627d19",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-04-preview-renderer-and-intents.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-04-preview-renderer-and-intents.md"
       },
       {
         "digest": "d6d4f133ee91777ce49eed5efaa0a9da9d4807922adc6eb723cd1feb58b5cb0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-05-artifact-approval-cost-adapters.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-05-artifact-approval-cost-adapters.md"
       },
       {
         "digest": "0c89f8c02d807c393020d498cb742c9ef2bba3a59a0adab70aba39250d655404",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-06-debug-inspector-and-redaction.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-06-debug-inspector-and-redaction.md"
       },
       {
         "digest": "2043748f1cbb2d0bd9ef33e85c89531ef17344990808f77a69bc345f1a699f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-07-runtype-renderer-spike.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-07-runtype-renderer-spike.md"
       },
       {
         "digest": "b109fe0d4642ee0a48b4216ecdb77229c9eff4b3ebf1791809c4932c0062a33f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/sections/section-08-rollout-metrics-and-release-gates.md"
+        "path": "specs/feature/123-agent-experience-adapter-layer/sections/section-08-rollout-metrics-and-release-gates.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -848,7 +848,7 @@
     "unresolved": 183
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.145597Z",
+  "updated_at": "2026-10-06T03:28:15.879768Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

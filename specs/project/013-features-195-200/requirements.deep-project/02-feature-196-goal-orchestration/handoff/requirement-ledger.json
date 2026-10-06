@@ -4,7 +4,7 @@
   "requirements": [
     {
       "applicability": "UNASSESSED",
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/013-features-195-200/requirements.deep-project/02-feature-196-goal-orchestration/spec.md",
+      "authority_source": "specs/project/013-features-195-200/requirements.deep-project/02-feature-196-goal-orchestration/spec.md",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

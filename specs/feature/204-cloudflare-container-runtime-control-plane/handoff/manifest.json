@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md",
     "digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.828815Z",
+      "last_evidence_at": "2026-10-06T03:28:17.088208Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-18T14:42:46+07:00",
       "spec_last_changed_at": "2026-09-18T20:52:49+07:00"
@@ -104,7 +104,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.828815Z"
+    "updated_at": "2026-10-06T03:28:17.088208Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,7 +114,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.828815Z",
+    "reconciled_at": "2026-10-06T03:28:17.088208Z",
     "sources": [
       {
         "digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
@@ -182,7 +182,7 @@
     "unresolved": 139
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.828815Z",
+  "updated_at": "2026-10-06T03:28:17.088208Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

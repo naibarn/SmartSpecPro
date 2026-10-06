@@ -17,57 +17,57 @@
       {
         "digest": "b5134cc42a164602cbd7302d95db0d87e5ed2c8e66b774e87ac89727f64c8b1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/claude-plan.md"
+        "path": "specs/feature/095-work-os-automation-fabric/claude-plan.md"
       },
       {
         "digest": "5c31f78f33b7e855b9bc9db2a5ffd3a06e34f06c5840834acf3a630ca46e0f9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/claude-spec.md"
+        "path": "specs/feature/095-work-os-automation-fabric/claude-spec.md"
       },
       {
         "digest": "0b3b479c69c4f7d541df07c6b674d29bb25406c21a9d86a9bd41f729b484efd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/implementation/deep_implement_config.json"
+        "path": "specs/feature/095-work-os-automation-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "8afb923846230e2d8235a6d3c03cf6ecbbdb3810f82b783ff75c27ae6710d11c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/095-work-os-automation-fabric/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "a8cec22e6e1fb05f8c7f15495afa0123f5ab935e0c4338b9769d1cd785900993",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/index.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/index.md"
       },
       {
         "digest": "ac8827e5748fdddc7950e02cb372dd2e5d6951ab4b4efb690f62eb696f88624b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-01-canonical-automation-run-model.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-01-canonical-automation-run-model.md"
       },
       {
         "digest": "34ee04e23c5e9b2a8d86484296750d94212db08c0e32213994f85ab55f336374",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-02-mode-selection-workflow-template-resolution-and-transition-rules.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-02-mode-selection-workflow-template-resolution-and-transition-rules.md"
       },
       {
         "digest": "40d772a0032272d7a093a30eb0996872fc61142bfaad305cabc945cf6ca39cc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-03-execution-adapters-step-routing-boundaries-and-surface-allowlists.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-03-execution-adapters-step-routing-boundaries-and-surface-allowlists.md"
       },
       {
         "digest": "ba0d64b3a1bc2ec37ab39aa7567202a6d7a7e7e6bed3c6c00f7d9db093e6ffc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-04-checkpoints-human-edits-approval-gates-and-resume-semantics.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-04-checkpoints-human-edits-approval-gates-and-resume-semantics.md"
       },
       {
         "digest": "57be8e03426598a4f9cb4031d10954da27f8f5759e6275287720c407f03900a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-05-evidence-drafts-media-outputs-and-operator-surfaces.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-05-evidence-drafts-media-outputs-and-operator-surfaces.md"
       },
       {
         "digest": "f42c5af878308dd096fcb5acbc57832ce7c7bd2a64cc5714180643d112d708a2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-06-rollout-guardrails-and-regression-coverage.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-06-rollout-guardrails-and-regression-coverage.md"
       }
     ],
     "predecessors": [],
@@ -98,57 +98,57 @@
       {
         "digest": "b5134cc42a164602cbd7302d95db0d87e5ed2c8e66b774e87ac89727f64c8b1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/claude-plan.md"
+        "path": "specs/feature/095-work-os-automation-fabric/claude-plan.md"
       },
       {
         "digest": "5c31f78f33b7e855b9bc9db2a5ffd3a06e34f06c5840834acf3a630ca46e0f9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/claude-spec.md"
+        "path": "specs/feature/095-work-os-automation-fabric/claude-spec.md"
       },
       {
         "digest": "0b3b479c69c4f7d541df07c6b674d29bb25406c21a9d86a9bd41f729b484efd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/implementation/deep_implement_config.json"
+        "path": "specs/feature/095-work-os-automation-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "8afb923846230e2d8235a6d3c03cf6ecbbdb3810f82b783ff75c27ae6710d11c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/095-work-os-automation-fabric/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "a8cec22e6e1fb05f8c7f15495afa0123f5ab935e0c4338b9769d1cd785900993",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/index.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/index.md"
       },
       {
         "digest": "ac8827e5748fdddc7950e02cb372dd2e5d6951ab4b4efb690f62eb696f88624b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-01-canonical-automation-run-model.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-01-canonical-automation-run-model.md"
       },
       {
         "digest": "34ee04e23c5e9b2a8d86484296750d94212db08c0e32213994f85ab55f336374",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-02-mode-selection-workflow-template-resolution-and-transition-rules.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-02-mode-selection-workflow-template-resolution-and-transition-rules.md"
       },
       {
         "digest": "40d772a0032272d7a093a30eb0996872fc61142bfaad305cabc945cf6ca39cc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-03-execution-adapters-step-routing-boundaries-and-surface-allowlists.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-03-execution-adapters-step-routing-boundaries-and-surface-allowlists.md"
       },
       {
         "digest": "ba0d64b3a1bc2ec37ab39aa7567202a6d7a7e7e6bed3c6c00f7d9db093e6ffc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-04-checkpoints-human-edits-approval-gates-and-resume-semantics.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-04-checkpoints-human-edits-approval-gates-and-resume-semantics.md"
       },
       {
         "digest": "57be8e03426598a4f9cb4031d10954da27f8f5759e6275287720c407f03900a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-05-evidence-drafts-media-outputs-and-operator-surfaces.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-05-evidence-drafts-media-outputs-and-operator-surfaces.md"
       },
       {
         "digest": "f42c5af878308dd096fcb5acbc57832ce7c7bd2a64cc5714180643d112d708a2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-06-rollout-guardrails-and-regression-coverage.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-06-rollout-guardrails-and-regression-coverage.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -180,69 +180,69 @@
       {
         "digest": "b5134cc42a164602cbd7302d95db0d87e5ed2c8e66b774e87ac89727f64c8b1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/claude-plan.md"
+        "path": "specs/feature/095-work-os-automation-fabric/claude-plan.md"
       },
       {
         "digest": "5c31f78f33b7e855b9bc9db2a5ffd3a06e34f06c5840834acf3a630ca46e0f9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/claude-spec.md"
+        "path": "specs/feature/095-work-os-automation-fabric/claude-spec.md"
       },
       {
         "digest": "0b3b479c69c4f7d541df07c6b674d29bb25406c21a9d86a9bd41f729b484efd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/implementation/deep_implement_config.json"
+        "path": "specs/feature/095-work-os-automation-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "8afb923846230e2d8235a6d3c03cf6ecbbdb3810f82b783ff75c27ae6710d11c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/095-work-os-automation-fabric/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "a8cec22e6e1fb05f8c7f15495afa0123f5ab935e0c4338b9769d1cd785900993",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/index.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/index.md"
       },
       {
         "digest": "ac8827e5748fdddc7950e02cb372dd2e5d6951ab4b4efb690f62eb696f88624b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-01-canonical-automation-run-model.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-01-canonical-automation-run-model.md"
       },
       {
         "digest": "34ee04e23c5e9b2a8d86484296750d94212db08c0e32213994f85ab55f336374",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-02-mode-selection-workflow-template-resolution-and-transition-rules.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-02-mode-selection-workflow-template-resolution-and-transition-rules.md"
       },
       {
         "digest": "40d772a0032272d7a093a30eb0996872fc61142bfaad305cabc945cf6ca39cc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-03-execution-adapters-step-routing-boundaries-and-surface-allowlists.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-03-execution-adapters-step-routing-boundaries-and-surface-allowlists.md"
       },
       {
         "digest": "ba0d64b3a1bc2ec37ab39aa7567202a6d7a7e7e6bed3c6c00f7d9db093e6ffc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-04-checkpoints-human-edits-approval-gates-and-resume-semantics.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-04-checkpoints-human-edits-approval-gates-and-resume-semantics.md"
       },
       {
         "digest": "57be8e03426598a4f9cb4031d10954da27f8f5759e6275287720c407f03900a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-05-evidence-drafts-media-outputs-and-operator-surfaces.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-05-evidence-drafts-media-outputs-and-operator-surfaces.md"
       },
       {
         "digest": "f42c5af878308dd096fcb5acbc57832ce7c7bd2a64cc5714180643d112d708a2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-06-rollout-guardrails-and-regression-coverage.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-06-rollout-guardrails-and-regression-coverage.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/095-work-os-automation-fabric/spec.md",
     "digest": "21c2cfe5216762329fa3af18c942b146c2048589bd53649a902e8032199ab033",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.902372Z",
+      "last_evidence_at": "2026-10-06T03:28:15.426280Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-15T20:27:12+07:00",
       "spec_last_changed_at": "2026-04-15T20:27:12+07:00"
@@ -269,7 +269,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.902372Z"
+    "updated_at": "2026-10-06T03:28:15.426280Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -279,7 +279,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.902372Z",
+    "reconciled_at": "2026-10-06T03:28:15.426280Z",
     "sources": [
       {
         "digest": "21c2cfe5216762329fa3af18c942b146c2048589bd53649a902e8032199ab033",
@@ -289,57 +289,57 @@
       {
         "digest": "b5134cc42a164602cbd7302d95db0d87e5ed2c8e66b774e87ac89727f64c8b1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/claude-plan.md"
+        "path": "specs/feature/095-work-os-automation-fabric/claude-plan.md"
       },
       {
         "digest": "5c31f78f33b7e855b9bc9db2a5ffd3a06e34f06c5840834acf3a630ca46e0f9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/claude-spec.md"
+        "path": "specs/feature/095-work-os-automation-fabric/claude-spec.md"
       },
       {
         "digest": "0b3b479c69c4f7d541df07c6b674d29bb25406c21a9d86a9bd41f729b484efd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/implementation/deep_implement_config.json"
+        "path": "specs/feature/095-work-os-automation-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "8afb923846230e2d8235a6d3c03cf6ecbbdb3810f82b783ff75c27ae6710d11c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/095-work-os-automation-fabric/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "a8cec22e6e1fb05f8c7f15495afa0123f5ab935e0c4338b9769d1cd785900993",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/index.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/index.md"
       },
       {
         "digest": "ac8827e5748fdddc7950e02cb372dd2e5d6951ab4b4efb690f62eb696f88624b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-01-canonical-automation-run-model.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-01-canonical-automation-run-model.md"
       },
       {
         "digest": "34ee04e23c5e9b2a8d86484296750d94212db08c0e32213994f85ab55f336374",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-02-mode-selection-workflow-template-resolution-and-transition-rules.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-02-mode-selection-workflow-template-resolution-and-transition-rules.md"
       },
       {
         "digest": "40d772a0032272d7a093a30eb0996872fc61142bfaad305cabc945cf6ca39cc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-03-execution-adapters-step-routing-boundaries-and-surface-allowlists.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-03-execution-adapters-step-routing-boundaries-and-surface-allowlists.md"
       },
       {
         "digest": "ba0d64b3a1bc2ec37ab39aa7567202a6d7a7e7e6bed3c6c00f7d9db093e6ffc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-04-checkpoints-human-edits-approval-gates-and-resume-semantics.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-04-checkpoints-human-edits-approval-gates-and-resume-semantics.md"
       },
       {
         "digest": "57be8e03426598a4f9cb4031d10954da27f8f5759e6275287720c407f03900a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-05-evidence-drafts-media-outputs-and-operator-surfaces.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-05-evidence-drafts-media-outputs-and-operator-surfaces.md"
       },
       {
         "digest": "f42c5af878308dd096fcb5acbc57832ce7c7bd2a64cc5714180643d112d708a2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-06-rollout-guardrails-and-regression-coverage.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-06-rollout-guardrails-and-regression-coverage.md"
       }
     ],
     "stale_fields": [],
@@ -367,57 +367,57 @@
       {
         "digest": "b5134cc42a164602cbd7302d95db0d87e5ed2c8e66b774e87ac89727f64c8b1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/claude-plan.md"
+        "path": "specs/feature/095-work-os-automation-fabric/claude-plan.md"
       },
       {
         "digest": "5c31f78f33b7e855b9bc9db2a5ffd3a06e34f06c5840834acf3a630ca46e0f9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/claude-spec.md"
+        "path": "specs/feature/095-work-os-automation-fabric/claude-spec.md"
       },
       {
         "digest": "0b3b479c69c4f7d541df07c6b674d29bb25406c21a9d86a9bd41f729b484efd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/implementation/deep_implement_config.json"
+        "path": "specs/feature/095-work-os-automation-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "8afb923846230e2d8235a6d3c03cf6ecbbdb3810f82b783ff75c27ae6710d11c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/095-work-os-automation-fabric/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "a8cec22e6e1fb05f8c7f15495afa0123f5ab935e0c4338b9769d1cd785900993",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/index.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/index.md"
       },
       {
         "digest": "ac8827e5748fdddc7950e02cb372dd2e5d6951ab4b4efb690f62eb696f88624b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-01-canonical-automation-run-model.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-01-canonical-automation-run-model.md"
       },
       {
         "digest": "34ee04e23c5e9b2a8d86484296750d94212db08c0e32213994f85ab55f336374",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-02-mode-selection-workflow-template-resolution-and-transition-rules.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-02-mode-selection-workflow-template-resolution-and-transition-rules.md"
       },
       {
         "digest": "40d772a0032272d7a093a30eb0996872fc61142bfaad305cabc945cf6ca39cc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-03-execution-adapters-step-routing-boundaries-and-surface-allowlists.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-03-execution-adapters-step-routing-boundaries-and-surface-allowlists.md"
       },
       {
         "digest": "ba0d64b3a1bc2ec37ab39aa7567202a6d7a7e7e6bed3c6c00f7d9db093e6ffc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-04-checkpoints-human-edits-approval-gates-and-resume-semantics.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-04-checkpoints-human-edits-approval-gates-and-resume-semantics.md"
       },
       {
         "digest": "57be8e03426598a4f9cb4031d10954da27f8f5759e6275287720c407f03900a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-05-evidence-drafts-media-outputs-and-operator-surfaces.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-05-evidence-drafts-media-outputs-and-operator-surfaces.md"
       },
       {
         "digest": "f42c5af878308dd096fcb5acbc57832ce7c7bd2a64cc5714180643d112d708a2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/095-work-os-automation-fabric/sections/section-06-rollout-guardrails-and-regression-coverage.md"
+        "path": "specs/feature/095-work-os-automation-fabric/sections/section-06-rollout-guardrails-and-regression-coverage.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -435,7 +435,7 @@
     "unresolved": 16
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.902372Z",
+  "updated_at": "2026-10-06T03:28:15.426280Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

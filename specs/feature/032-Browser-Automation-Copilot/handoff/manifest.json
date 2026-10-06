@@ -17,72 +17,72 @@
       {
         "digest": "0f0ac014d1cecf2b5d395c0692e07d78d5e80fd85ba5da4754775e3a3cbc0232",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/claude-plan.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/claude-plan.md"
       },
       {
         "digest": "431dd53e670128b13b6fb5e7a4e1f9367ec969cfb3fe65cce3dd747335420830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/claude-spec.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/claude-spec.md"
       },
       {
         "digest": "a98d2861c8b226da4918163d4378d69ed2e48dec37a70619f0846bd51d2be4b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/implementation/deep_implement_config.json"
+        "path": "specs/feature/032-Browser-Automation-Copilot/implementation/deep_implement_config.json"
       },
       {
         "digest": "87fc0c777a9f5beb17e5075db18a850325ce434fc7a0a28e33442acd66374f2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/reviews/iteration-1-opus.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/reviews/iteration-1-opus.md"
       },
       {
         "digest": "6d95b7c14b2af04f856cc1ae8648b21e649510a66a0e17c91f6725581fbc79d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/index.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/index.md"
       },
       {
         "digest": "a6aa7338169829673ae89972fd0e1c99dc07dcf2611f7b012a4314ec4c34c09a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-01-db-config.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-01-db-config.md"
       },
       {
         "digest": "7ea292b9a64d63b52b0d40740c224bb333fc55cbda097c3cbd1067465d035f3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-02-gateway-client.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-02-gateway-client.md"
       },
       {
         "digest": "fdbd202a1765597966164c26ecee0d4790a730f9f990d3ba5eb740e062938638",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-03-responses-api.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-03-responses-api.md"
       },
       {
         "digest": "298d3956d1a0fb9d212398bf7224e00e933c2a0f10c295ef9b399e01e4c7db70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-04-copilot-llm-calls.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-04-copilot-llm-calls.md"
       },
       {
         "digest": "8dbc4c258b7ef1577c807aec88289372e9a40ac7008912db0838092fc243a536",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-05-browser-runner.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-05-browser-runner.md"
       },
       {
         "digest": "7b51a7c7fb7e82b3c56f00650e789583949b4383ae671b34fc6fe11a79e3397b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-06-search-cache.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-06-search-cache.md"
       },
       {
         "digest": "80869928f82083742e4c7d3f2673c041465cfdd660c63edda2552fee5085aed5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-07-mcp-tools.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-07-mcp-tools.md"
       },
       {
         "digest": "1523e6a647cdb7d650851e3f81eca70e194a19a7fe6b4897f73f9a395fa7a0db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-08-credit-flow-ui.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-08-credit-flow-ui.md"
       },
       {
         "digest": "59324d25500df56d530dddfef38a917df7ef8a2f0db492ae5145fe0491dfa50d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-09-security-audit.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-09-security-audit.md"
       }
     ],
     "predecessors": [],
@@ -113,72 +113,72 @@
       {
         "digest": "0f0ac014d1cecf2b5d395c0692e07d78d5e80fd85ba5da4754775e3a3cbc0232",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/claude-plan.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/claude-plan.md"
       },
       {
         "digest": "431dd53e670128b13b6fb5e7a4e1f9367ec969cfb3fe65cce3dd747335420830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/claude-spec.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/claude-spec.md"
       },
       {
         "digest": "a98d2861c8b226da4918163d4378d69ed2e48dec37a70619f0846bd51d2be4b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/implementation/deep_implement_config.json"
+        "path": "specs/feature/032-Browser-Automation-Copilot/implementation/deep_implement_config.json"
       },
       {
         "digest": "87fc0c777a9f5beb17e5075db18a850325ce434fc7a0a28e33442acd66374f2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/reviews/iteration-1-opus.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/reviews/iteration-1-opus.md"
       },
       {
         "digest": "6d95b7c14b2af04f856cc1ae8648b21e649510a66a0e17c91f6725581fbc79d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/index.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/index.md"
       },
       {
         "digest": "a6aa7338169829673ae89972fd0e1c99dc07dcf2611f7b012a4314ec4c34c09a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-01-db-config.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-01-db-config.md"
       },
       {
         "digest": "7ea292b9a64d63b52b0d40740c224bb333fc55cbda097c3cbd1067465d035f3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-02-gateway-client.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-02-gateway-client.md"
       },
       {
         "digest": "fdbd202a1765597966164c26ecee0d4790a730f9f990d3ba5eb740e062938638",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-03-responses-api.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-03-responses-api.md"
       },
       {
         "digest": "298d3956d1a0fb9d212398bf7224e00e933c2a0f10c295ef9b399e01e4c7db70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-04-copilot-llm-calls.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-04-copilot-llm-calls.md"
       },
       {
         "digest": "8dbc4c258b7ef1577c807aec88289372e9a40ac7008912db0838092fc243a536",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-05-browser-runner.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-05-browser-runner.md"
       },
       {
         "digest": "7b51a7c7fb7e82b3c56f00650e789583949b4383ae671b34fc6fe11a79e3397b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-06-search-cache.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-06-search-cache.md"
       },
       {
         "digest": "80869928f82083742e4c7d3f2673c041465cfdd660c63edda2552fee5085aed5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-07-mcp-tools.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-07-mcp-tools.md"
       },
       {
         "digest": "1523e6a647cdb7d650851e3f81eca70e194a19a7fe6b4897f73f9a395fa7a0db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-08-credit-flow-ui.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-08-credit-flow-ui.md"
       },
       {
         "digest": "59324d25500df56d530dddfef38a917df7ef8a2f0db492ae5145fe0491dfa50d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-09-security-audit.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-09-security-audit.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -210,84 +210,84 @@
       {
         "digest": "0f0ac014d1cecf2b5d395c0692e07d78d5e80fd85ba5da4754775e3a3cbc0232",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/claude-plan.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/claude-plan.md"
       },
       {
         "digest": "431dd53e670128b13b6fb5e7a4e1f9367ec969cfb3fe65cce3dd747335420830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/claude-spec.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/claude-spec.md"
       },
       {
         "digest": "a98d2861c8b226da4918163d4378d69ed2e48dec37a70619f0846bd51d2be4b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/implementation/deep_implement_config.json"
+        "path": "specs/feature/032-Browser-Automation-Copilot/implementation/deep_implement_config.json"
       },
       {
         "digest": "87fc0c777a9f5beb17e5075db18a850325ce434fc7a0a28e33442acd66374f2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/reviews/iteration-1-opus.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/reviews/iteration-1-opus.md"
       },
       {
         "digest": "6d95b7c14b2af04f856cc1ae8648b21e649510a66a0e17c91f6725581fbc79d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/index.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/index.md"
       },
       {
         "digest": "a6aa7338169829673ae89972fd0e1c99dc07dcf2611f7b012a4314ec4c34c09a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-01-db-config.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-01-db-config.md"
       },
       {
         "digest": "7ea292b9a64d63b52b0d40740c224bb333fc55cbda097c3cbd1067465d035f3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-02-gateway-client.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-02-gateway-client.md"
       },
       {
         "digest": "fdbd202a1765597966164c26ecee0d4790a730f9f990d3ba5eb740e062938638",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-03-responses-api.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-03-responses-api.md"
       },
       {
         "digest": "298d3956d1a0fb9d212398bf7224e00e933c2a0f10c295ef9b399e01e4c7db70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-04-copilot-llm-calls.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-04-copilot-llm-calls.md"
       },
       {
         "digest": "8dbc4c258b7ef1577c807aec88289372e9a40ac7008912db0838092fc243a536",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-05-browser-runner.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-05-browser-runner.md"
       },
       {
         "digest": "7b51a7c7fb7e82b3c56f00650e789583949b4383ae671b34fc6fe11a79e3397b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-06-search-cache.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-06-search-cache.md"
       },
       {
         "digest": "80869928f82083742e4c7d3f2673c041465cfdd660c63edda2552fee5085aed5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-07-mcp-tools.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-07-mcp-tools.md"
       },
       {
         "digest": "1523e6a647cdb7d650851e3f81eca70e194a19a7fe6b4897f73f9a395fa7a0db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-08-credit-flow-ui.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-08-credit-flow-ui.md"
       },
       {
         "digest": "59324d25500df56d530dddfef38a917df7ef8a2f0db492ae5145fe0491dfa50d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-09-security-audit.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-09-security-audit.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/032-Browser-Automation-Copilot/spec.md",
     "digest": "5513c63324ac5a02736c7144894612358e7907e126c125a342cc900002d1b485",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.527338Z",
+      "last_evidence_at": "2026-10-06T03:28:14.818145Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-03-07T14:35:43+07:00",
       "spec_last_changed_at": "2026-03-07T14:35:43+07:00"
@@ -314,7 +314,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.527338Z"
+    "updated_at": "2026-10-06T03:28:14.818145Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -324,7 +324,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.527338Z",
+    "reconciled_at": "2026-10-06T03:28:14.818145Z",
     "sources": [
       {
         "digest": "5513c63324ac5a02736c7144894612358e7907e126c125a342cc900002d1b485",
@@ -334,72 +334,72 @@
       {
         "digest": "0f0ac014d1cecf2b5d395c0692e07d78d5e80fd85ba5da4754775e3a3cbc0232",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/claude-plan.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/claude-plan.md"
       },
       {
         "digest": "431dd53e670128b13b6fb5e7a4e1f9367ec969cfb3fe65cce3dd747335420830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/claude-spec.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/claude-spec.md"
       },
       {
         "digest": "a98d2861c8b226da4918163d4378d69ed2e48dec37a70619f0846bd51d2be4b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/implementation/deep_implement_config.json"
+        "path": "specs/feature/032-Browser-Automation-Copilot/implementation/deep_implement_config.json"
       },
       {
         "digest": "87fc0c777a9f5beb17e5075db18a850325ce434fc7a0a28e33442acd66374f2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/reviews/iteration-1-opus.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/reviews/iteration-1-opus.md"
       },
       {
         "digest": "6d95b7c14b2af04f856cc1ae8648b21e649510a66a0e17c91f6725581fbc79d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/index.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/index.md"
       },
       {
         "digest": "a6aa7338169829673ae89972fd0e1c99dc07dcf2611f7b012a4314ec4c34c09a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-01-db-config.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-01-db-config.md"
       },
       {
         "digest": "7ea292b9a64d63b52b0d40740c224bb333fc55cbda097c3cbd1067465d035f3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-02-gateway-client.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-02-gateway-client.md"
       },
       {
         "digest": "fdbd202a1765597966164c26ecee0d4790a730f9f990d3ba5eb740e062938638",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-03-responses-api.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-03-responses-api.md"
       },
       {
         "digest": "298d3956d1a0fb9d212398bf7224e00e933c2a0f10c295ef9b399e01e4c7db70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-04-copilot-llm-calls.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-04-copilot-llm-calls.md"
       },
       {
         "digest": "8dbc4c258b7ef1577c807aec88289372e9a40ac7008912db0838092fc243a536",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-05-browser-runner.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-05-browser-runner.md"
       },
       {
         "digest": "7b51a7c7fb7e82b3c56f00650e789583949b4383ae671b34fc6fe11a79e3397b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-06-search-cache.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-06-search-cache.md"
       },
       {
         "digest": "80869928f82083742e4c7d3f2673c041465cfdd660c63edda2552fee5085aed5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-07-mcp-tools.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-07-mcp-tools.md"
       },
       {
         "digest": "1523e6a647cdb7d650851e3f81eca70e194a19a7fe6b4897f73f9a395fa7a0db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-08-credit-flow-ui.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-08-credit-flow-ui.md"
       },
       {
         "digest": "59324d25500df56d530dddfef38a917df7ef8a2f0db492ae5145fe0491dfa50d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-09-security-audit.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-09-security-audit.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -671,72 +671,72 @@
       {
         "digest": "0f0ac014d1cecf2b5d395c0692e07d78d5e80fd85ba5da4754775e3a3cbc0232",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/claude-plan.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/claude-plan.md"
       },
       {
         "digest": "431dd53e670128b13b6fb5e7a4e1f9367ec969cfb3fe65cce3dd747335420830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/claude-spec.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/claude-spec.md"
       },
       {
         "digest": "a98d2861c8b226da4918163d4378d69ed2e48dec37a70619f0846bd51d2be4b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/implementation/deep_implement_config.json"
+        "path": "specs/feature/032-Browser-Automation-Copilot/implementation/deep_implement_config.json"
       },
       {
         "digest": "87fc0c777a9f5beb17e5075db18a850325ce434fc7a0a28e33442acd66374f2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/reviews/iteration-1-opus.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/reviews/iteration-1-opus.md"
       },
       {
         "digest": "6d95b7c14b2af04f856cc1ae8648b21e649510a66a0e17c91f6725581fbc79d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/index.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/index.md"
       },
       {
         "digest": "a6aa7338169829673ae89972fd0e1c99dc07dcf2611f7b012a4314ec4c34c09a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-01-db-config.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-01-db-config.md"
       },
       {
         "digest": "7ea292b9a64d63b52b0d40740c224bb333fc55cbda097c3cbd1067465d035f3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-02-gateway-client.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-02-gateway-client.md"
       },
       {
         "digest": "fdbd202a1765597966164c26ecee0d4790a730f9f990d3ba5eb740e062938638",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-03-responses-api.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-03-responses-api.md"
       },
       {
         "digest": "298d3956d1a0fb9d212398bf7224e00e933c2a0f10c295ef9b399e01e4c7db70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-04-copilot-llm-calls.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-04-copilot-llm-calls.md"
       },
       {
         "digest": "8dbc4c258b7ef1577c807aec88289372e9a40ac7008912db0838092fc243a536",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-05-browser-runner.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-05-browser-runner.md"
       },
       {
         "digest": "7b51a7c7fb7e82b3c56f00650e789583949b4383ae671b34fc6fe11a79e3397b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-06-search-cache.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-06-search-cache.md"
       },
       {
         "digest": "80869928f82083742e4c7d3f2673c041465cfdd660c63edda2552fee5085aed5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-07-mcp-tools.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-07-mcp-tools.md"
       },
       {
         "digest": "1523e6a647cdb7d650851e3f81eca70e194a19a7fe6b4897f73f9a395fa7a0db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-08-credit-flow-ui.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-08-credit-flow-ui.md"
       },
       {
         "digest": "59324d25500df56d530dddfef38a917df7ef8a2f0db492ae5145fe0491dfa50d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/sections/section-09-security-audit.md"
+        "path": "specs/feature/032-Browser-Automation-Copilot/sections/section-09-security-audit.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -754,7 +754,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.527338Z",
+  "updated_at": "2026-10-06T03:28:14.818145Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

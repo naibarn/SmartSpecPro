@@ -17,97 +17,97 @@
       {
         "digest": "accd72c40c5e4c58fc7da3ee37010e6b090a61d3e91e6c437110392a05aae95f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
       },
       {
         "digest": "9c6018f70db8c3c9722f7729589b5c913eb0d2a253acf05b2e4814cd8d84e68a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
       },
       {
         "digest": "1a213b33ffa7234d835c23474666eaf6494bdd3dcf66f727b0aa28f09d3fdb67",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
       },
       {
         "digest": "78df9ed8bfc86fc273ea44ea694a3cf9a8fe5244c12189f8dbcbbf3401ffd5c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "7d813d2fe21bafc5126ce44c0cd4ae9b573b72156db838e36c626cf6aeb86ea2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
       },
       {
         "digest": "693a9424f57c041796a7a6cf910be496e2bef7707f488e993b2aa28fbf2e5bb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
       },
       {
         "digest": "b8f94d704e514f112e8e5f3940f3d41a59565cda04f930012a99f7b37bc4ef61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
       },
       {
         "digest": "7004f1d6f845875145b0aec3f2dbf3d013e37699e7f144f75dfe6a99c27d5e0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
       },
       {
         "digest": "d5bcf5fcea426c79cb79a36ac1013f05eb7c75063e47fc5fcf7704de796d4c62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "a87f70751ff8eda0c8037a6da392e17bfaef3b45efe5bac615149565ba30f954",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
       },
       {
         "digest": "cbbba414ecd58e1455ddabd5c83d28e45c43edfc5a94b4058033430baadc1e13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "6371c8f4cb4071e4b8fe9c0192d223dafbbb1bdc041c599c3bb531e494a1ce8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "f862db44cd29f9478459be57b620f9c488bf4a5a5fdc68c3107b9e024d1ff80b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
       },
       {
         "digest": "8e08fe6d88da6fcbbbb65bf7fb703ec2d95ee52f12a34c21b309cb7c4b3860ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "7ab7c7a4c387530dbc0cd159841195db0049987c8e3f32f689a0f6be46a8fa6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "622842d502df6fcc4f170af8a5f4138ee61fe7a5c465fa2863aae7766c9f996b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
       },
       {
         "digest": "ebdb085301320429b9726ca40804c15f17e97aa7f49c7643dcf1a36af28e2761",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
       },
       {
         "digest": "8821b0fbedf353bd15a13445a9209c522bb502d3d927e5d9576c815a7aec9839",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
       },
       {
         "digest": "d9ce30340b8689f70f56878ba0ad2e7a2693da8a1b2b0d02e568ace90073a9ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "accd72c40c5e4c58fc7da3ee37010e6b090a61d3e91e6c437110392a05aae95f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
       },
       {
         "digest": "9c6018f70db8c3c9722f7729589b5c913eb0d2a253acf05b2e4814cd8d84e68a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
       },
       {
         "digest": "1a213b33ffa7234d835c23474666eaf6494bdd3dcf66f727b0aa28f09d3fdb67",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
       },
       {
         "digest": "78df9ed8bfc86fc273ea44ea694a3cf9a8fe5244c12189f8dbcbbf3401ffd5c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "7d813d2fe21bafc5126ce44c0cd4ae9b573b72156db838e36c626cf6aeb86ea2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
       },
       {
         "digest": "693a9424f57c041796a7a6cf910be496e2bef7707f488e993b2aa28fbf2e5bb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
       },
       {
         "digest": "b8f94d704e514f112e8e5f3940f3d41a59565cda04f930012a99f7b37bc4ef61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
       },
       {
         "digest": "7004f1d6f845875145b0aec3f2dbf3d013e37699e7f144f75dfe6a99c27d5e0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
       },
       {
         "digest": "d5bcf5fcea426c79cb79a36ac1013f05eb7c75063e47fc5fcf7704de796d4c62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "a87f70751ff8eda0c8037a6da392e17bfaef3b45efe5bac615149565ba30f954",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
       },
       {
         "digest": "cbbba414ecd58e1455ddabd5c83d28e45c43edfc5a94b4058033430baadc1e13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "6371c8f4cb4071e4b8fe9c0192d223dafbbb1bdc041c599c3bb531e494a1ce8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "f862db44cd29f9478459be57b620f9c488bf4a5a5fdc68c3107b9e024d1ff80b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
       },
       {
         "digest": "8e08fe6d88da6fcbbbb65bf7fb703ec2d95ee52f12a34c21b309cb7c4b3860ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "7ab7c7a4c387530dbc0cd159841195db0049987c8e3f32f689a0f6be46a8fa6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "622842d502df6fcc4f170af8a5f4138ee61fe7a5c465fa2863aae7766c9f996b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
       },
       {
         "digest": "ebdb085301320429b9726ca40804c15f17e97aa7f49c7643dcf1a36af28e2761",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
       },
       {
         "digest": "8821b0fbedf353bd15a13445a9209c522bb502d3d927e5d9576c815a7aec9839",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
       },
       {
         "digest": "d9ce30340b8689f70f56878ba0ad2e7a2693da8a1b2b0d02e568ace90073a9ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,114 +260,114 @@
       {
         "digest": "accd72c40c5e4c58fc7da3ee37010e6b090a61d3e91e6c437110392a05aae95f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
       },
       {
         "digest": "9c6018f70db8c3c9722f7729589b5c913eb0d2a253acf05b2e4814cd8d84e68a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
       },
       {
         "digest": "1a213b33ffa7234d835c23474666eaf6494bdd3dcf66f727b0aa28f09d3fdb67",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
       },
       {
         "digest": "78df9ed8bfc86fc273ea44ea694a3cf9a8fe5244c12189f8dbcbbf3401ffd5c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "7d813d2fe21bafc5126ce44c0cd4ae9b573b72156db838e36c626cf6aeb86ea2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
       },
       {
         "digest": "693a9424f57c041796a7a6cf910be496e2bef7707f488e993b2aa28fbf2e5bb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
       },
       {
         "digest": "b8f94d704e514f112e8e5f3940f3d41a59565cda04f930012a99f7b37bc4ef61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
       },
       {
         "digest": "7004f1d6f845875145b0aec3f2dbf3d013e37699e7f144f75dfe6a99c27d5e0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
       },
       {
         "digest": "d5bcf5fcea426c79cb79a36ac1013f05eb7c75063e47fc5fcf7704de796d4c62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "a87f70751ff8eda0c8037a6da392e17bfaef3b45efe5bac615149565ba30f954",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
       },
       {
         "digest": "cbbba414ecd58e1455ddabd5c83d28e45c43edfc5a94b4058033430baadc1e13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "6371c8f4cb4071e4b8fe9c0192d223dafbbb1bdc041c599c3bb531e494a1ce8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "f862db44cd29f9478459be57b620f9c488bf4a5a5fdc68c3107b9e024d1ff80b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
       },
       {
         "digest": "8e08fe6d88da6fcbbbb65bf7fb703ec2d95ee52f12a34c21b309cb7c4b3860ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "7ab7c7a4c387530dbc0cd159841195db0049987c8e3f32f689a0f6be46a8fa6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "622842d502df6fcc4f170af8a5f4138ee61fe7a5c465fa2863aae7766c9f996b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
       },
       {
         "digest": "ebdb085301320429b9726ca40804c15f17e97aa7f49c7643dcf1a36af28e2761",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
       },
       {
         "digest": "8821b0fbedf353bd15a13445a9209c522bb502d3d927e5d9576c815a7aec9839",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
       },
       {
         "digest": "d9ce30340b8689f70f56878ba0ad2e7a2693da8a1b2b0d02e568ace90073a9ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.838221Z",
+      "last_evidence_at": "2026-10-06T03:28:17.102236Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-18T14:42:46+07:00",
       "spec_last_changed_at": "2026-10-05T06:44:29+07:00"
     },
-    "revision": null,
+    "revision": "7",
     "slug": "205-smartaihub-runner-cross-platform",
     "spec_id": "205",
     "title": "Spec 205 — SmartAIHub Runner Cross-Platform Runtime"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.838221Z"
+    "updated_at": "2026-10-06T03:28:17.102236Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.838221Z",
+    "reconciled_at": "2026-10-06T03:28:17.102236Z",
     "sources": [
       {
         "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
@@ -409,152 +409,152 @@
       {
         "digest": "accd72c40c5e4c58fc7da3ee37010e6b090a61d3e91e6c437110392a05aae95f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
       },
       {
         "digest": "9c6018f70db8c3c9722f7729589b5c913eb0d2a253acf05b2e4814cd8d84e68a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
       },
       {
         "digest": "1a213b33ffa7234d835c23474666eaf6494bdd3dcf66f727b0aa28f09d3fdb67",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
       },
       {
         "digest": "78df9ed8bfc86fc273ea44ea694a3cf9a8fe5244c12189f8dbcbbf3401ffd5c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "7d813d2fe21bafc5126ce44c0cd4ae9b573b72156db838e36c626cf6aeb86ea2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
       },
       {
         "digest": "693a9424f57c041796a7a6cf910be496e2bef7707f488e993b2aa28fbf2e5bb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
       },
       {
         "digest": "b8f94d704e514f112e8e5f3940f3d41a59565cda04f930012a99f7b37bc4ef61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
       },
       {
         "digest": "7004f1d6f845875145b0aec3f2dbf3d013e37699e7f144f75dfe6a99c27d5e0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
       },
       {
         "digest": "d5bcf5fcea426c79cb79a36ac1013f05eb7c75063e47fc5fcf7704de796d4c62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "a87f70751ff8eda0c8037a6da392e17bfaef3b45efe5bac615149565ba30f954",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
       },
       {
         "digest": "cbbba414ecd58e1455ddabd5c83d28e45c43edfc5a94b4058033430baadc1e13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "6371c8f4cb4071e4b8fe9c0192d223dafbbb1bdc041c599c3bb531e494a1ce8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "f862db44cd29f9478459be57b620f9c488bf4a5a5fdc68c3107b9e024d1ff80b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
       },
       {
         "digest": "8e08fe6d88da6fcbbbb65bf7fb703ec2d95ee52f12a34c21b309cb7c4b3860ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "7ab7c7a4c387530dbc0cd159841195db0049987c8e3f32f689a0f6be46a8fa6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "622842d502df6fcc4f170af8a5f4138ee61fe7a5c465fa2863aae7766c9f996b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
       },
       {
         "digest": "ebdb085301320429b9726ca40804c15f17e97aa7f49c7643dcf1a36af28e2761",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
       },
       {
         "digest": "8821b0fbedf353bd15a13445a9209c522bb502d3d927e5d9576c815a7aec9839",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
       },
       {
         "digest": "d9ce30340b8689f70f56878ba0ad2e7a2693da8a1b2b0d02e568ace90073a9ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
       },
       {
         "digest": "4e04f6902c1ab3bd35b30c9165f29a3a2fcb731fcd9a4d0f30e7aaffe7e8b3f2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-04-local-discovery-and-control-channel.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-04-local-discovery-and-control-channel.md"
       },
       {
         "digest": "530eb5a0f44d5e4b48d4d0393230a7fff354ab4019805fc5edc611792e74b741",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-05-job-execution-and-adapters.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-05-job-execution-and-adapters.md"
       },
       {
         "digest": "76e409891fb42e7cfb0cbd2e6a60a1d1e45d469b55014647b3989950867967cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-06-shared-container-runner.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-06-shared-container-runner.md"
       },
       {
         "digest": "431b95395d5be5b14faac59fd264f02beaa9fd77a24cf287de8a7d3a135667bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-07-ui-task-control-and-connection.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-07-ui-task-control-and-connection.md"
       },
       {
         "digest": "d8a627d4ca46b99e88905604cd8c363bd19d647074f4f059746a1dd67b4832ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-08-manual-release-workflow.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-08-manual-release-workflow.md"
       },
       {
         "digest": "d04f1e56f2dc06c0c5216ea41d651192553393d4b4e2c3bdd0d604722a418766",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-09-platform-and-rollout-evidence.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-09-platform-and-rollout-evidence.md"
       },
       {
         "digest": "af25557331b52c14c5355a361a9687900682d57f6846a60c1e9e165f9ec161ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-10-runner-release-catalog-and-storage.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-10-runner-release-catalog-and-storage.md"
       },
       {
         "digest": "0c9cee9361c7258b78d182dfd6ab7149afea27c3a3f4051aaddd70bd00cdcbdc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-11-github-release-sync-and-admin-build-control.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-11-github-release-sync-and-admin-build-control.md"
       },
       {
         "digest": "aa118a831b4fa8435a866ca4cf46c7773719f40ff2ca594f8709918c84fe7252",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-12-runner-version-and-verified-self-update.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-12-runner-version-and-verified-self-update.md"
       },
       {
         "digest": "ade57afa4af6a44383cbcd7c5a8c269c1f9e4c180af74eb06782dd6cc8b6175f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-13-dashboard-runner-download-and-version-ui.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-13-dashboard-runner-download-and-version-ui.md"
       },
       {
         "digest": "43a93cd9b719b862ed77d494daaf2092929dcc03382fdcaf5b364ba5fe4d409f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-14-release-integration-and-evidence.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-14-release-integration-and-evidence.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -982,152 +982,152 @@
       {
         "digest": "accd72c40c5e4c58fc7da3ee37010e6b090a61d3e91e6c437110392a05aae95f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
       },
       {
         "digest": "9c6018f70db8c3c9722f7729589b5c913eb0d2a253acf05b2e4814cd8d84e68a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
       },
       {
         "digest": "1a213b33ffa7234d835c23474666eaf6494bdd3dcf66f727b0aa28f09d3fdb67",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
       },
       {
         "digest": "78df9ed8bfc86fc273ea44ea694a3cf9a8fe5244c12189f8dbcbbf3401ffd5c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "7d813d2fe21bafc5126ce44c0cd4ae9b573b72156db838e36c626cf6aeb86ea2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
       },
       {
         "digest": "693a9424f57c041796a7a6cf910be496e2bef7707f488e993b2aa28fbf2e5bb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
       },
       {
         "digest": "b8f94d704e514f112e8e5f3940f3d41a59565cda04f930012a99f7b37bc4ef61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
       },
       {
         "digest": "7004f1d6f845875145b0aec3f2dbf3d013e37699e7f144f75dfe6a99c27d5e0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
       },
       {
         "digest": "d5bcf5fcea426c79cb79a36ac1013f05eb7c75063e47fc5fcf7704de796d4c62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "a87f70751ff8eda0c8037a6da392e17bfaef3b45efe5bac615149565ba30f954",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
       },
       {
         "digest": "cbbba414ecd58e1455ddabd5c83d28e45c43edfc5a94b4058033430baadc1e13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "6371c8f4cb4071e4b8fe9c0192d223dafbbb1bdc041c599c3bb531e494a1ce8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "f862db44cd29f9478459be57b620f9c488bf4a5a5fdc68c3107b9e024d1ff80b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
       },
       {
         "digest": "8e08fe6d88da6fcbbbb65bf7fb703ec2d95ee52f12a34c21b309cb7c4b3860ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "7ab7c7a4c387530dbc0cd159841195db0049987c8e3f32f689a0f6be46a8fa6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
       },
       {
         "digest": "622842d502df6fcc4f170af8a5f4138ee61fe7a5c465fa2863aae7766c9f996b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
       },
       {
         "digest": "ebdb085301320429b9726ca40804c15f17e97aa7f49c7643dcf1a36af28e2761",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
       },
       {
         "digest": "8821b0fbedf353bd15a13445a9209c522bb502d3d927e5d9576c815a7aec9839",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
       },
       {
         "digest": "d9ce30340b8689f70f56878ba0ad2e7a2693da8a1b2b0d02e568ace90073a9ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
       },
       {
         "digest": "4e04f6902c1ab3bd35b30c9165f29a3a2fcb731fcd9a4d0f30e7aaffe7e8b3f2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-04-local-discovery-and-control-channel.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-04-local-discovery-and-control-channel.md"
       },
       {
         "digest": "530eb5a0f44d5e4b48d4d0393230a7fff354ab4019805fc5edc611792e74b741",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-05-job-execution-and-adapters.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-05-job-execution-and-adapters.md"
       },
       {
         "digest": "76e409891fb42e7cfb0cbd2e6a60a1d1e45d469b55014647b3989950867967cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-06-shared-container-runner.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-06-shared-container-runner.md"
       },
       {
         "digest": "431b95395d5be5b14faac59fd264f02beaa9fd77a24cf287de8a7d3a135667bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-07-ui-task-control-and-connection.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-07-ui-task-control-and-connection.md"
       },
       {
         "digest": "d8a627d4ca46b99e88905604cd8c363bd19d647074f4f059746a1dd67b4832ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-08-manual-release-workflow.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-08-manual-release-workflow.md"
       },
       {
         "digest": "d04f1e56f2dc06c0c5216ea41d651192553393d4b4e2c3bdd0d604722a418766",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-09-platform-and-rollout-evidence.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-09-platform-and-rollout-evidence.md"
       },
       {
         "digest": "af25557331b52c14c5355a361a9687900682d57f6846a60c1e9e165f9ec161ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-10-runner-release-catalog-and-storage.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-10-runner-release-catalog-and-storage.md"
       },
       {
         "digest": "0c9cee9361c7258b78d182dfd6ab7149afea27c3a3f4051aaddd70bd00cdcbdc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-11-github-release-sync-and-admin-build-control.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-11-github-release-sync-and-admin-build-control.md"
       },
       {
         "digest": "aa118a831b4fa8435a866ca4cf46c7773719f40ff2ca594f8709918c84fe7252",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-12-runner-version-and-verified-self-update.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-12-runner-version-and-verified-self-update.md"
       },
       {
         "digest": "ade57afa4af6a44383cbcd7c5a8c269c1f9e4c180af74eb06782dd6cc8b6175f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-13-dashboard-runner-download-and-version-ui.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-13-dashboard-runner-download-and-version-ui.md"
       },
       {
         "digest": "43a93cd9b719b862ed77d494daaf2092929dcc03382fdcaf5b364ba5fe4d409f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/sections/section-14-release-integration-and-evidence.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-14-release-integration-and-evidence.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -1145,7 +1145,7 @@
     "unresolved": 162
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.838221Z",
+  "updated_at": "2026-10-06T03:28:17.102236Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

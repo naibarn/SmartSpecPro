@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/016-dynamic-skill-enhance/spec.md#L13"
+        "specs/feature/016-dynamic-skill-enhance/spec.md#L13"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/016-dynamic-skill-enhance/spec.md#L13",
+      "authority_source": "specs/feature/016-dynamic-skill-enhance/spec.md#L13",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/016-dynamic-skill-enhance/spec.md#L14"
+        "specs/feature/016-dynamic-skill-enhance/spec.md#L14"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/016-dynamic-skill-enhance/spec.md#L14",
+      "authority_source": "specs/feature/016-dynamic-skill-enhance/spec.md#L14",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/016-dynamic-skill-enhance/spec.md#L15"
+        "specs/feature/016-dynamic-skill-enhance/spec.md#L15"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/016-dynamic-skill-enhance/spec.md#L15",
+      "authority_source": "specs/feature/016-dynamic-skill-enhance/spec.md#L15",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/016-dynamic-skill-enhance/spec.md#L16"
+        "specs/feature/016-dynamic-skill-enhance/spec.md#L16"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/016-dynamic-skill-enhance/spec.md#L16",
+      "authority_source": "specs/feature/016-dynamic-skill-enhance/spec.md#L16",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/016-dynamic-skill-enhance/spec.md#L17"
+        "specs/feature/016-dynamic-skill-enhance/spec.md#L17"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/016-dynamic-skill-enhance/spec.md#L17",
+      "authority_source": "specs/feature/016-dynamic-skill-enhance/spec.md#L17",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

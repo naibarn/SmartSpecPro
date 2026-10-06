@@ -17,97 +17,97 @@
       {
         "digest": "dec412ece64580caeddb65948362fe7749c2183e5aed620f67990ffc44465f07",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/claude-plan.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/claude-plan.md"
       },
       {
         "digest": "03d111f6525da70ef759a1a962ea015a3b465b192ac7517a9382a4c598ed6335",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/claude-spec.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/claude-spec.md"
       },
       {
         "digest": "27be363c5ba1bbe82098aef6ccf51c178e447f0dcae0c78ecc39ee9c01e38d2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/chrome-prompt-api-qa-matrix.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/chrome-prompt-api-qa-matrix.md"
       },
       {
         "digest": "30811ea7dc3508cdbe06c4335953f09c06afe8d5073528b694a37b4fe75e48b7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/completion-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/completion-review.md"
       },
       {
         "digest": "01856b954f1cbf51485f5948f74bd15874bb31be790a2c6fe1a40fb256f9ace3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/deep_implement_config.json"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/deep_implement_config.json"
       },
       {
         "digest": "db4fd4a650311da2196914f7148f46e09e71765386d9b214ef07ed75ec20346f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/codebase-alignment-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/codebase-alignment-review.md"
       },
       {
         "digest": "5252d7cef5e59dcf7a2d8a44a0032162d327db00e9d7d5a83aa5c1acec6dd9c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/completeness-review-support-matrix.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/completeness-review-support-matrix.md"
       },
       {
         "digest": "0513dab36fac5ac9083939d3545c66fcb40274adb3ee584eb99341e46f68076a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/deep-plan-completion-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/deep-plan-completion-review.md"
       },
       {
         "digest": "40bea4a42561c3822f542a2eb06753a864d8e16f980a55a91366f8c0802b4bc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/final-completeness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/final-completeness-review.md"
       },
       {
         "digest": "0aca08997a6c759011fd66f941eafa34effb2321123713abeb30166b63228d41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/operational-readiness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/operational-readiness-review.md"
       },
       {
         "digest": "512bc9ddab296a3de9b53ab65f3a01bc30e0afb8738d19d01722eae63d030a54",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/plan-gap-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/plan-gap-review.md"
       },
       {
         "digest": "aecd7063febe252695cb4d9eedd6bfc4b2001b3efcc8926f11718f1a4e0861a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/storytelling-journey-completeness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/storytelling-journey-completeness-review.md"
       },
       {
         "digest": "c29f69bd10c2d0049f5164a67cada2556945c1030e1fb629f907785352e2185d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/index.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/index.md"
       },
       {
         "digest": "9a5ecfa6e999c12c7755bab68ab04678a791462c9f1d8cee4fac436314800c3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-01-contracts-capability-sanitizer.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-01-contracts-capability-sanitizer.md"
       },
       {
         "digest": "af5f405efe4173dcbf4dab366d3a2891464b5270af6e492cf4734698c4fa700b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-02-extension-provider-and-side-panel.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-02-extension-provider-and-side-panel.md"
       },
       {
         "digest": "55ded0608e98b27000fbdae6fc50d80ed6b3ba3f2636e425088246c159f064df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-03-output-validation-and-local-cache.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-03-output-validation-and-local-cache.md"
       },
       {
         "digest": "1b68171796df9ee7477cbc63fed49556ae29ff8e6b27c546f78ce8b54c411054",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-04-insight-sync-and-preview.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-04-insight-sync-and-preview.md"
       },
       {
         "digest": "f95c5e25ef490354d9ca26c043718db5488afa0e5c45303542ec59a11ad00cd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-05-ai-video-studio-bridge-qa.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-05-ai-video-studio-bridge-qa.md"
       },
       {
         "digest": "2428c8c0bea633fad3dadadad68a61edc43182a3882efe8d25cd4ea797886039",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-06-storytelling-customer-journey-handoff.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-06-storytelling-customer-journey-handoff.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "dec412ece64580caeddb65948362fe7749c2183e5aed620f67990ffc44465f07",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/claude-plan.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/claude-plan.md"
       },
       {
         "digest": "03d111f6525da70ef759a1a962ea015a3b465b192ac7517a9382a4c598ed6335",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/claude-spec.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/claude-spec.md"
       },
       {
         "digest": "27be363c5ba1bbe82098aef6ccf51c178e447f0dcae0c78ecc39ee9c01e38d2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/chrome-prompt-api-qa-matrix.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/chrome-prompt-api-qa-matrix.md"
       },
       {
         "digest": "30811ea7dc3508cdbe06c4335953f09c06afe8d5073528b694a37b4fe75e48b7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/completion-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/completion-review.md"
       },
       {
         "digest": "01856b954f1cbf51485f5948f74bd15874bb31be790a2c6fe1a40fb256f9ace3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/deep_implement_config.json"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/deep_implement_config.json"
       },
       {
         "digest": "db4fd4a650311da2196914f7148f46e09e71765386d9b214ef07ed75ec20346f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/codebase-alignment-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/codebase-alignment-review.md"
       },
       {
         "digest": "5252d7cef5e59dcf7a2d8a44a0032162d327db00e9d7d5a83aa5c1acec6dd9c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/completeness-review-support-matrix.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/completeness-review-support-matrix.md"
       },
       {
         "digest": "0513dab36fac5ac9083939d3545c66fcb40274adb3ee584eb99341e46f68076a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/deep-plan-completion-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/deep-plan-completion-review.md"
       },
       {
         "digest": "40bea4a42561c3822f542a2eb06753a864d8e16f980a55a91366f8c0802b4bc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/final-completeness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/final-completeness-review.md"
       },
       {
         "digest": "0aca08997a6c759011fd66f941eafa34effb2321123713abeb30166b63228d41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/operational-readiness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/operational-readiness-review.md"
       },
       {
         "digest": "512bc9ddab296a3de9b53ab65f3a01bc30e0afb8738d19d01722eae63d030a54",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/plan-gap-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/plan-gap-review.md"
       },
       {
         "digest": "aecd7063febe252695cb4d9eedd6bfc4b2001b3efcc8926f11718f1a4e0861a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/storytelling-journey-completeness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/storytelling-journey-completeness-review.md"
       },
       {
         "digest": "c29f69bd10c2d0049f5164a67cada2556945c1030e1fb629f907785352e2185d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/index.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/index.md"
       },
       {
         "digest": "9a5ecfa6e999c12c7755bab68ab04678a791462c9f1d8cee4fac436314800c3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-01-contracts-capability-sanitizer.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-01-contracts-capability-sanitizer.md"
       },
       {
         "digest": "af5f405efe4173dcbf4dab366d3a2891464b5270af6e492cf4734698c4fa700b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-02-extension-provider-and-side-panel.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-02-extension-provider-and-side-panel.md"
       },
       {
         "digest": "55ded0608e98b27000fbdae6fc50d80ed6b3ba3f2636e425088246c159f064df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-03-output-validation-and-local-cache.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-03-output-validation-and-local-cache.md"
       },
       {
         "digest": "1b68171796df9ee7477cbc63fed49556ae29ff8e6b27c546f78ce8b54c411054",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-04-insight-sync-and-preview.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-04-insight-sync-and-preview.md"
       },
       {
         "digest": "f95c5e25ef490354d9ca26c043718db5488afa0e5c45303542ec59a11ad00cd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-05-ai-video-studio-bridge-qa.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-05-ai-video-studio-bridge-qa.md"
       },
       {
         "digest": "2428c8c0bea633fad3dadadad68a61edc43182a3882efe8d25cd4ea797886039",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-06-storytelling-customer-journey-handoff.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-06-storytelling-customer-journey-handoff.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "dec412ece64580caeddb65948362fe7749c2183e5aed620f67990ffc44465f07",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/claude-plan.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/claude-plan.md"
       },
       {
         "digest": "03d111f6525da70ef759a1a962ea015a3b465b192ac7517a9382a4c598ed6335",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/claude-spec.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/claude-spec.md"
       },
       {
         "digest": "27be363c5ba1bbe82098aef6ccf51c178e447f0dcae0c78ecc39ee9c01e38d2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/chrome-prompt-api-qa-matrix.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/chrome-prompt-api-qa-matrix.md"
       },
       {
         "digest": "30811ea7dc3508cdbe06c4335953f09c06afe8d5073528b694a37b4fe75e48b7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/completion-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/completion-review.md"
       },
       {
         "digest": "01856b954f1cbf51485f5948f74bd15874bb31be790a2c6fe1a40fb256f9ace3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/deep_implement_config.json"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/deep_implement_config.json"
       },
       {
         "digest": "db4fd4a650311da2196914f7148f46e09e71765386d9b214ef07ed75ec20346f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/codebase-alignment-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/codebase-alignment-review.md"
       },
       {
         "digest": "5252d7cef5e59dcf7a2d8a44a0032162d327db00e9d7d5a83aa5c1acec6dd9c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/completeness-review-support-matrix.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/completeness-review-support-matrix.md"
       },
       {
         "digest": "0513dab36fac5ac9083939d3545c66fcb40274adb3ee584eb99341e46f68076a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/deep-plan-completion-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/deep-plan-completion-review.md"
       },
       {
         "digest": "40bea4a42561c3822f542a2eb06753a864d8e16f980a55a91366f8c0802b4bc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/final-completeness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/final-completeness-review.md"
       },
       {
         "digest": "0aca08997a6c759011fd66f941eafa34effb2321123713abeb30166b63228d41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/operational-readiness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/operational-readiness-review.md"
       },
       {
         "digest": "512bc9ddab296a3de9b53ab65f3a01bc30e0afb8738d19d01722eae63d030a54",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/plan-gap-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/plan-gap-review.md"
       },
       {
         "digest": "aecd7063febe252695cb4d9eedd6bfc4b2001b3efcc8926f11718f1a4e0861a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/storytelling-journey-completeness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/storytelling-journey-completeness-review.md"
       },
       {
         "digest": "c29f69bd10c2d0049f5164a67cada2556945c1030e1fb629f907785352e2185d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/index.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/index.md"
       },
       {
         "digest": "9a5ecfa6e999c12c7755bab68ab04678a791462c9f1d8cee4fac436314800c3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-01-contracts-capability-sanitizer.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-01-contracts-capability-sanitizer.md"
       },
       {
         "digest": "af5f405efe4173dcbf4dab366d3a2891464b5270af6e492cf4734698c4fa700b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-02-extension-provider-and-side-panel.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-02-extension-provider-and-side-panel.md"
       },
       {
         "digest": "55ded0608e98b27000fbdae6fc50d80ed6b3ba3f2636e425088246c159f064df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-03-output-validation-and-local-cache.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-03-output-validation-and-local-cache.md"
       },
       {
         "digest": "1b68171796df9ee7477cbc63fed49556ae29ff8e6b27c546f78ce8b54c411054",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-04-insight-sync-and-preview.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-04-insight-sync-and-preview.md"
       },
       {
         "digest": "f95c5e25ef490354d9ca26c043718db5488afa0e5c45303542ec59a11ad00cd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-05-ai-video-studio-bridge-qa.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-05-ai-video-studio-bridge-qa.md"
       },
       {
         "digest": "2428c8c0bea633fad3dadadad68a61edc43182a3882efe8d25cd4ea797886039",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-06-storytelling-customer-journey-handoff.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-06-storytelling-customer-journey-handoff.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/115-extension-local-ai-analysis-layer/spec.md",
     "digest": "b369bef2e86441c439265f1eb2eb29dd5422ba818167cc826c10095fae71cb7a",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.054118Z",
+      "last_evidence_at": "2026-10-06T03:28:15.687011Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-05-21T21:38:59+07:00",
       "spec_last_changed_at": "2026-05-21T21:38:59+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.054118Z"
+    "updated_at": "2026-10-06T03:28:15.687011Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.054118Z",
+    "reconciled_at": "2026-10-06T03:28:15.687011Z",
     "sources": [
       {
         "digest": "b369bef2e86441c439265f1eb2eb29dd5422ba818167cc826c10095fae71cb7a",
@@ -409,97 +409,97 @@
       {
         "digest": "dec412ece64580caeddb65948362fe7749c2183e5aed620f67990ffc44465f07",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/claude-plan.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/claude-plan.md"
       },
       {
         "digest": "03d111f6525da70ef759a1a962ea015a3b465b192ac7517a9382a4c598ed6335",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/claude-spec.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/claude-spec.md"
       },
       {
         "digest": "27be363c5ba1bbe82098aef6ccf51c178e447f0dcae0c78ecc39ee9c01e38d2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/chrome-prompt-api-qa-matrix.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/chrome-prompt-api-qa-matrix.md"
       },
       {
         "digest": "30811ea7dc3508cdbe06c4335953f09c06afe8d5073528b694a37b4fe75e48b7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/completion-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/completion-review.md"
       },
       {
         "digest": "01856b954f1cbf51485f5948f74bd15874bb31be790a2c6fe1a40fb256f9ace3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/deep_implement_config.json"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/deep_implement_config.json"
       },
       {
         "digest": "db4fd4a650311da2196914f7148f46e09e71765386d9b214ef07ed75ec20346f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/codebase-alignment-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/codebase-alignment-review.md"
       },
       {
         "digest": "5252d7cef5e59dcf7a2d8a44a0032162d327db00e9d7d5a83aa5c1acec6dd9c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/completeness-review-support-matrix.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/completeness-review-support-matrix.md"
       },
       {
         "digest": "0513dab36fac5ac9083939d3545c66fcb40274adb3ee584eb99341e46f68076a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/deep-plan-completion-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/deep-plan-completion-review.md"
       },
       {
         "digest": "40bea4a42561c3822f542a2eb06753a864d8e16f980a55a91366f8c0802b4bc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/final-completeness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/final-completeness-review.md"
       },
       {
         "digest": "0aca08997a6c759011fd66f941eafa34effb2321123713abeb30166b63228d41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/operational-readiness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/operational-readiness-review.md"
       },
       {
         "digest": "512bc9ddab296a3de9b53ab65f3a01bc30e0afb8738d19d01722eae63d030a54",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/plan-gap-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/plan-gap-review.md"
       },
       {
         "digest": "aecd7063febe252695cb4d9eedd6bfc4b2001b3efcc8926f11718f1a4e0861a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/storytelling-journey-completeness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/storytelling-journey-completeness-review.md"
       },
       {
         "digest": "c29f69bd10c2d0049f5164a67cada2556945c1030e1fb629f907785352e2185d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/index.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/index.md"
       },
       {
         "digest": "9a5ecfa6e999c12c7755bab68ab04678a791462c9f1d8cee4fac436314800c3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-01-contracts-capability-sanitizer.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-01-contracts-capability-sanitizer.md"
       },
       {
         "digest": "af5f405efe4173dcbf4dab366d3a2891464b5270af6e492cf4734698c4fa700b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-02-extension-provider-and-side-panel.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-02-extension-provider-and-side-panel.md"
       },
       {
         "digest": "55ded0608e98b27000fbdae6fc50d80ed6b3ba3f2636e425088246c159f064df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-03-output-validation-and-local-cache.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-03-output-validation-and-local-cache.md"
       },
       {
         "digest": "1b68171796df9ee7477cbc63fed49556ae29ff8e6b27c546f78ce8b54c411054",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-04-insight-sync-and-preview.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-04-insight-sync-and-preview.md"
       },
       {
         "digest": "f95c5e25ef490354d9ca26c043718db5488afa0e5c45303542ec59a11ad00cd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-05-ai-video-studio-bridge-qa.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-05-ai-video-studio-bridge-qa.md"
       },
       {
         "digest": "2428c8c0bea633fad3dadadad68a61edc43182a3882efe8d25cd4ea797886039",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-06-storytelling-customer-journey-handoff.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-06-storytelling-customer-journey-handoff.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -711,97 +711,97 @@
       {
         "digest": "dec412ece64580caeddb65948362fe7749c2183e5aed620f67990ffc44465f07",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/claude-plan.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/claude-plan.md"
       },
       {
         "digest": "03d111f6525da70ef759a1a962ea015a3b465b192ac7517a9382a4c598ed6335",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/claude-spec.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/claude-spec.md"
       },
       {
         "digest": "27be363c5ba1bbe82098aef6ccf51c178e447f0dcae0c78ecc39ee9c01e38d2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/chrome-prompt-api-qa-matrix.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/chrome-prompt-api-qa-matrix.md"
       },
       {
         "digest": "30811ea7dc3508cdbe06c4335953f09c06afe8d5073528b694a37b4fe75e48b7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/completion-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/completion-review.md"
       },
       {
         "digest": "01856b954f1cbf51485f5948f74bd15874bb31be790a2c6fe1a40fb256f9ace3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/implementation/deep_implement_config.json"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/implementation/deep_implement_config.json"
       },
       {
         "digest": "db4fd4a650311da2196914f7148f46e09e71765386d9b214ef07ed75ec20346f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/codebase-alignment-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/codebase-alignment-review.md"
       },
       {
         "digest": "5252d7cef5e59dcf7a2d8a44a0032162d327db00e9d7d5a83aa5c1acec6dd9c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/completeness-review-support-matrix.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/completeness-review-support-matrix.md"
       },
       {
         "digest": "0513dab36fac5ac9083939d3545c66fcb40274adb3ee584eb99341e46f68076a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/deep-plan-completion-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/deep-plan-completion-review.md"
       },
       {
         "digest": "40bea4a42561c3822f542a2eb06753a864d8e16f980a55a91366f8c0802b4bc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/final-completeness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/final-completeness-review.md"
       },
       {
         "digest": "0aca08997a6c759011fd66f941eafa34effb2321123713abeb30166b63228d41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/operational-readiness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/operational-readiness-review.md"
       },
       {
         "digest": "512bc9ddab296a3de9b53ab65f3a01bc30e0afb8738d19d01722eae63d030a54",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/plan-gap-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/plan-gap-review.md"
       },
       {
         "digest": "aecd7063febe252695cb4d9eedd6bfc4b2001b3efcc8926f11718f1a4e0861a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/reviews/storytelling-journey-completeness-review.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/reviews/storytelling-journey-completeness-review.md"
       },
       {
         "digest": "c29f69bd10c2d0049f5164a67cada2556945c1030e1fb629f907785352e2185d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/index.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/index.md"
       },
       {
         "digest": "9a5ecfa6e999c12c7755bab68ab04678a791462c9f1d8cee4fac436314800c3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-01-contracts-capability-sanitizer.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-01-contracts-capability-sanitizer.md"
       },
       {
         "digest": "af5f405efe4173dcbf4dab366d3a2891464b5270af6e492cf4734698c4fa700b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-02-extension-provider-and-side-panel.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-02-extension-provider-and-side-panel.md"
       },
       {
         "digest": "55ded0608e98b27000fbdae6fc50d80ed6b3ba3f2636e425088246c159f064df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-03-output-validation-and-local-cache.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-03-output-validation-and-local-cache.md"
       },
       {
         "digest": "1b68171796df9ee7477cbc63fed49556ae29ff8e6b27c546f78ce8b54c411054",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-04-insight-sync-and-preview.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-04-insight-sync-and-preview.md"
       },
       {
         "digest": "f95c5e25ef490354d9ca26c043718db5488afa0e5c45303542ec59a11ad00cd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-05-ai-video-studio-bridge-qa.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-05-ai-video-studio-bridge-qa.md"
       },
       {
         "digest": "2428c8c0bea633fad3dadadad68a61edc43182a3882efe8d25cd4ea797886039",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/sections/section-06-storytelling-customer-journey-handoff.md"
+        "path": "specs/feature/115-extension-local-ai-analysis-layer/sections/section-06-storytelling-customer-journey-handoff.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -819,7 +819,7 @@
     "unresolved": 137
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.054118Z",
+  "updated_at": "2026-10-06T03:28:15.687011Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -71,18 +71,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md",
     "digest": "5b8888ee983be79ceb56a26d78f7ed4ac0ad6f7d5430a1e1fb279c4a44c057f9",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.351056Z",
+      "last_evidence_at": "2026-10-06T03:28:16.242093Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-19T02:18:53+07:00",
       "spec_last_changed_at": "2026-08-19T02:18:53+07:00"
     },
-    "revision": null,
+    "revision": "1.0.0",
     "slug": "149-vertical-drama-video-prompt-learning-qc-ledger",
     "spec_id": "149",
     "title": "Feature 149: Vertical Drama Video Prompt Learning and QC Ledger"
@@ -104,7 +104,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.351056Z"
+    "updated_at": "2026-10-06T03:28:16.242093Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,7 +114,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.351056Z",
+    "reconciled_at": "2026-10-06T03:28:16.242093Z",
     "sources": [
       {
         "digest": "5b8888ee983be79ceb56a26d78f7ed4ac0ad6f7d5430a1e1fb279c4a44c057f9",
@@ -182,7 +182,7 @@
     "unresolved": 80
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.351056Z",
+  "updated_at": "2026-10-06T03:28:16.242093Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

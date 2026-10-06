@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/canonical-spec-handoff-reconciliation/01-shared-handoff-contract/spec.md#L13"
+        "specs/project/canonical-spec-handoff-reconciliation/01-shared-handoff-contract/spec.md#L13"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/canonical-spec-handoff-reconciliation/01-shared-handoff-contract/spec.md#L13",
+      "authority_source": "specs/project/canonical-spec-handoff-reconciliation/01-shared-handoff-contract/spec.md#L13",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/canonical-spec-handoff-reconciliation/01-shared-handoff-contract/spec.md#L22"
+        "specs/project/canonical-spec-handoff-reconciliation/01-shared-handoff-contract/spec.md#L22"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/canonical-spec-handoff-reconciliation/01-shared-handoff-contract/spec.md#L22",
+      "authority_source": "specs/project/canonical-spec-handoff-reconciliation/01-shared-handoff-contract/spec.md#L22",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

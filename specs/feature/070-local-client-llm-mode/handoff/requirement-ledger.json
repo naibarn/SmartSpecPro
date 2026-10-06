@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L29"
+        "specs/feature/070-local-client-llm-mode/spec.md#L29"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L29",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L37"
+        "specs/feature/070-local-client-llm-mode/spec.md#L37"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L37",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L55"
+        "specs/feature/070-local-client-llm-mode/spec.md#L55"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L55",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L55",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L61"
+        "specs/feature/070-local-client-llm-mode/spec.md#L61"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L61",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L62"
+        "specs/feature/070-local-client-llm-mode/spec.md#L62"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L62",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L63"
+        "specs/feature/070-local-client-llm-mode/spec.md#L63"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L63",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L63",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L64"
+        "specs/feature/070-local-client-llm-mode/spec.md#L64"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L64",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L64",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L65"
+        "specs/feature/070-local-client-llm-mode/spec.md#L65"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L65",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L66"
+        "specs/feature/070-local-client-llm-mode/spec.md#L66"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L66",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L67"
+        "specs/feature/070-local-client-llm-mode/spec.md#L67"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L67",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L68"
+        "specs/feature/070-local-client-llm-mode/spec.md#L68"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L68",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L89"
+        "specs/feature/070-local-client-llm-mode/spec.md#L89"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L89",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L90"
+        "specs/feature/070-local-client-llm-mode/spec.md#L90"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L90",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L95"
+        "specs/feature/070-local-client-llm-mode/spec.md#L95"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L95",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L96"
+        "specs/feature/070-local-client-llm-mode/spec.md#L96"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L96",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L99"
+        "specs/feature/070-local-client-llm-mode/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L99",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L104"
+        "specs/feature/070-local-client-llm-mode/spec.md#L104"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L104",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L121"
+        "specs/feature/070-local-client-llm-mode/spec.md#L121"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L121",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L122"
+        "specs/feature/070-local-client-llm-mode/spec.md#L122"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L122",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L127"
+        "specs/feature/070-local-client-llm-mode/spec.md#L127"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L127",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L128"
+        "specs/feature/070-local-client-llm-mode/spec.md#L128"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L128",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L132"
+        "specs/feature/070-local-client-llm-mode/spec.md#L132"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L132",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L133"
+        "specs/feature/070-local-client-llm-mode/spec.md#L133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L133",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L138"
+        "specs/feature/070-local-client-llm-mode/spec.md#L138"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L138",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L139"
+        "specs/feature/070-local-client-llm-mode/spec.md#L139"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L139",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L149"
+        "specs/feature/070-local-client-llm-mode/spec.md#L149"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L149",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L151"
+        "specs/feature/070-local-client-llm-mode/spec.md#L151"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L151",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L155"
+        "specs/feature/070-local-client-llm-mode/spec.md#L155"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L155",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L158"
+        "specs/feature/070-local-client-llm-mode/spec.md#L158"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L158",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L206"
+        "specs/feature/070-local-client-llm-mode/spec.md#L206"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L206",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L220"
+        "specs/feature/070-local-client-llm-mode/spec.md#L220"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L220",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L220",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L230"
+        "specs/feature/070-local-client-llm-mode/spec.md#L230"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L230",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L231"
+        "specs/feature/070-local-client-llm-mode/spec.md#L231"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L231",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L232"
+        "specs/feature/070-local-client-llm-mode/spec.md#L232"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L232",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L236"
+        "specs/feature/070-local-client-llm-mode/spec.md#L236"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L236",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L237"
+        "specs/feature/070-local-client-llm-mode/spec.md#L237"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L237",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L238"
+        "specs/feature/070-local-client-llm-mode/spec.md#L238"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L238",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L241"
+        "specs/feature/070-local-client-llm-mode/spec.md#L241"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L241",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L245"
+        "specs/feature/070-local-client-llm-mode/spec.md#L245"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L245",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L246"
+        "specs/feature/070-local-client-llm-mode/spec.md#L246"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L246",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L247"
+        "specs/feature/070-local-client-llm-mode/spec.md#L247"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L247",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L248"
+        "specs/feature/070-local-client-llm-mode/spec.md#L248"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L248",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L252"
+        "specs/feature/070-local-client-llm-mode/spec.md#L252"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L252",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L252",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L254"
+        "specs/feature/070-local-client-llm-mode/spec.md#L254"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L254",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L266"
+        "specs/feature/070-local-client-llm-mode/spec.md#L266"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L266",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L267"
+        "specs/feature/070-local-client-llm-mode/spec.md#L267"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L267",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L268"
+        "specs/feature/070-local-client-llm-mode/spec.md#L268"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L268",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L269"
+        "specs/feature/070-local-client-llm-mode/spec.md#L269"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L269",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L273"
+        "specs/feature/070-local-client-llm-mode/spec.md#L273"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L273",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L273",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L274"
+        "specs/feature/070-local-client-llm-mode/spec.md#L274"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L274",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L274",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L275"
+        "specs/feature/070-local-client-llm-mode/spec.md#L275"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L275",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L275",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L279"
+        "specs/feature/070-local-client-llm-mode/spec.md#L279"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L279",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L280"
+        "specs/feature/070-local-client-llm-mode/spec.md#L280"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L280",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L289"
+        "specs/feature/070-local-client-llm-mode/spec.md#L289"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L289",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L290"
+        "specs/feature/070-local-client-llm-mode/spec.md#L290"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L290",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L296"
+        "specs/feature/070-local-client-llm-mode/spec.md#L296"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L296",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L300"
+        "specs/feature/070-local-client-llm-mode/spec.md#L300"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L300",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L300",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L304"
+        "specs/feature/070-local-client-llm-mode/spec.md#L304"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L304",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L305"
+        "specs/feature/070-local-client-llm-mode/spec.md#L305"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L305",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L305",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L308"
+        "specs/feature/070-local-client-llm-mode/spec.md#L308"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L308",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L308",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L316"
+        "specs/feature/070-local-client-llm-mode/spec.md#L316"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L316",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L316",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L318"
+        "specs/feature/070-local-client-llm-mode/spec.md#L318"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L318",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L318",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L320"
+        "specs/feature/070-local-client-llm-mode/spec.md#L320"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L320",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L321"
+        "specs/feature/070-local-client-llm-mode/spec.md#L321"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L321",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L321",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L322"
+        "specs/feature/070-local-client-llm-mode/spec.md#L322"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L322",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L323"
+        "specs/feature/070-local-client-llm-mode/spec.md#L323"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L323",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L324"
+        "specs/feature/070-local-client-llm-mode/spec.md#L324"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L324",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L324",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L325"
+        "specs/feature/070-local-client-llm-mode/spec.md#L325"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L325",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L325",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L326"
+        "specs/feature/070-local-client-llm-mode/spec.md#L326"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L326",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L326",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L327"
+        "specs/feature/070-local-client-llm-mode/spec.md#L327"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L327",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L327",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L328"
+        "specs/feature/070-local-client-llm-mode/spec.md#L328"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L328",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L328",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L329"
+        "specs/feature/070-local-client-llm-mode/spec.md#L329"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L329",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L329",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L330"
+        "specs/feature/070-local-client-llm-mode/spec.md#L330"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L330",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L331"
+        "specs/feature/070-local-client-llm-mode/spec.md#L331"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L331",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,12 +1633,12 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L333",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L531",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L576",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L641"
+        "specs/feature/070-local-client-llm-mode/spec.md#L333",
+        "specs/feature/070-local-client-llm-mode/spec.md#L531",
+        "specs/feature/070-local-client-llm-mode/spec.md#L576",
+        "specs/feature/070-local-client-llm-mode/spec.md#L641"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L333",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L333",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1658,9 +1658,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L335"
+        "specs/feature/070-local-client-llm-mode/spec.md#L335"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L335",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1680,9 +1680,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L336"
+        "specs/feature/070-local-client-llm-mode/spec.md#L336"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L336",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1702,9 +1702,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L337"
+        "specs/feature/070-local-client-llm-mode/spec.md#L337"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L337",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1724,9 +1724,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L338"
+        "specs/feature/070-local-client-llm-mode/spec.md#L338"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L338",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L338",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1746,9 +1746,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L339"
+        "specs/feature/070-local-client-llm-mode/spec.md#L339"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L339",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L339",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1768,9 +1768,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L340"
+        "specs/feature/070-local-client-llm-mode/spec.md#L340"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L340",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1790,9 +1790,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L346"
+        "specs/feature/070-local-client-llm-mode/spec.md#L346"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L346",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1812,9 +1812,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L347"
+        "specs/feature/070-local-client-llm-mode/spec.md#L347"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L347",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1834,9 +1834,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L348"
+        "specs/feature/070-local-client-llm-mode/spec.md#L348"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L348",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1856,9 +1856,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L349"
+        "specs/feature/070-local-client-llm-mode/spec.md#L349"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L349",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L349",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1878,9 +1878,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L355"
+        "specs/feature/070-local-client-llm-mode/spec.md#L355"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L355",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L355",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1900,9 +1900,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L356"
+        "specs/feature/070-local-client-llm-mode/spec.md#L356"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L356",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1922,9 +1922,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L357"
+        "specs/feature/070-local-client-llm-mode/spec.md#L357"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L357",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L357",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1944,9 +1944,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L358"
+        "specs/feature/070-local-client-llm-mode/spec.md#L358"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L358",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L358",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1966,9 +1966,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L359"
+        "specs/feature/070-local-client-llm-mode/spec.md#L359"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L359",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L359",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1988,9 +1988,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L360"
+        "specs/feature/070-local-client-llm-mode/spec.md#L360"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L360",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L360",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2010,9 +2010,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L364"
+        "specs/feature/070-local-client-llm-mode/spec.md#L364"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L364",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L364",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2032,9 +2032,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L366"
+        "specs/feature/070-local-client-llm-mode/spec.md#L366"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L366",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2054,9 +2054,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L368"
+        "specs/feature/070-local-client-llm-mode/spec.md#L368"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L368",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L368",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2076,9 +2076,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L369"
+        "specs/feature/070-local-client-llm-mode/spec.md#L369"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L369",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L369",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2098,9 +2098,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L370"
+        "specs/feature/070-local-client-llm-mode/spec.md#L370"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L370",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2120,9 +2120,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L371"
+        "specs/feature/070-local-client-llm-mode/spec.md#L371"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L371",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L371",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2142,9 +2142,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L372"
+        "specs/feature/070-local-client-llm-mode/spec.md#L372"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L372",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2164,9 +2164,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L373"
+        "specs/feature/070-local-client-llm-mode/spec.md#L373"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L373",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2186,9 +2186,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L374"
+        "specs/feature/070-local-client-llm-mode/spec.md#L374"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L374",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L374",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2208,9 +2208,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L375"
+        "specs/feature/070-local-client-llm-mode/spec.md#L375"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L375",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2230,9 +2230,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L377"
+        "specs/feature/070-local-client-llm-mode/spec.md#L377"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L377",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2252,9 +2252,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L379"
+        "specs/feature/070-local-client-llm-mode/spec.md#L379"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L379",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2274,9 +2274,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L380"
+        "specs/feature/070-local-client-llm-mode/spec.md#L380"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L380",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L380",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2296,9 +2296,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L381"
+        "specs/feature/070-local-client-llm-mode/spec.md#L381"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L381",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2318,13 +2318,13 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L405",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L470",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L566",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L848",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L879"
+        "specs/feature/070-local-client-llm-mode/spec.md#L405",
+        "specs/feature/070-local-client-llm-mode/spec.md#L470",
+        "specs/feature/070-local-client-llm-mode/spec.md#L566",
+        "specs/feature/070-local-client-llm-mode/spec.md#L848",
+        "specs/feature/070-local-client-llm-mode/spec.md#L879"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L405",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L405",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2344,9 +2344,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L407"
+        "specs/feature/070-local-client-llm-mode/spec.md#L407"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L407",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L407",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2366,9 +2366,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L408"
+        "specs/feature/070-local-client-llm-mode/spec.md#L408"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L408",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2388,9 +2388,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L409"
+        "specs/feature/070-local-client-llm-mode/spec.md#L409"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L409",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2410,9 +2410,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L415"
+        "specs/feature/070-local-client-llm-mode/spec.md#L415"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L415",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2432,9 +2432,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L419"
+        "specs/feature/070-local-client-llm-mode/spec.md#L419"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L419",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2454,9 +2454,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L420"
+        "specs/feature/070-local-client-llm-mode/spec.md#L420"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L420",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2476,9 +2476,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L421"
+        "specs/feature/070-local-client-llm-mode/spec.md#L421"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L421",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L421",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2498,9 +2498,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L422"
+        "specs/feature/070-local-client-llm-mode/spec.md#L422"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L422",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L422",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2520,9 +2520,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L423"
+        "specs/feature/070-local-client-llm-mode/spec.md#L423"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L423",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L423",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2542,9 +2542,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L427"
+        "specs/feature/070-local-client-llm-mode/spec.md#L427"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L427",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L427",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2564,9 +2564,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L428"
+        "specs/feature/070-local-client-llm-mode/spec.md#L428"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L428",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L428",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2586,9 +2586,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L429"
+        "specs/feature/070-local-client-llm-mode/spec.md#L429"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L429",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L429",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2608,9 +2608,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L430"
+        "specs/feature/070-local-client-llm-mode/spec.md#L430"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L430",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2630,9 +2630,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L431"
+        "specs/feature/070-local-client-llm-mode/spec.md#L431"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L431",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2652,9 +2652,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L432"
+        "specs/feature/070-local-client-llm-mode/spec.md#L432"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L432",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2674,9 +2674,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L472"
+        "specs/feature/070-local-client-llm-mode/spec.md#L472"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L472",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L472",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2696,9 +2696,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L473"
+        "specs/feature/070-local-client-llm-mode/spec.md#L473"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L473",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L473",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2718,9 +2718,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L474"
+        "specs/feature/070-local-client-llm-mode/spec.md#L474"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L474",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L474",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2740,9 +2740,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L475"
+        "specs/feature/070-local-client-llm-mode/spec.md#L475"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L475",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L475",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2762,9 +2762,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L481"
+        "specs/feature/070-local-client-llm-mode/spec.md#L481"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L481",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L481",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2784,9 +2784,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L483"
+        "specs/feature/070-local-client-llm-mode/spec.md#L483"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L483",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2806,9 +2806,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L484"
+        "specs/feature/070-local-client-llm-mode/spec.md#L484"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L484",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L484",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2828,9 +2828,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L485"
+        "specs/feature/070-local-client-llm-mode/spec.md#L485"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L485",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L485",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2850,9 +2850,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L486"
+        "specs/feature/070-local-client-llm-mode/spec.md#L486"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L486",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L486",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2872,9 +2872,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L487"
+        "specs/feature/070-local-client-llm-mode/spec.md#L487"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L487",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L487",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2894,9 +2894,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L488"
+        "specs/feature/070-local-client-llm-mode/spec.md#L488"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L488",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L488",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2916,9 +2916,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L489"
+        "specs/feature/070-local-client-llm-mode/spec.md#L489"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L489",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2938,9 +2938,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L493"
+        "specs/feature/070-local-client-llm-mode/spec.md#L493"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L493",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L493",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2960,9 +2960,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L494"
+        "specs/feature/070-local-client-llm-mode/spec.md#L494"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L494",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L494",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2982,9 +2982,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L495"
+        "specs/feature/070-local-client-llm-mode/spec.md#L495"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L495",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L495",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3004,9 +3004,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L496"
+        "specs/feature/070-local-client-llm-mode/spec.md#L496"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L496",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L496",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3026,9 +3026,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L497"
+        "specs/feature/070-local-client-llm-mode/spec.md#L497"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L497",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L497",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3048,9 +3048,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L498"
+        "specs/feature/070-local-client-llm-mode/spec.md#L498"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L498",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3070,9 +3070,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L499"
+        "specs/feature/070-local-client-llm-mode/spec.md#L499"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L499",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L499",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3092,9 +3092,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L500"
+        "specs/feature/070-local-client-llm-mode/spec.md#L500"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L500",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3114,9 +3114,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L504"
+        "specs/feature/070-local-client-llm-mode/spec.md#L504"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L504",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L504",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3136,9 +3136,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L505"
+        "specs/feature/070-local-client-llm-mode/spec.md#L505"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L505",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L505",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3158,9 +3158,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L509"
+        "specs/feature/070-local-client-llm-mode/spec.md#L509"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L509",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L509",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3180,9 +3180,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L510"
+        "specs/feature/070-local-client-llm-mode/spec.md#L510"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L510",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L510",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3202,9 +3202,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L511"
+        "specs/feature/070-local-client-llm-mode/spec.md#L511"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L511",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3224,9 +3224,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L512"
+        "specs/feature/070-local-client-llm-mode/spec.md#L512"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L512",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L512",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3246,9 +3246,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L513"
+        "specs/feature/070-local-client-llm-mode/spec.md#L513"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L513",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L513",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3268,9 +3268,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L514"
+        "specs/feature/070-local-client-llm-mode/spec.md#L514"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L514",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L514",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3290,9 +3290,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L518"
+        "specs/feature/070-local-client-llm-mode/spec.md#L518"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L518",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3312,9 +3312,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L519"
+        "specs/feature/070-local-client-llm-mode/spec.md#L519"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L519",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L519",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3334,9 +3334,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L520"
+        "specs/feature/070-local-client-llm-mode/spec.md#L520"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L520",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L520",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3356,9 +3356,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L521"
+        "specs/feature/070-local-client-llm-mode/spec.md#L521"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L521",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3378,9 +3378,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L522"
+        "specs/feature/070-local-client-llm-mode/spec.md#L522"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L522",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L522",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3400,9 +3400,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L523"
+        "specs/feature/070-local-client-llm-mode/spec.md#L523"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L523",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L523",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3422,9 +3422,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L524"
+        "specs/feature/070-local-client-llm-mode/spec.md#L524"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L524",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L524",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3444,9 +3444,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L525"
+        "specs/feature/070-local-client-llm-mode/spec.md#L525"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L525",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3466,9 +3466,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L529"
+        "specs/feature/070-local-client-llm-mode/spec.md#L529"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L529",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3488,9 +3488,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L533"
+        "specs/feature/070-local-client-llm-mode/spec.md#L533"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L533",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L533",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3510,9 +3510,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L534"
+        "specs/feature/070-local-client-llm-mode/spec.md#L534"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L534",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L534",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3532,9 +3532,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L535"
+        "specs/feature/070-local-client-llm-mode/spec.md#L535"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L535",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L535",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3554,9 +3554,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L537"
+        "specs/feature/070-local-client-llm-mode/spec.md#L537"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L537",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L537",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3576,9 +3576,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L538"
+        "specs/feature/070-local-client-llm-mode/spec.md#L538"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L538",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L538",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3598,9 +3598,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L539"
+        "specs/feature/070-local-client-llm-mode/spec.md#L539"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L539",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L539",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3620,9 +3620,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L540"
+        "specs/feature/070-local-client-llm-mode/spec.md#L540"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L540",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L540",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3642,9 +3642,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L541"
+        "specs/feature/070-local-client-llm-mode/spec.md#L541"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L541",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L541",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3664,9 +3664,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L542"
+        "specs/feature/070-local-client-llm-mode/spec.md#L542"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L542",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L542",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3686,9 +3686,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L543"
+        "specs/feature/070-local-client-llm-mode/spec.md#L543"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L543",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3708,9 +3708,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L544"
+        "specs/feature/070-local-client-llm-mode/spec.md#L544"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L544",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3730,9 +3730,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L568"
+        "specs/feature/070-local-client-llm-mode/spec.md#L568"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L568",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L568",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3752,9 +3752,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L569"
+        "specs/feature/070-local-client-llm-mode/spec.md#L569"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L569",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L569",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3774,9 +3774,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L570"
+        "specs/feature/070-local-client-llm-mode/spec.md#L570"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L570",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L570",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3796,9 +3796,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L578"
+        "specs/feature/070-local-client-llm-mode/spec.md#L578"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L578",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L578",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3818,9 +3818,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L582"
+        "specs/feature/070-local-client-llm-mode/spec.md#L582"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L582",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L582",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3840,9 +3840,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L583"
+        "specs/feature/070-local-client-llm-mode/spec.md#L583"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L583",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L583",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3862,9 +3862,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L588"
+        "specs/feature/070-local-client-llm-mode/spec.md#L588"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L588",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L588",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3884,9 +3884,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L589"
+        "specs/feature/070-local-client-llm-mode/spec.md#L589"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L589",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L589",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3906,9 +3906,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L593"
+        "specs/feature/070-local-client-llm-mode/spec.md#L593"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L593",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L593",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3928,9 +3928,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L596"
+        "specs/feature/070-local-client-llm-mode/spec.md#L596"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L596",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L596",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3950,9 +3950,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L597"
+        "specs/feature/070-local-client-llm-mode/spec.md#L597"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L597",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L597",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3972,9 +3972,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L598"
+        "specs/feature/070-local-client-llm-mode/spec.md#L598"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L598",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L598",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3994,9 +3994,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L599"
+        "specs/feature/070-local-client-llm-mode/spec.md#L599"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L599",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L599",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4016,9 +4016,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L602"
+        "specs/feature/070-local-client-llm-mode/spec.md#L602"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L602",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4038,9 +4038,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L603"
+        "specs/feature/070-local-client-llm-mode/spec.md#L603"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L603",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4060,9 +4060,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L607"
+        "specs/feature/070-local-client-llm-mode/spec.md#L607"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L607",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L607",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4082,9 +4082,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L608"
+        "specs/feature/070-local-client-llm-mode/spec.md#L608"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L608",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L608",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4104,9 +4104,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L609"
+        "specs/feature/070-local-client-llm-mode/spec.md#L609"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L609",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L609",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4126,9 +4126,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L611"
+        "specs/feature/070-local-client-llm-mode/spec.md#L611"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L611",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4148,9 +4148,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L616"
+        "specs/feature/070-local-client-llm-mode/spec.md#L616"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L616",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4170,9 +4170,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L625"
+        "specs/feature/070-local-client-llm-mode/spec.md#L625"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L625",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4192,9 +4192,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L629"
+        "specs/feature/070-local-client-llm-mode/spec.md#L629"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L629",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4214,9 +4214,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L643"
+        "specs/feature/070-local-client-llm-mode/spec.md#L643"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L643",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4236,9 +4236,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L644"
+        "specs/feature/070-local-client-llm-mode/spec.md#L644"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L644",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4258,9 +4258,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L645"
+        "specs/feature/070-local-client-llm-mode/spec.md#L645"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L645",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L645",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4280,9 +4280,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L646"
+        "specs/feature/070-local-client-llm-mode/spec.md#L646"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L646",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4302,9 +4302,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L665"
+        "specs/feature/070-local-client-llm-mode/spec.md#L665"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L665",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L665",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4324,9 +4324,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L670"
+        "specs/feature/070-local-client-llm-mode/spec.md#L670"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L670",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4346,9 +4346,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L675"
+        "specs/feature/070-local-client-llm-mode/spec.md#L675"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L675",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L675",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4368,9 +4368,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L695"
+        "specs/feature/070-local-client-llm-mode/spec.md#L695"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L695",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L695",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4390,9 +4390,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L758"
+        "specs/feature/070-local-client-llm-mode/spec.md#L758"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L758",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4412,9 +4412,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L762"
+        "specs/feature/070-local-client-llm-mode/spec.md#L762"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L762",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L762",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4434,10 +4434,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L783",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L821"
+        "specs/feature/070-local-client-llm-mode/spec.md#L783",
+        "specs/feature/070-local-client-llm-mode/spec.md#L821"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L783",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L783",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4457,9 +4457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L785"
+        "specs/feature/070-local-client-llm-mode/spec.md#L785"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L785",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L785",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4479,9 +4479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L786"
+        "specs/feature/070-local-client-llm-mode/spec.md#L786"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L786",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L786",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4501,9 +4501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L787"
+        "specs/feature/070-local-client-llm-mode/spec.md#L787"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L787",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L787",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4523,9 +4523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L803"
+        "specs/feature/070-local-client-llm-mode/spec.md#L803"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L803",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L803",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4545,9 +4545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L824"
+        "specs/feature/070-local-client-llm-mode/spec.md#L824"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L824",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L824",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4567,9 +4567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L825"
+        "specs/feature/070-local-client-llm-mode/spec.md#L825"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L825",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L825",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4589,9 +4589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L831"
+        "specs/feature/070-local-client-llm-mode/spec.md#L831"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L831",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L831",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4611,9 +4611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L851"
+        "specs/feature/070-local-client-llm-mode/spec.md#L851"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L851",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L851",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4633,9 +4633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L852"
+        "specs/feature/070-local-client-llm-mode/spec.md#L852"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L852",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L852",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4655,9 +4655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L864"
+        "specs/feature/070-local-client-llm-mode/spec.md#L864"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L864",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L864",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4677,9 +4677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L881"
+        "specs/feature/070-local-client-llm-mode/spec.md#L881"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L881",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L881",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4699,9 +4699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L917"
+        "specs/feature/070-local-client-llm-mode/spec.md#L917"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L917",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L917",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4721,9 +4721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L918"
+        "specs/feature/070-local-client-llm-mode/spec.md#L918"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L918",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L918",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4743,9 +4743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L919"
+        "specs/feature/070-local-client-llm-mode/spec.md#L919"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L919",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L919",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4765,9 +4765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L920"
+        "specs/feature/070-local-client-llm-mode/spec.md#L920"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L920",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L920",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4787,9 +4787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L921"
+        "specs/feature/070-local-client-llm-mode/spec.md#L921"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L921",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L921",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4809,9 +4809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L922"
+        "specs/feature/070-local-client-llm-mode/spec.md#L922"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L922",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L922",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4831,9 +4831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L923"
+        "specs/feature/070-local-client-llm-mode/spec.md#L923"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L923",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L923",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4853,9 +4853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L924"
+        "specs/feature/070-local-client-llm-mode/spec.md#L924"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L924",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L924",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4875,9 +4875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L925"
+        "specs/feature/070-local-client-llm-mode/spec.md#L925"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L925",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L925",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4897,9 +4897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L926"
+        "specs/feature/070-local-client-llm-mode/spec.md#L926"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L926",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L926",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4919,9 +4919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L928"
+        "specs/feature/070-local-client-llm-mode/spec.md#L928"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L928",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L928",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4941,9 +4941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L929"
+        "specs/feature/070-local-client-llm-mode/spec.md#L929"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L929",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L929",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4963,9 +4963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L930"
+        "specs/feature/070-local-client-llm-mode/spec.md#L930"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L930",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L930",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4985,9 +4985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L931"
+        "specs/feature/070-local-client-llm-mode/spec.md#L931"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L931",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L931",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5007,9 +5007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L932"
+        "specs/feature/070-local-client-llm-mode/spec.md#L932"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L932",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L932",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5029,9 +5029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L933"
+        "specs/feature/070-local-client-llm-mode/spec.md#L933"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L933",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L933",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5051,9 +5051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L937"
+        "specs/feature/070-local-client-llm-mode/spec.md#L937"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L937",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L937",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5073,9 +5073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L938"
+        "specs/feature/070-local-client-llm-mode/spec.md#L938"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L938",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L938",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5095,9 +5095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L939"
+        "specs/feature/070-local-client-llm-mode/spec.md#L939"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L939",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L939",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5117,9 +5117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L940"
+        "specs/feature/070-local-client-llm-mode/spec.md#L940"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L940",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L940",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5139,9 +5139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L941"
+        "specs/feature/070-local-client-llm-mode/spec.md#L941"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L941",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L941",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5161,9 +5161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L942"
+        "specs/feature/070-local-client-llm-mode/spec.md#L942"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L942",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L942",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5183,9 +5183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L943"
+        "specs/feature/070-local-client-llm-mode/spec.md#L943"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L943",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L943",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5205,9 +5205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L944"
+        "specs/feature/070-local-client-llm-mode/spec.md#L944"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L944",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L944",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5227,9 +5227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L948"
+        "specs/feature/070-local-client-llm-mode/spec.md#L948"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L948",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L948",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5249,9 +5249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L949"
+        "specs/feature/070-local-client-llm-mode/spec.md#L949"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L949",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L949",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5271,9 +5271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L950"
+        "specs/feature/070-local-client-llm-mode/spec.md#L950"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L950",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L950",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5293,9 +5293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L951"
+        "specs/feature/070-local-client-llm-mode/spec.md#L951"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L951",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L951",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5315,9 +5315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L955"
+        "specs/feature/070-local-client-llm-mode/spec.md#L955"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L955",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L955",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5337,9 +5337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L956"
+        "specs/feature/070-local-client-llm-mode/spec.md#L956"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L956",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L956",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5359,9 +5359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L957"
+        "specs/feature/070-local-client-llm-mode/spec.md#L957"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L957",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L957",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5381,9 +5381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L958"
+        "specs/feature/070-local-client-llm-mode/spec.md#L958"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L958",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L958",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5403,9 +5403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L966"
+        "specs/feature/070-local-client-llm-mode/spec.md#L966"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L966",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L966",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5425,9 +5425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L967"
+        "specs/feature/070-local-client-llm-mode/spec.md#L967"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L967",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L967",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5447,9 +5447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L968"
+        "specs/feature/070-local-client-llm-mode/spec.md#L968"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L968",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L968",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5469,9 +5469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L969"
+        "specs/feature/070-local-client-llm-mode/spec.md#L969"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L969",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L969",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5491,9 +5491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L970"
+        "specs/feature/070-local-client-llm-mode/spec.md#L970"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L970",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5513,9 +5513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L971"
+        "specs/feature/070-local-client-llm-mode/spec.md#L971"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L971",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L971",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5535,9 +5535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L972"
+        "specs/feature/070-local-client-llm-mode/spec.md#L972"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L972",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L972",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5557,9 +5557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L976"
+        "specs/feature/070-local-client-llm-mode/spec.md#L976"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L976",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L976",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5579,9 +5579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L977"
+        "specs/feature/070-local-client-llm-mode/spec.md#L977"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L977",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L977",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5601,9 +5601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L978"
+        "specs/feature/070-local-client-llm-mode/spec.md#L978"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L978",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L978",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5623,9 +5623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L979"
+        "specs/feature/070-local-client-llm-mode/spec.md#L979"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L979",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L979",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5645,9 +5645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L980"
+        "specs/feature/070-local-client-llm-mode/spec.md#L980"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L980",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L980",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5667,9 +5667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L981"
+        "specs/feature/070-local-client-llm-mode/spec.md#L981"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L981",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L981",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5689,9 +5689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L982"
+        "specs/feature/070-local-client-llm-mode/spec.md#L982"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L982",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L982",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5711,9 +5711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L983"
+        "specs/feature/070-local-client-llm-mode/spec.md#L983"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L983",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L983",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5733,9 +5733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L984"
+        "specs/feature/070-local-client-llm-mode/spec.md#L984"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L984",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L984",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5755,9 +5755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L985"
+        "specs/feature/070-local-client-llm-mode/spec.md#L985"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L985",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L985",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5777,9 +5777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L989"
+        "specs/feature/070-local-client-llm-mode/spec.md#L989"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L989",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L989",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5799,9 +5799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L990"
+        "specs/feature/070-local-client-llm-mode/spec.md#L990"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L990",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L990",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5821,9 +5821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L991"
+        "specs/feature/070-local-client-llm-mode/spec.md#L991"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L991",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L991",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5843,9 +5843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L995"
+        "specs/feature/070-local-client-llm-mode/spec.md#L995"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L995",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L995",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5865,9 +5865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L996"
+        "specs/feature/070-local-client-llm-mode/spec.md#L996"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L996",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5887,9 +5887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L997"
+        "specs/feature/070-local-client-llm-mode/spec.md#L997"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L997",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5909,9 +5909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L1001"
+        "specs/feature/070-local-client-llm-mode/spec.md#L1001"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L1001",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L1001",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5931,9 +5931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L1002"
+        "specs/feature/070-local-client-llm-mode/spec.md#L1002"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L1002",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L1002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5953,9 +5953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L1003"
+        "specs/feature/070-local-client-llm-mode/spec.md#L1003"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L1003",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L1003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5975,9 +5975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L1004"
+        "specs/feature/070-local-client-llm-mode/spec.md#L1004"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L1004",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L1004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5997,9 +5997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L1005"
+        "specs/feature/070-local-client-llm-mode/spec.md#L1005"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/spec.md#L1005",
+      "authority_source": "specs/feature/070-local-client-llm-mode/spec.md#L1005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

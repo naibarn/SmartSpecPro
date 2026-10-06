@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L25"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L25"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L25",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L25",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L54"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L54"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L54",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L54",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L55"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L55"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L55",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L55",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L57"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L57"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L57",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L57",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L58"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L58"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L58",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L62"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L62"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L62",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L68"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L68"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L68",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L73"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L73"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L73",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L75"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L75",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L95"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L95"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L95",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L99"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L99",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L118"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L118"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L118",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L118",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L153"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L153"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L153",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L161"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L161"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L161",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L235"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L235"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L235",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L235",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L244"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L244"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L244",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L250"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L250"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L250",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L256"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L256"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L256",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L257"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L257"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L257",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L258"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L258"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L258",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L259"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L259"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L259",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L260"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L260"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L260",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L261"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L261"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L261",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L267"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L267"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L267",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L268"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L268"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L268",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L269"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L269"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L269",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L270"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L270"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L270",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L271"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L271"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L271",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L272"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L272"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L272",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L273"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L273"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L273",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L273",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L274"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L274"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L274",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L274",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L278"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L278"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L278",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L279"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L279"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L279",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L280"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L280"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L280",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L281"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L281"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L281",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L282"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L282"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L282",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L283"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L283"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L283",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L287"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L287"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L287",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L287",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L288"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L288"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L288",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L289"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L289"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L289",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L290"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L290"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L290",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L294"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L294"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L294",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L295"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L295"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L295",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L296"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L296"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L296",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L297"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L297"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L297",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L303"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L303"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L303",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L319"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L319"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L319",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L319",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L320"
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L320"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L320",
+      "authority_source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

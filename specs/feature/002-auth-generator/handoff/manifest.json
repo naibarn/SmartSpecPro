@@ -17,7 +17,7 @@
       {
         "digest": "cd9b9a026a4a9e57b8c2877d36b86efed59232715f4872808c59221563eceb39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/002-auth-generator/plan.md"
+        "path": "specs/feature/002-auth-generator/plan.md"
       }
     ],
     "predecessors": [],
@@ -48,7 +48,7 @@
       {
         "digest": "cd9b9a026a4a9e57b8c2877d36b86efed59232715f4872808c59221563eceb39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/002-auth-generator/plan.md"
+        "path": "specs/feature/002-auth-generator/plan.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -80,19 +80,19 @@
       {
         "digest": "cd9b9a026a4a9e57b8c2877d36b86efed59232715f4872808c59221563eceb39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/002-auth-generator/plan.md"
+        "path": "specs/feature/002-auth-generator/plan.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/002-auth-generator/spec.md",
     "digest": "f3d1bf8163bc0767ecf53b6fb2acd6c3c84ce0e3cfff748c0cf1ecf57a5709d0",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.373240Z",
+      "last_evidence_at": "2026-10-06T03:28:14.592523Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-01-05T10:47:02+07:00",
       "spec_last_changed_at": "2026-01-05T19:46:20+07:00"
@@ -119,7 +119,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.373240Z"
+    "updated_at": "2026-10-06T03:28:14.592523Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -129,7 +129,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.373240Z",
+    "reconciled_at": "2026-10-06T03:28:14.592523Z",
     "sources": [
       {
         "digest": "f3d1bf8163bc0767ecf53b6fb2acd6c3c84ce0e3cfff748c0cf1ecf57a5709d0",
@@ -139,7 +139,7 @@
       {
         "digest": "cd9b9a026a4a9e57b8c2877d36b86efed59232715f4872808c59221563eceb39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/002-auth-generator/plan.md"
+        "path": "specs/feature/002-auth-generator/plan.md"
       }
     ],
     "stale_fields": [],
@@ -167,7 +167,7 @@
       {
         "digest": "cd9b9a026a4a9e57b8c2877d36b86efed59232715f4872808c59221563eceb39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/002-auth-generator/plan.md"
+        "path": "specs/feature/002-auth-generator/plan.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -185,7 +185,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.373240Z",
+  "updated_at": "2026-10-06T03:28:14.592523Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

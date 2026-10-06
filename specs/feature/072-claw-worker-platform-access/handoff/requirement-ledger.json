@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L64"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L64"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L64",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L64",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L65"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L65"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L65",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L66"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L66"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L66",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L67"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L67"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L67",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L68"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L68"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L68",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L69"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L69"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L69",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L70"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L70"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L70",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L71"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L71"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L71",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L72"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L72"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L72",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L73"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L73"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L73",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L74"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L74"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L74",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L75"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L75",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L132"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L132"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L132",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L158"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L158"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L158",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L164"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L164"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L164",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L168"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L168"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L168",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L195"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L195"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L195",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L210"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L210"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L210",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L214"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L214"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L214",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,12 +423,12 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L229",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L241",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L895",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1021"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L229",
+        "specs/feature/072-claw-worker-platform-access/spec.md#L241",
+        "specs/feature/072-claw-worker-platform-access/spec.md#L895",
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1021"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L229",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -448,9 +448,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L232"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L232"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L232",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -470,9 +470,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L239"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L239"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L239",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -492,9 +492,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L243"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L243"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L243",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L243",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -514,9 +514,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L244"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L244"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L244",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -536,9 +536,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L245"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L245"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L245",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -558,9 +558,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L246"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L246"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L246",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -580,9 +580,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L247"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L247"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L247",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -602,9 +602,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L256"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L256"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L256",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -624,9 +624,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L272"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L272"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L272",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -646,9 +646,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L276"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L276"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L276",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -668,9 +668,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L302"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L302"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L302",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -690,9 +690,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L313"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L313"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L313",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L313",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -712,9 +712,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L317"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L317"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L317",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -734,9 +734,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L325"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L325"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L325",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L325",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -756,9 +756,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L331"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L331"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L331",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -778,9 +778,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L346"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L346"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L346",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -800,9 +800,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L350"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L350"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L350",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L350",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -822,9 +822,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L352"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L352"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L352",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -844,9 +844,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L362"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L362"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L362",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L362",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -866,9 +866,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L371"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L371"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L371",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L371",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -888,9 +888,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L384"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L384"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L384",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -910,9 +910,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L388"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L388"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L388",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L388",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -932,9 +932,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L389"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L389"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L389",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -954,9 +954,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L390"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L390"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L390",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -976,9 +976,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L391"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L391"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L391",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -998,9 +998,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L505"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L505"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L505",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L505",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1020,9 +1020,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L514"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L514"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L514",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L514",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1042,9 +1042,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L518"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L518"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L518",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1064,9 +1064,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L551"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L551"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L551",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1086,9 +1086,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L605"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L605"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L605",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L605",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1108,9 +1108,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L625"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L625"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L625",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1130,9 +1130,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L631"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L631"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L631",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1152,9 +1152,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L667"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L667"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L667",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L667",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1174,9 +1174,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L674"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L674"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L674",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L674",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1196,11 +1196,11 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L676",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L690",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L716"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L676",
+        "specs/feature/072-claw-worker-platform-access/spec.md#L690",
+        "specs/feature/072-claw-worker-platform-access/spec.md#L716"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L676",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L676",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1220,9 +1220,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L684"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L684"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L684",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L684",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1242,9 +1242,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L688"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L688"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L688",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1264,9 +1264,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L701"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L701"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L701",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1286,9 +1286,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L703"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L703"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L703",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1308,9 +1308,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L711"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L711"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L711",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L711",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1330,9 +1330,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L726"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L726"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L726",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L726",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1352,9 +1352,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L733"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L733"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L733",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1374,9 +1374,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L740"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L740"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L740",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1396,9 +1396,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L741"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L741"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L741",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1418,9 +1418,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L746"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L746"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L746",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1440,9 +1440,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L750"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L750"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L750",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L750",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1462,9 +1462,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L751"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L751"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L751",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L751",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1484,9 +1484,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L752"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L752"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L752",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L752",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1506,9 +1506,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L753"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L753"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L753",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L753",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1528,9 +1528,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L754"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L754"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L754",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L754",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1550,9 +1550,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L755"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L755"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L755",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1572,9 +1572,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L756"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L756"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L756",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1594,9 +1594,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L757"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L757"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L757",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1616,9 +1616,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L758"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L758"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L758",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1638,9 +1638,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L799"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L799"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L799",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L799",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1660,9 +1660,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L857"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L857"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L857",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L857",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1682,9 +1682,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L893"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L893"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L893",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L893",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1704,9 +1704,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L899"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L899"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L899",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L899",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1726,9 +1726,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L900"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L900"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L900",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L900",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1748,9 +1748,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L901"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L901"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L901",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L901",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1770,9 +1770,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L905"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L905"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L905",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L905",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1792,9 +1792,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L932"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L932"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L932",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L932",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1814,9 +1814,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L939"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L939"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L939",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L939",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1836,9 +1836,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L948"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L948"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L948",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L948",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1858,9 +1858,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L979"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L979"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L979",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L979",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1880,9 +1880,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1004"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1004"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1004",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1902,9 +1902,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1005"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1005"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1005",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1924,9 +1924,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1006"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1006"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1006",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1006",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1946,9 +1946,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1007"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1007"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1007",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1007",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1968,9 +1968,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1013"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1013"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1013",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1013",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1990,9 +1990,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1024"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1024"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1024",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1024",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2012,9 +2012,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1026"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1026"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1026",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1026",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2034,9 +2034,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1039"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1039"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1039",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1039",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2056,9 +2056,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1046"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1046"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1046",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1046",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2078,9 +2078,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1056"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1056"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1056",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1056",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2100,9 +2100,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1068"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1068"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1068",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1068",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2122,9 +2122,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1069"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1069"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1069",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1069",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2144,9 +2144,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1070"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1070"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1070",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1070",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2166,9 +2166,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1071"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1071"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1071",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1071",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2188,9 +2188,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1111"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1111"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1111",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2210,9 +2210,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1118"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1118"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1118",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1118",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2232,9 +2232,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1119"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1119"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1119",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2254,9 +2254,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1123"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1123"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1123",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2276,9 +2276,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1125"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1125"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1125",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2298,9 +2298,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1126"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1126"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1126",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2320,9 +2320,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1127"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1127"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1127",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2342,9 +2342,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1128"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1128"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1128",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2364,9 +2364,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1129"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1129"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1129",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2386,9 +2386,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1130"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1130"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1130",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2408,9 +2408,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1131"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1131"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1131",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2430,9 +2430,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1132"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1132"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1132",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2452,9 +2452,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1133"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1133",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2474,9 +2474,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1134"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1134"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1134",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1134",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2496,9 +2496,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1135"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1135"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1135",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2518,9 +2518,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1136"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1136"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1136",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1136",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2540,9 +2540,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1137"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1137"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1137",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2562,9 +2562,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1139"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1139"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1139",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2584,9 +2584,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1141"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1141"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1141",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2606,9 +2606,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1142"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1142"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1142",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2628,9 +2628,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1143"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1143"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1143",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2650,9 +2650,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1144"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1144"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1144",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2672,9 +2672,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1145"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1145"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1145",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1145",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2694,9 +2694,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1158"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1158"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1158",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2716,9 +2716,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1165"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1165"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1165",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2738,9 +2738,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1171"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1171"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1171",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2760,9 +2760,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1245"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1245"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1245",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2782,9 +2782,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1246"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1246"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1246",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2804,9 +2804,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1247"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1247"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1247",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2826,9 +2826,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1248"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1248"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1248",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2848,9 +2848,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1249"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1249"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1249",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2870,9 +2870,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1253"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1253"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1253",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1253",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2892,9 +2892,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1254"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1254"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1254",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2914,9 +2914,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1255"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1255"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1255",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2936,9 +2936,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1256"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1256"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1256",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2958,9 +2958,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1257"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1257"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1257",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2980,9 +2980,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1258"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1258"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1258",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3002,9 +3002,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1259"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1259"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1259",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3024,9 +3024,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1263"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1263"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1263",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1263",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3046,9 +3046,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1264"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1264"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1264",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3068,9 +3068,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1265"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1265"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1265",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1265",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3090,9 +3090,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1266"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1266"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1266",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3112,9 +3112,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1267"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1267"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1267",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3134,9 +3134,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1268"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1268"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1268",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3156,9 +3156,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1269"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1269"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1269",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3178,9 +3178,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1270"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1270"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1270",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3200,9 +3200,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1271"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1271"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1271",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3222,9 +3222,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1272"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1272"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1272",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3244,9 +3244,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1276"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1276"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1276",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3266,9 +3266,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1277"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1277"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1277",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3288,9 +3288,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1278"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1278"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1278",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3310,9 +3310,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1279"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1279"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1279",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3332,9 +3332,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1283"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1283"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1283",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3354,9 +3354,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1284"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1284"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1284",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3376,9 +3376,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1285"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1285"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1285",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3398,9 +3398,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1286"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1286"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1286",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3420,9 +3420,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1290"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1290"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1290",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3442,9 +3442,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1291"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1291"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1291",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1291",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3464,9 +3464,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1292"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1292"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1292",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3486,9 +3486,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1293"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1293"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1293",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3508,9 +3508,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1297"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1297"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1297",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3530,9 +3530,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1301"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1301"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1301",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1301",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3552,9 +3552,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1302"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1302"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1302",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3574,9 +3574,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1306"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1306"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1306",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1306",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3596,9 +3596,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1307"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1307"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1307",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1307",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3618,9 +3618,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1308"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1308"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1308",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1308",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3640,9 +3640,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1312"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1312"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1312",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1312",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3662,9 +3662,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1313"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1313"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1313",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1313",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3684,9 +3684,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1314"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1314"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1314",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1314",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3706,9 +3706,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1315"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1315"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1315",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1315",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3728,9 +3728,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1316"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1316"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1316",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1316",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3750,9 +3750,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1317"
+        "specs/feature/072-claw-worker-platform-access/spec.md#L1317"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1317",
+      "authority_source": "specs/feature/072-claw-worker-platform-access/spec.md#L1317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

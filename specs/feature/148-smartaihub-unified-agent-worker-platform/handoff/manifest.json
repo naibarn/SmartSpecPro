@@ -17,77 +17,77 @@
       {
         "digest": "433b5245dedbd783bb7e9af0410a47ee821d0d5af5e22275835714d9112eb5b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/claude-plan.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/claude-plan.md"
       },
       {
         "digest": "f4ffb71da22be8c37eb761a3ef35f62dd43c6791f8d02fc42a5162b10a150a32",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/claude-spec.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/claude-spec.md"
       },
       {
         "digest": "ad39e1bbf4ef221f02019637bf1e0af07f9f2e1379473775dfff35337419471f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/deep_implement_config.json"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "aeec2446d68cc5c64316f0182c085e2a263f62abdc535b39d14201ca6df4118e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/implementation-report.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/implementation-report.md"
       },
       {
         "digest": "8adf3230398a50d2055bef9c9d31d521730c2d370e031a34e8623e30c0ff886a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/usage.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/usage.md"
       },
       {
         "digest": "db5f3aec0da27b5a3883db70d9f6baedc3bb16ff62b19d1c3806314482a998f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "a91d3b8969e0e60582ed823d0e57643ee1355fa272f4c3c033a0187a363b46c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/self-review-round-1.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "84f6aa9ab395cd979bf2aa5272a999098420c661804618fb202876875275a8e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/index.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/index.md"
       },
       {
         "digest": "3efdb2b5f67d4c19bb6bb8a895670a756084d837fe5e30f8289a588e8be03867",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-01-mcp-oauth-discovery.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-01-mcp-oauth-discovery.md"
       },
       {
         "digest": "a561dc847a8b96a90a13dcb2fedc34c4647e551903f7c12fe913447bf54517bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-02-client-onboarding.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-02-client-onboarding.md"
       },
       {
         "digest": "7af6827361dc8024cbf1c11746bbbb1ebead15c21ba15a5991744ff8fd7bb1ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-03-hermes-task-correlation.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-03-hermes-task-correlation.md"
       },
       {
         "digest": "f8f6e8202eb047969412725cc18925f1c191883543cfbf15fbcb599849039851",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-04-comfyui-worker-adapter.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-04-comfyui-worker-adapter.md"
       },
       {
         "digest": "5e4e770004c338b92cf631e50ba42a2c80f773532cc8a502c351d73fea0efe33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-05-runtime-readiness-process-safety.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-05-runtime-readiness-process-safety.md"
       },
       {
         "digest": "d9c2943046c13992af1a6c49e8d715be4f0173871de67767fbadfad20b9980b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-06-ui-docs-telemetry-rollout.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-06-ui-docs-telemetry-rollout.md"
       },
       {
         "digest": "b84e7f59bec48ee39d540d62457f6b4a9e662252374d29005b24acec9f52a603",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-07-verification-and-handoff.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-07-verification-and-handoff.md"
       }
     ],
     "predecessors": [],
@@ -118,77 +118,77 @@
       {
         "digest": "433b5245dedbd783bb7e9af0410a47ee821d0d5af5e22275835714d9112eb5b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/claude-plan.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/claude-plan.md"
       },
       {
         "digest": "f4ffb71da22be8c37eb761a3ef35f62dd43c6791f8d02fc42a5162b10a150a32",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/claude-spec.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/claude-spec.md"
       },
       {
         "digest": "ad39e1bbf4ef221f02019637bf1e0af07f9f2e1379473775dfff35337419471f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/deep_implement_config.json"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "aeec2446d68cc5c64316f0182c085e2a263f62abdc535b39d14201ca6df4118e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/implementation-report.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/implementation-report.md"
       },
       {
         "digest": "8adf3230398a50d2055bef9c9d31d521730c2d370e031a34e8623e30c0ff886a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/usage.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/usage.md"
       },
       {
         "digest": "db5f3aec0da27b5a3883db70d9f6baedc3bb16ff62b19d1c3806314482a998f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "a91d3b8969e0e60582ed823d0e57643ee1355fa272f4c3c033a0187a363b46c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/self-review-round-1.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "84f6aa9ab395cd979bf2aa5272a999098420c661804618fb202876875275a8e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/index.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/index.md"
       },
       {
         "digest": "3efdb2b5f67d4c19bb6bb8a895670a756084d837fe5e30f8289a588e8be03867",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-01-mcp-oauth-discovery.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-01-mcp-oauth-discovery.md"
       },
       {
         "digest": "a561dc847a8b96a90a13dcb2fedc34c4647e551903f7c12fe913447bf54517bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-02-client-onboarding.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-02-client-onboarding.md"
       },
       {
         "digest": "7af6827361dc8024cbf1c11746bbbb1ebead15c21ba15a5991744ff8fd7bb1ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-03-hermes-task-correlation.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-03-hermes-task-correlation.md"
       },
       {
         "digest": "f8f6e8202eb047969412725cc18925f1c191883543cfbf15fbcb599849039851",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-04-comfyui-worker-adapter.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-04-comfyui-worker-adapter.md"
       },
       {
         "digest": "5e4e770004c338b92cf631e50ba42a2c80f773532cc8a502c351d73fea0efe33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-05-runtime-readiness-process-safety.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-05-runtime-readiness-process-safety.md"
       },
       {
         "digest": "d9c2943046c13992af1a6c49e8d715be4f0173871de67767fbadfad20b9980b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-06-ui-docs-telemetry-rollout.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-06-ui-docs-telemetry-rollout.md"
       },
       {
         "digest": "b84e7f59bec48ee39d540d62457f6b4a9e662252374d29005b24acec9f52a603",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-07-verification-and-handoff.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-07-verification-and-handoff.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -220,94 +220,94 @@
       {
         "digest": "433b5245dedbd783bb7e9af0410a47ee821d0d5af5e22275835714d9112eb5b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/claude-plan.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/claude-plan.md"
       },
       {
         "digest": "f4ffb71da22be8c37eb761a3ef35f62dd43c6791f8d02fc42a5162b10a150a32",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/claude-spec.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/claude-spec.md"
       },
       {
         "digest": "ad39e1bbf4ef221f02019637bf1e0af07f9f2e1379473775dfff35337419471f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/deep_implement_config.json"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "aeec2446d68cc5c64316f0182c085e2a263f62abdc535b39d14201ca6df4118e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/implementation-report.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/implementation-report.md"
       },
       {
         "digest": "8adf3230398a50d2055bef9c9d31d521730c2d370e031a34e8623e30c0ff886a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/usage.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/usage.md"
       },
       {
         "digest": "db5f3aec0da27b5a3883db70d9f6baedc3bb16ff62b19d1c3806314482a998f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "a91d3b8969e0e60582ed823d0e57643ee1355fa272f4c3c033a0187a363b46c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/self-review-round-1.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "84f6aa9ab395cd979bf2aa5272a999098420c661804618fb202876875275a8e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/index.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/index.md"
       },
       {
         "digest": "3efdb2b5f67d4c19bb6bb8a895670a756084d837fe5e30f8289a588e8be03867",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-01-mcp-oauth-discovery.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-01-mcp-oauth-discovery.md"
       },
       {
         "digest": "a561dc847a8b96a90a13dcb2fedc34c4647e551903f7c12fe913447bf54517bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-02-client-onboarding.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-02-client-onboarding.md"
       },
       {
         "digest": "7af6827361dc8024cbf1c11746bbbb1ebead15c21ba15a5991744ff8fd7bb1ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-03-hermes-task-correlation.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-03-hermes-task-correlation.md"
       },
       {
         "digest": "f8f6e8202eb047969412725cc18925f1c191883543cfbf15fbcb599849039851",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-04-comfyui-worker-adapter.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-04-comfyui-worker-adapter.md"
       },
       {
         "digest": "5e4e770004c338b92cf631e50ba42a2c80f773532cc8a502c351d73fea0efe33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-05-runtime-readiness-process-safety.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-05-runtime-readiness-process-safety.md"
       },
       {
         "digest": "d9c2943046c13992af1a6c49e8d715be4f0173871de67767fbadfad20b9980b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-06-ui-docs-telemetry-rollout.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-06-ui-docs-telemetry-rollout.md"
       },
       {
         "digest": "b84e7f59bec48ee39d540d62457f6b4a9e662252374d29005b24acec9f52a603",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-07-verification-and-handoff.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-07-verification-and-handoff.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md",
     "digest": "c3949650025158fc0f53b024c884b72b186f44961693b6fa08f0d975e44dc37c",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.339355Z",
+      "last_evidence_at": "2026-10-06T03:28:16.214713Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-19T02:18:53+07:00",
       "spec_last_changed_at": "2026-08-19T02:18:53+07:00"
     },
-    "revision": null,
+    "revision": "1.1.0",
     "slug": "148-smartaihub-unified-agent-worker-platform",
     "spec_id": "148",
     "title": "Feature 148: SmartAIHub Unified Agent and Worker Platform Architecture"
@@ -329,7 +329,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.339355Z"
+    "updated_at": "2026-10-06T03:28:16.214713Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -339,7 +339,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.339355Z",
+    "reconciled_at": "2026-10-06T03:28:16.214713Z",
     "sources": [
       {
         "digest": "c3949650025158fc0f53b024c884b72b186f44961693b6fa08f0d975e44dc37c",
@@ -349,77 +349,77 @@
       {
         "digest": "433b5245dedbd783bb7e9af0410a47ee821d0d5af5e22275835714d9112eb5b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/claude-plan.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/claude-plan.md"
       },
       {
         "digest": "f4ffb71da22be8c37eb761a3ef35f62dd43c6791f8d02fc42a5162b10a150a32",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/claude-spec.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/claude-spec.md"
       },
       {
         "digest": "ad39e1bbf4ef221f02019637bf1e0af07f9f2e1379473775dfff35337419471f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/deep_implement_config.json"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "aeec2446d68cc5c64316f0182c085e2a263f62abdc535b39d14201ca6df4118e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/implementation-report.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/implementation-report.md"
       },
       {
         "digest": "8adf3230398a50d2055bef9c9d31d521730c2d370e031a34e8623e30c0ff886a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/usage.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/usage.md"
       },
       {
         "digest": "db5f3aec0da27b5a3883db70d9f6baedc3bb16ff62b19d1c3806314482a998f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "a91d3b8969e0e60582ed823d0e57643ee1355fa272f4c3c033a0187a363b46c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/self-review-round-1.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "84f6aa9ab395cd979bf2aa5272a999098420c661804618fb202876875275a8e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/index.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/index.md"
       },
       {
         "digest": "3efdb2b5f67d4c19bb6bb8a895670a756084d837fe5e30f8289a588e8be03867",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-01-mcp-oauth-discovery.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-01-mcp-oauth-discovery.md"
       },
       {
         "digest": "a561dc847a8b96a90a13dcb2fedc34c4647e551903f7c12fe913447bf54517bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-02-client-onboarding.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-02-client-onboarding.md"
       },
       {
         "digest": "7af6827361dc8024cbf1c11746bbbb1ebead15c21ba15a5991744ff8fd7bb1ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-03-hermes-task-correlation.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-03-hermes-task-correlation.md"
       },
       {
         "digest": "f8f6e8202eb047969412725cc18925f1c191883543cfbf15fbcb599849039851",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-04-comfyui-worker-adapter.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-04-comfyui-worker-adapter.md"
       },
       {
         "digest": "5e4e770004c338b92cf631e50ba42a2c80f773532cc8a502c351d73fea0efe33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-05-runtime-readiness-process-safety.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-05-runtime-readiness-process-safety.md"
       },
       {
         "digest": "d9c2943046c13992af1a6c49e8d715be4f0173871de67767fbadfad20b9980b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-06-ui-docs-telemetry-rollout.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-06-ui-docs-telemetry-rollout.md"
       },
       {
         "digest": "b84e7f59bec48ee39d540d62457f6b4a9e662252374d29005b24acec9f52a603",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-07-verification-and-handoff.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-07-verification-and-handoff.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -658,77 +658,77 @@
       {
         "digest": "433b5245dedbd783bb7e9af0410a47ee821d0d5af5e22275835714d9112eb5b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/claude-plan.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/claude-plan.md"
       },
       {
         "digest": "f4ffb71da22be8c37eb761a3ef35f62dd43c6791f8d02fc42a5162b10a150a32",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/claude-spec.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/claude-spec.md"
       },
       {
         "digest": "ad39e1bbf4ef221f02019637bf1e0af07f9f2e1379473775dfff35337419471f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/deep_implement_config.json"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "aeec2446d68cc5c64316f0182c085e2a263f62abdc535b39d14201ca6df4118e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/implementation-report.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/implementation-report.md"
       },
       {
         "digest": "8adf3230398a50d2055bef9c9d31d521730c2d370e031a34e8623e30c0ff886a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/usage.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/implementation/usage.md"
       },
       {
         "digest": "db5f3aec0da27b5a3883db70d9f6baedc3bb16ff62b19d1c3806314482a998f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "a91d3b8969e0e60582ed823d0e57643ee1355fa272f4c3c033a0187a363b46c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/self-review-round-1.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "84f6aa9ab395cd979bf2aa5272a999098420c661804618fb202876875275a8e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/index.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/index.md"
       },
       {
         "digest": "3efdb2b5f67d4c19bb6bb8a895670a756084d837fe5e30f8289a588e8be03867",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-01-mcp-oauth-discovery.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-01-mcp-oauth-discovery.md"
       },
       {
         "digest": "a561dc847a8b96a90a13dcb2fedc34c4647e551903f7c12fe913447bf54517bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-02-client-onboarding.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-02-client-onboarding.md"
       },
       {
         "digest": "7af6827361dc8024cbf1c11746bbbb1ebead15c21ba15a5991744ff8fd7bb1ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-03-hermes-task-correlation.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-03-hermes-task-correlation.md"
       },
       {
         "digest": "f8f6e8202eb047969412725cc18925f1c191883543cfbf15fbcb599849039851",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-04-comfyui-worker-adapter.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-04-comfyui-worker-adapter.md"
       },
       {
         "digest": "5e4e770004c338b92cf631e50ba42a2c80f773532cc8a502c351d73fea0efe33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-05-runtime-readiness-process-safety.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-05-runtime-readiness-process-safety.md"
       },
       {
         "digest": "d9c2943046c13992af1a6c49e8d715be4f0173871de67767fbadfad20b9980b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-06-ui-docs-telemetry-rollout.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-06-ui-docs-telemetry-rollout.md"
       },
       {
         "digest": "b84e7f59bec48ee39d540d62457f6b4a9e662252374d29005b24acec9f52a603",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-07-verification-and-handoff.md"
+        "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/sections/section-07-verification-and-handoff.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -746,7 +746,7 @@
     "unresolved": 348
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.339355Z",
+  "updated_at": "2026-10-06T03:28:16.214713Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

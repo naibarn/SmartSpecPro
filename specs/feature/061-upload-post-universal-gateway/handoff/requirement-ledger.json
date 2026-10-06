@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L87"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L87"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L87",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L98"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L98"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L98",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L99"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L99",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L112"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L112",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L276"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L276"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L276",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L346"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L346"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L346",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L710"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L710"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L710",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L710",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L734"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L734"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L734",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L805"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L805"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L805",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L805",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L806"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L806"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L806",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L806",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L807"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L807"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L807",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L807",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L808"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L808"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L808",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L808",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L809"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L809"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L809",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L809",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L810"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L810"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L810",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L810",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L814"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L814"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L814",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L815"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L815"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L815",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L815",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L816"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L816"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L816",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L816",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L817"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L817"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L817",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L817",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L818"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L818"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L818",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L818",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L831"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L831"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L831",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L831",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L832"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L832"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L832",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L832",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L833"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L833"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L833",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L833",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L834"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L834"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L834",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L834",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L852"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L852"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L852",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L852",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L875"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L875"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L875",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L875",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L876"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L876"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L876",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L876",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L877"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L877"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L877",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L877",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L881"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L881"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L881",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L881",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L925"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L925"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L925",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L925",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L927"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L927"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L927",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L927",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L964"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L964"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L964",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L964",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L966"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L966"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L966",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L966",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1016"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1016"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1016",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1016",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1018"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1018"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1018",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1018",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1024"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1024"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1024",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1024",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1025"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1025"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1025",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1025",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1026"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1026"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1026",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1026",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1068"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1068"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1068",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1068",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1069"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1069"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1069",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1069",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1070"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1070"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1070",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1070",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1071"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1071"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1071",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1071",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1072"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1072"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1072",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1072",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1076"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1076"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1076",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1076",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1077"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1077"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1077",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1077",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1078"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1078"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1078",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1078",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1079"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1079"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1079",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1079",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1178"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1178"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1178",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1278"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1278"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1278",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1279"
+        "specs/feature/061-upload-post-universal-gateway/spec.md#L1279"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/spec.md#L1279",
+      "authority_source": "specs/feature/061-upload-post-universal-gateway/spec.md#L1279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

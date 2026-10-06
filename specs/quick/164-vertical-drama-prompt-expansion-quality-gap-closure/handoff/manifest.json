@@ -11,7 +11,8 @@
       {
         "kind": "DUPLICATE_SPEC_ID",
         "paths": [
-          "specs/feature/164-worker-app-ux-localization-and-series-workspace"
+          "specs/feature/164-worker-app-ux-localization-and-series-workspace",
+          "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure"
         ]
       }
     ],
@@ -24,87 +25,87 @@
       {
         "digest": "c55ec5d735745f4472d6c6fb1c4c099f926374c0b883bf593293e2ca9f755ea5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-plan.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-plan.md"
       },
       {
         "digest": "802746c287cbf901eb66266db0d6f0f1728212e9d774ca240c3996e8b6525314",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-spec.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-spec.md"
       },
       {
         "digest": "92e3a02df9d1ed91eb29e50bc297c2cb056615c5b2343c776cb948837f46097a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/deep_implement_config.json"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/deep_implement_config.json"
       },
       {
         "digest": "261e7872a00035c86b97d19226c2aebb6dbfbd5dcd6e92a716ecad93103d6827",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/final-review.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/final-review.md"
       },
       {
         "digest": "7e6b9d263004580d673e8118c4a5854ca21d5d59c7d21c64d0091180f3a837e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/usage.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/usage.md"
       },
       {
         "digest": "ff53f61d0674cbdd08123dd1207ec16091423e60554e2649f3559b8910d34dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/adversarial-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/adversarial-round-1.md"
       },
       {
         "digest": "b9492f90b45d3f3fdb074c26ed3bc15e0742385b94b481c18c5aefb8f04832f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "3b803c129fbc120677d7b043e28184eaca0e8d349d153bcdc4ff9ff434f2a737",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-1.md"
       },
       {
         "digest": "056fe471cdc619dd0ce6f147f045d28b024e6310d87d2e1a3d58fe8758149681",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-2.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-2.md"
       },
       {
         "digest": "79c3c6b1c0ad44d41740654e58ae068f14974a6bc3326f70a4425e3993fedde1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/strict-real-llm-review-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/strict-real-llm-review-round-1.md"
       },
       {
         "digest": "bafbd3e553a9f03a5733e723f9a5f912a4362462de7bb5694a718c549530c884",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/index.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/index.md"
       },
       {
         "digest": "3d84962843ba5f0240891ee491cf2c8e4c9fd4114c3d9e9ad1828a9ae662e9a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-01-contract-quality-gate.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-01-contract-quality-gate.md"
       },
       {
         "digest": "d6ad54432bc424ef3691dc706307a44d901963a2a64cee76503133c66c681b62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-02-structured-skill-execution.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-02-structured-skill-execution.md"
       },
       {
         "digest": "d3e980bf9440e15d14beb2504256c36ff818acca03f20ac57bb203ea0105c1dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-03-service-persistence-draft-handoff.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-03-service-persistence-draft-handoff.md"
       },
       {
         "digest": "3bc45c992581d5e3be73a0bed3c0649db8b92fd9cbc96eeb83c95e2ae83ae104",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-04-dialog-wizard-ux.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-04-dialog-wizard-ux.md"
       },
       {
         "digest": "e6e8055df3fd883e5f1762ae0f78517e10e13e38bf9a5605d0b47e9e5cc6c223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-05-tests-observability-browser-proof.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-05-tests-observability-browser-proof.md"
       },
       {
         "digest": "bcca1724aac06ed14a509becd75a86f633c348913a4d1a6c2c95e8df0fdb473f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-06-rollout-compatibility-review.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-06-rollout-compatibility-review.md"
       }
     ],
     "predecessors": [],
@@ -135,87 +136,87 @@
       {
         "digest": "c55ec5d735745f4472d6c6fb1c4c099f926374c0b883bf593293e2ca9f755ea5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-plan.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-plan.md"
       },
       {
         "digest": "802746c287cbf901eb66266db0d6f0f1728212e9d774ca240c3996e8b6525314",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-spec.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-spec.md"
       },
       {
         "digest": "92e3a02df9d1ed91eb29e50bc297c2cb056615c5b2343c776cb948837f46097a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/deep_implement_config.json"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/deep_implement_config.json"
       },
       {
         "digest": "261e7872a00035c86b97d19226c2aebb6dbfbd5dcd6e92a716ecad93103d6827",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/final-review.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/final-review.md"
       },
       {
         "digest": "7e6b9d263004580d673e8118c4a5854ca21d5d59c7d21c64d0091180f3a837e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/usage.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/usage.md"
       },
       {
         "digest": "ff53f61d0674cbdd08123dd1207ec16091423e60554e2649f3559b8910d34dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/adversarial-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/adversarial-round-1.md"
       },
       {
         "digest": "b9492f90b45d3f3fdb074c26ed3bc15e0742385b94b481c18c5aefb8f04832f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "3b803c129fbc120677d7b043e28184eaca0e8d349d153bcdc4ff9ff434f2a737",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-1.md"
       },
       {
         "digest": "056fe471cdc619dd0ce6f147f045d28b024e6310d87d2e1a3d58fe8758149681",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-2.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-2.md"
       },
       {
         "digest": "79c3c6b1c0ad44d41740654e58ae068f14974a6bc3326f70a4425e3993fedde1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/strict-real-llm-review-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/strict-real-llm-review-round-1.md"
       },
       {
         "digest": "bafbd3e553a9f03a5733e723f9a5f912a4362462de7bb5694a718c549530c884",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/index.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/index.md"
       },
       {
         "digest": "3d84962843ba5f0240891ee491cf2c8e4c9fd4114c3d9e9ad1828a9ae662e9a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-01-contract-quality-gate.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-01-contract-quality-gate.md"
       },
       {
         "digest": "d6ad54432bc424ef3691dc706307a44d901963a2a64cee76503133c66c681b62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-02-structured-skill-execution.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-02-structured-skill-execution.md"
       },
       {
         "digest": "d3e980bf9440e15d14beb2504256c36ff818acca03f20ac57bb203ea0105c1dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-03-service-persistence-draft-handoff.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-03-service-persistence-draft-handoff.md"
       },
       {
         "digest": "3bc45c992581d5e3be73a0bed3c0649db8b92fd9cbc96eeb83c95e2ae83ae104",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-04-dialog-wizard-ux.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-04-dialog-wizard-ux.md"
       },
       {
         "digest": "e6e8055df3fd883e5f1762ae0f78517e10e13e38bf9a5605d0b47e9e5cc6c223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-05-tests-observability-browser-proof.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-05-tests-observability-browser-proof.md"
       },
       {
         "digest": "bcca1724aac06ed14a509becd75a86f633c348913a4d1a6c2c95e8df0fdb473f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-06-rollout-compatibility-review.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-06-rollout-compatibility-review.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -247,99 +248,99 @@
       {
         "digest": "c55ec5d735745f4472d6c6fb1c4c099f926374c0b883bf593293e2ca9f755ea5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-plan.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-plan.md"
       },
       {
         "digest": "802746c287cbf901eb66266db0d6f0f1728212e9d774ca240c3996e8b6525314",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-spec.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-spec.md"
       },
       {
         "digest": "92e3a02df9d1ed91eb29e50bc297c2cb056615c5b2343c776cb948837f46097a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/deep_implement_config.json"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/deep_implement_config.json"
       },
       {
         "digest": "261e7872a00035c86b97d19226c2aebb6dbfbd5dcd6e92a716ecad93103d6827",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/final-review.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/final-review.md"
       },
       {
         "digest": "7e6b9d263004580d673e8118c4a5854ca21d5d59c7d21c64d0091180f3a837e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/usage.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/usage.md"
       },
       {
         "digest": "ff53f61d0674cbdd08123dd1207ec16091423e60554e2649f3559b8910d34dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/adversarial-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/adversarial-round-1.md"
       },
       {
         "digest": "b9492f90b45d3f3fdb074c26ed3bc15e0742385b94b481c18c5aefb8f04832f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "3b803c129fbc120677d7b043e28184eaca0e8d349d153bcdc4ff9ff434f2a737",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-1.md"
       },
       {
         "digest": "056fe471cdc619dd0ce6f147f045d28b024e6310d87d2e1a3d58fe8758149681",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-2.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-2.md"
       },
       {
         "digest": "79c3c6b1c0ad44d41740654e58ae068f14974a6bc3326f70a4425e3993fedde1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/strict-real-llm-review-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/strict-real-llm-review-round-1.md"
       },
       {
         "digest": "bafbd3e553a9f03a5733e723f9a5f912a4362462de7bb5694a718c549530c884",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/index.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/index.md"
       },
       {
         "digest": "3d84962843ba5f0240891ee491cf2c8e4c9fd4114c3d9e9ad1828a9ae662e9a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-01-contract-quality-gate.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-01-contract-quality-gate.md"
       },
       {
         "digest": "d6ad54432bc424ef3691dc706307a44d901963a2a64cee76503133c66c681b62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-02-structured-skill-execution.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-02-structured-skill-execution.md"
       },
       {
         "digest": "d3e980bf9440e15d14beb2504256c36ff818acca03f20ac57bb203ea0105c1dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-03-service-persistence-draft-handoff.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-03-service-persistence-draft-handoff.md"
       },
       {
         "digest": "3bc45c992581d5e3be73a0bed3c0649db8b92fd9cbc96eeb83c95e2ae83ae104",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-04-dialog-wizard-ux.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-04-dialog-wizard-ux.md"
       },
       {
         "digest": "e6e8055df3fd883e5f1762ae0f78517e10e13e38bf9a5605d0b47e9e5cc6c223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-05-tests-observability-browser-proof.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-05-tests-observability-browser-proof.md"
       },
       {
         "digest": "bcca1724aac06ed14a509becd75a86f633c348913a4d1a6c2c95e8df0fdb473f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-06-rollout-compatibility-review.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-06-rollout-compatibility-review.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md",
     "digest": "f4c7c1ee6648960007463926262e7a6b864ba9a1286e99e22805ac11fd3962e3",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.850108Z",
+      "last_evidence_at": "2026-10-06T03:28:19.059042Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-30T21:05:27+07:00",
       "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
@@ -366,7 +367,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.850108Z"
+    "updated_at": "2026-10-06T03:28:19.059042Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -376,7 +377,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.850108Z",
+    "reconciled_at": "2026-10-06T03:28:19.059042Z",
     "sources": [
       {
         "digest": "f4c7c1ee6648960007463926262e7a6b864ba9a1286e99e22805ac11fd3962e3",
@@ -386,87 +387,87 @@
       {
         "digest": "c55ec5d735745f4472d6c6fb1c4c099f926374c0b883bf593293e2ca9f755ea5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-plan.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-plan.md"
       },
       {
         "digest": "802746c287cbf901eb66266db0d6f0f1728212e9d774ca240c3996e8b6525314",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-spec.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-spec.md"
       },
       {
         "digest": "92e3a02df9d1ed91eb29e50bc297c2cb056615c5b2343c776cb948837f46097a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/deep_implement_config.json"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/deep_implement_config.json"
       },
       {
         "digest": "261e7872a00035c86b97d19226c2aebb6dbfbd5dcd6e92a716ecad93103d6827",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/final-review.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/final-review.md"
       },
       {
         "digest": "7e6b9d263004580d673e8118c4a5854ca21d5d59c7d21c64d0091180f3a837e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/usage.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/usage.md"
       },
       {
         "digest": "ff53f61d0674cbdd08123dd1207ec16091423e60554e2649f3559b8910d34dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/adversarial-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/adversarial-round-1.md"
       },
       {
         "digest": "b9492f90b45d3f3fdb074c26ed3bc15e0742385b94b481c18c5aefb8f04832f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "3b803c129fbc120677d7b043e28184eaca0e8d349d153bcdc4ff9ff434f2a737",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-1.md"
       },
       {
         "digest": "056fe471cdc619dd0ce6f147f045d28b024e6310d87d2e1a3d58fe8758149681",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-2.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-2.md"
       },
       {
         "digest": "79c3c6b1c0ad44d41740654e58ae068f14974a6bc3326f70a4425e3993fedde1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/strict-real-llm-review-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/strict-real-llm-review-round-1.md"
       },
       {
         "digest": "bafbd3e553a9f03a5733e723f9a5f912a4362462de7bb5694a718c549530c884",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/index.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/index.md"
       },
       {
         "digest": "3d84962843ba5f0240891ee491cf2c8e4c9fd4114c3d9e9ad1828a9ae662e9a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-01-contract-quality-gate.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-01-contract-quality-gate.md"
       },
       {
         "digest": "d6ad54432bc424ef3691dc706307a44d901963a2a64cee76503133c66c681b62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-02-structured-skill-execution.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-02-structured-skill-execution.md"
       },
       {
         "digest": "d3e980bf9440e15d14beb2504256c36ff818acca03f20ac57bb203ea0105c1dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-03-service-persistence-draft-handoff.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-03-service-persistence-draft-handoff.md"
       },
       {
         "digest": "3bc45c992581d5e3be73a0bed3c0649db8b92fd9cbc96eeb83c95e2ae83ae104",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-04-dialog-wizard-ux.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-04-dialog-wizard-ux.md"
       },
       {
         "digest": "e6e8055df3fd883e5f1762ae0f78517e10e13e38bf9a5605d0b47e9e5cc6c223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-05-tests-observability-browser-proof.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-05-tests-observability-browser-proof.md"
       },
       {
         "digest": "bcca1724aac06ed14a509becd75a86f633c348913a4d1a6c2c95e8df0fdb473f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-06-rollout-compatibility-review.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-06-rollout-compatibility-review.md"
       }
     ],
     "stale_fields": [],
@@ -494,87 +495,87 @@
       {
         "digest": "c55ec5d735745f4472d6c6fb1c4c099f926374c0b883bf593293e2ca9f755ea5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-plan.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-plan.md"
       },
       {
         "digest": "802746c287cbf901eb66266db0d6f0f1728212e9d774ca240c3996e8b6525314",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-spec.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/claude-spec.md"
       },
       {
         "digest": "92e3a02df9d1ed91eb29e50bc297c2cb056615c5b2343c776cb948837f46097a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/deep_implement_config.json"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/deep_implement_config.json"
       },
       {
         "digest": "261e7872a00035c86b97d19226c2aebb6dbfbd5dcd6e92a716ecad93103d6827",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/final-review.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/final-review.md"
       },
       {
         "digest": "7e6b9d263004580d673e8118c4a5854ca21d5d59c7d21c64d0091180f3a837e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/usage.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/implementation/usage.md"
       },
       {
         "digest": "ff53f61d0674cbdd08123dd1207ec16091423e60554e2649f3559b8910d34dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/adversarial-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/adversarial-round-1.md"
       },
       {
         "digest": "b9492f90b45d3f3fdb074c26ed3bc15e0742385b94b481c18c5aefb8f04832f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "3b803c129fbc120677d7b043e28184eaca0e8d349d153bcdc4ff9ff434f2a737",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-1.md"
       },
       {
         "digest": "056fe471cdc619dd0ce6f147f045d28b024e6310d87d2e1a3d58fe8758149681",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-2.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/self-review-round-2.md"
       },
       {
         "digest": "79c3c6b1c0ad44d41740654e58ae068f14974a6bc3326f70a4425e3993fedde1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/strict-real-llm-review-round-1.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/reviews/strict-real-llm-review-round-1.md"
       },
       {
         "digest": "bafbd3e553a9f03a5733e723f9a5f912a4362462de7bb5694a718c549530c884",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/index.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/index.md"
       },
       {
         "digest": "3d84962843ba5f0240891ee491cf2c8e4c9fd4114c3d9e9ad1828a9ae662e9a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-01-contract-quality-gate.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-01-contract-quality-gate.md"
       },
       {
         "digest": "d6ad54432bc424ef3691dc706307a44d901963a2a64cee76503133c66c681b62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-02-structured-skill-execution.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-02-structured-skill-execution.md"
       },
       {
         "digest": "d3e980bf9440e15d14beb2504256c36ff818acca03f20ac57bb203ea0105c1dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-03-service-persistence-draft-handoff.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-03-service-persistence-draft-handoff.md"
       },
       {
         "digest": "3bc45c992581d5e3be73a0bed3c0649db8b92fd9cbc96eeb83c95e2ae83ae104",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-04-dialog-wizard-ux.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-04-dialog-wizard-ux.md"
       },
       {
         "digest": "e6e8055df3fd883e5f1762ae0f78517e10e13e38bf9a5605d0b47e9e5cc6c223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-05-tests-observability-browser-proof.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-05-tests-observability-browser-proof.md"
       },
       {
         "digest": "bcca1724aac06ed14a509becd75a86f633c348913a4d1a6c2c95e8df0fdb473f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-06-rollout-compatibility-review.md"
+        "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/sections/section-06-rollout-compatibility-review.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -592,7 +593,7 @@
     "unresolved": 15
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.850108Z",
+  "updated_at": "2026-10-06T03:28:19.059042Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

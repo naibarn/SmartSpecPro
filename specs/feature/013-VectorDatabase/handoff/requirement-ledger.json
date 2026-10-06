@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L119"
+        "specs/feature/013-VectorDatabase/spec.md#L119"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L119",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L132"
+        "specs/feature/013-VectorDatabase/spec.md#L132"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L132",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L613"
+        "specs/feature/013-VectorDatabase/spec.md#L613"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L613",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L613",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L629"
+        "specs/feature/013-VectorDatabase/spec.md#L629"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L629",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L630"
+        "specs/feature/013-VectorDatabase/spec.md#L630"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L630",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L630",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L631"
+        "specs/feature/013-VectorDatabase/spec.md#L631"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L631",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L632"
+        "specs/feature/013-VectorDatabase/spec.md#L632"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L632",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L691"
+        "specs/feature/013-VectorDatabase/spec.md#L691"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L691",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L692"
+        "specs/feature/013-VectorDatabase/spec.md#L692"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L692",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L693"
+        "specs/feature/013-VectorDatabase/spec.md#L693"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L693",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L693",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L694"
+        "specs/feature/013-VectorDatabase/spec.md#L694"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L694",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L694",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L695"
+        "specs/feature/013-VectorDatabase/spec.md#L695"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L695",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L695",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L696"
+        "specs/feature/013-VectorDatabase/spec.md#L696"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L696",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L696",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L697"
+        "specs/feature/013-VectorDatabase/spec.md#L697"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L697",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L698"
+        "specs/feature/013-VectorDatabase/spec.md#L698"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/013-VectorDatabase/spec.md#L698",
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L698",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

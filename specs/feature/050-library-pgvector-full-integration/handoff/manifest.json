@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/050-library-pgvector-full-integration/spec.md",
     "digest": "dad0a3fd34b4866f485db6f9aa45b7e083f394f9f220a11d7d8806d6e8c64ba0",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.648402Z",
+      "last_evidence_at": "2026-10-06T03:28:14.989471Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-03-22T10:13:38+07:00",
       "spec_last_changed_at": "2026-03-22T10:13:38+07:00"
@@ -104,7 +104,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.648402Z"
+    "updated_at": "2026-10-06T03:28:14.989471Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,7 +114,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.648402Z",
+    "reconciled_at": "2026-10-06T03:28:14.989471Z",
     "sources": [
       {
         "digest": "dad0a3fd34b4866f485db6f9aa45b7e083f394f9f220a11d7d8806d6e8c64ba0",
@@ -182,7 +182,7 @@
     "unresolved": 162
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.648402Z",
+  "updated_at": "2026-10-06T03:28:14.989471Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

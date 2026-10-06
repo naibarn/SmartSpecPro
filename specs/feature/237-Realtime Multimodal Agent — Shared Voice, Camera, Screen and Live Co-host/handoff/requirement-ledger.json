@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L26"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L26"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L26",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L26",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L29"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L29"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L29",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L37"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L37"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L37",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L38"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L38"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L38",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L38",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L39"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L39"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L39",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L39",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L40"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L40"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L40",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L40",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L44"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L44"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L44",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L44",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L45"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L45"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L45",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L45",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L46"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L46"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L46",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L47"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L47"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L47",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L47",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L48"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L48"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L48",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L123"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L123"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L123",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L152"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L152"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L152",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L169"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L169"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L169",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L232"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L232"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L232",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L272"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L272"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L272",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L320"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L320"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L320",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L324"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L324"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L324",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L324",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L325"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L325"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L325",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L325",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L326"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L326"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L326",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L326",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L327"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L327"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L327",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L327",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L328"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L328"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L328",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L328",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L329"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L329"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L329",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L329",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L330"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L330"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L330",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L331"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L331"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L331",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L353"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L353"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L353",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L363"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L363"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L363",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L379"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L379"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L379",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L383"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L383"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L383",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L387"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L387"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L387",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L387",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L399"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L399"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L399",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L407"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L407"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L407",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L407",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L419"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L419"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L419",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L439"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L439"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L439",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L439",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L443"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L443"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L443",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L443",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L487"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L487"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L487",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L487",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L491"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L491"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L491",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L491",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L504"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L504"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L504",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L504",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L508"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L508"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L508",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L508",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L516"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L516"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L516",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L516",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L528"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L528"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L528",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L528",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L534"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L534"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L534",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L534",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L540"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L540"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L540",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L540",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L544"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L544"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L544",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L550"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L550"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L550",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L550",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L551"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L551"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L551",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L552"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L552"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L552",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L552",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L553"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L553"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L553",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L553",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L554"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L554"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L554",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L554",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L555"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L555"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L555",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L555",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L556"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L556"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L556",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L556",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L557"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L557"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L557",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L557",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L558"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L558"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L558",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L558",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L559"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L559"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L559",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L559",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L599"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L599"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L599",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L599",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L607"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L607"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L607",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L607",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L631"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L631"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L631",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L655"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L655"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L655",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L655",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L669"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L669"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L669",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L677"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L677"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L677",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L677",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L681"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L681"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L681",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L681",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L697"
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L697"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L697",
+      "authority_source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

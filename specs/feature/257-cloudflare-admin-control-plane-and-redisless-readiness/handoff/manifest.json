@@ -14,7 +14,7 @@
         "referencing_spec_id": "257",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L174",
+        "source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L174",
         "source_digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
         "successor_spec_id": "257"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "257",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L217",
+        "source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L217",
         "source_digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
         "successor_spec_id": "257"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "257",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L174",
+        "source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L174",
         "source_digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
         "successor_spec_id": "257"
       }
@@ -108,13 +108,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md",
     "digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.577271Z",
+      "last_evidence_at": "2026-10-06T03:28:18.361907Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-02T19:34:42+07:00",
       "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
@@ -122,7 +122,7 @@
     "revision": "0.1",
     "slug": "257-cloudflare-admin-control-plane-and-redisless-readiness",
     "spec_id": "257",
-    "title": "Spec 257 — Cloudflare Admin Control Plane and Redis-Free Queue/Cache Readiness"
+    "title": "Cloudflare Admin Control Plane and Redis-Free Queue/Cache Readiness"
   },
   "implementation": {
     "checkpoint_shas": [],
@@ -141,7 +141,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.577271Z"
+    "updated_at": "2026-10-06T03:28:18.361907Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -151,7 +151,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.577271Z",
+    "reconciled_at": "2026-10-06T03:28:18.361907Z",
     "sources": [
       {
         "digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
@@ -219,7 +219,7 @@
     "unresolved": 48
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.577271Z",
+  "updated_at": "2026-10-06T03:28:18.361907Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

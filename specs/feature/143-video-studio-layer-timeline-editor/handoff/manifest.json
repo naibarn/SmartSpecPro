@@ -211,18 +211,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/143-video-studio-layer-timeline-editor/spec.md",
     "digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.302096Z",
+      "last_evidence_at": "2026-10-06T03:28:16.142789Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-09T21:59:09+07:00",
       "spec_last_changed_at": "2026-08-09T21:59:09+07:00"
     },
-    "revision": null,
+    "revision": "1.2.0",
     "slug": "143-video-studio-layer-timeline-editor",
     "spec_id": "143",
     "title": "Feature 143: Video Studio — Layer & Timeline Editor"
@@ -244,7 +244,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.302096Z"
+    "updated_at": "2026-10-06T03:28:16.142789Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -254,7 +254,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.302096Z",
+    "reconciled_at": "2026-10-06T03:28:16.142789Z",
     "sources": [
       {
         "digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
@@ -715,7 +715,7 @@
     "unresolved": 67
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.302096Z",
+  "updated_at": "2026-10-06T03:28:16.142789Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

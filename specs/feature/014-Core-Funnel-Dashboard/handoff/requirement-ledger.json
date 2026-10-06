@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/014-Core-Funnel-Dashboard/spec.md#L117"
+        "specs/feature/014-Core-Funnel-Dashboard/spec.md#L117"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/014-Core-Funnel-Dashboard/spec.md#L117",
+      "authority_source": "specs/feature/014-Core-Funnel-Dashboard/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

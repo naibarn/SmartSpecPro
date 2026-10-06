@@ -17,97 +17,97 @@
       {
         "digest": "8b18e90f2f4f6ede5c287236a8fa12eb05d11e4edf529aa3a6e770ae518d4042",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
       },
       {
         "digest": "c227fefa9141c54435d98d7334e18c977bfa1f35bf0df2ecf74485395d05b4db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
       },
       {
         "digest": "05a34c52bfbacfab5b8d56e73f4b9c360d73119bca18a06d59d6248d9d6a616f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
       },
       {
         "digest": "696f77f294a0ff35e7f822021296f5dc7e5bc6db7fb6116c6c775b81eed16af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
       },
       {
         "digest": "780dffae152e7469e21fa8bf549a21cd5fc5db5b87c7971ac14571c388e9efce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
       },
       {
         "digest": "fd08f8f015b99f079e0a1e3cdcfc34c72f5197b256011c5833f608af8963d687",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
       },
       {
         "digest": "5d80ad72cc187da49e0163bc23c51edc3139011b63995a332cee51917ea75939",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
       },
       {
         "digest": "17c374a84b954171b85757884a34baf87767463821a9890c4f97a0c7773eeaf5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
       },
       {
         "digest": "74423e4790085dce851c0d7deee5fcd23ef3a29389eda27878dc4ff02b2a7287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
       },
       {
         "digest": "e9695d2e5a56b45d88b545d6e87414cdb9e56ffd1e0fedab01137c3976eaf2c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
       },
       {
         "digest": "d764f26ba54b6b3923fcc7ee35acdbbdb74fcf9f02f5b249f0715528c4659fe1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-3.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-3.md"
       },
       {
         "digest": "845fb17d7c2a2c116f7b7e979baa1fdece7a420ba8b96518ab436cb7b83d688f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-1.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-1.md"
       },
       {
         "digest": "06c06e318e14fb76f00cb1948cf42b027d5f69328fb4be267909a6a824b55ad9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-2.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-2.md"
       },
       {
         "digest": "45888dbfe40a0e0f02a6e0fb48eb693026a97c10826ab8021626c7a870699c7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-3.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-3.md"
       },
       {
         "digest": "2a8dcde399e7ee9f75a5fbb8208080b18591345d8e2aeb948ba7c95b2c18d619",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-4.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-4.md"
       },
       {
         "digest": "87f8d076614ff8c12cfe1678a8774fcff0dcd396a91ccfac2376bbdf745f6c0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/index.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/index.md"
       },
       {
         "digest": "8267e296dc8d05f8c993c9e5b7bf2d037583230a9d955215bd4d3963737bcd55",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "c566e4a51867f9fe722acd04a9acbba6f84d06bf6d0e0a2e68ceecee48477f41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-02-bin-r2-ingest.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-02-bin-r2-ingest.md"
       },
       {
         "digest": "f65bbf3a912be310283bf75dd15f84ebe2535835464fa1d3a15a0d038ebbd6ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-03-transform-keyframes-camera.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-03-transform-keyframes-camera.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "8b18e90f2f4f6ede5c287236a8fa12eb05d11e4edf529aa3a6e770ae518d4042",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
       },
       {
         "digest": "c227fefa9141c54435d98d7334e18c977bfa1f35bf0df2ecf74485395d05b4db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
       },
       {
         "digest": "05a34c52bfbacfab5b8d56e73f4b9c360d73119bca18a06d59d6248d9d6a616f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
       },
       {
         "digest": "696f77f294a0ff35e7f822021296f5dc7e5bc6db7fb6116c6c775b81eed16af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
       },
       {
         "digest": "780dffae152e7469e21fa8bf549a21cd5fc5db5b87c7971ac14571c388e9efce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
       },
       {
         "digest": "fd08f8f015b99f079e0a1e3cdcfc34c72f5197b256011c5833f608af8963d687",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
       },
       {
         "digest": "5d80ad72cc187da49e0163bc23c51edc3139011b63995a332cee51917ea75939",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
       },
       {
         "digest": "17c374a84b954171b85757884a34baf87767463821a9890c4f97a0c7773eeaf5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
       },
       {
         "digest": "74423e4790085dce851c0d7deee5fcd23ef3a29389eda27878dc4ff02b2a7287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
       },
       {
         "digest": "e9695d2e5a56b45d88b545d6e87414cdb9e56ffd1e0fedab01137c3976eaf2c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
       },
       {
         "digest": "d764f26ba54b6b3923fcc7ee35acdbbdb74fcf9f02f5b249f0715528c4659fe1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-3.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-3.md"
       },
       {
         "digest": "845fb17d7c2a2c116f7b7e979baa1fdece7a420ba8b96518ab436cb7b83d688f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-1.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-1.md"
       },
       {
         "digest": "06c06e318e14fb76f00cb1948cf42b027d5f69328fb4be267909a6a824b55ad9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-2.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-2.md"
       },
       {
         "digest": "45888dbfe40a0e0f02a6e0fb48eb693026a97c10826ab8021626c7a870699c7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-3.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-3.md"
       },
       {
         "digest": "2a8dcde399e7ee9f75a5fbb8208080b18591345d8e2aeb948ba7c95b2c18d619",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-4.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-4.md"
       },
       {
         "digest": "87f8d076614ff8c12cfe1678a8774fcff0dcd396a91ccfac2376bbdf745f6c0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/index.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/index.md"
       },
       {
         "digest": "8267e296dc8d05f8c993c9e5b7bf2d037583230a9d955215bd4d3963737bcd55",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "c566e4a51867f9fe722acd04a9acbba6f84d06bf6d0e0a2e68ceecee48477f41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-02-bin-r2-ingest.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-02-bin-r2-ingest.md"
       },
       {
         "digest": "f65bbf3a912be310283bf75dd15f84ebe2535835464fa1d3a15a0d038ebbd6ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-03-transform-keyframes-camera.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-03-transform-keyframes-camera.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "8b18e90f2f4f6ede5c287236a8fa12eb05d11e4edf529aa3a6e770ae518d4042",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
       },
       {
         "digest": "c227fefa9141c54435d98d7334e18c977bfa1f35bf0df2ecf74485395d05b4db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
       },
       {
         "digest": "05a34c52bfbacfab5b8d56e73f4b9c360d73119bca18a06d59d6248d9d6a616f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
       },
       {
         "digest": "696f77f294a0ff35e7f822021296f5dc7e5bc6db7fb6116c6c775b81eed16af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
       },
       {
         "digest": "780dffae152e7469e21fa8bf549a21cd5fc5db5b87c7971ac14571c388e9efce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
       },
       {
         "digest": "fd08f8f015b99f079e0a1e3cdcfc34c72f5197b256011c5833f608af8963d687",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
       },
       {
         "digest": "5d80ad72cc187da49e0163bc23c51edc3139011b63995a332cee51917ea75939",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
       },
       {
         "digest": "17c374a84b954171b85757884a34baf87767463821a9890c4f97a0c7773eeaf5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
       },
       {
         "digest": "74423e4790085dce851c0d7deee5fcd23ef3a29389eda27878dc4ff02b2a7287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
       },
       {
         "digest": "e9695d2e5a56b45d88b545d6e87414cdb9e56ffd1e0fedab01137c3976eaf2c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
       },
       {
         "digest": "d764f26ba54b6b3923fcc7ee35acdbbdb74fcf9f02f5b249f0715528c4659fe1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-3.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-3.md"
       },
       {
         "digest": "845fb17d7c2a2c116f7b7e979baa1fdece7a420ba8b96518ab436cb7b83d688f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-1.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-1.md"
       },
       {
         "digest": "06c06e318e14fb76f00cb1948cf42b027d5f69328fb4be267909a6a824b55ad9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-2.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-2.md"
       },
       {
         "digest": "45888dbfe40a0e0f02a6e0fb48eb693026a97c10826ab8021626c7a870699c7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-3.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-3.md"
       },
       {
         "digest": "2a8dcde399e7ee9f75a5fbb8208080b18591345d8e2aeb948ba7c95b2c18d619",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-4.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-4.md"
       },
       {
         "digest": "87f8d076614ff8c12cfe1678a8774fcff0dcd396a91ccfac2376bbdf745f6c0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/index.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/index.md"
       },
       {
         "digest": "8267e296dc8d05f8c993c9e5b7bf2d037583230a9d955215bd4d3963737bcd55",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "c566e4a51867f9fe722acd04a9acbba6f84d06bf6d0e0a2e68ceecee48477f41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-02-bin-r2-ingest.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-02-bin-r2-ingest.md"
       },
       {
         "digest": "f65bbf3a912be310283bf75dd15f84ebe2535835464fa1d3a15a0d038ebbd6ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-03-transform-keyframes-camera.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-03-transform-keyframes-camera.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md",
     "digest": "51154d123bff03a51da57277a332684b293add5a884394c622eccdf8e8f5d6c3",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.578525Z",
+      "last_evidence_at": "2026-10-06T03:28:16.666419Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-13T07:28:45+07:00",
       "spec_last_changed_at": "2026-09-13T07:28:45+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.578525Z"
+    "updated_at": "2026-10-06T03:28:16.666419Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.578525Z",
+    "reconciled_at": "2026-10-06T03:28:16.666419Z",
     "sources": [
       {
         "digest": "51154d123bff03a51da57277a332684b293add5a884394c622eccdf8e8f5d6c3",
@@ -409,132 +409,132 @@
       {
         "digest": "8b18e90f2f4f6ede5c287236a8fa12eb05d11e4edf529aa3a6e770ae518d4042",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
       },
       {
         "digest": "c227fefa9141c54435d98d7334e18c977bfa1f35bf0df2ecf74485395d05b4db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
       },
       {
         "digest": "05a34c52bfbacfab5b8d56e73f4b9c360d73119bca18a06d59d6248d9d6a616f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
       },
       {
         "digest": "696f77f294a0ff35e7f822021296f5dc7e5bc6db7fb6116c6c775b81eed16af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
       },
       {
         "digest": "780dffae152e7469e21fa8bf549a21cd5fc5db5b87c7971ac14571c388e9efce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
       },
       {
         "digest": "fd08f8f015b99f079e0a1e3cdcfc34c72f5197b256011c5833f608af8963d687",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
       },
       {
         "digest": "5d80ad72cc187da49e0163bc23c51edc3139011b63995a332cee51917ea75939",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
       },
       {
         "digest": "17c374a84b954171b85757884a34baf87767463821a9890c4f97a0c7773eeaf5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
       },
       {
         "digest": "74423e4790085dce851c0d7deee5fcd23ef3a29389eda27878dc4ff02b2a7287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
       },
       {
         "digest": "e9695d2e5a56b45d88b545d6e87414cdb9e56ffd1e0fedab01137c3976eaf2c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
       },
       {
         "digest": "d764f26ba54b6b3923fcc7ee35acdbbdb74fcf9f02f5b249f0715528c4659fe1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-3.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-3.md"
       },
       {
         "digest": "845fb17d7c2a2c116f7b7e979baa1fdece7a420ba8b96518ab436cb7b83d688f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-1.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-1.md"
       },
       {
         "digest": "06c06e318e14fb76f00cb1948cf42b027d5f69328fb4be267909a6a824b55ad9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-2.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-2.md"
       },
       {
         "digest": "45888dbfe40a0e0f02a6e0fb48eb693026a97c10826ab8021626c7a870699c7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-3.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-3.md"
       },
       {
         "digest": "2a8dcde399e7ee9f75a5fbb8208080b18591345d8e2aeb948ba7c95b2c18d619",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-4.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-4.md"
       },
       {
         "digest": "87f8d076614ff8c12cfe1678a8774fcff0dcd396a91ccfac2376bbdf745f6c0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/index.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/index.md"
       },
       {
         "digest": "8267e296dc8d05f8c993c9e5b7bf2d037583230a9d955215bd4d3963737bcd55",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "c566e4a51867f9fe722acd04a9acbba6f84d06bf6d0e0a2e68ceecee48477f41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-02-bin-r2-ingest.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-02-bin-r2-ingest.md"
       },
       {
         "digest": "f65bbf3a912be310283bf75dd15f84ebe2535835464fa1d3a15a0d038ebbd6ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-03-transform-keyframes-camera.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-03-transform-keyframes-camera.md"
       },
       {
         "digest": "35b2637b8436e8ed61f5c98d8e0ebad6224af9246445169b59465f343a515a7f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-04-silence-audio-ducking.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-04-silence-audio-ducking.md"
       },
       {
         "digest": "cb3d22604ca3b773da0e04fecb55446b45243e9269c9a59ee818b9cc8b164c30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-05-ai-music-recording-speakers-subtitles.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-05-ai-music-recording-speakers-subtitles.md"
       },
       {
         "digest": "d8035bc27fd47dcae50549489525f802db0464e41a85e3eab17c1727ca8e7f71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-06-blur-object-tracking.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-06-blur-object-tracking.md"
       },
       {
         "digest": "26dfef6a01b288198007aee9998f5d08cd9927831432d47f88be308360f153f2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-07-render-modes-exports.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-07-render-modes-exports.md"
       },
       {
         "digest": "5f485c9595c68289085838d586d7abebaeb7393ea62cc14e2c2f54368f8ef6c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-08-preview-ruler-timeline.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-08-preview-ruler-timeline.md"
       },
       {
         "digest": "0f705d7fdac36560e26f07ea55d634dafdeb70630faed90e7d26e749bcc7c848",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-09-symbols-ai-code-overlays.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-09-symbols-ai-code-overlays.md"
       },
       {
         "digest": "9a0c36e361905f06e3e300b8f43101ffe4a7f594f2e040bf9d1f9907fe5b59af",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-10-persistence-results-rollout-proof.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-10-persistence-results-rollout-proof.md"
       }
     ],
     "stale_fields": [],
@@ -562,132 +562,132 @@
       {
         "digest": "8b18e90f2f4f6ede5c287236a8fa12eb05d11e4edf529aa3a6e770ae518d4042",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
       },
       {
         "digest": "c227fefa9141c54435d98d7334e18c977bfa1f35bf0df2ecf74485395d05b4db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
       },
       {
         "digest": "05a34c52bfbacfab5b8d56e73f4b9c360d73119bca18a06d59d6248d9d6a616f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
       },
       {
         "digest": "696f77f294a0ff35e7f822021296f5dc7e5bc6db7fb6116c6c775b81eed16af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
       },
       {
         "digest": "780dffae152e7469e21fa8bf549a21cd5fc5db5b87c7971ac14571c388e9efce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
       },
       {
         "digest": "fd08f8f015b99f079e0a1e3cdcfc34c72f5197b256011c5833f608af8963d687",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
       },
       {
         "digest": "5d80ad72cc187da49e0163bc23c51edc3139011b63995a332cee51917ea75939",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
       },
       {
         "digest": "17c374a84b954171b85757884a34baf87767463821a9890c4f97a0c7773eeaf5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
       },
       {
         "digest": "74423e4790085dce851c0d7deee5fcd23ef3a29389eda27878dc4ff02b2a7287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
       },
       {
         "digest": "e9695d2e5a56b45d88b545d6e87414cdb9e56ffd1e0fedab01137c3976eaf2c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
       },
       {
         "digest": "d764f26ba54b6b3923fcc7ee35acdbbdb74fcf9f02f5b249f0715528c4659fe1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-3.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-3.md"
       },
       {
         "digest": "845fb17d7c2a2c116f7b7e979baa1fdece7a420ba8b96518ab436cb7b83d688f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-1.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-1.md"
       },
       {
         "digest": "06c06e318e14fb76f00cb1948cf42b027d5f69328fb4be267909a6a824b55ad9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-2.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-2.md"
       },
       {
         "digest": "45888dbfe40a0e0f02a6e0fb48eb693026a97c10826ab8021626c7a870699c7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-3.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-3.md"
       },
       {
         "digest": "2a8dcde399e7ee9f75a5fbb8208080b18591345d8e2aeb948ba7c95b2c18d619",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-4.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-4.md"
       },
       {
         "digest": "87f8d076614ff8c12cfe1678a8774fcff0dcd396a91ccfac2376bbdf745f6c0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/index.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/index.md"
       },
       {
         "digest": "8267e296dc8d05f8c993c9e5b7bf2d037583230a9d955215bd4d3963737bcd55",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "c566e4a51867f9fe722acd04a9acbba6f84d06bf6d0e0a2e68ceecee48477f41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-02-bin-r2-ingest.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-02-bin-r2-ingest.md"
       },
       {
         "digest": "f65bbf3a912be310283bf75dd15f84ebe2535835464fa1d3a15a0d038ebbd6ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-03-transform-keyframes-camera.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-03-transform-keyframes-camera.md"
       },
       {
         "digest": "35b2637b8436e8ed61f5c98d8e0ebad6224af9246445169b59465f343a515a7f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-04-silence-audio-ducking.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-04-silence-audio-ducking.md"
       },
       {
         "digest": "cb3d22604ca3b773da0e04fecb55446b45243e9269c9a59ee818b9cc8b164c30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-05-ai-music-recording-speakers-subtitles.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-05-ai-music-recording-speakers-subtitles.md"
       },
       {
         "digest": "d8035bc27fd47dcae50549489525f802db0464e41a85e3eab17c1727ca8e7f71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-06-blur-object-tracking.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-06-blur-object-tracking.md"
       },
       {
         "digest": "26dfef6a01b288198007aee9998f5d08cd9927831432d47f88be308360f153f2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-07-render-modes-exports.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-07-render-modes-exports.md"
       },
       {
         "digest": "5f485c9595c68289085838d586d7abebaeb7393ea62cc14e2c2f54368f8ef6c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-08-preview-ruler-timeline.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-08-preview-ruler-timeline.md"
       },
       {
         "digest": "0f705d7fdac36560e26f07ea55d634dafdeb70630faed90e7d26e749bcc7c848",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-09-symbols-ai-code-overlays.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-09-symbols-ai-code-overlays.md"
       },
       {
         "digest": "9a0c36e361905f06e3e300b8f43101ffe4a7f594f2e040bf9d1f9907fe5b59af",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-10-persistence-results-rollout-proof.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-10-persistence-results-rollout-proof.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -705,7 +705,7 @@
     "unresolved": 25
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.578525Z",
+  "updated_at": "2026-10-06T03:28:16.666419Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

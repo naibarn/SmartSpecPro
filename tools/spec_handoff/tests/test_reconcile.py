@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from tools.spec_handoff.reconcile import _normalize_repo_reference, reconcile_one
+from tools.spec_handoff.inventory import inventory
 
 
 class ReconciliationTests(unittest.TestCase):
@@ -36,6 +37,23 @@ class ReconciliationTests(unittest.TestCase):
             conflict = next(row for row in result["manifest"]["authority"]["conflicts"] if row["kind"] == "DUPLICATE_SPEC_REVISION")
             self.assertEqual(set(conflict["paths"]), {"specs/feature/001-legacy", "specs/feature/001-new-name"})
             self.assertEqual(result["manifest"]["continuation_assessment"]["decision"], "RECONCILIATION_REQUIRED")
+
+    def test_reconciliation_refreshes_identity_metadata_from_inventory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "specs/_config").mkdir(parents=True)
+            (repo / "specs/_config/handoff-roots.toml").write_text(
+                '[spec_handoff]\nschema_version=1\ncanonical_roots=["specs/feature"]\nalternate_roots=[]\n',
+                encoding="utf-8",
+            )
+            spec = self.make_spec(repo, "# Spec 001 — Legacy\n\n**Revision:** R1.0 — initial\n")
+            reconcile_one(spec, repo, write=True)
+            record = next(row for row in inventory(repo)["records"] if row["path"] == "specs/feature/001-legacy")
+            record["spec_id"] = None
+            result = reconcile_one(spec, repo, write=True, inventory_record=record)
+            self.assertEqual(result["manifest"]["identity"]["spec_id"], "001")
+            self.assertEqual(result["manifest"]["identity"]["title"], "Spec 001 — Legacy")
+            self.assertEqual(result["manifest"]["identity"]["revision"], "1.0")
 
     def test_old_worktree_reference_normalizes_only_when_repo_target_exists(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L58"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L58"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L58",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L75"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L75",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L131"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L131"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L131",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L138"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L138"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L138",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L175"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L175"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L175",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L175",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L176"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L176"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L176",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L177"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L177"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L177",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L177",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L195"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L195"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L195",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L201"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L201"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L201",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L201",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L282"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L282"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L282",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L290"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L290"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L290",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L292"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L292"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L292",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L294"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L294"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L294",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L296"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L296"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L296",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L300"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L300"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L300",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L300",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L302"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L302"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L302",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L303"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L303"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L303",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L306"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L306"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L306",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L306",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L308"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L308"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L308",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L308",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L310"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L310"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L310",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L315"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L315"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L315",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L315",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L317"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L317"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L317",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L318"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L318"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L318",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L318",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L322"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L322"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L322",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L324"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L324"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L324",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L324",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L425"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L425"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L425",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L437"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L437"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L437",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L438"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L438"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L438",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L438",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L450"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L450"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L450",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L450",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L466"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L466"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L466",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L466",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L487"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L487"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L487",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L487",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L488"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L488"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L488",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L488",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L496"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L496"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L496",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L496",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L500"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L500"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L500",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L523"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L523"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L523",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L523",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L527"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L527"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L527",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L541"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L541"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L541",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L541",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L566"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L566"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L566",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L566",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L571"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L571"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L571",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L571",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L572"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L572"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L572",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L572",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L616"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L616"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L616",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L623"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L623"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L623",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L625"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L625"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L625",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L630"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L630"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L630",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L630",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L634"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L634"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L634",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L648"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L648"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L648",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L648",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L652"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L652"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L652",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L669"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L669"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L669",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L683"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L683"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L683",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L683",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L794"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L794"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L794",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L794",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L827"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L827"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L827",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L827",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L855"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L855"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L855",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L855",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L884"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L884"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L884",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L884",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L965"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L965"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L965",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L965",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L993"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L993"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L993",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L993",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1004"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1004"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1004",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1005"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1005"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1005",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1042"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1042"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1042",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1042",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1060"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1060"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1060",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1060",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1085"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1085"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1085",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1085",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1091"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1091"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1091",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1091",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1093"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1093"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1093",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1093",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1095"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1095"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1095",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1095",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1117"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1117"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1117",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1120"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1120"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1120",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1120",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1139"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1139"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1139",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1150"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1150",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1181"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1181"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1181",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1202"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1202"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1202",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1202",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1207"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1207"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1207",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1230"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1230"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1230",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1267"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1267"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1267",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1284"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1284"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1284",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1313"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1313"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1313",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1313",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1320"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1320"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1320",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1370"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1370"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1370",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1375"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1375"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1375",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1467"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1467"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1467",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1473"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1473"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1473",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1473",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1549"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1549"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1549",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1632"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1632"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1632",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1642"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1642"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1642",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1644"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1644"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1644",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1646"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1646"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1646",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1648"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1648"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1648",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1648",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1653"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1653"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1653",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1660"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1660"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1660",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1660",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1688"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1688"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1688",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1784"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1784"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1784",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1784",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1805"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1805"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1805",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1805",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1819"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1819"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1819",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1819",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1934"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1934"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1934",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1934",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1954"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1954"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1954",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1954",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1955"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1955"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1955",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1955",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1957"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1957"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1957",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1957",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1971"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1971"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1971",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1971",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1973"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1973"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1973",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1973",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1996"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1996"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1996",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2040"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2040"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2040",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2040",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2069"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2069"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2069",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2069",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2077"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2077"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2077",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2077",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2095"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2095"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2095",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2095",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2097"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2097"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2097",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2097",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2143"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2143"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2143",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2163"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2163"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2163",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2181"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2181"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2181",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2225"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2225"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2225",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2248"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2248"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2248",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2254"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2254"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2254",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2277"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2277"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2277",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2278"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2278"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2278",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2358"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2358"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2358",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2358",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2515"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2515"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2515",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2524"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2524"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2524",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2524",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2526"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2526"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2526",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2532"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2532"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2532",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2532",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2534"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2534"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2534",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2534",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2535"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2535"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2535",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2535",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2537"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2537"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2537",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2537",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2538"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2538"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2538",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2538",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2542"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2542"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2542",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2542",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2544"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2544"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2544",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2548"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2548"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2548",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2548",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2549"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2549"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2549",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2552"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2552"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2552",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2552",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2554"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2554"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2554",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2554",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2583"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2583"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2583",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2583",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2585"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2585"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2585",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2585",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2587"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2587"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2587",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2587",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2647"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2647"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2647",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2647",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2653"
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2653"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2653",
+      "authority_source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L2653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

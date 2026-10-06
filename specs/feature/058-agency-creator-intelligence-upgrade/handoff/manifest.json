@@ -11,6 +11,7 @@
       {
         "kind": "DUPLICATE_SPEC_ID",
         "paths": [
+          "specs/feature/058-agency-creator-intelligence-upgrade",
           "specs/feature/058-meta-channels"
         ]
       }
@@ -24,62 +25,62 @@
       {
         "digest": "4da197b0720843f892555866a3955db32534b66c85ee828465f85e7e487e19cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/claude-plan.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/claude-plan.md"
       },
       {
         "digest": "2edcd7eeae7ef121ac8a2635db16951bc3103829970dff6a11f241846e9c5a3f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/claude-spec.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/claude-spec.md"
       },
       {
         "digest": "854529fd648ff040c217c9ead58d2bb5c63cf3fda08b33514f28a9fe308e8202",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/implementation/deep_implement_config.json"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/implementation/deep_implement_config.json"
       },
       {
         "digest": "3bc192a894280e978365cdd38efee21e0156c618919c3db3e3253174547604aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/index.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/index.md"
       },
       {
         "digest": "b24a9f8fbc77eebec59eb568f5643b1275109c8d71575692eb103e3d0468c33e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-01-discover-enhancement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-01-discover-enhancement.md"
       },
       {
         "digest": "1e1bf621826d268e1d1d4afe20c0a9ec4617c83ef2995327c76fb5826e367bf4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-02-interview-replacement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-02-interview-replacement.md"
       },
       {
         "digest": "9028f319765dacd9f7d6b5a5b6d812fdc01165b5b992fee771761e585f25a4dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-03-memory-informed-planning.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-03-memory-informed-planning.md"
       },
       {
         "digest": "db91b8801d120c7166e7d2a30d1e50fe7549da41fd1a4fef81d6a9bbf5d3b473",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-04-review-enhancement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-04-review-enhancement.md"
       },
       {
         "digest": "ab60c541eaccc2932232ebbb57ee4cbc2b2fcfc344e2c5dd8885e033a5ef3868",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-05-post-creation-suggestions.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-05-post-creation-suggestions.md"
       },
       {
         "digest": "31fa9be0f74b37730bf47984e2eeb937813650b6aed6c278425324e70ad3eef3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-06-template-save.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-06-template-save.md"
       },
       {
         "digest": "47ce35c7a8b3c2d1d80a884b41e76493849db6a9362cced02db6c1fec82bf246",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-07-internal-api-update.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-07-internal-api-update.md"
       },
       {
         "digest": "aedf77ce14c0712b75d41172e6c357f2e2b02ca6e8b7fa567349d12063820942",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-08-frontend-suggestions-ui.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-08-frontend-suggestions-ui.md"
       }
     ],
     "predecessors": [],
@@ -110,62 +111,62 @@
       {
         "digest": "4da197b0720843f892555866a3955db32534b66c85ee828465f85e7e487e19cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/claude-plan.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/claude-plan.md"
       },
       {
         "digest": "2edcd7eeae7ef121ac8a2635db16951bc3103829970dff6a11f241846e9c5a3f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/claude-spec.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/claude-spec.md"
       },
       {
         "digest": "854529fd648ff040c217c9ead58d2bb5c63cf3fda08b33514f28a9fe308e8202",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/implementation/deep_implement_config.json"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/implementation/deep_implement_config.json"
       },
       {
         "digest": "3bc192a894280e978365cdd38efee21e0156c618919c3db3e3253174547604aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/index.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/index.md"
       },
       {
         "digest": "b24a9f8fbc77eebec59eb568f5643b1275109c8d71575692eb103e3d0468c33e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-01-discover-enhancement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-01-discover-enhancement.md"
       },
       {
         "digest": "1e1bf621826d268e1d1d4afe20c0a9ec4617c83ef2995327c76fb5826e367bf4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-02-interview-replacement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-02-interview-replacement.md"
       },
       {
         "digest": "9028f319765dacd9f7d6b5a5b6d812fdc01165b5b992fee771761e585f25a4dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-03-memory-informed-planning.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-03-memory-informed-planning.md"
       },
       {
         "digest": "db91b8801d120c7166e7d2a30d1e50fe7549da41fd1a4fef81d6a9bbf5d3b473",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-04-review-enhancement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-04-review-enhancement.md"
       },
       {
         "digest": "ab60c541eaccc2932232ebbb57ee4cbc2b2fcfc344e2c5dd8885e033a5ef3868",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-05-post-creation-suggestions.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-05-post-creation-suggestions.md"
       },
       {
         "digest": "31fa9be0f74b37730bf47984e2eeb937813650b6aed6c278425324e70ad3eef3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-06-template-save.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-06-template-save.md"
       },
       {
         "digest": "47ce35c7a8b3c2d1d80a884b41e76493849db6a9362cced02db6c1fec82bf246",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-07-internal-api-update.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-07-internal-api-update.md"
       },
       {
         "digest": "aedf77ce14c0712b75d41172e6c357f2e2b02ca6e8b7fa567349d12063820942",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-08-frontend-suggestions-ui.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-08-frontend-suggestions-ui.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -197,74 +198,74 @@
       {
         "digest": "4da197b0720843f892555866a3955db32534b66c85ee828465f85e7e487e19cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/claude-plan.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/claude-plan.md"
       },
       {
         "digest": "2edcd7eeae7ef121ac8a2635db16951bc3103829970dff6a11f241846e9c5a3f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/claude-spec.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/claude-spec.md"
       },
       {
         "digest": "854529fd648ff040c217c9ead58d2bb5c63cf3fda08b33514f28a9fe308e8202",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/implementation/deep_implement_config.json"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/implementation/deep_implement_config.json"
       },
       {
         "digest": "3bc192a894280e978365cdd38efee21e0156c618919c3db3e3253174547604aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/index.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/index.md"
       },
       {
         "digest": "b24a9f8fbc77eebec59eb568f5643b1275109c8d71575692eb103e3d0468c33e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-01-discover-enhancement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-01-discover-enhancement.md"
       },
       {
         "digest": "1e1bf621826d268e1d1d4afe20c0a9ec4617c83ef2995327c76fb5826e367bf4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-02-interview-replacement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-02-interview-replacement.md"
       },
       {
         "digest": "9028f319765dacd9f7d6b5a5b6d812fdc01165b5b992fee771761e585f25a4dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-03-memory-informed-planning.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-03-memory-informed-planning.md"
       },
       {
         "digest": "db91b8801d120c7166e7d2a30d1e50fe7549da41fd1a4fef81d6a9bbf5d3b473",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-04-review-enhancement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-04-review-enhancement.md"
       },
       {
         "digest": "ab60c541eaccc2932232ebbb57ee4cbc2b2fcfc344e2c5dd8885e033a5ef3868",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-05-post-creation-suggestions.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-05-post-creation-suggestions.md"
       },
       {
         "digest": "31fa9be0f74b37730bf47984e2eeb937813650b6aed6c278425324e70ad3eef3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-06-template-save.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-06-template-save.md"
       },
       {
         "digest": "47ce35c7a8b3c2d1d80a884b41e76493849db6a9362cced02db6c1fec82bf246",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-07-internal-api-update.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-07-internal-api-update.md"
       },
       {
         "digest": "aedf77ce14c0712b75d41172e6c357f2e2b02ca6e8b7fa567349d12063820942",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-08-frontend-suggestions-ui.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-08-frontend-suggestions-ui.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/058-agency-creator-intelligence-upgrade/spec.md",
     "digest": "144efa2089eb7f1d75b15e36b8971cb655e48f9cf3ddaff6339f59f8a0bdd367",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.705338Z",
+      "last_evidence_at": "2026-10-06T03:28:15.061209Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-03-27T07:08:29+07:00",
       "spec_last_changed_at": "2026-03-27T07:08:29+07:00"
@@ -291,7 +292,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.705338Z"
+    "updated_at": "2026-10-06T03:28:15.061209Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -301,7 +302,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.705338Z",
+    "reconciled_at": "2026-10-06T03:28:15.061209Z",
     "sources": [
       {
         "digest": "144efa2089eb7f1d75b15e36b8971cb655e48f9cf3ddaff6339f59f8a0bdd367",
@@ -311,62 +312,62 @@
       {
         "digest": "4da197b0720843f892555866a3955db32534b66c85ee828465f85e7e487e19cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/claude-plan.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/claude-plan.md"
       },
       {
         "digest": "2edcd7eeae7ef121ac8a2635db16951bc3103829970dff6a11f241846e9c5a3f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/claude-spec.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/claude-spec.md"
       },
       {
         "digest": "854529fd648ff040c217c9ead58d2bb5c63cf3fda08b33514f28a9fe308e8202",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/implementation/deep_implement_config.json"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/implementation/deep_implement_config.json"
       },
       {
         "digest": "3bc192a894280e978365cdd38efee21e0156c618919c3db3e3253174547604aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/index.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/index.md"
       },
       {
         "digest": "b24a9f8fbc77eebec59eb568f5643b1275109c8d71575692eb103e3d0468c33e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-01-discover-enhancement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-01-discover-enhancement.md"
       },
       {
         "digest": "1e1bf621826d268e1d1d4afe20c0a9ec4617c83ef2995327c76fb5826e367bf4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-02-interview-replacement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-02-interview-replacement.md"
       },
       {
         "digest": "9028f319765dacd9f7d6b5a5b6d812fdc01165b5b992fee771761e585f25a4dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-03-memory-informed-planning.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-03-memory-informed-planning.md"
       },
       {
         "digest": "db91b8801d120c7166e7d2a30d1e50fe7549da41fd1a4fef81d6a9bbf5d3b473",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-04-review-enhancement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-04-review-enhancement.md"
       },
       {
         "digest": "ab60c541eaccc2932232ebbb57ee4cbc2b2fcfc344e2c5dd8885e033a5ef3868",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-05-post-creation-suggestions.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-05-post-creation-suggestions.md"
       },
       {
         "digest": "31fa9be0f74b37730bf47984e2eeb937813650b6aed6c278425324e70ad3eef3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-06-template-save.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-06-template-save.md"
       },
       {
         "digest": "47ce35c7a8b3c2d1d80a884b41e76493849db6a9362cced02db6c1fec82bf246",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-07-internal-api-update.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-07-internal-api-update.md"
       },
       {
         "digest": "aedf77ce14c0712b75d41172e6c357f2e2b02ca6e8b7fa567349d12063820942",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-08-frontend-suggestions-ui.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-08-frontend-suggestions-ui.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -611,62 +612,62 @@
       {
         "digest": "4da197b0720843f892555866a3955db32534b66c85ee828465f85e7e487e19cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/claude-plan.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/claude-plan.md"
       },
       {
         "digest": "2edcd7eeae7ef121ac8a2635db16951bc3103829970dff6a11f241846e9c5a3f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/claude-spec.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/claude-spec.md"
       },
       {
         "digest": "854529fd648ff040c217c9ead58d2bb5c63cf3fda08b33514f28a9fe308e8202",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/implementation/deep_implement_config.json"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/implementation/deep_implement_config.json"
       },
       {
         "digest": "3bc192a894280e978365cdd38efee21e0156c618919c3db3e3253174547604aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/index.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/index.md"
       },
       {
         "digest": "b24a9f8fbc77eebec59eb568f5643b1275109c8d71575692eb103e3d0468c33e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-01-discover-enhancement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-01-discover-enhancement.md"
       },
       {
         "digest": "1e1bf621826d268e1d1d4afe20c0a9ec4617c83ef2995327c76fb5826e367bf4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-02-interview-replacement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-02-interview-replacement.md"
       },
       {
         "digest": "9028f319765dacd9f7d6b5a5b6d812fdc01165b5b992fee771761e585f25a4dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-03-memory-informed-planning.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-03-memory-informed-planning.md"
       },
       {
         "digest": "db91b8801d120c7166e7d2a30d1e50fe7549da41fd1a4fef81d6a9bbf5d3b473",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-04-review-enhancement.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-04-review-enhancement.md"
       },
       {
         "digest": "ab60c541eaccc2932232ebbb57ee4cbc2b2fcfc344e2c5dd8885e033a5ef3868",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-05-post-creation-suggestions.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-05-post-creation-suggestions.md"
       },
       {
         "digest": "31fa9be0f74b37730bf47984e2eeb937813650b6aed6c278425324e70ad3eef3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-06-template-save.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-06-template-save.md"
       },
       {
         "digest": "47ce35c7a8b3c2d1d80a884b41e76493849db6a9362cced02db6c1fec82bf246",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-07-internal-api-update.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-07-internal-api-update.md"
       },
       {
         "digest": "aedf77ce14c0712b75d41172e6c357f2e2b02ca6e8b7fa567349d12063820942",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/058-agency-creator-intelligence-upgrade/sections/section-08-frontend-suggestions-ui.md"
+        "path": "specs/feature/058-agency-creator-intelligence-upgrade/sections/section-08-frontend-suggestions-ui.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -684,7 +685,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.705338Z",
+  "updated_at": "2026-10-06T03:28:15.061209Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -67,14 +67,13 @@ def read_manifest(spec_dir: Path) -> dict[str, Any] | None:
 def _identity(spec_dir: Path, repo: Path) -> dict[str, Any]:
     spec = spec_dir / "spec.md"
     raw = spec.read_bytes()
-    text = raw.decode("utf-8")
-    title = next((line.lstrip("# ").strip() for line in text.splitlines() if line.startswith("# ")), spec_dir.name)
-    import re
-    match = re.match(r"^(\d{1,4})", spec_dir.name)
-    revision = re.search(r"\b(?:rev(?:ision)?|version)\s*[:#-]?\s*v?(\d+(?:\.\d+){0,3})\b", text[:12000], re.I)
-    return {"spec_id": match.group(1) if match else spec_dir.name, "slug": spec_dir.name, "title": title,
-            "canonical_path": spec.relative_to(repo).as_posix(), "revision": revision.group(1) if revision else None,
-            "digest": hashlib.sha256(raw).hexdigest(), "metadata": {"spec_created_at": None, "spec_last_changed_at": None,
+    from .inventory import _id_for, _read_spec
+    title, digest, revision, problem = _read_spec(spec)
+    if problem:
+        raise ValueError(f"cannot initialize invalid Spec: {problem}")
+    return {"spec_id": _id_for(spec_dir) or spec_dir.name, "slug": spec_dir.name, "title": title or spec_dir.name,
+            "canonical_path": spec.relative_to(repo).as_posix(), "revision": revision,
+            "digest": digest or hashlib.sha256(raw).hexdigest(), "metadata": {"spec_created_at": None, "spec_last_changed_at": None,
             "implementation_last_touched_at": None, "last_evidence_at": None, "last_runtime_reference_at": None}}
 
 

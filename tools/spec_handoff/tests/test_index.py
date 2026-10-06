@@ -29,6 +29,7 @@ class IndexTests(unittest.TestCase):
             self.assertEqual(len(keys), len(set(keys)))
             self.assertEqual(len(keys), discovered["invariants"]["record_count"])
             self.assertTrue(view["reconciliation-report.json"]["invariant_discovered_equals_indexed"])
+            self.assertEqual(view["reconciliation-report.json"]["inventory"]["repository_root"], ".")
             self.assertTrue(view["continuation-queue.json"]["records"] == [])
             self.assertEqual(len(view["continuation-queue.json"]["reconciliation_review"]), 2)
             self.assertEqual(view["continuation-queue.json"]["reconciliation_review"][0]["priority"], "R0_DATA_INTEGRITY")

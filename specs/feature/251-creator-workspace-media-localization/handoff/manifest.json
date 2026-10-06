@@ -14,7 +14,7 @@
         "referencing_spec_id": "251",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/251-creator-workspace-media-localization/spec.md#L46",
+        "source": "specs/feature/251-creator-workspace-media-localization/spec.md#L46",
         "source_digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
         "successor_spec_id": "251"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "240",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -40,7 +40,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
+        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
         "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
         "successor_spec_id": "252"
       },
@@ -52,7 +52,7 @@
         "referencing_spec_id": "253",
         "relation_text": "merging",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L265",
+        "source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L265",
         "source_digest": "81d69c4736aa34b278f7a002e8a6f7edc6c5eee48d6f819fe736f64aab394288",
         "successor_spec_id": "253"
       }
@@ -122,13 +122,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/251-creator-workspace-media-localization/spec.md",
     "digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.527493Z",
+      "last_evidence_at": "2026-10-06T03:28:18.304198Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-02T19:34:42+07:00",
       "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
@@ -155,7 +155,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.527493Z"
+    "updated_at": "2026-10-06T03:28:18.304198Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -165,7 +165,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.527493Z",
+    "reconciled_at": "2026-10-06T03:28:18.304198Z",
     "sources": [
       {
         "digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
@@ -233,7 +233,7 @@
     "unresolved": 61
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.527493Z",
+  "updated_at": "2026-10-06T03:28:18.304198Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

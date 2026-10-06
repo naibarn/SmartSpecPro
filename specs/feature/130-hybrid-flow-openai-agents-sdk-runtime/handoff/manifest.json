@@ -74,13 +74,13 @@
     "rationale": "The Spec explicitly states its implementation is governed by Feature 151 and is retained as Hybrid Flow implementation history. Requirement-level residuals have not yet been mapped, so this is partial supersession rather than proof that every requirement is irrelevant.",
     "value": "SUPERSEDED_PARTIAL"
   },
-  "generation": 7,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md",
     "digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.205889Z",
+      "last_evidence_at": "2026-10-06T03:28:15.992429Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-07-04T00:17:21+07:00",
       "spec_last_changed_at": "2026-08-18T16:13:25+07:00"
@@ -193,7 +193,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.205889Z",
+    "reconciled_at": "2026-10-06T03:28:15.992429Z",
     "sources": [
       {
         "digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
@@ -203,77 +203,77 @@
       {
         "digest": "7e6d6893926c687b910385cbdf0537d94bcf5a63d798b7d0de5fa55f1d4148c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-plan.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-plan.md"
       },
       {
         "digest": "63ec44be79edc67d76937888a7f1f4020ec49e59dfb3f04ecf648ff75397018c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-spec.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-spec.md"
       },
       {
         "digest": "150d1498c708c1f0801b75bdc74ec79e717e1bb5cbffd666ab9d27d718f1975f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/implementation/deep_implement_config.json"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/implementation/deep_implement_config.json"
       },
       {
         "digest": "472f097e5f197b622227ab2a1c2a6ec65972fa1368d58f42e6c44e73a85c9162",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/plan-to-spec-traceability-review.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/plan-to-spec-traceability-review.md"
       },
       {
         "digest": "8e07e0af5080f3e0800233e49d865399261495d29727a1d97b1d3b0589ae5ab1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/self-review-round-1.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/self-review-round-1.md"
       },
       {
         "digest": "234eebed44edf1bda9701205607b610d877a731f28de4658d0254eaad8537240",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/index.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/index.md"
       },
       {
         "digest": "a570e0292f16f423960208887820fbddc6a82d06512980db2a1de3b7fce35c62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-01-contracts-flags-routing-fixtures.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-01-contracts-flags-routing-fixtures.md"
       },
       {
         "digest": "c7872294a3308b27b562e915712b07b191dc055d518b33e1464af03539bf3a7c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-02-durable-persistence-migration.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-02-durable-persistence-migration.md"
       },
       {
         "digest": "ce491f5628efc0324fe4ca448bdbd5742d59f16d579123f392dab8e2ba314af8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-03-neutral-router-runtime-coordinator.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-03-neutral-router-runtime-coordinator.md"
       },
       {
         "digest": "9b30e5c484d57b289aa816e7f567843fcdb1353c68936ce026376cd562f32d98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-04-python-sdk-hybrid-stage-support.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-04-python-sdk-hybrid-stage-support.md"
       },
       {
         "digest": "3b3595eb7802106ae853b2bdcc1f3afb97938f6295bff9c3c085f1ca8823b42f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-05-stage-runner-integration.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-05-stage-runner-integration.md"
       },
       {
         "digest": "040a6a3acf9f9e387d46bbf448010ffbedd312db2dc35e0b96dd6bf527e2cac9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-06-chat-routing-and-card-ui.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-06-chat-routing-and-card-ui.md"
       },
       {
         "digest": "1d161875b675ffa78c0ad37e1fa36ff1f19aa342b177009b4df7c1921d11bae0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-07-neutral-hybrid-workspace-ui.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-07-neutral-hybrid-workspace-ui.md"
       },
       {
         "digest": "5d798bf4d00c62556310b3b009ad2fd3f0a5d93dde0821c32e0992ecae70187a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-08-commit-approval-retry-cancel.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-08-commit-approval-retry-cancel.md"
       },
       {
         "digest": "9db19bb8203a6290caa1fd7f692da475707c38321a374009dd81a48a9a8545ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-09-replay-rollout-operator-gates.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-09-replay-rollout-operator-gates.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -323,77 +323,77 @@
       {
         "digest": "7e6d6893926c687b910385cbdf0537d94bcf5a63d798b7d0de5fa55f1d4148c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-plan.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-plan.md"
       },
       {
         "digest": "63ec44be79edc67d76937888a7f1f4020ec49e59dfb3f04ecf648ff75397018c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-spec.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-spec.md"
       },
       {
         "digest": "150d1498c708c1f0801b75bdc74ec79e717e1bb5cbffd666ab9d27d718f1975f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/implementation/deep_implement_config.json"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/implementation/deep_implement_config.json"
       },
       {
         "digest": "472f097e5f197b622227ab2a1c2a6ec65972fa1368d58f42e6c44e73a85c9162",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/plan-to-spec-traceability-review.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/plan-to-spec-traceability-review.md"
       },
       {
         "digest": "8e07e0af5080f3e0800233e49d865399261495d29727a1d97b1d3b0589ae5ab1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/self-review-round-1.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/self-review-round-1.md"
       },
       {
         "digest": "234eebed44edf1bda9701205607b610d877a731f28de4658d0254eaad8537240",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/index.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/index.md"
       },
       {
         "digest": "a570e0292f16f423960208887820fbddc6a82d06512980db2a1de3b7fce35c62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-01-contracts-flags-routing-fixtures.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-01-contracts-flags-routing-fixtures.md"
       },
       {
         "digest": "c7872294a3308b27b562e915712b07b191dc055d518b33e1464af03539bf3a7c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-02-durable-persistence-migration.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-02-durable-persistence-migration.md"
       },
       {
         "digest": "ce491f5628efc0324fe4ca448bdbd5742d59f16d579123f392dab8e2ba314af8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-03-neutral-router-runtime-coordinator.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-03-neutral-router-runtime-coordinator.md"
       },
       {
         "digest": "9b30e5c484d57b289aa816e7f567843fcdb1353c68936ce026376cd562f32d98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-04-python-sdk-hybrid-stage-support.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-04-python-sdk-hybrid-stage-support.md"
       },
       {
         "digest": "3b3595eb7802106ae853b2bdcc1f3afb97938f6295bff9c3c085f1ca8823b42f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-05-stage-runner-integration.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-05-stage-runner-integration.md"
       },
       {
         "digest": "040a6a3acf9f9e387d46bbf448010ffbedd312db2dc35e0b96dd6bf527e2cac9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-06-chat-routing-and-card-ui.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-06-chat-routing-and-card-ui.md"
       },
       {
         "digest": "1d161875b675ffa78c0ad37e1fa36ff1f19aa342b177009b4df7c1921d11bae0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-07-neutral-hybrid-workspace-ui.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-07-neutral-hybrid-workspace-ui.md"
       },
       {
         "digest": "5d798bf4d00c62556310b3b009ad2fd3f0a5d93dde0821c32e0992ecae70187a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-08-commit-approval-retry-cancel.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-08-commit-approval-retry-cancel.md"
       },
       {
         "digest": "9db19bb8203a6290caa1fd7f692da475707c38321a374009dd81a48a9a8545ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-09-replay-rollout-operator-gates.md"
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-09-replay-rollout-operator-gates.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -412,7 +412,7 @@
     "unresolved": 191
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.205889Z",
+  "updated_at": "2026-10-06T03:28:15.992429Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

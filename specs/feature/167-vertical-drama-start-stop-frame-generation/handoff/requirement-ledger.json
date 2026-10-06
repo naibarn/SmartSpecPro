@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L14"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L14"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L14",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L14",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L34"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L34"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L34",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L34",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L65"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L65"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L65",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L67"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L67"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L67",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L69"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L69"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L69",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L71"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L71"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L71",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L73"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L73"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L73",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L75"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L75",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L77"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L77"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L77",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L77",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L79"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L79"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L79",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L81"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L81"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L81",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L107"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L107"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L107",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L111"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L111"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L111",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L112"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L112",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L116"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L116"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L116",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L124"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L124"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L124",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L126"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L126"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L126",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L132"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L132"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L132",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L150"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L150",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L151"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L151"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L151",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L167"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L167"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L167",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L167",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L179"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L179"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L179",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L183"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L183"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L183",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L185"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L185"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L185",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L191"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L191"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L191",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L208"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L208"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L208",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L208",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L215"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L215"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L215",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L226"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L226"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L226",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L226",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L241"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L241"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L241",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L247"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L247"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L247",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L255"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L255"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L255",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L264"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L264"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L264",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L271"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L271"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L271",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L276"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L276"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L276",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L277"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L277"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L277",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L282"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L282"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L282",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L304"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L304"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L304",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L317"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L317"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L317",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L338"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L338"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L338",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L338",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L353"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L353"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L353",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L355"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L355"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L355",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L355",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L377"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L377"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L377",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L381"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L381"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L381",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L456"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L456"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L456",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L456",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L484"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L484"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L484",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L484",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L514"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L514"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L514",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L514",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L521"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L521"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L521",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L525"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L525"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L525",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L536"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L536"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L536",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L536",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L545"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L545"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L545",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L545",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L549"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L549"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L549",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L554"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L554"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L554",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L554",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L557"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L557"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L557",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L557",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L558"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L558"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L558",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L558",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L578"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L578"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L578",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L578",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L603"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L603"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L603",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L610"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L610"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L610",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L610",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L619"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L619"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L619",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L623"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L623"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L623",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L626"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L626"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L626",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L634"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L634"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L634",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L645"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L645"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L645",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L645",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L658"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L658"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L658",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L672"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L672"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L672",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L678"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L678"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L678",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L678",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L679"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L679"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L679",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L679",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L685"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L685"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L685",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L685",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L696"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L696"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L696",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L696",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L697"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L697"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L697",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L698"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L698"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L698",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L698",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L703"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L703"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L703",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L737"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L737"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L737",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L737",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L742"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L742"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L742",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L742",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L744"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L744"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L744",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L744",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L746"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L746"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L746",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L747"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L747"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L747",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L755"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L755"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L755",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L757"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L757"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L757",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L758"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L758"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L758",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L759"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L759"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L759",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L759",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L760"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L760"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L760",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L760",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L761"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L761"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L761",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L761",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L762"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L762"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L762",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L762",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L763"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L763"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L763",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L763",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L765"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L765"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L765",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L765",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L766"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L766"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L766",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L766",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L767"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L767"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L767",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L767",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L778"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L778"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L778",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L779"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L779"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L779",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L780"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L780"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L780",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L780",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L782"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L782"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L782",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L782",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L784"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L784"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L784",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L784",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L785"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L785"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L785",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L785",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L786"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L786"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L786",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L786",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L790"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L790"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L790",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L790",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L792"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L792"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L792",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L792",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L794"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L794"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L794",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L794",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L796"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L796"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L796",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L796",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L798"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L798"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L798",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L798",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L800"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L800"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L800",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L800",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L802"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L802"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L802",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L802",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L804"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L804"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L804",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L804",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L806"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L806"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L806",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L806",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L808"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L808"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L808",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L808",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L810"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L810"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L810",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L810",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L812"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L812"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L812",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L812",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L814"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L814"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L814",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L817"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L817"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L817",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L817",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L819"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L819"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L819",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L819",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L822"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L822"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L822",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L822",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L896"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L896"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L896",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L896",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L898"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L898"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L898",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L898",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L922"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L922"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L922",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L922",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L931"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L931"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L931",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L931",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L936"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L936"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L936",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L936",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L947"
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L947"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L947",
+      "authority_source": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md#L947",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

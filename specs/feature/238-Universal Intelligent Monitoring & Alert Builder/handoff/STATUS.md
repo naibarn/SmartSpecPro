@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
-# 238 — Spec 238 — Universal Intelligent Monitoring & Alert Builder
+# 238 — SmartAIHub Universal Intelligent Monitoring & Alert Builder
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 143 unresolved of 143
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 6
+- Manifest generation: 7
 
 ## Source-declared status and relationship claims
 

@@ -17,77 +17,77 @@
       {
         "digest": "862b2bde2f26e0856fd2b6795210f1441a505e4125ff41570ba59a2f751a9f70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/claude-plan.md"
+        "path": "specs/feature/046-VirtualAdminAgent/claude-plan.md"
       },
       {
         "digest": "10b7cb7f543dc0b92b6d19de5e64f8a2899e87df9a544fe77d713e3609771da3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/claude-spec.md"
+        "path": "specs/feature/046-VirtualAdminAgent/claude-spec.md"
       },
       {
         "digest": "3939756807328235c6b3beb11091c2a078398c6fb64399d8027f612ce6d694d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/implementation/deep_implement_config.json"
+        "path": "specs/feature/046-VirtualAdminAgent/implementation/deep_implement_config.json"
       },
       {
         "digest": "bf3adc4cf747f2b85f24f57c0a1f312793294943f9d2d410ca8c5dfb3180183c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/reviews/self-review-round-1.md"
+        "path": "specs/feature/046-VirtualAdminAgent/reviews/self-review-round-1.md"
       },
       {
         "digest": "8b02a02ca519e9b8f1b57a76fec8f7878dad6e73bad59afc4fa4204f8f147c89",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/index.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/index.md"
       },
       {
         "digest": "cc28e7472d26a0a4a98ca5e06ac2d5842dd6dc8523e927502554af0cb3691cee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-01-schema-system-user.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-01-schema-system-user.md"
       },
       {
         "digest": "dee7cf89eb23d009fe47545b8b0f5de7c1064f391c5b03a11259825838a3ade8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-02-sensor-framework.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-02-sensor-framework.md"
       },
       {
         "digest": "a10c01d363fcc3964a04d06acbcfc3bc78069085659b3bd70460af319dd1fe9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-03-rule-engine.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-03-rule-engine.md"
       },
       {
         "digest": "0262eff1366a34804c539a2f3b39696af9ec64aa5dc42cd84d19d2cf8f97f43f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-04-actuators-approval.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-04-actuators-approval.md"
       },
       {
         "digest": "7e18fccd42f0c10728ec7cc6e6ea24c18bbd4a9ad93157398eed71087fa0b9bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-05-notification-sse.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-05-notification-sse.md"
       },
       {
         "digest": "9b50a83d59164f589b4d01cfc4e7154d2aadb1b6de1c60cdfbef15f58289a60e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-06-admin-chat.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-06-admin-chat.md"
       },
       {
         "digest": "f46333ff3436fd281aef8dc3ccaf9e596c469bb90ecc1ab720cc5ca550412b97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-07-feedback-backend.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-07-feedback-backend.md"
       },
       {
         "digest": "5bb550190b04591939d66bb54fa6d2747f57e4f8fa56d2124c9a9a24f0f49192",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-08-guardian-dashboard-ui.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-08-guardian-dashboard-ui.md"
       },
       {
         "digest": "2aefad2231f2203bd7f7eed3a907c2ce9b99c7e44859c0a29d81c64d89b45da9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-09-feedback-dashboard-ui.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-09-feedback-dashboard-ui.md"
       },
       {
         "digest": "e250615f081bc83f2bc987cd8c85a82ab30f9c5d97db0c53bb9eedb0dc71bc64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-10-scheduler-watchdog.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-10-scheduler-watchdog.md"
       }
     ],
     "predecessors": [],
@@ -118,77 +118,77 @@
       {
         "digest": "862b2bde2f26e0856fd2b6795210f1441a505e4125ff41570ba59a2f751a9f70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/claude-plan.md"
+        "path": "specs/feature/046-VirtualAdminAgent/claude-plan.md"
       },
       {
         "digest": "10b7cb7f543dc0b92b6d19de5e64f8a2899e87df9a544fe77d713e3609771da3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/claude-spec.md"
+        "path": "specs/feature/046-VirtualAdminAgent/claude-spec.md"
       },
       {
         "digest": "3939756807328235c6b3beb11091c2a078398c6fb64399d8027f612ce6d694d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/implementation/deep_implement_config.json"
+        "path": "specs/feature/046-VirtualAdminAgent/implementation/deep_implement_config.json"
       },
       {
         "digest": "bf3adc4cf747f2b85f24f57c0a1f312793294943f9d2d410ca8c5dfb3180183c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/reviews/self-review-round-1.md"
+        "path": "specs/feature/046-VirtualAdminAgent/reviews/self-review-round-1.md"
       },
       {
         "digest": "8b02a02ca519e9b8f1b57a76fec8f7878dad6e73bad59afc4fa4204f8f147c89",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/index.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/index.md"
       },
       {
         "digest": "cc28e7472d26a0a4a98ca5e06ac2d5842dd6dc8523e927502554af0cb3691cee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-01-schema-system-user.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-01-schema-system-user.md"
       },
       {
         "digest": "dee7cf89eb23d009fe47545b8b0f5de7c1064f391c5b03a11259825838a3ade8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-02-sensor-framework.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-02-sensor-framework.md"
       },
       {
         "digest": "a10c01d363fcc3964a04d06acbcfc3bc78069085659b3bd70460af319dd1fe9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-03-rule-engine.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-03-rule-engine.md"
       },
       {
         "digest": "0262eff1366a34804c539a2f3b39696af9ec64aa5dc42cd84d19d2cf8f97f43f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-04-actuators-approval.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-04-actuators-approval.md"
       },
       {
         "digest": "7e18fccd42f0c10728ec7cc6e6ea24c18bbd4a9ad93157398eed71087fa0b9bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-05-notification-sse.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-05-notification-sse.md"
       },
       {
         "digest": "9b50a83d59164f589b4d01cfc4e7154d2aadb1b6de1c60cdfbef15f58289a60e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-06-admin-chat.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-06-admin-chat.md"
       },
       {
         "digest": "f46333ff3436fd281aef8dc3ccaf9e596c469bb90ecc1ab720cc5ca550412b97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-07-feedback-backend.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-07-feedback-backend.md"
       },
       {
         "digest": "5bb550190b04591939d66bb54fa6d2747f57e4f8fa56d2124c9a9a24f0f49192",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-08-guardian-dashboard-ui.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-08-guardian-dashboard-ui.md"
       },
       {
         "digest": "2aefad2231f2203bd7f7eed3a907c2ce9b99c7e44859c0a29d81c64d89b45da9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-09-feedback-dashboard-ui.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-09-feedback-dashboard-ui.md"
       },
       {
         "digest": "e250615f081bc83f2bc987cd8c85a82ab30f9c5d97db0c53bb9eedb0dc71bc64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-10-scheduler-watchdog.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-10-scheduler-watchdog.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -220,89 +220,89 @@
       {
         "digest": "862b2bde2f26e0856fd2b6795210f1441a505e4125ff41570ba59a2f751a9f70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/claude-plan.md"
+        "path": "specs/feature/046-VirtualAdminAgent/claude-plan.md"
       },
       {
         "digest": "10b7cb7f543dc0b92b6d19de5e64f8a2899e87df9a544fe77d713e3609771da3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/claude-spec.md"
+        "path": "specs/feature/046-VirtualAdminAgent/claude-spec.md"
       },
       {
         "digest": "3939756807328235c6b3beb11091c2a078398c6fb64399d8027f612ce6d694d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/implementation/deep_implement_config.json"
+        "path": "specs/feature/046-VirtualAdminAgent/implementation/deep_implement_config.json"
       },
       {
         "digest": "bf3adc4cf747f2b85f24f57c0a1f312793294943f9d2d410ca8c5dfb3180183c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/reviews/self-review-round-1.md"
+        "path": "specs/feature/046-VirtualAdminAgent/reviews/self-review-round-1.md"
       },
       {
         "digest": "8b02a02ca519e9b8f1b57a76fec8f7878dad6e73bad59afc4fa4204f8f147c89",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/index.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/index.md"
       },
       {
         "digest": "cc28e7472d26a0a4a98ca5e06ac2d5842dd6dc8523e927502554af0cb3691cee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-01-schema-system-user.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-01-schema-system-user.md"
       },
       {
         "digest": "dee7cf89eb23d009fe47545b8b0f5de7c1064f391c5b03a11259825838a3ade8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-02-sensor-framework.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-02-sensor-framework.md"
       },
       {
         "digest": "a10c01d363fcc3964a04d06acbcfc3bc78069085659b3bd70460af319dd1fe9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-03-rule-engine.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-03-rule-engine.md"
       },
       {
         "digest": "0262eff1366a34804c539a2f3b39696af9ec64aa5dc42cd84d19d2cf8f97f43f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-04-actuators-approval.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-04-actuators-approval.md"
       },
       {
         "digest": "7e18fccd42f0c10728ec7cc6e6ea24c18bbd4a9ad93157398eed71087fa0b9bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-05-notification-sse.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-05-notification-sse.md"
       },
       {
         "digest": "9b50a83d59164f589b4d01cfc4e7154d2aadb1b6de1c60cdfbef15f58289a60e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-06-admin-chat.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-06-admin-chat.md"
       },
       {
         "digest": "f46333ff3436fd281aef8dc3ccaf9e596c469bb90ecc1ab720cc5ca550412b97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-07-feedback-backend.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-07-feedback-backend.md"
       },
       {
         "digest": "5bb550190b04591939d66bb54fa6d2747f57e4f8fa56d2124c9a9a24f0f49192",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-08-guardian-dashboard-ui.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-08-guardian-dashboard-ui.md"
       },
       {
         "digest": "2aefad2231f2203bd7f7eed3a907c2ce9b99c7e44859c0a29d81c64d89b45da9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-09-feedback-dashboard-ui.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-09-feedback-dashboard-ui.md"
       },
       {
         "digest": "e250615f081bc83f2bc987cd8c85a82ab30f9c5d97db0c53bb9eedb0dc71bc64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-10-scheduler-watchdog.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-10-scheduler-watchdog.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/046-VirtualAdminAgent/spec.md",
     "digest": "db7487c60338a5a62c1d1760b8a4197bd3262005db4b4fe3b6e04cb88835f0dd",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.631116Z",
+      "last_evidence_at": "2026-10-06T03:28:14.967025Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-03-18T14:18:02+07:00",
       "spec_last_changed_at": "2026-03-18T14:18:02+07:00"
@@ -329,7 +329,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.631116Z"
+    "updated_at": "2026-10-06T03:28:14.967025Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -339,7 +339,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.631116Z",
+    "reconciled_at": "2026-10-06T03:28:14.967025Z",
     "sources": [
       {
         "digest": "db7487c60338a5a62c1d1760b8a4197bd3262005db4b4fe3b6e04cb88835f0dd",
@@ -349,77 +349,77 @@
       {
         "digest": "862b2bde2f26e0856fd2b6795210f1441a505e4125ff41570ba59a2f751a9f70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/claude-plan.md"
+        "path": "specs/feature/046-VirtualAdminAgent/claude-plan.md"
       },
       {
         "digest": "10b7cb7f543dc0b92b6d19de5e64f8a2899e87df9a544fe77d713e3609771da3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/claude-spec.md"
+        "path": "specs/feature/046-VirtualAdminAgent/claude-spec.md"
       },
       {
         "digest": "3939756807328235c6b3beb11091c2a078398c6fb64399d8027f612ce6d694d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/implementation/deep_implement_config.json"
+        "path": "specs/feature/046-VirtualAdminAgent/implementation/deep_implement_config.json"
       },
       {
         "digest": "bf3adc4cf747f2b85f24f57c0a1f312793294943f9d2d410ca8c5dfb3180183c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/reviews/self-review-round-1.md"
+        "path": "specs/feature/046-VirtualAdminAgent/reviews/self-review-round-1.md"
       },
       {
         "digest": "8b02a02ca519e9b8f1b57a76fec8f7878dad6e73bad59afc4fa4204f8f147c89",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/index.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/index.md"
       },
       {
         "digest": "cc28e7472d26a0a4a98ca5e06ac2d5842dd6dc8523e927502554af0cb3691cee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-01-schema-system-user.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-01-schema-system-user.md"
       },
       {
         "digest": "dee7cf89eb23d009fe47545b8b0f5de7c1064f391c5b03a11259825838a3ade8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-02-sensor-framework.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-02-sensor-framework.md"
       },
       {
         "digest": "a10c01d363fcc3964a04d06acbcfc3bc78069085659b3bd70460af319dd1fe9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-03-rule-engine.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-03-rule-engine.md"
       },
       {
         "digest": "0262eff1366a34804c539a2f3b39696af9ec64aa5dc42cd84d19d2cf8f97f43f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-04-actuators-approval.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-04-actuators-approval.md"
       },
       {
         "digest": "7e18fccd42f0c10728ec7cc6e6ea24c18bbd4a9ad93157398eed71087fa0b9bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-05-notification-sse.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-05-notification-sse.md"
       },
       {
         "digest": "9b50a83d59164f589b4d01cfc4e7154d2aadb1b6de1c60cdfbef15f58289a60e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-06-admin-chat.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-06-admin-chat.md"
       },
       {
         "digest": "f46333ff3436fd281aef8dc3ccaf9e596c469bb90ecc1ab720cc5ca550412b97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-07-feedback-backend.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-07-feedback-backend.md"
       },
       {
         "digest": "5bb550190b04591939d66bb54fa6d2747f57e4f8fa56d2124c9a9a24f0f49192",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-08-guardian-dashboard-ui.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-08-guardian-dashboard-ui.md"
       },
       {
         "digest": "2aefad2231f2203bd7f7eed3a907c2ce9b99c7e44859c0a29d81c64d89b45da9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-09-feedback-dashboard-ui.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-09-feedback-dashboard-ui.md"
       },
       {
         "digest": "e250615f081bc83f2bc987cd8c85a82ab30f9c5d97db0c53bb9eedb0dc71bc64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-10-scheduler-watchdog.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-10-scheduler-watchdog.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -739,77 +739,77 @@
       {
         "digest": "862b2bde2f26e0856fd2b6795210f1441a505e4125ff41570ba59a2f751a9f70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/claude-plan.md"
+        "path": "specs/feature/046-VirtualAdminAgent/claude-plan.md"
       },
       {
         "digest": "10b7cb7f543dc0b92b6d19de5e64f8a2899e87df9a544fe77d713e3609771da3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/claude-spec.md"
+        "path": "specs/feature/046-VirtualAdminAgent/claude-spec.md"
       },
       {
         "digest": "3939756807328235c6b3beb11091c2a078398c6fb64399d8027f612ce6d694d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/implementation/deep_implement_config.json"
+        "path": "specs/feature/046-VirtualAdminAgent/implementation/deep_implement_config.json"
       },
       {
         "digest": "bf3adc4cf747f2b85f24f57c0a1f312793294943f9d2d410ca8c5dfb3180183c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/reviews/self-review-round-1.md"
+        "path": "specs/feature/046-VirtualAdminAgent/reviews/self-review-round-1.md"
       },
       {
         "digest": "8b02a02ca519e9b8f1b57a76fec8f7878dad6e73bad59afc4fa4204f8f147c89",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/index.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/index.md"
       },
       {
         "digest": "cc28e7472d26a0a4a98ca5e06ac2d5842dd6dc8523e927502554af0cb3691cee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-01-schema-system-user.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-01-schema-system-user.md"
       },
       {
         "digest": "dee7cf89eb23d009fe47545b8b0f5de7c1064f391c5b03a11259825838a3ade8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-02-sensor-framework.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-02-sensor-framework.md"
       },
       {
         "digest": "a10c01d363fcc3964a04d06acbcfc3bc78069085659b3bd70460af319dd1fe9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-03-rule-engine.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-03-rule-engine.md"
       },
       {
         "digest": "0262eff1366a34804c539a2f3b39696af9ec64aa5dc42cd84d19d2cf8f97f43f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-04-actuators-approval.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-04-actuators-approval.md"
       },
       {
         "digest": "7e18fccd42f0c10728ec7cc6e6ea24c18bbd4a9ad93157398eed71087fa0b9bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-05-notification-sse.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-05-notification-sse.md"
       },
       {
         "digest": "9b50a83d59164f589b4d01cfc4e7154d2aadb1b6de1c60cdfbef15f58289a60e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-06-admin-chat.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-06-admin-chat.md"
       },
       {
         "digest": "f46333ff3436fd281aef8dc3ccaf9e596c469bb90ecc1ab720cc5ca550412b97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-07-feedback-backend.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-07-feedback-backend.md"
       },
       {
         "digest": "5bb550190b04591939d66bb54fa6d2747f57e4f8fa56d2124c9a9a24f0f49192",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-08-guardian-dashboard-ui.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-08-guardian-dashboard-ui.md"
       },
       {
         "digest": "2aefad2231f2203bd7f7eed3a907c2ce9b99c7e44859c0a29d81c64d89b45da9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-09-feedback-dashboard-ui.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-09-feedback-dashboard-ui.md"
       },
       {
         "digest": "e250615f081bc83f2bc987cd8c85a82ab30f9c5d97db0c53bb9eedb0dc71bc64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/046-VirtualAdminAgent/sections/section-10-scheduler-watchdog.md"
+        "path": "specs/feature/046-VirtualAdminAgent/sections/section-10-scheduler-watchdog.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -827,7 +827,7 @@
     "unresolved": 18
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.631116Z",
+  "updated_at": "2026-10-06T03:28:14.967025Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -92,13 +92,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/177-worker-minimax-music3-scoring/spec.md",
     "digest": "da93b66c6db590e8f3d36545a9b1de1c794ea97b0c01a8ab13aaa21b72c76650",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.540910Z",
+      "last_evidence_at": "2026-10-06T03:28:16.606498Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-05T07:29:01+07:00",
       "spec_last_changed_at": "2026-09-05T21:39:19+07:00"
@@ -125,7 +125,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.540910Z"
+    "updated_at": "2026-10-06T03:28:16.606498Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -135,7 +135,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.540910Z",
+    "reconciled_at": "2026-10-06T03:28:16.606498Z",
     "sources": [
       {
         "digest": "da93b66c6db590e8f3d36545a9b1de1c794ea97b0c01a8ab13aaa21b72c76650",
@@ -246,7 +246,7 @@
     "unresolved": 36
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.540910Z",
+  "updated_at": "2026-10-06T03:28:16.606498Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

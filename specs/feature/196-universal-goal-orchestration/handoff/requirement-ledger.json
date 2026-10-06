@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L12"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L12"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L12",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L12",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L13"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L13"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L13",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L13",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L19"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L19"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L19",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L19",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L56"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L56"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L56",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L56",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L59"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L59"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L59",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L59",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L175"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L175"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L175",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L175",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L204"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L204"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L204",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L219"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L219"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L219",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L481"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L481"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L481",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L481",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L630"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L630"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L630",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L630",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L779"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L779"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L779",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L814"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L814"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L814",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L970"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L970"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L970",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L1447"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L1447"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L1447",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L1447",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L1518"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L1518"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L1518",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L1518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L1761"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L1761"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L1761",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L1761",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L1977"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L1977"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L1977",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L1977",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L1978"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L1978"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L1978",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L1978",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L1998"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L1998"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L1998",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L1998",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2202"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2202"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2202",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2202",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2203"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2203"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2203",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2203",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2204"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2204"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2204",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2205"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2205"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2205",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2290"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2290"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2290",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2304"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2304"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2304",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2425"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2425"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2425",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2478"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2478"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2478",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2478",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2615"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2615"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2615",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2615",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2678"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2678"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2678",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2678",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2941"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2941"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L2941",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2941",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3112"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L3112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3112",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L3112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3121"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L3121"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3121",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L3121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3164"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L3164"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3164",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L3164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3315"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L3315"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3315",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L3315",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3363"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L3363"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3363",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L3363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3483"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L3483"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3483",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L3483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3504"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L3504"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3504",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L3504",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3533"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L3533"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3533",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L3533",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3593"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L3593"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3593",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L3593",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3650"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L3650"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3650",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L3650",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3664"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L3664"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3664",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L3664",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3979"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L3979"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L3979",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L3979",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4002"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4002"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4002",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4003"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4003"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4003",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4004"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4004"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4004",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4005"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4005"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4005",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4006"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4006"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4006",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4006",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4007"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4007"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4007",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4007",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4008"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4008"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4008",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4008",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4009"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4009"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4009",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4009",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4015"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4015"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4015",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4015",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4016"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4016"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4016",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4016",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4017"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4017"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4017",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4017",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4018"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4018"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4018",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4018",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4019"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4019"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4019",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4019",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4020"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4020"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4020",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4020",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4021"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4021"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4021",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4021",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4022"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4022"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4022",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4022",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4028"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4028"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4028",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4028",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4029"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4029"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4029",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4029",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4030"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4030"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4030",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4030",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4031"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4031"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4031",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4031",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4032"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4032"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4032",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4032",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4033"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4033"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4033",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4033",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4034"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4034"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4034",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4034",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4035"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4035"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4035",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4035",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4041"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4041"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4041",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4041",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4042"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4042"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4042",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4042",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4043"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4043"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4043",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4043",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4044"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4044"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4044",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4044",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4045"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4045"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4045",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4045",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4046"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4046"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4046",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4046",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4047"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4047"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4047",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4047",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4048"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4048"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4048",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4048",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4054"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4054"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4054",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4054",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4055"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4055"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4055",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4055",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4056"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4056"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4056",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4056",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4057"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4057"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4057",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4057",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4058"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4058"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4058",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4058",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4059"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4059"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4059",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4059",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4060"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4060"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4060",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4060",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4061"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4061"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4061",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4061",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4062"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4062"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4062",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4062",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4063"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4063"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4063",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4063",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4069"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4069"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4069",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4069",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4070"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4070"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4070",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4070",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4071"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4071"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4071",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4071",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4072"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4072"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4072",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4072",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4073"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4073"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4073",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4073",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4074"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4074"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4074",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4075"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4075"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4075",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4075",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4076"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4076"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4076",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4076",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4083"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4083"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4083",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4083",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4212"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4212"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4212",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4238"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4238"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4238",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4240"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4240"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4240",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4270"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4270"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4270",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4276"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4276"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4276",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4347"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4347"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4347",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4357"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4357"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4357",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4357",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4437"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4437"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4437",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4449"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4449"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4449",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4481"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4481"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4481",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4481",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4505"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4505"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4505",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4505",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4612"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4612"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4612",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4612",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4657"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4657"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4657",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4680"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4680"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4680",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4680",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4749"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4749"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4749",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4749",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4819"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4819"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4819",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4819",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4831"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4831"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4831",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4831",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4837"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4837"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4837",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4837",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4878"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4878"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4878",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4878",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4895"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4895"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4895",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4895",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4898"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4898"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4898",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4898",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4918"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4918"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4918",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4918",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4926"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4926"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4926",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4926",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4931"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4931"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4931",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4931",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4989"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L4989"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L4989",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L4989",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5027"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5027"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5027",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5027",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5032"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5032"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5032",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5032",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5041"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5041"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5041",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5041",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5074"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5074"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5074",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5085"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5085"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5085",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5085",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5090"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5090"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5090",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5090",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5106"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5106"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5106",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5159"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5159"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5159",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5192"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5192"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5192",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5192",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5203"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5203"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5203",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5203",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5209"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5209"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5209",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5239"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5239"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5239",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5267"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5267"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5267",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5271"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5271"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5271",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5279"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5279"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5279",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5299"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5299"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5299",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5305"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5305"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5305",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5305",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,10 +2975,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5330",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5637"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5330",
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5637"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5330",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2998,9 +2998,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5365"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5365"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5365",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5365",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3020,9 +3020,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5373"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5373"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5373",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3042,9 +3042,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5410"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5410"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5410",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5410",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3064,9 +3064,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5458"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5458"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5458",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5458",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3086,9 +3086,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5476"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5476"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5476",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5476",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3108,9 +3108,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5484"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5484"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5484",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5484",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3130,9 +3130,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5500"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5500"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5500",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3152,9 +3152,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5506"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5506"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5506",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5506",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3174,9 +3174,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5544"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5544"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5544",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3196,9 +3196,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5569"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5569"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5569",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5569",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3218,9 +3218,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5575"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5575"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5575",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5575",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3240,9 +3240,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5594"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5594"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5594",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5594",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3262,9 +3262,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5652"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5652"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5652",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3284,9 +3284,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5669"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5669"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5669",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3306,9 +3306,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5690"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5690"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5690",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3328,9 +3328,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5702"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5702"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5702",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5702",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3350,9 +3350,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5708"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5708"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5708",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3372,9 +3372,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5744"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5744"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5744",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5744",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3394,9 +3394,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5761"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5761"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5761",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5761",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3416,9 +3416,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5770"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5770"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5770",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5770",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3438,9 +3438,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5798"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5798"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5798",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5798",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3460,9 +3460,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5841"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5841"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5841",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5841",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3482,9 +3482,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5872"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5872"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5872",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5872",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3504,9 +3504,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5880"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5880"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5880",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5880",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3526,9 +3526,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5881"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5881"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5881",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5881",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3548,9 +3548,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5882"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5882"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5882",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5882",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3570,9 +3570,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5883"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5883"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5883",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5883",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3592,9 +3592,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5884"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5884"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5884",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5884",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3614,9 +3614,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5885"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5885"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5885",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5885",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3636,9 +3636,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5886"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5886"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5886",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5886",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3658,9 +3658,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5887"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5887"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5887",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5887",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3680,9 +3680,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5888"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5888"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5888",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5888",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3702,9 +3702,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5889"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5889"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5889",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5889",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3724,9 +3724,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5890"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5890"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5890",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5890",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3746,9 +3746,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5891"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5891"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5891",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5891",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3768,9 +3768,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5892"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5892"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5892",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5892",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3790,9 +3790,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5893"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5893"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5893",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5893",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3812,9 +3812,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5894"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5894"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5894",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5894",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3834,9 +3834,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5895"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5895"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5895",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5895",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3856,9 +3856,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5896"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5896"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5896",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5896",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3878,9 +3878,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5897"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5897"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5897",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5897",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3900,9 +3900,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5934"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5934"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5934",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5934",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3922,9 +3922,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5990"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L5990"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L5990",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5990",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3944,9 +3944,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6002"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6002"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6002",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3966,9 +3966,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6010"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6010"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6010",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6010",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3988,9 +3988,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6011"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6011"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6011",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6011",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4010,9 +4010,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6012"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6012"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6012",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6012",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4032,9 +4032,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6013"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6013"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6013",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6013",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4054,9 +4054,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6014"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6014"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6014",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6014",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4076,9 +4076,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6015"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6015"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6015",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6015",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4098,9 +4098,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6016"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6016"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6016",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6016",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4120,9 +4120,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6017"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6017"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6017",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6017",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4142,9 +4142,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6018"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6018"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6018",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6018",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4164,9 +4164,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6019"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6019"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6019",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6019",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4186,9 +4186,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6026"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6026"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6026",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6026",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4208,9 +4208,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6094"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6094"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6094",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6094",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4230,9 +4230,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6104"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6104"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6104",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4252,9 +4252,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6141"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6141"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6141",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4274,9 +4274,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6177"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6177"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6177",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6177",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4296,9 +4296,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6206"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6206"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6206",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4318,9 +4318,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6215"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6215"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6215",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4340,9 +4340,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6269"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6269"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6269",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4362,9 +4362,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6270"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6270"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6270",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4384,9 +4384,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6273"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6273"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6273",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6273",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4406,9 +4406,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6275"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6275"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6275",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6275",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4428,9 +4428,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6295"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6295"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6295",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4450,9 +4450,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6303"
+        "specs/feature/196-universal-goal-orchestration/spec.md#L6303"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/spec.md#L6303",
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

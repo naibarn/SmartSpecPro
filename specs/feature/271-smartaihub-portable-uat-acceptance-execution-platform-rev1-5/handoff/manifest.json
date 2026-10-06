@@ -1,0 +1,208 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "271",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L104",
+        "source_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
+        "successor_spec_id": "271"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md",
+    "digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T03:28:18.748354Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-10-06T09:55:22+07:00",
+      "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
+    },
+    "revision": "1.5",
+    "slug": "271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5",
+    "spec_id": "271",
+    "title": "Spec 271 — SmartAIHub Portable UAT Acceptance & Execution Platform"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T03:28:18.748354Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T03:28:18.748354Z",
+    "sources": [
+      {
+        "digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Implementation-Ready — Revision 1.5 — ten-pass decision-plane hardening (implementation unverified)",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md",
+        "source_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
+        "value": "Proposed / Implementation-Ready — Revision 1.5 — ten-pass decision-plane hardening (implementation unverified)"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Implementation-Ready — Revision 1.5 — ten-pass decision-plane hardening (implementation unverified)",
+        "line": 3,
+        "source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md",
+        "source_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
+        "value": "Proposed / Implementation-Ready — Revision 1.5 — ten-pass decision-plane hardening (implementation unverified)"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 287,
+    "unresolved": 287
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T03:28:18.748354Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

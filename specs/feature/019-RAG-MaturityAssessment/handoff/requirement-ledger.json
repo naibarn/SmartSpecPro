@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L934"
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L934"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L934",
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L934",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L999"
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L999"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L999",
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L999",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1000"
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L1000"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1000",
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L1000",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1001"
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L1001"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1001",
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L1001",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1002"
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L1002"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1002",
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L1002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1003"
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L1003"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1003",
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L1003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1004"
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L1004"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1004",
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L1004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1005"
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L1005"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1005",
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L1005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1006"
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L1006"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/019-RAG-MaturityAssessment/spec.md#L1006",
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L1006",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

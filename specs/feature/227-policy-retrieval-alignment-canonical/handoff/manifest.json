@@ -71,18 +71,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md",
     "digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.264134Z",
+      "last_evidence_at": "2026-10-06T03:28:17.864608Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-28T00:04:37+07:00"
     },
-    "revision": "1",
+    "revision": "5",
     "slug": "227-policy-retrieval-alignment-canonical",
     "spec_id": "227",
     "title": "Spec 227 — SmartAIHub Publishing Policy, EDSA & Platform Compliance Engine"
@@ -104,7 +104,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.264134Z"
+    "updated_at": "2026-10-06T03:28:17.864608Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,7 +114,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.264134Z",
+    "reconciled_at": "2026-10-06T03:28:17.864608Z",
     "sources": [
       {
         "digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
@@ -182,7 +182,7 @@
     "unresolved": 267
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.264134Z",
+  "updated_at": "2026-10-06T03:28:17.864608Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

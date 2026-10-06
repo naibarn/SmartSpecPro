@@ -16,7 +16,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
+        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
         "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
         "successor_spec_id": "252"
       },
@@ -30,7 +30,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L261",
+        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L261",
         "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
         "successor_spec_id": "252"
       },
@@ -44,7 +44,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
+        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
         "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
         "successor_spec_id": "252"
       },
@@ -56,19 +56,7 @@
         "referencing_spec_id": "256",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L560",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "252",
-        "referenced_spec_id": "252",
-        "referencing_spec_id": "256",
-        "relation_text": "replacement",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L560",
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L560",
         "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "successor_spec_id": "256"
       }
@@ -138,13 +126,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md",
     "digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.533187Z",
+      "last_evidence_at": "2026-10-06T03:28:18.312670Z",
       "last_runtime_reference_at": null,
       "spec_created_at": null,
       "spec_last_changed_at": null
@@ -152,7 +140,7 @@
     "revision": "1.2",
     "slug": "252-AI Film Studio — Chat-First Director Graph",
     "spec_id": "252",
-    "title": "Spec 252 — SmartAIHub AI Film Studio"
+    "title": "SmartAIHub AI Film Studio — Chat-First Director Graph, 3D Previsualization & Character Performance"
   },
   "implementation": {
     "checkpoint_shas": [],
@@ -171,7 +159,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.533187Z"
+    "updated_at": "2026-10-06T03:28:18.312670Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -181,7 +169,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.533187Z",
+    "reconciled_at": "2026-10-06T03:28:18.312670Z",
     "sources": [
       {
         "digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
@@ -249,7 +237,7 @@
     "unresolved": 27
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.533187Z",
+  "updated_at": "2026-10-06T03:28:18.312670Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

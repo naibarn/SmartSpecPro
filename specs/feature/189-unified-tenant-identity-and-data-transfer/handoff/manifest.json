@@ -17,77 +17,77 @@
       {
         "digest": "041505bb4bfc7be853514f076849334da221d305caa5aec18c666dd6e7c62c11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/claude-plan.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/claude-plan.md"
       },
       {
         "digest": "8a09e246530bd8a0fb6fb70f0e20a0b71be89825fcf1e46ebe2f4f27aa8ccab2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/claude-spec.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/claude-spec.md"
       },
       {
         "digest": "7369e8c6953c0888dfad87ccfd33ec20d77778a930d3df8d168b4a8fbf9a81a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/migration-rehearsal-2026-09-14.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/migration-rehearsal-2026-09-14.md"
       },
       {
         "digest": "ac361e4219f5941314cb00333575ea1cecb6606bf2003df63a8977a6351394a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "fb70cc9ec27a228ec81a3ba07cf048dd1a744e89f11451e42861d53cdfc744c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/self-review-round-1.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/self-review-round-1.md"
       },
       {
         "digest": "2a4e4fa5f7fb99a225fd96defb65e0529d137785dff8e393f7d4b1ef60342fef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/ten-round-review.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/ten-round-review.md"
       },
       {
         "digest": "1860de079546568965e439f8fb440c63d7b205556fe7ab060f2c35ec572ea816",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/index.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/index.md"
       },
       {
         "digest": "93b4e14a6655859b867614b87898544e385427f397a0a12470168ff46490ba0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-01-inventory-schema.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-01-inventory-schema.md"
       },
       {
         "digest": "0693e9ab5acd4eb42579a680bfe53c1cef1cfbfbf7cc2c7b53058ee8971ac64f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-02-tenant-admission-auth-sso.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-02-tenant-admission-auth-sso.md"
       },
       {
         "digest": "5ab075a846f4c16a0de81d8df883e57861fc448bf01a3852c0ca336e9fd5a056",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-03-authz-workspace.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-03-authz-workspace.md"
       },
       {
         "digest": "9679d87ef4b77db5f18a12f364367b4fe7a8ba948ac5800b0a97a5eeedb84156",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-04-system-admin-move.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-04-system-admin-move.md"
       },
       {
         "digest": "9023a6400ac60d477768f37465e6afdf2b05a2a9144d61f6464497e3c0481159",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-05-transfer-registry-preview.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-05-transfer-registry-preview.md"
       },
       {
         "digest": "a016432c825a0be9fd2176cfb3b1b2d59e3549647333c4c3312b174d6d5abd0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-06-transfer-execution-resume.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-06-transfer-execution-resume.md"
       },
       {
         "digest": "1e4b573934f5c849b95465d7397298184109b6a19c33f060124ccd1319d5dc7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-07-api-ui.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-07-api-ui.md"
       },
       {
         "digest": "84d20fe4766cae4a5ac79885b402da3712e6e71ec10038b4aed9882f9201c231",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-08-verification-rollout.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-08-verification-rollout.md"
       }
     ],
     "predecessors": [],
@@ -118,77 +118,77 @@
       {
         "digest": "041505bb4bfc7be853514f076849334da221d305caa5aec18c666dd6e7c62c11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/claude-plan.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/claude-plan.md"
       },
       {
         "digest": "8a09e246530bd8a0fb6fb70f0e20a0b71be89825fcf1e46ebe2f4f27aa8ccab2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/claude-spec.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/claude-spec.md"
       },
       {
         "digest": "7369e8c6953c0888dfad87ccfd33ec20d77778a930d3df8d168b4a8fbf9a81a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/migration-rehearsal-2026-09-14.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/migration-rehearsal-2026-09-14.md"
       },
       {
         "digest": "ac361e4219f5941314cb00333575ea1cecb6606bf2003df63a8977a6351394a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "fb70cc9ec27a228ec81a3ba07cf048dd1a744e89f11451e42861d53cdfc744c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/self-review-round-1.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/self-review-round-1.md"
       },
       {
         "digest": "2a4e4fa5f7fb99a225fd96defb65e0529d137785dff8e393f7d4b1ef60342fef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/ten-round-review.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/ten-round-review.md"
       },
       {
         "digest": "1860de079546568965e439f8fb440c63d7b205556fe7ab060f2c35ec572ea816",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/index.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/index.md"
       },
       {
         "digest": "93b4e14a6655859b867614b87898544e385427f397a0a12470168ff46490ba0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-01-inventory-schema.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-01-inventory-schema.md"
       },
       {
         "digest": "0693e9ab5acd4eb42579a680bfe53c1cef1cfbfbf7cc2c7b53058ee8971ac64f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-02-tenant-admission-auth-sso.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-02-tenant-admission-auth-sso.md"
       },
       {
         "digest": "5ab075a846f4c16a0de81d8df883e57861fc448bf01a3852c0ca336e9fd5a056",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-03-authz-workspace.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-03-authz-workspace.md"
       },
       {
         "digest": "9679d87ef4b77db5f18a12f364367b4fe7a8ba948ac5800b0a97a5eeedb84156",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-04-system-admin-move.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-04-system-admin-move.md"
       },
       {
         "digest": "9023a6400ac60d477768f37465e6afdf2b05a2a9144d61f6464497e3c0481159",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-05-transfer-registry-preview.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-05-transfer-registry-preview.md"
       },
       {
         "digest": "a016432c825a0be9fd2176cfb3b1b2d59e3549647333c4c3312b174d6d5abd0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-06-transfer-execution-resume.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-06-transfer-execution-resume.md"
       },
       {
         "digest": "1e4b573934f5c849b95465d7397298184109b6a19c33f060124ccd1319d5dc7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-07-api-ui.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-07-api-ui.md"
       },
       {
         "digest": "84d20fe4766cae4a5ac79885b402da3712e6e71ec10038b4aed9882f9201c231",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-08-verification-rollout.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-08-verification-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -220,89 +220,89 @@
       {
         "digest": "041505bb4bfc7be853514f076849334da221d305caa5aec18c666dd6e7c62c11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/claude-plan.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/claude-plan.md"
       },
       {
         "digest": "8a09e246530bd8a0fb6fb70f0e20a0b71be89825fcf1e46ebe2f4f27aa8ccab2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/claude-spec.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/claude-spec.md"
       },
       {
         "digest": "7369e8c6953c0888dfad87ccfd33ec20d77778a930d3df8d168b4a8fbf9a81a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/migration-rehearsal-2026-09-14.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/migration-rehearsal-2026-09-14.md"
       },
       {
         "digest": "ac361e4219f5941314cb00333575ea1cecb6606bf2003df63a8977a6351394a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "fb70cc9ec27a228ec81a3ba07cf048dd1a744e89f11451e42861d53cdfc744c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/self-review-round-1.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/self-review-round-1.md"
       },
       {
         "digest": "2a4e4fa5f7fb99a225fd96defb65e0529d137785dff8e393f7d4b1ef60342fef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/ten-round-review.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/ten-round-review.md"
       },
       {
         "digest": "1860de079546568965e439f8fb440c63d7b205556fe7ab060f2c35ec572ea816",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/index.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/index.md"
       },
       {
         "digest": "93b4e14a6655859b867614b87898544e385427f397a0a12470168ff46490ba0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-01-inventory-schema.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-01-inventory-schema.md"
       },
       {
         "digest": "0693e9ab5acd4eb42579a680bfe53c1cef1cfbfbf7cc2c7b53058ee8971ac64f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-02-tenant-admission-auth-sso.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-02-tenant-admission-auth-sso.md"
       },
       {
         "digest": "5ab075a846f4c16a0de81d8df883e57861fc448bf01a3852c0ca336e9fd5a056",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-03-authz-workspace.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-03-authz-workspace.md"
       },
       {
         "digest": "9679d87ef4b77db5f18a12f364367b4fe7a8ba948ac5800b0a97a5eeedb84156",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-04-system-admin-move.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-04-system-admin-move.md"
       },
       {
         "digest": "9023a6400ac60d477768f37465e6afdf2b05a2a9144d61f6464497e3c0481159",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-05-transfer-registry-preview.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-05-transfer-registry-preview.md"
       },
       {
         "digest": "a016432c825a0be9fd2176cfb3b1b2d59e3549647333c4c3312b174d6d5abd0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-06-transfer-execution-resume.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-06-transfer-execution-resume.md"
       },
       {
         "digest": "1e4b573934f5c849b95465d7397298184109b6a19c33f060124ccd1319d5dc7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-07-api-ui.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-07-api-ui.md"
       },
       {
         "digest": "84d20fe4766cae4a5ac79885b402da3712e6e71ec10038b4aed9882f9201c231",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-08-verification-rollout.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-08-verification-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md",
     "digest": "e636171f8a795643862c89825b8bffc37b3fdf07269476339c7abf4e148f74fe",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.619566Z",
+      "last_evidence_at": "2026-10-06T03:28:16.734049Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-15T08:20:57+07:00",
       "spec_last_changed_at": "2026-09-15T08:20:57+07:00"
@@ -329,7 +329,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.619566Z"
+    "updated_at": "2026-10-06T03:28:16.734049Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -339,7 +339,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.619566Z",
+    "reconciled_at": "2026-10-06T03:28:16.734049Z",
     "sources": [
       {
         "digest": "e636171f8a795643862c89825b8bffc37b3fdf07269476339c7abf4e148f74fe",
@@ -349,77 +349,77 @@
       {
         "digest": "041505bb4bfc7be853514f076849334da221d305caa5aec18c666dd6e7c62c11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/claude-plan.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/claude-plan.md"
       },
       {
         "digest": "8a09e246530bd8a0fb6fb70f0e20a0b71be89825fcf1e46ebe2f4f27aa8ccab2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/claude-spec.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/claude-spec.md"
       },
       {
         "digest": "7369e8c6953c0888dfad87ccfd33ec20d77778a930d3df8d168b4a8fbf9a81a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/migration-rehearsal-2026-09-14.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/migration-rehearsal-2026-09-14.md"
       },
       {
         "digest": "ac361e4219f5941314cb00333575ea1cecb6606bf2003df63a8977a6351394a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "fb70cc9ec27a228ec81a3ba07cf048dd1a744e89f11451e42861d53cdfc744c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/self-review-round-1.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/self-review-round-1.md"
       },
       {
         "digest": "2a4e4fa5f7fb99a225fd96defb65e0529d137785dff8e393f7d4b1ef60342fef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/ten-round-review.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/ten-round-review.md"
       },
       {
         "digest": "1860de079546568965e439f8fb440c63d7b205556fe7ab060f2c35ec572ea816",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/index.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/index.md"
       },
       {
         "digest": "93b4e14a6655859b867614b87898544e385427f397a0a12470168ff46490ba0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-01-inventory-schema.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-01-inventory-schema.md"
       },
       {
         "digest": "0693e9ab5acd4eb42579a680bfe53c1cef1cfbfbf7cc2c7b53058ee8971ac64f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-02-tenant-admission-auth-sso.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-02-tenant-admission-auth-sso.md"
       },
       {
         "digest": "5ab075a846f4c16a0de81d8df883e57861fc448bf01a3852c0ca336e9fd5a056",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-03-authz-workspace.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-03-authz-workspace.md"
       },
       {
         "digest": "9679d87ef4b77db5f18a12f364367b4fe7a8ba948ac5800b0a97a5eeedb84156",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-04-system-admin-move.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-04-system-admin-move.md"
       },
       {
         "digest": "9023a6400ac60d477768f37465e6afdf2b05a2a9144d61f6464497e3c0481159",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-05-transfer-registry-preview.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-05-transfer-registry-preview.md"
       },
       {
         "digest": "a016432c825a0be9fd2176cfb3b1b2d59e3549647333c4c3312b174d6d5abd0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-06-transfer-execution-resume.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-06-transfer-execution-resume.md"
       },
       {
         "digest": "1e4b573934f5c849b95465d7397298184109b6a19c33f060124ccd1319d5dc7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-07-api-ui.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-07-api-ui.md"
       },
       {
         "digest": "84d20fe4766cae4a5ac79885b402da3712e6e71ec10038b4aed9882f9201c231",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-08-verification-rollout.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-08-verification-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -469,77 +469,77 @@
       {
         "digest": "041505bb4bfc7be853514f076849334da221d305caa5aec18c666dd6e7c62c11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/claude-plan.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/claude-plan.md"
       },
       {
         "digest": "8a09e246530bd8a0fb6fb70f0e20a0b71be89825fcf1e46ebe2f4f27aa8ccab2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/claude-spec.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/claude-spec.md"
       },
       {
         "digest": "7369e8c6953c0888dfad87ccfd33ec20d77778a930d3df8d168b4a8fbf9a81a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/migration-rehearsal-2026-09-14.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/migration-rehearsal-2026-09-14.md"
       },
       {
         "digest": "ac361e4219f5941314cb00333575ea1cecb6606bf2003df63a8977a6351394a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "fb70cc9ec27a228ec81a3ba07cf048dd1a744e89f11451e42861d53cdfc744c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/self-review-round-1.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/self-review-round-1.md"
       },
       {
         "digest": "2a4e4fa5f7fb99a225fd96defb65e0529d137785dff8e393f7d4b1ef60342fef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/ten-round-review.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/reviews/ten-round-review.md"
       },
       {
         "digest": "1860de079546568965e439f8fb440c63d7b205556fe7ab060f2c35ec572ea816",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/index.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/index.md"
       },
       {
         "digest": "93b4e14a6655859b867614b87898544e385427f397a0a12470168ff46490ba0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-01-inventory-schema.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-01-inventory-schema.md"
       },
       {
         "digest": "0693e9ab5acd4eb42579a680bfe53c1cef1cfbfbf7cc2c7b53058ee8971ac64f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-02-tenant-admission-auth-sso.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-02-tenant-admission-auth-sso.md"
       },
       {
         "digest": "5ab075a846f4c16a0de81d8df883e57861fc448bf01a3852c0ca336e9fd5a056",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-03-authz-workspace.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-03-authz-workspace.md"
       },
       {
         "digest": "9679d87ef4b77db5f18a12f364367b4fe7a8ba948ac5800b0a97a5eeedb84156",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-04-system-admin-move.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-04-system-admin-move.md"
       },
       {
         "digest": "9023a6400ac60d477768f37465e6afdf2b05a2a9144d61f6464497e3c0481159",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-05-transfer-registry-preview.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-05-transfer-registry-preview.md"
       },
       {
         "digest": "a016432c825a0be9fd2176cfb3b1b2d59e3549647333c4c3312b174d6d5abd0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-06-transfer-execution-resume.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-06-transfer-execution-resume.md"
       },
       {
         "digest": "1e4b573934f5c849b95465d7397298184109b6a19c33f060124ccd1319d5dc7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-07-api-ui.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-07-api-ui.md"
       },
       {
         "digest": "84d20fe4766cae4a5ac79885b402da3712e6e71ec10038b4aed9882f9201c231",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-08-verification-rollout.md"
+        "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-08-verification-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -557,7 +557,7 @@
     "unresolved": 71
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.619566Z",
+  "updated_at": "2026-10-06T03:28:16.734049Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

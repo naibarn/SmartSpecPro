@@ -11,6 +11,7 @@
       {
         "kind": "DUPLICATE_SPEC_ID",
         "paths": [
+          "specs/feature/164-worker-app-ux-localization-and-series-workspace",
           "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure"
         ]
       }
@@ -78,13 +79,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md",
     "digest": "cc3ab1ff99c19adb70a66456c7d8db43de0b585d790e6b0cc810ccaa8f1cbdde",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.448115Z",
+      "last_evidence_at": "2026-10-06T03:28:16.443770Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-30T21:05:27+07:00",
       "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
@@ -111,7 +112,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.448115Z"
+    "updated_at": "2026-10-06T03:28:16.443770Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -121,7 +122,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.448115Z",
+    "reconciled_at": "2026-10-06T03:28:16.443770Z",
     "sources": [
       {
         "digest": "cc3ab1ff99c19adb70a66456c7d8db43de0b585d790e6b0cc810ccaa8f1cbdde",
@@ -189,7 +190,7 @@
     "unresolved": 86
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.448115Z",
+  "updated_at": "2026-10-06T03:28:16.443770Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

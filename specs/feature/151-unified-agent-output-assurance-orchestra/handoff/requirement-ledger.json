@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L14"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L14"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L14",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L14",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L53"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L53"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L53",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L53",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L63"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L63"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L63",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L63",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L65"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L65"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L65",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L67"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L67"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L67",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L68"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L68"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L68",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L69"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L69"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L69",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L70"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L70"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L70",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L71"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L71"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L71",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L72"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L72"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L72",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L74"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L74"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L74",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L76"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L76"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L76",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L76",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L78"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L78"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L78",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L90"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L90"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L90",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L140"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L140"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L140",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L160"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L160"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L160",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L191"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L191"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L191",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L192"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L192"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L192",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L192",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L240"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L240"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L240",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L241"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L241"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L241",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L261"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L261"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L261",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L296"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L296"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L296",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L351"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L351"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L351",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L390"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L390"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L390",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L397"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L397"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L397",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L401"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L401"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L401",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L403"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L403"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L403",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L403",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L417"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L417"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L417",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L430"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L430"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L430",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L433"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L433"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L433",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L433",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L445"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L445"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L445",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L460"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L460"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L460",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L460",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L461"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L461"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L461",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L461",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L472"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L472"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L472",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L472",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L481"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L481"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L481",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L481",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L486"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L486"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L486",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L486",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L487"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L487"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L487",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L487",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L490"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L490"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L490",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L490",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L505"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L505"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L505",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L505",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L527"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L527"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L527",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L529"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L529"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L529",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L530"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L530"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L530",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L530",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L546"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L546"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L546",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L546",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L551"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L551"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L551",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L565"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L565"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L565",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L565",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L570"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L570"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L570",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L570",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L606"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L606"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L606",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L606",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L613"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L613"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L613",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L613",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L624"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L624"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L624",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L625"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L625"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L625",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L632"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L632"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L632",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L657"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L657"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L657",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L756"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L756"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L756",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L794"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L794"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L794",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L794",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L805"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L805"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L805",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L805",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L825"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L825"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L825",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L825",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L826"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L826"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L826",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L826",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L827"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L827"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L827",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L827",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L829"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L829"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L829",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L829",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L849"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L849"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L849",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L849",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L893"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L893"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L893",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L893",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L909"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L909"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L909",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L909",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L929"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L929"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L929",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L929",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L931"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L931"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L931",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L931",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L957"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L957"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L957",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L957",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L975"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L975"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L975",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L975",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1011"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1011"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1011",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1011",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1018"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1018"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1018",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1018",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1032"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1032"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1032",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1032",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1037"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1037"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1037",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1037",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1093"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1093"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1093",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1093",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1095"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1095"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1095",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1095",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1108"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1108"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1108",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1114"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1114"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1114",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1116"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1116"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1116",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1117"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1117"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1117",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1119"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1119"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1119",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1120"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1120"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1120",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1120",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1121"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1121"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1121",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1122"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1122"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1122",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1123"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1123"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1123",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1124"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1124"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1124",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1125"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1125"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1125",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1128"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1128"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1128",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1130"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1130"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1130",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1133"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1133",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1139"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1139"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1139",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1141"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1141"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1141",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1143"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1143"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1143",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1145"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1145"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1145",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1145",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1147"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1147"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1147",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1148"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1148"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1148",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1150"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1150",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1153"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1153"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1153",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1155"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1155"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1155",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1156"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1156"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1156",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1158"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1158"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1158",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1159"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1159"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1159",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1160"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1160"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1160",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1161"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1161"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1161",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1163"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1163"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1163",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1165"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1165"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1165",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1167"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1167"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1167",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1167",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1169"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1169"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1169",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1171"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1171"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1171",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1172"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1172"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1172",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1172",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1173"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1173"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1173",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1173",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1176"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1176"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1176",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1178"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1178"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1178",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1180"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1180"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1180",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1238"
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1238"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1238",
+      "authority_source": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md#L1238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

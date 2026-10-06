@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
-# 233 — Spec 233 — SmartAIHub Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle
+# 233 — SmartAIHub Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 95 unresolved of 95
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 6
+- Manifest generation: 7
 
 ## Source-declared status and relationship claims
 

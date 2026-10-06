@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L44"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L44"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L44",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L44",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L50"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L50"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L50",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L109"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L109"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L109",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L125"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L125"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L125",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L131"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L131"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L131",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L174"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L174"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L174",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L186"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L186"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L186",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L194"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L194"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L194",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L218"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L218"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L218",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L263"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L263"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L263",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L263",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L348"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L348"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L348",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L417"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L417"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L417",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L493"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L493"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L493",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L493",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L509"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L509"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L509",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L509",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L604"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L604"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L604",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L604",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L632"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L632"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L632",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L633"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L633"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L633",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L633",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L655"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L655"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L655",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L655",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L665"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L665"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L665",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L665",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L798"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L798"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L798",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L798",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L814"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L814"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L814",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L856"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L856"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L856",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L856",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L908"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L908"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L908",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L908",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L932"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L932"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L932",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L932",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L938"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L938"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L938",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L938",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L962"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L962"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L962",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L962",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L976"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L976"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L976",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L976",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1089"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1089"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1089",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1089",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1186"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1186"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1186",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1240"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1240"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1240",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1248"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1248"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1248",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1383"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1383"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1383",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1424"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1424"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1424",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1424",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1544"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1544"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1544",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1602"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1602"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1602",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1612"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1612"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1612",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1612",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1691"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1691"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1691",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1746"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1746"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1746",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1850"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1850"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1850",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1850",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1865"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1865"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1865",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1865",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2176"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2176"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2176",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2178"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2178"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2178",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2179"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2179"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2179",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2180"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2180"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2180",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2181"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2181"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2181",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2182"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2182"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2182",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2183"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2183"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2183",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2184"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2184"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2184",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2185"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2185"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2185",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2186"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2186"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2186",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2187"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2187"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2187",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2229"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2229"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2229",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2230"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2230"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2230",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2231"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2231"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2231",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2232"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2232"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2232",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2256"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2256"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2256",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2296"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2296"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2296",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2619"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2619"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2619",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2621"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2621"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2621",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2622"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2622"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2622",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2623"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2623"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2623",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2624"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2624"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2624",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2625"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2625"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2625",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2626"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2626"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2626",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2627"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2627"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2627",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2628"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2628"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2628",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2629"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2629"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2629",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2630"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2630"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2630",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2630",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2631"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2631"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2631",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2632"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2632"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2632",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2633"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2633"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2633",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2633",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2634"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2634"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2634",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2642"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2642"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2642",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2644"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2644"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2644",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2645"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2645"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2645",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2645",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2646"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2646"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2646",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2647"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2647"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2647",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2647",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2648"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2648"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2648",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2648",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2649"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2649"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2649",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2650"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2650"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2650",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2650",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2651"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2651"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2651",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2651",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2652"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2652"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2652",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2653"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2653"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2653",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2654"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2654"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2654",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2654",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2708"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2708"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2708",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2709"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2709"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2709",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2709",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2710"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2710"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2710",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2710",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2711"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2711"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2711",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2711",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2712"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2712"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2712",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2713"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2713"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2713",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2717"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2717"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2717",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2717",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2718"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2718"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2718",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2718",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2719"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2719"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2719",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2719",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2720"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2720"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2720",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2720",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2724"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2724"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2724",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2725"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2725"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2725",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2725",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2726"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2726"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2726",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2726",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2727"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2727"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2727",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2727",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2728"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2728"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2728",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2728",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2732"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2732"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2732",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2732",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2733"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2733"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2733",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2734"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2734"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2734",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2735"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2735"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2735",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2735",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2739"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2739"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2739",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2739",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2740"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2740"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2740",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2741"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2741"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2741",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2742"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2742"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2742",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2742",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2743"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2743"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2743",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2743",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2747"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2747"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2747",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2748"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2748"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2748",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2749"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2749"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2749",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2749",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2750"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2750"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2750",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2750",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2754"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2754"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2754",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2754",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2755"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2755"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2755",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2756"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2756"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2756",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2757"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2757"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2757",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2758"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2758"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2758",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2762"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2762"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2762",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2762",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2763"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2763"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2763",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2763",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2764"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2764"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2764",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2764",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2765"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2765"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2765",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2765",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2842"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2842"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2842",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2842",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2869"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2869"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2869",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2869",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2882"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2882"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2882",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2882",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2958"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2958"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2958",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2958",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2990"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2990"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2990",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2990",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2996"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2996"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2996",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3001"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3001"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3001",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3001",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3003"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3003"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3003",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3004"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3004"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3004",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3005"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3005"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3005",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3007"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3007"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3007",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3007",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3047"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3047"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3047",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3047",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3086"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3086"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3086",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3086",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3092"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3092"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3092",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3092",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3133"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3133",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3224"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3224"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3224",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3224",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3254"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3254"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3254",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3273"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3273"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3273",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3273",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3305"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3305"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3305",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3305",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3343"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3343"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3343",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3343",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3389"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3389"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3389",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3397"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3397"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3397",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3509"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3509"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3509",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3509",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3531"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3531"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3531",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3531",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3588"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3588"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3588",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3588",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3616"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3616"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3616",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3618"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3618"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3618",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3622"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3622"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3622",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3644"
+        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3644"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3644",
+      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L23"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L23"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L23",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L23",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L37"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L37"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L37",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L39"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L39"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L39",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L39",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L52"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L52"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L52",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L60"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L60"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L60",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L60",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L62"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L62"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L62",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L64"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L64"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L64",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L64",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L66"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L66"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L66",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L68"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L68"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L68",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L70"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L70"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L70",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L102"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L102"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L102",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L126"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L126"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L126",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L130"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L130"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L130",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L136"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L136"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L136",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L136",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L150"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L150",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L154"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L154"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L154",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L173"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L173"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L173",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L173",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L187"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L187"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L187",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L189"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L189"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L189",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L189",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L190"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L190"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L190",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L191"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L191"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L191",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L192"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L192"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L192",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L192",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L193"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L193"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L193",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L193",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L194"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L194"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L194",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L195"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L195"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L195",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L196"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L196"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L196",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L196",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L197"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L197"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L197",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L198"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L198"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L198",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L199"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L199"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L199",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L200"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L200"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L200",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L201"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L201"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L201",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L201",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L202"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L202"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L202",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L202",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L203"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L203"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L203",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L203",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L204"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L204"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L204",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L205"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L205"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L205",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L206"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L206"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L206",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L212"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L212"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L212",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L260"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L260"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L260",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L269"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L269"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L269",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L278"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L278"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L278",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L279"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L279"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L279",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L280"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L280"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L280",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L282"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L282"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L282",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L283"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L283"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L283",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L289"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L289"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L289",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L291"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L291"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L291",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L291",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L292"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L292"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L292",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L293"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L293"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L293",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L294"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L294"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L294",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L295"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L295"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L295",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L297"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L297"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L297",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L298"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L298"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L298",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L298",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L299"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L299"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L299",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L300"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L300"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L300",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L300",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L301"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L301"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L301",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L301",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L431"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L431"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L431",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L488"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L488"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L488",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L488",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L534"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L534"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L534",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L534",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L540"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L540"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L540",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L540",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L566"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L566"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L566",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L566",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L577"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L577"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L577",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L577",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L583"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L583"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L583",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L583",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L604"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L604"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L604",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L604",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L610"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L610"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L610",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L610",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L632"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L632"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L632",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L640"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L640"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L640",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L641"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L641"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L641",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L641",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L642"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L642"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L642",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L643"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L643"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L643",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L644"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L644"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L644",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L645"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L645"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L645",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L645",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L646"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L646"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L646",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L650"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L650"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L650",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L650",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L651"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L651"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L651",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L651",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L652"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L652"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L652",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L653"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L653"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L653",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L654"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L654"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L654",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L654",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L655"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L655"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L655",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L655",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L658"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L658"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L658",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L661"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L661"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L661",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L661",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L668"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L668"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L668",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L668",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L669"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L669"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L669",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L670"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L670"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L670",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L671"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L671"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L671",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L671",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L672"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L672"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L672",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L673"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L673"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L673",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L679"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L679"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L679",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L679",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L699"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L699"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L699",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L705"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L705"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L705",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L705",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L741"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L741"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L741",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L749"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L749"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L749",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L749",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L784"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L784"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L784",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L784",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L802"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L802"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L802",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L802",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L808"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L808"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L808",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L808",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L842"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L842"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L842",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L842",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L848"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L848"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L848",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L848",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L854"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L854"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L854",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L854",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L857"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L857"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L857",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L857",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L863"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L863"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L863",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L863",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L899"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L899"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L899",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L899",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L930"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L930"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L930",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L930",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L933"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L933"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L933",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L933",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L938"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L938"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L938",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L938",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L946"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L946"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L946",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L946",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L948"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L948"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L948",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L948",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L954"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L954"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L954",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L954",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L959"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L959"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L959",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L959",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L975"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L975"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L975",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L975",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1019"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1019"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1019",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1019",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1037"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1037"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1037",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1037",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1041"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1041"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1041",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1041",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1073"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1073"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1073",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1073",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1077"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1077"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1077",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1077",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1098"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1098"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1098",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1098",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1114"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1114"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1114",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1126"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1126"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1126",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1140"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1140"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1140",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1153"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1153"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1153",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1157"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1157"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1157",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1172"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1172"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1172",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1172",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1176"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1176"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1176",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1183"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1183"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1183",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1191"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1191"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1191",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1216"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1216"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1216",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1218"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1218"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1218",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1236"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1236"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1236",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1260"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1260"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1260",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1272"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1272"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1272",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1290"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1290"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1290",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1309"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1309"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1309",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1309",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1325"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1325"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1325",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1325",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1329"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1329"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1329",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1329",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1335"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1335"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1335",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1357"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1357"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1357",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1357",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1365"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1365"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1365",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1365",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1393"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1393"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1393",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1393",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1417"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1417"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1417",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1428"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1428"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1428",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1428",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1432"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1432"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1432",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1442"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1442"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1442",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1442",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1444"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1444"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1444",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1444",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1474"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1474"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1474",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1474",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1480"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1480"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1480",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1493"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1493"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1493",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1493",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1495"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1495"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1495",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1495",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1501"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1501"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1501",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1501",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1503"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1503"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1503",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1503",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1519"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1519"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1519",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1519",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1525"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1525"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1525",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1527"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1527"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1527",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1543"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1543"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1543",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1569"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1569"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1569",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1569",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1571"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1571"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1571",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1571",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1579"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1579"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1579",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1579",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1581"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1581"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1581",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1581",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1589"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1589"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1589",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1589",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1603"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1603"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1603",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1609"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1609"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1609",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1609",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1611"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1611"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1611",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1613"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1613"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1613",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1613",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1636"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1636"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1636",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1664"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1664"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1664",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1664",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3569,9 +3569,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1674"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1674"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1674",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1674",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3591,9 +3591,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1709"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1709"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1709",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1709",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3613,9 +3613,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1713"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1713"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1713",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3635,9 +3635,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1717"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1717"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1717",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1717",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3657,9 +3657,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1736"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1736"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1736",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1736",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3679,9 +3679,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1806"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1806"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1806",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1806",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3701,9 +3701,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1823"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1823"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1823",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1823",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3723,9 +3723,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1838"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1838"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1838",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1838",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3745,9 +3745,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1844"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1844"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1844",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1844",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3767,9 +3767,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1871"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1871"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1871",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1871",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3789,9 +3789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1877"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1877"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1877",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1877",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3811,9 +3811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1886"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1886"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1886",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1886",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3833,9 +3833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1906"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1906"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1906",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1906",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3855,9 +3855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1917"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1917"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1917",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1917",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3877,9 +3877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1943"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1943"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1943",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1943",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3899,9 +3899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1955"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1955"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1955",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1955",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3921,9 +3921,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1957"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1957"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1957",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1957",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3943,9 +3943,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1980"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1980"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1980",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1980",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3965,9 +3965,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2007"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2007"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2007",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2007",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3987,9 +3987,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2023"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2023"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2023",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2023",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4009,9 +4009,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2061"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2061"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2061",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2061",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4031,9 +4031,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2063"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2063"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2063",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2063",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4053,9 +4053,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2065"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2065"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2065",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2065",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4075,9 +4075,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2067"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2067"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2067",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2067",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4097,9 +4097,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2089"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2089"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2089",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2089",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4119,9 +4119,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2095"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2095"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2095",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2095",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4141,9 +4141,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2113"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2113"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2113",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4163,9 +4163,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2131"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2131"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2131",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4185,9 +4185,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2133"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2133",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4207,9 +4207,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2162"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2162"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2162",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4229,9 +4229,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2168"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2168"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2168",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4251,9 +4251,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2200"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2200"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2200",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4273,9 +4273,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2204"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2204"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2204",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4295,9 +4295,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2240"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2240"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2240",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4317,9 +4317,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2254"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2254"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2254",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4339,9 +4339,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2256"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2256"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2256",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4361,9 +4361,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2270"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2270"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2270",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4383,9 +4383,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2299"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2299"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2299",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4405,9 +4405,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2337"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2337"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2337",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4427,9 +4427,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2372"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2372"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2372",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4449,9 +4449,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2374"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2374"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2374",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2374",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4471,9 +4471,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2438"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2438"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2438",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2438",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4493,9 +4493,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2478"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2478"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2478",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2478",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4515,9 +4515,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2495"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2495"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2495",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2495",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4537,9 +4537,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2519"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2519"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2519",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2519",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4559,9 +4559,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2543"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2543"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2543",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4581,9 +4581,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2567"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2567"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2567",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2567",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4603,9 +4603,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2586"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2586"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2586",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2586",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4625,9 +4625,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2614"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2614"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2614",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2614",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4647,9 +4647,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2624"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2624"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2624",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4669,9 +4669,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2627"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2627"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2627",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4691,9 +4691,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2631"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2631"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2631",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4713,9 +4713,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2635"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2635"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2635",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2635",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4735,9 +4735,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2657"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2657"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2657",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4757,9 +4757,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2663"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2663"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2663",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2663",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4779,9 +4779,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2675"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2675"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2675",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2675",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4801,9 +4801,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2747"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2747"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2747",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4823,9 +4823,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2805"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2805"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2805",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2805",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4845,9 +4845,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2832"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2832"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2832",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2832",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4867,9 +4867,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2851"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2851"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2851",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2851",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4889,9 +4889,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2860"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2860"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2860",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2860",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4911,9 +4911,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2877"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2877"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2877",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2877",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4933,9 +4933,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2894"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2894"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2894",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2894",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4955,9 +4955,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2919"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2919"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2919",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2919",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4977,9 +4977,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2925"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2925"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2925",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2925",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4999,9 +4999,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2935"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2935"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2935",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2935",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5021,9 +5021,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2943"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2943"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2943",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2943",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5043,9 +5043,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2945"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2945"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2945",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2945",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5065,9 +5065,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2976"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2976"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2976",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2976",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5087,9 +5087,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2980"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2980"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2980",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2980",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5109,9 +5109,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2996"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2996"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2996",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5131,9 +5131,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3000"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3000"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3000",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3000",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5153,9 +5153,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3017"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3017"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3017",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3017",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5175,9 +5175,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3024"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3024"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3024",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3024",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5197,9 +5197,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3030"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3030"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3030",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3030",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5219,9 +5219,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3103"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3103"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3103",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5241,9 +5241,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3104"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3104"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3104",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5263,9 +5263,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3106"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3106"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3106",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5285,9 +5285,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3188"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3188"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3188",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5307,9 +5307,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3209"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3209"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3209",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5329,9 +5329,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3298"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3298"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3298",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3298",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5351,9 +5351,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3328"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3328"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3328",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3328",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5373,9 +5373,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3376"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3376"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3376",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5395,9 +5395,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3445"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3445"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3445",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5417,9 +5417,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3468"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3468"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3468",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5439,9 +5439,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3580"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3580"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3580",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3580",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5461,9 +5461,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3678"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3678"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3678",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3678",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5483,9 +5483,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3688"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3688"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3688",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5505,9 +5505,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3821"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3821"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3821",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3821",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5527,9 +5527,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3830"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3830"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3830",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3830",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5549,9 +5549,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3834"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3834"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3834",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3834",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5571,9 +5571,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3840"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3840"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3840",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3840",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5593,9 +5593,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3842"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3842"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3842",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3842",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5615,9 +5615,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3859"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3859"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3859",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3859",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5637,9 +5637,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3863"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3863"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3863",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3863",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5659,9 +5659,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3865"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3865"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3865",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3865",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5681,9 +5681,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3866"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3866"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3866",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3866",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5703,9 +5703,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3867"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3867"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3867",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3867",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5725,9 +5725,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3868"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3868"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3868",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3868",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5747,9 +5747,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3869"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3869"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3869",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3869",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5769,9 +5769,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3870"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3870"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3870",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3870",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5791,9 +5791,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3871"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3871"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3871",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3871",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5813,9 +5813,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3872"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3872"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3872",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3872",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5835,9 +5835,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3873"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3873"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3873",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3873",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5857,9 +5857,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3874"
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3874"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3874",
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3874",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

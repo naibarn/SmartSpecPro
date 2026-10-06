@@ -17,7 +17,7 @@
           "R1.7",
           "R1.8"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10150",
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10150",
         "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
         "successor_spec_id": "262"
       },
@@ -33,7 +33,7 @@
           "R1.7",
           "R1.8"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L5",
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L5",
         "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
         "successor_spec_id": "262"
       },
@@ -45,7 +45,7 @@
         "referencing_spec_id": "262",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L72",
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L72",
         "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
         "successor_spec_id": "262"
       },
@@ -57,7 +57,7 @@
         "referencing_spec_id": "266",
         "relation_text": "absorbed",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2105",
+        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2105",
         "source_digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
         "successor_spec_id": "266"
       },
@@ -72,7 +72,7 @@
           "R1.0",
           "R1.37"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L22144",
+        "source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L22144",
         "source_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
         "successor_spec_id": "260"
       }
@@ -88,92 +88,92 @@
       {
         "digest": "fec73647ed4588d3402f71b6878e419f8fb0a8651f193d09999a5d96ad0c5274",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
       },
       {
         "digest": "f71b88ee51df6982f6cea36eab9221dcdbdb466701c4d877a701d456b46c28cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
       },
       {
         "digest": "20fcbfc5281ee4a6f090fd4e384290da2f0c1d561d533e99914810dec0eb6c50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
       },
       {
         "digest": "63a27f32390ab78588d55b071cef802e3d2be87f31309103e681f618687caa3f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
       },
       {
         "digest": "150dfe52a04b5ac47f3f3fdfe0dcf27a536cdde9426c37a45c743bc6d4992830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
       },
       {
         "digest": "bf6018f6b81384198ed679f07c28f4154886eab22a00a91a6c41ccd692ddbbc2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
       },
       {
         "digest": "ce57fa7efbb5f5d8ecd7a9f68bebf866f71b7d705223dedd9623f27c4f436ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
       },
       {
         "digest": "eb59074714d3bc5bf18c9cd043f8a0425b35f882cbaf20833882753ce54069d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
       },
       {
         "digest": "b729396b3e6a7801d3719ab4927509051baeff0cfe502ea1b63fdcec28496af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
       },
       {
         "digest": "c0d51c5910fdd239a5513c439895bf6cf8c5ad2708ec3b08271c55b4159d984b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
       },
       {
         "digest": "98790c2e56d55aa56f868a3b7d7d1fec7bff968a892ad8604a58da37ef1c4578",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
       },
       {
         "digest": "9c46b9878defbcdf6e30ad2a8cf64a65a676a3b3f91ef63987ab782b9289c149",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
       },
       {
         "digest": "c02d11d335c6cf0b27a9d3c429a405bd1898408abf493f26a8985fc3ae6b8e66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
       },
       {
         "digest": "59995ecf66e685b5f9c1addeb4d1ba276a40a4bf8910d11191067ffacf41a64a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
       },
       {
         "digest": "596900aa5e69018f3a765eaf4e3ebdc7a66d40ddce5d7dd48d427cab00ec3b76",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
       },
       {
         "digest": "c52fe9bba2f0162b98852fc25aca21394cdc7fdc7303c84eb260cb2592cce135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
       },
       {
         "digest": "83255895b1eeb81265ddee7699ba7e0889072f44f52f78bcf0a38b6818150bf8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
       },
       {
         "digest": "e1222c808bb45003a3569535e830761802e87abb72f48988c66bb866c6628465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
       }
     ],
     "predecessors": [],
@@ -204,92 +204,92 @@
       {
         "digest": "fec73647ed4588d3402f71b6878e419f8fb0a8651f193d09999a5d96ad0c5274",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
       },
       {
         "digest": "f71b88ee51df6982f6cea36eab9221dcdbdb466701c4d877a701d456b46c28cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
       },
       {
         "digest": "20fcbfc5281ee4a6f090fd4e384290da2f0c1d561d533e99914810dec0eb6c50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
       },
       {
         "digest": "63a27f32390ab78588d55b071cef802e3d2be87f31309103e681f618687caa3f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
       },
       {
         "digest": "150dfe52a04b5ac47f3f3fdfe0dcf27a536cdde9426c37a45c743bc6d4992830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
       },
       {
         "digest": "bf6018f6b81384198ed679f07c28f4154886eab22a00a91a6c41ccd692ddbbc2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
       },
       {
         "digest": "ce57fa7efbb5f5d8ecd7a9f68bebf866f71b7d705223dedd9623f27c4f436ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
       },
       {
         "digest": "eb59074714d3bc5bf18c9cd043f8a0425b35f882cbaf20833882753ce54069d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
       },
       {
         "digest": "b729396b3e6a7801d3719ab4927509051baeff0cfe502ea1b63fdcec28496af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
       },
       {
         "digest": "c0d51c5910fdd239a5513c439895bf6cf8c5ad2708ec3b08271c55b4159d984b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
       },
       {
         "digest": "98790c2e56d55aa56f868a3b7d7d1fec7bff968a892ad8604a58da37ef1c4578",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
       },
       {
         "digest": "9c46b9878defbcdf6e30ad2a8cf64a65a676a3b3f91ef63987ab782b9289c149",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
       },
       {
         "digest": "c02d11d335c6cf0b27a9d3c429a405bd1898408abf493f26a8985fc3ae6b8e66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
       },
       {
         "digest": "59995ecf66e685b5f9c1addeb4d1ba276a40a4bf8910d11191067ffacf41a64a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
       },
       {
         "digest": "596900aa5e69018f3a765eaf4e3ebdc7a66d40ddce5d7dd48d427cab00ec3b76",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
       },
       {
         "digest": "c52fe9bba2f0162b98852fc25aca21394cdc7fdc7303c84eb260cb2592cce135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
       },
       {
         "digest": "83255895b1eeb81265ddee7699ba7e0889072f44f52f78bcf0a38b6818150bf8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
       },
       {
         "digest": "e1222c808bb45003a3569535e830761802e87abb72f48988c66bb866c6628465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
       },
       {
         "excerpt": "## Spec 260 edge API",
@@ -461,109 +461,109 @@
       {
         "digest": "fec73647ed4588d3402f71b6878e419f8fb0a8651f193d09999a5d96ad0c5274",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
       },
       {
         "digest": "f71b88ee51df6982f6cea36eab9221dcdbdb466701c4d877a701d456b46c28cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
       },
       {
         "digest": "20fcbfc5281ee4a6f090fd4e384290da2f0c1d561d533e99914810dec0eb6c50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
       },
       {
         "digest": "63a27f32390ab78588d55b071cef802e3d2be87f31309103e681f618687caa3f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
       },
       {
         "digest": "150dfe52a04b5ac47f3f3fdfe0dcf27a536cdde9426c37a45c743bc6d4992830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
       },
       {
         "digest": "bf6018f6b81384198ed679f07c28f4154886eab22a00a91a6c41ccd692ddbbc2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
       },
       {
         "digest": "ce57fa7efbb5f5d8ecd7a9f68bebf866f71b7d705223dedd9623f27c4f436ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
       },
       {
         "digest": "eb59074714d3bc5bf18c9cd043f8a0425b35f882cbaf20833882753ce54069d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
       },
       {
         "digest": "b729396b3e6a7801d3719ab4927509051baeff0cfe502ea1b63fdcec28496af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
       },
       {
         "digest": "c0d51c5910fdd239a5513c439895bf6cf8c5ad2708ec3b08271c55b4159d984b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
       },
       {
         "digest": "98790c2e56d55aa56f868a3b7d7d1fec7bff968a892ad8604a58da37ef1c4578",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
       },
       {
         "digest": "9c46b9878defbcdf6e30ad2a8cf64a65a676a3b3f91ef63987ab782b9289c149",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
       },
       {
         "digest": "c02d11d335c6cf0b27a9d3c429a405bd1898408abf493f26a8985fc3ae6b8e66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
       },
       {
         "digest": "59995ecf66e685b5f9c1addeb4d1ba276a40a4bf8910d11191067ffacf41a64a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
       },
       {
         "digest": "596900aa5e69018f3a765eaf4e3ebdc7a66d40ddce5d7dd48d427cab00ec3b76",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
       },
       {
         "digest": "c52fe9bba2f0162b98852fc25aca21394cdc7fdc7303c84eb260cb2592cce135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
       },
       {
         "digest": "83255895b1eeb81265ddee7699ba7e0889072f44f52f78bcf0a38b6818150bf8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
       },
       {
         "digest": "e1222c808bb45003a3569535e830761802e87abb72f48988c66bb866c6628465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md",
     "digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.585111Z",
+      "last_evidence_at": "2026-10-06T03:28:18.371572Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-02T19:34:42+07:00",
       "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
     },
-    "revision": null,
+    "revision": "1.0",
     "slug": "260-smartaihub-all-hazards-emergency-crisis-intelligence",
     "spec_id": "260",
     "title": "Spec 260 --- SmartAIHub All-Hazards Emergency, Crisis Intelligence & Coordinated Response Platform"
@@ -585,7 +585,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.585111Z"
+    "updated_at": "2026-10-06T03:28:18.371572Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -595,7 +595,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.585111Z",
+    "reconciled_at": "2026-10-06T03:28:18.371572Z",
     "sources": [
       {
         "digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
@@ -605,92 +605,92 @@
       {
         "digest": "fec73647ed4588d3402f71b6878e419f8fb0a8651f193d09999a5d96ad0c5274",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
       },
       {
         "digest": "f71b88ee51df6982f6cea36eab9221dcdbdb466701c4d877a701d456b46c28cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
       },
       {
         "digest": "20fcbfc5281ee4a6f090fd4e384290da2f0c1d561d533e99914810dec0eb6c50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
       },
       {
         "digest": "63a27f32390ab78588d55b071cef802e3d2be87f31309103e681f618687caa3f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
       },
       {
         "digest": "150dfe52a04b5ac47f3f3fdfe0dcf27a536cdde9426c37a45c743bc6d4992830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
       },
       {
         "digest": "bf6018f6b81384198ed679f07c28f4154886eab22a00a91a6c41ccd692ddbbc2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
       },
       {
         "digest": "ce57fa7efbb5f5d8ecd7a9f68bebf866f71b7d705223dedd9623f27c4f436ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
       },
       {
         "digest": "eb59074714d3bc5bf18c9cd043f8a0425b35f882cbaf20833882753ce54069d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
       },
       {
         "digest": "b729396b3e6a7801d3719ab4927509051baeff0cfe502ea1b63fdcec28496af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
       },
       {
         "digest": "c0d51c5910fdd239a5513c439895bf6cf8c5ad2708ec3b08271c55b4159d984b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
       },
       {
         "digest": "98790c2e56d55aa56f868a3b7d7d1fec7bff968a892ad8604a58da37ef1c4578",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
       },
       {
         "digest": "9c46b9878defbcdf6e30ad2a8cf64a65a676a3b3f91ef63987ab782b9289c149",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
       },
       {
         "digest": "c02d11d335c6cf0b27a9d3c429a405bd1898408abf493f26a8985fc3ae6b8e66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
       },
       {
         "digest": "59995ecf66e685b5f9c1addeb4d1ba276a40a4bf8910d11191067ffacf41a64a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
       },
       {
         "digest": "596900aa5e69018f3a765eaf4e3ebdc7a66d40ddce5d7dd48d427cab00ec3b76",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
       },
       {
         "digest": "c52fe9bba2f0162b98852fc25aca21394cdc7fdc7303c84eb260cb2592cce135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
       },
       {
         "digest": "83255895b1eeb81265ddee7699ba7e0889072f44f52f78bcf0a38b6818150bf8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
       },
       {
         "digest": "e1222c808bb45003a3569535e830761802e87abb72f48988c66bb866c6628465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
       },
       {
         "excerpt": "## Spec 260 edge API",
@@ -1175,92 +1175,92 @@
       {
         "digest": "fec73647ed4588d3402f71b6878e419f8fb0a8651f193d09999a5d96ad0c5274",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
       },
       {
         "digest": "f71b88ee51df6982f6cea36eab9221dcdbdb466701c4d877a701d456b46c28cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
       },
       {
         "digest": "20fcbfc5281ee4a6f090fd4e384290da2f0c1d561d533e99914810dec0eb6c50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
       },
       {
         "digest": "63a27f32390ab78588d55b071cef802e3d2be87f31309103e681f618687caa3f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
       },
       {
         "digest": "150dfe52a04b5ac47f3f3fdfe0dcf27a536cdde9426c37a45c743bc6d4992830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
       },
       {
         "digest": "bf6018f6b81384198ed679f07c28f4154886eab22a00a91a6c41ccd692ddbbc2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
       },
       {
         "digest": "ce57fa7efbb5f5d8ecd7a9f68bebf866f71b7d705223dedd9623f27c4f436ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
       },
       {
         "digest": "eb59074714d3bc5bf18c9cd043f8a0425b35f882cbaf20833882753ce54069d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
       },
       {
         "digest": "b729396b3e6a7801d3719ab4927509051baeff0cfe502ea1b63fdcec28496af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
       },
       {
         "digest": "c0d51c5910fdd239a5513c439895bf6cf8c5ad2708ec3b08271c55b4159d984b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
       },
       {
         "digest": "98790c2e56d55aa56f868a3b7d7d1fec7bff968a892ad8604a58da37ef1c4578",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
       },
       {
         "digest": "9c46b9878defbcdf6e30ad2a8cf64a65a676a3b3f91ef63987ab782b9289c149",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
       },
       {
         "digest": "c02d11d335c6cf0b27a9d3c429a405bd1898408abf493f26a8985fc3ae6b8e66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
       },
       {
         "digest": "59995ecf66e685b5f9c1addeb4d1ba276a40a4bf8910d11191067ffacf41a64a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
       },
       {
         "digest": "596900aa5e69018f3a765eaf4e3ebdc7a66d40ddce5d7dd48d427cab00ec3b76",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
       },
       {
         "digest": "c52fe9bba2f0162b98852fc25aca21394cdc7fdc7303c84eb260cb2592cce135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
       },
       {
         "digest": "83255895b1eeb81265ddee7699ba7e0889072f44f52f78bcf0a38b6818150bf8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
       },
       {
         "digest": "e1222c808bb45003a3569535e830761802e87abb72f48988c66bb866c6628465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -1278,7 +1278,7 @@
     "unresolved": 2042
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.585111Z",
+  "updated_at": "2026-10-06T03:28:18.371572Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

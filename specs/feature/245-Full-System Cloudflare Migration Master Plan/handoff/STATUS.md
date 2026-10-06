@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
-# 245 — Spec 245 — SmartAIHub Full-System Cloudflare Migration Master Plan (R8 Cutover Amendment)
+# 245 — SmartAIHub Full-System Cloudflare Migration Master Plan
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 201 unresolved of 201
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 8
+- Manifest generation: 9
 
 ## Source-declared status and relationship claims
 

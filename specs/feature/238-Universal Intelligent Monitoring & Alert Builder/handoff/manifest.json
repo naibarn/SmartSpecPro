@@ -14,7 +14,7 @@
         "referencing_spec_id": "238",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "238",
         "relation_text": "merged",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "238",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "238",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "238",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L37",
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L37",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "238",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L550",
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L550",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -86,7 +86,7 @@
         "referencing_spec_id": "238",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L554",
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L554",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -98,7 +98,7 @@
         "referencing_spec_id": "238",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -110,7 +110,7 @@
         "referencing_spec_id": "238",
         "relation_text": "merged",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -124,7 +124,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -140,7 +140,7 @@
           "R2",
           "R20"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L88",
+        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L88",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       }
@@ -210,13 +210,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md",
     "digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.366494Z",
+      "last_evidence_at": "2026-10-06T03:28:18.044265Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -224,7 +224,7 @@
     "revision": "1.3",
     "slug": "238-Universal Intelligent Monitoring & Alert Builder",
     "spec_id": "238",
-    "title": "Spec 238 — Universal Intelligent Monitoring & Alert Builder"
+    "title": "SmartAIHub Universal Intelligent Monitoring & Alert Builder"
   },
   "implementation": {
     "checkpoint_shas": [],
@@ -243,7 +243,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.366494Z"
+    "updated_at": "2026-10-06T03:28:18.044265Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -253,7 +253,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.366494Z",
+    "reconciled_at": "2026-10-06T03:28:18.044265Z",
     "sources": [
       {
         "digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
@@ -321,7 +321,7 @@
     "unresolved": 143
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.366494Z",
+  "updated_at": "2026-10-06T03:28:18.044265Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

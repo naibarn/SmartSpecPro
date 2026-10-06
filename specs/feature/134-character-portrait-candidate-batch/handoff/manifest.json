@@ -17,62 +17,62 @@
       {
         "digest": "10aa5851598ec3b4c1b948aef417032a953c1acd4db082002f778a759349612f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/claude-plan.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/claude-plan.md"
       },
       {
         "digest": "356ae78786f4bb616eb9d90470f177a769f62aa69ce6e7c013c2d5cf3b371098",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/claude-spec.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/claude-spec.md"
       },
       {
         "digest": "08d35b0619bca8f5957245a5b9fd109587a0ba863dcbb45c2935f48759844f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/implementation/deep_implement_config.json"
+        "path": "specs/feature/134-character-portrait-candidate-batch/implementation/deep_implement_config.json"
       },
       {
         "digest": "c8abe4c9852bd21b7999e6da3fcdbe688cf95a64f92fd1fc19de60b6095f7ffb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/adversarial-review-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/adversarial-review-round-1.md"
       },
       {
         "digest": "4f6255e4b57b80b776f62fc2b164b4fc871a45316f84f6c34863fc24d782237b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "e350155a52e7918c9f0b436f0e8f751012fa1a2ddd1e4cd819bed726dc60c45d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-1.md"
       },
       {
         "digest": "be0a416f2f54aabb978281d3db95c414f90f8267c63da4c24a9884fb90c074a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-2.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-2.md"
       },
       {
         "digest": "9d005f5eb9360c0c245700153deb44ed4aba3f56b066be671084a3b7ecdff801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/index.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/index.md"
       },
       {
         "digest": "abdd8c73026be05361007dd265a4188de8fb02f2b3879737a7ede6611c55480e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-01-skill-runtime-contract.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-01-skill-runtime-contract.md"
       },
       {
         "digest": "e9af1d20eb98bb7c46576512cb0795270168363386f9a26f0ace1726ea1b6d18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-02-candidate-lifecycle-api.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-02-candidate-lifecycle-api.md"
       },
       {
         "digest": "9deeffc62cacc18a572569173b1b40e199fad94f5d0f109199866d25cc413f9a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-03-creator-ui.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-03-creator-ui.md"
       },
       {
         "digest": "ad8b912480ce7527c550efbcc1beefc93641cf9aa1bc482c1148eefaa6b6cd4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-04-integration-verification.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-04-integration-verification.md"
       }
     ],
     "predecessors": [],
@@ -103,62 +103,62 @@
       {
         "digest": "10aa5851598ec3b4c1b948aef417032a953c1acd4db082002f778a759349612f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/claude-plan.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/claude-plan.md"
       },
       {
         "digest": "356ae78786f4bb616eb9d90470f177a769f62aa69ce6e7c013c2d5cf3b371098",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/claude-spec.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/claude-spec.md"
       },
       {
         "digest": "08d35b0619bca8f5957245a5b9fd109587a0ba863dcbb45c2935f48759844f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/implementation/deep_implement_config.json"
+        "path": "specs/feature/134-character-portrait-candidate-batch/implementation/deep_implement_config.json"
       },
       {
         "digest": "c8abe4c9852bd21b7999e6da3fcdbe688cf95a64f92fd1fc19de60b6095f7ffb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/adversarial-review-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/adversarial-review-round-1.md"
       },
       {
         "digest": "4f6255e4b57b80b776f62fc2b164b4fc871a45316f84f6c34863fc24d782237b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "e350155a52e7918c9f0b436f0e8f751012fa1a2ddd1e4cd819bed726dc60c45d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-1.md"
       },
       {
         "digest": "be0a416f2f54aabb978281d3db95c414f90f8267c63da4c24a9884fb90c074a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-2.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-2.md"
       },
       {
         "digest": "9d005f5eb9360c0c245700153deb44ed4aba3f56b066be671084a3b7ecdff801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/index.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/index.md"
       },
       {
         "digest": "abdd8c73026be05361007dd265a4188de8fb02f2b3879737a7ede6611c55480e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-01-skill-runtime-contract.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-01-skill-runtime-contract.md"
       },
       {
         "digest": "e9af1d20eb98bb7c46576512cb0795270168363386f9a26f0ace1726ea1b6d18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-02-candidate-lifecycle-api.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-02-candidate-lifecycle-api.md"
       },
       {
         "digest": "9deeffc62cacc18a572569173b1b40e199fad94f5d0f109199866d25cc413f9a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-03-creator-ui.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-03-creator-ui.md"
       },
       {
         "digest": "ad8b912480ce7527c550efbcc1beefc93641cf9aa1bc482c1148eefaa6b6cd4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-04-integration-verification.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-04-integration-verification.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -190,74 +190,74 @@
       {
         "digest": "10aa5851598ec3b4c1b948aef417032a953c1acd4db082002f778a759349612f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/claude-plan.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/claude-plan.md"
       },
       {
         "digest": "356ae78786f4bb616eb9d90470f177a769f62aa69ce6e7c013c2d5cf3b371098",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/claude-spec.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/claude-spec.md"
       },
       {
         "digest": "08d35b0619bca8f5957245a5b9fd109587a0ba863dcbb45c2935f48759844f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/implementation/deep_implement_config.json"
+        "path": "specs/feature/134-character-portrait-candidate-batch/implementation/deep_implement_config.json"
       },
       {
         "digest": "c8abe4c9852bd21b7999e6da3fcdbe688cf95a64f92fd1fc19de60b6095f7ffb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/adversarial-review-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/adversarial-review-round-1.md"
       },
       {
         "digest": "4f6255e4b57b80b776f62fc2b164b4fc871a45316f84f6c34863fc24d782237b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "e350155a52e7918c9f0b436f0e8f751012fa1a2ddd1e4cd819bed726dc60c45d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-1.md"
       },
       {
         "digest": "be0a416f2f54aabb978281d3db95c414f90f8267c63da4c24a9884fb90c074a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-2.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-2.md"
       },
       {
         "digest": "9d005f5eb9360c0c245700153deb44ed4aba3f56b066be671084a3b7ecdff801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/index.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/index.md"
       },
       {
         "digest": "abdd8c73026be05361007dd265a4188de8fb02f2b3879737a7ede6611c55480e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-01-skill-runtime-contract.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-01-skill-runtime-contract.md"
       },
       {
         "digest": "e9af1d20eb98bb7c46576512cb0795270168363386f9a26f0ace1726ea1b6d18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-02-candidate-lifecycle-api.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-02-candidate-lifecycle-api.md"
       },
       {
         "digest": "9deeffc62cacc18a572569173b1b40e199fad94f5d0f109199866d25cc413f9a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-03-creator-ui.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-03-creator-ui.md"
       },
       {
         "digest": "ad8b912480ce7527c550efbcc1beefc93641cf9aa1bc482c1148eefaa6b6cd4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-04-integration-verification.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-04-integration-verification.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/134-character-portrait-candidate-batch/spec.md",
     "digest": "4a4bc05770e07c854afec122d26a644f2cdee71d0b85ba9ed3658c4130c2bc03",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.243926Z",
+      "last_evidence_at": "2026-10-06T03:28:16.056886Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-07-18T02:47:46+07:00",
       "spec_last_changed_at": "2026-07-18T02:47:46+07:00"
@@ -284,7 +284,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.243926Z"
+    "updated_at": "2026-10-06T03:28:16.056886Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -294,7 +294,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.243926Z",
+    "reconciled_at": "2026-10-06T03:28:16.056886Z",
     "sources": [
       {
         "digest": "4a4bc05770e07c854afec122d26a644f2cdee71d0b85ba9ed3658c4130c2bc03",
@@ -304,62 +304,62 @@
       {
         "digest": "10aa5851598ec3b4c1b948aef417032a953c1acd4db082002f778a759349612f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/claude-plan.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/claude-plan.md"
       },
       {
         "digest": "356ae78786f4bb616eb9d90470f177a769f62aa69ce6e7c013c2d5cf3b371098",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/claude-spec.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/claude-spec.md"
       },
       {
         "digest": "08d35b0619bca8f5957245a5b9fd109587a0ba863dcbb45c2935f48759844f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/implementation/deep_implement_config.json"
+        "path": "specs/feature/134-character-portrait-candidate-batch/implementation/deep_implement_config.json"
       },
       {
         "digest": "c8abe4c9852bd21b7999e6da3fcdbe688cf95a64f92fd1fc19de60b6095f7ffb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/adversarial-review-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/adversarial-review-round-1.md"
       },
       {
         "digest": "4f6255e4b57b80b776f62fc2b164b4fc871a45316f84f6c34863fc24d782237b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "e350155a52e7918c9f0b436f0e8f751012fa1a2ddd1e4cd819bed726dc60c45d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-1.md"
       },
       {
         "digest": "be0a416f2f54aabb978281d3db95c414f90f8267c63da4c24a9884fb90c074a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-2.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-2.md"
       },
       {
         "digest": "9d005f5eb9360c0c245700153deb44ed4aba3f56b066be671084a3b7ecdff801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/index.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/index.md"
       },
       {
         "digest": "abdd8c73026be05361007dd265a4188de8fb02f2b3879737a7ede6611c55480e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-01-skill-runtime-contract.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-01-skill-runtime-contract.md"
       },
       {
         "digest": "e9af1d20eb98bb7c46576512cb0795270168363386f9a26f0ace1726ea1b6d18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-02-candidate-lifecycle-api.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-02-candidate-lifecycle-api.md"
       },
       {
         "digest": "9deeffc62cacc18a572569173b1b40e199fad94f5d0f109199866d25cc413f9a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-03-creator-ui.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-03-creator-ui.md"
       },
       {
         "digest": "ad8b912480ce7527c550efbcc1beefc93641cf9aa1bc482c1148eefaa6b6cd4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-04-integration-verification.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-04-integration-verification.md"
       }
     ],
     "stale_fields": [],
@@ -387,62 +387,62 @@
       {
         "digest": "10aa5851598ec3b4c1b948aef417032a953c1acd4db082002f778a759349612f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/claude-plan.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/claude-plan.md"
       },
       {
         "digest": "356ae78786f4bb616eb9d90470f177a769f62aa69ce6e7c013c2d5cf3b371098",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/claude-spec.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/claude-spec.md"
       },
       {
         "digest": "08d35b0619bca8f5957245a5b9fd109587a0ba863dcbb45c2935f48759844f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/implementation/deep_implement_config.json"
+        "path": "specs/feature/134-character-portrait-candidate-batch/implementation/deep_implement_config.json"
       },
       {
         "digest": "c8abe4c9852bd21b7999e6da3fcdbe688cf95a64f92fd1fc19de60b6095f7ffb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/adversarial-review-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/adversarial-review-round-1.md"
       },
       {
         "digest": "4f6255e4b57b80b776f62fc2b164b4fc871a45316f84f6c34863fc24d782237b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "e350155a52e7918c9f0b436f0e8f751012fa1a2ddd1e4cd819bed726dc60c45d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-1.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-1.md"
       },
       {
         "digest": "be0a416f2f54aabb978281d3db95c414f90f8267c63da4c24a9884fb90c074a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-2.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/reviews/self-review-round-2.md"
       },
       {
         "digest": "9d005f5eb9360c0c245700153deb44ed4aba3f56b066be671084a3b7ecdff801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/index.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/index.md"
       },
       {
         "digest": "abdd8c73026be05361007dd265a4188de8fb02f2b3879737a7ede6611c55480e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-01-skill-runtime-contract.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-01-skill-runtime-contract.md"
       },
       {
         "digest": "e9af1d20eb98bb7c46576512cb0795270168363386f9a26f0ace1726ea1b6d18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-02-candidate-lifecycle-api.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-02-candidate-lifecycle-api.md"
       },
       {
         "digest": "9deeffc62cacc18a572569173b1b40e199fad94f5d0f109199866d25cc413f9a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-03-creator-ui.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-03-creator-ui.md"
       },
       {
         "digest": "ad8b912480ce7527c550efbcc1beefc93641cf9aa1bc482c1148eefaa6b6cd4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/sections/section-04-integration-verification.md"
+        "path": "specs/feature/134-character-portrait-candidate-batch/sections/section-04-integration-verification.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -460,7 +460,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.243926Z",
+  "updated_at": "2026-10-06T03:28:16.056886Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

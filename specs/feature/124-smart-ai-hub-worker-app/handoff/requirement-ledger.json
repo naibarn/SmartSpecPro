@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L35"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L35"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L35",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L35",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L74"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L74"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L74",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L76"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L76"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L76",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L76",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L78"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L78"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L78",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L80"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L80"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L80",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L82"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L82"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L82",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L84"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L84"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L84",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L86"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L86"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L86",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L89"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L89"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L89",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L90"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L90"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L90",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L91"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L91"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L91",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L92"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L92"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L92",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L97"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L97"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L97",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L97",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L98"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L98"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L98",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L99"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L99",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L100"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L100"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L100",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L101"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L101"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L101",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L102"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L102"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L102",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L103"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L103"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L103",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L104"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L104"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L104",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L114"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L114"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L114",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L119"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L119"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L119",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L129"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L129"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L129",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L132"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L132"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L132",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L139"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L139"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L139",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L141"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L141"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L141",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L146"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L146"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L146",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L163"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L163"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L163",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L164"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L164"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L164",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L166"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L166"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L166",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,12 +665,12 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L184",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L388",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1054",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1089"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L184",
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L388",
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1054",
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1089"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L184",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -690,9 +690,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L190"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L190"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L190",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -712,9 +712,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L192"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L192"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L192",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L192",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -734,9 +734,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L222"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L222"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L222",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L222",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -756,9 +756,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L225"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L225"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L225",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -778,9 +778,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L229"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L229"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L229",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -800,9 +800,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L234"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L234"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L234",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -822,9 +822,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L241"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L241"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L241",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -844,9 +844,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L245"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L245"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L245",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -866,9 +866,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L279"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L279"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L279",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -888,9 +888,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L296"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L296"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L296",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -910,9 +910,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L303"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L303"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L303",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -932,9 +932,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L344"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L344"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L344",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -954,9 +954,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L349"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L349"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L349",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L349",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -976,9 +976,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L351"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L351"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L351",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -998,9 +998,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L373"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L373"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L373",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1020,9 +1020,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L386"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L386"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L386",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L386",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1042,9 +1042,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L400"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L400"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L400",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L400",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1064,9 +1064,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L429"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L429"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L429",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L429",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1086,9 +1086,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L468"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L468"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L468",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1108,9 +1108,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L484"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L484"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L484",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L484",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1130,9 +1130,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L500"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L500"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L500",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1152,9 +1152,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L504"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L504"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L504",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L504",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1174,9 +1174,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L505"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L505"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L505",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L505",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1196,9 +1196,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L543"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L543"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L543",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1218,9 +1218,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L544"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L544"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L544",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1240,9 +1240,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L547"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L547"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L547",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L547",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1262,9 +1262,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L593"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L593"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L593",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L593",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1284,9 +1284,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L595"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L595"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L595",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L595",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1306,9 +1306,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L726"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L726"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L726",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L726",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1328,9 +1328,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L727"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L727"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L727",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L727",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1350,9 +1350,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L728"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L728"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L728",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L728",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1372,9 +1372,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L729"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L729"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L729",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L729",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1394,9 +1394,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L730"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L730"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L730",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L730",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1416,9 +1416,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L732"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L732"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L732",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L732",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1438,9 +1438,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L734"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L734"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L734",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1460,9 +1460,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L735"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L735"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L735",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L735",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1482,9 +1482,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L740"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L740"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L740",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1504,9 +1504,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L753"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L753"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L753",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L753",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1526,9 +1526,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L759"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L759"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L759",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L759",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1548,9 +1548,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L761"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L761"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L761",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L761",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1570,9 +1570,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L771"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L771"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L771",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L771",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1592,9 +1592,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L843"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L843"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L843",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L843",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1614,9 +1614,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L847"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L847"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L847",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L847",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1636,9 +1636,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L854"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L854"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L854",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L854",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1658,9 +1658,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L857"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L857"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L857",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L857",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1680,9 +1680,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L888"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L888"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L888",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L888",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1702,9 +1702,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L901"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L901"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L901",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L901",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1724,9 +1724,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L930"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L930"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L930",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L930",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1746,9 +1746,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L932"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L932"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L932",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L932",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1768,9 +1768,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L942"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L942"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L942",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L942",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1790,9 +1790,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L949"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L949"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L949",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L949",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1812,9 +1812,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L956"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L956"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L956",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L956",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1834,9 +1834,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L959"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L959"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L959",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L959",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1856,9 +1856,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L966"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L966"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L966",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L966",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1878,9 +1878,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L970"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L970"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L970",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1900,9 +1900,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1046"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1046"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1046",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1046",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1922,9 +1922,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1064"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1064"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1064",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1064",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1944,9 +1944,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1066"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1066"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1066",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1066",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1966,9 +1966,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1074"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1074"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1074",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1988,9 +1988,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1076"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1076"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1076",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1076",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2010,9 +2010,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1079"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1079"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1079",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1079",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2032,9 +2032,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1086"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1086"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1086",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1086",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2054,9 +2054,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1105"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1105"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1105",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2076,9 +2076,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1107"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1107"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1107",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2098,9 +2098,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1112"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1112",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2120,9 +2120,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1150"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1150",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2142,9 +2142,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1156"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1156"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1156",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2164,9 +2164,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1160"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1160"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1160",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2186,9 +2186,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1164"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1164"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1164",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2208,9 +2208,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1187"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1187"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1187",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2230,9 +2230,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1225"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1225"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1225",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2252,9 +2252,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1227"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1227"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1227",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2274,9 +2274,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1231"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1231"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1231",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2296,9 +2296,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1233"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1233"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1233",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2318,9 +2318,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1238"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1238"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1238",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2340,9 +2340,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1241"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1241"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1241",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2362,9 +2362,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1258"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1258"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1258",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2384,9 +2384,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1286"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1286"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1286",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2406,9 +2406,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1287"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1287"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1287",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1287",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2428,9 +2428,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1332"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1332"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1332",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2450,9 +2450,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1336"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1336"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1336",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2472,9 +2472,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1345"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1345"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1345",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1345",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2494,9 +2494,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1360"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1360"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1360",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1360",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2516,9 +2516,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1389"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1389"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1389",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2538,9 +2538,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1391"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1391"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1391",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2560,9 +2560,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1412"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1412"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1412",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1412",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2582,9 +2582,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1413"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1413"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1413",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1413",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2604,9 +2604,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1414"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1414"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1414",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1414",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2626,9 +2626,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1415"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1415"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1415",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2648,9 +2648,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1416"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1416"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1416",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1416",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2670,9 +2670,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1417"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1417"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1417",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2692,9 +2692,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1419"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1419"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1419",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2714,9 +2714,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1420"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1420"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1420",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2736,9 +2736,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1425"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1425"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1425",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2758,9 +2758,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1426"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1426"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1426",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2780,9 +2780,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1428"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1428"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1428",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1428",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2802,9 +2802,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1430"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1430"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1430",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2824,9 +2824,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1434"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1434"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1434",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1434",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2846,9 +2846,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1436"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1436"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1436",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1436",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2868,9 +2868,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1437"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1437"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1437",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2890,9 +2890,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1438"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1438"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1438",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1438",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2912,9 +2912,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1443"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1443"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1443",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1443",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2934,9 +2934,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1444"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1444"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1444",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1444",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2956,9 +2956,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1445"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1445"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1445",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2978,9 +2978,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1446"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1446"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1446",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3000,9 +3000,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1447"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1447"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1447",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1447",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3022,9 +3022,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1449"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1449"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1449",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3044,9 +3044,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1451"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1451"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1451",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3066,9 +3066,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1453"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1453"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1453",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1453",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3088,9 +3088,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1459"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1459"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1459",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3110,9 +3110,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1468"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1468"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1468",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3132,9 +3132,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1469"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1469"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1469",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1469",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3154,9 +3154,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1472"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1472"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1472",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1472",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3176,9 +3176,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1509"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1509"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1509",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1509",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3198,9 +3198,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1531"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1531"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1531",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1531",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3220,9 +3220,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1588"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1588"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1588",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1588",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3242,9 +3242,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1801"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1801"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1801",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1801",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3264,9 +3264,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1803"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1803"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1803",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1803",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3286,9 +3286,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1804"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1804"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1804",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1804",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3308,9 +3308,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1805"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1805"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1805",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1805",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3330,9 +3330,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1808"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1808"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1808",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1808",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3352,9 +3352,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1810"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1810"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1810",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1810",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3374,9 +3374,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1812"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1812"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1812",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1812",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3396,9 +3396,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1813"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1813"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1813",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1813",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3418,9 +3418,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1814"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1814"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1814",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3440,9 +3440,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1816"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1816"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1816",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1816",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3462,9 +3462,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1818"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1818"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1818",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1818",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3484,9 +3484,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1820"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1820"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1820",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1820",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3506,9 +3506,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1822"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1822"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1822",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1822",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3528,9 +3528,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1824"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1824"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1824",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1824",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3550,9 +3550,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1826"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1826"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1826",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1826",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3572,9 +3572,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1828"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1828"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1828",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1828",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3594,9 +3594,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1830"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1830"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1830",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1830",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3616,9 +3616,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1832"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1832"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1832",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1832",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3638,9 +3638,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1834"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1834"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1834",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1834",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3660,9 +3660,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1835"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1835"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1835",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1835",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3682,9 +3682,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1837"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1837"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1837",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1837",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3704,9 +3704,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1840"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1840"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1840",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1840",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3726,9 +3726,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1843"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1843"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1843",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1843",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3748,9 +3748,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1845"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1845"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1845",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1845",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3770,9 +3770,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1847"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1847"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1847",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1847",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3792,9 +3792,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1848"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1848"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1848",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1848",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3814,9 +3814,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1850"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1850"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1850",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1850",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3836,9 +3836,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1851"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1851"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1851",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1851",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3858,9 +3858,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1853"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1853"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1853",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1853",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3880,9 +3880,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1855"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1855"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1855",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1855",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3902,9 +3902,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1856"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1856"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1856",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1856",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3924,9 +3924,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1857"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1857"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1857",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1857",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3946,9 +3946,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1859"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1859"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1859",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1859",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3968,9 +3968,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1860"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1860"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1860",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1860",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3990,9 +3990,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1861"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1861"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1861",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1861",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4012,9 +4012,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1863"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1863"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1863",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1863",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4034,9 +4034,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1864"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1864"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1864",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1864",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4056,9 +4056,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1871"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1871"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1871",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1871",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4078,9 +4078,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1874"
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1874"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/spec.md#L1874",
+      "authority_source": "specs/feature/124-smart-ai-hub-worker-app/spec.md#L1874",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

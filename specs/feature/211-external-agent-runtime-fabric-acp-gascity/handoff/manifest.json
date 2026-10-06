@@ -14,7 +14,7 @@
         "referencing_spec_id": "211",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L383",
+        "source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L383",
         "source_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
         "successor_spec_id": "211"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "211",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L5444",
+        "source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L5444",
         "source_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
         "successor_spec_id": "211"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "211",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L7652",
+        "source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L7652",
         "source_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
         "successor_spec_id": "211"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "211",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L384",
+        "source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L384",
         "source_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
         "successor_spec_id": "211"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "211",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L7823",
+        "source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L7823",
         "source_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
         "successor_spec_id": "211"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "211",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L385",
+        "source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L385",
         "source_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
         "successor_spec_id": "211"
       }
@@ -90,67 +90,67 @@
       {
         "digest": "6896e0d7b8c9e12c7cb2a9d5f79bf5e7accc09b8fd61ec01629faa31401f5ad1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-plan.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-plan.md"
       },
       {
         "digest": "cd761599385805933241a43e39e406d0a91b502c68fdda5c29d9b798475d2043",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-spec.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-spec.md"
       },
       {
         "digest": "b93b6f02d75a73b9e510f68053f56700ce283b3933b6396ba911a41fdd55fc27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/completion.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/completion.md"
       },
       {
         "digest": "3be6b8e93d30f37fbf5da73c4768c223a470d4b613b8399cb106086dc9b3bc5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/deep_implement_config.json"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/deep_implement_config.json"
       },
       {
         "digest": "070255aed993be28a6673d37f5121d6b27260b895f7edfc3665398e02081288c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/release-gate.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/release-gate.md"
       },
       {
         "digest": "89df1be89ee6b15e336c10d29d4874ee681e32dd6c4bf3521c96ac2c57e7c82f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/reviews/self-review-round-1.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/reviews/self-review-round-1.md"
       },
       {
         "digest": "93e023579e4a4bdcaac843c1efec451619377771def130f104579c5b255b2860",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/index.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/index.md"
       },
       {
         "digest": "32b792ea7aeb8576a4214705637b17e0f6cb21fb9ffb1a559a97f14fbadf7e48",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-01-acp-protocol-adapter.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-01-acp-protocol-adapter.md"
       },
       {
         "digest": "457b4ba77ccdf6bbb1eb38ce3eac65073fe5a62c67ef841ea380390d321bff60",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-02-session-resume-process-custody.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-02-session-resume-process-custody.md"
       },
       {
         "digest": "934b6893c4f290cb6d5debfb2bd9bf86e13616df23f73e54490269d127fad53c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-03-gas-city-provider-bridge.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-03-gas-city-provider-bridge.md"
       },
       {
         "digest": "6629c5fc859d6bde2ab641d04ce9965de71e47ff5588fc472793bdb70e831768",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-04-routing-job-economic-integration.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-04-routing-job-economic-integration.md"
       },
       {
         "digest": "5b498a3dcec7716bd3f100fdf926886192926010cc75ff5f54912da82064efcc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-05-ui-observability-user-input.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-05-ui-observability-user-input.md"
       },
       {
         "digest": "c25f6997c432c5584711fe34aa6eb6334a4b368f339111ff8e07f9b922f85f4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-06-conformance-rollout.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-06-conformance-rollout.md"
       }
     ],
     "predecessors": [],
@@ -181,67 +181,67 @@
       {
         "digest": "6896e0d7b8c9e12c7cb2a9d5f79bf5e7accc09b8fd61ec01629faa31401f5ad1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-plan.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-plan.md"
       },
       {
         "digest": "cd761599385805933241a43e39e406d0a91b502c68fdda5c29d9b798475d2043",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-spec.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-spec.md"
       },
       {
         "digest": "b93b6f02d75a73b9e510f68053f56700ce283b3933b6396ba911a41fdd55fc27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/completion.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/completion.md"
       },
       {
         "digest": "3be6b8e93d30f37fbf5da73c4768c223a470d4b613b8399cb106086dc9b3bc5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/deep_implement_config.json"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/deep_implement_config.json"
       },
       {
         "digest": "070255aed993be28a6673d37f5121d6b27260b895f7edfc3665398e02081288c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/release-gate.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/release-gate.md"
       },
       {
         "digest": "89df1be89ee6b15e336c10d29d4874ee681e32dd6c4bf3521c96ac2c57e7c82f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/reviews/self-review-round-1.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/reviews/self-review-round-1.md"
       },
       {
         "digest": "93e023579e4a4bdcaac843c1efec451619377771def130f104579c5b255b2860",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/index.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/index.md"
       },
       {
         "digest": "32b792ea7aeb8576a4214705637b17e0f6cb21fb9ffb1a559a97f14fbadf7e48",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-01-acp-protocol-adapter.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-01-acp-protocol-adapter.md"
       },
       {
         "digest": "457b4ba77ccdf6bbb1eb38ce3eac65073fe5a62c67ef841ea380390d321bff60",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-02-session-resume-process-custody.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-02-session-resume-process-custody.md"
       },
       {
         "digest": "934b6893c4f290cb6d5debfb2bd9bf86e13616df23f73e54490269d127fad53c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-03-gas-city-provider-bridge.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-03-gas-city-provider-bridge.md"
       },
       {
         "digest": "6629c5fc859d6bde2ab641d04ce9965de71e47ff5588fc472793bdb70e831768",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-04-routing-job-economic-integration.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-04-routing-job-economic-integration.md"
       },
       {
         "digest": "5b498a3dcec7716bd3f100fdf926886192926010cc75ff5f54912da82064efcc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-05-ui-observability-user-input.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-05-ui-observability-user-input.md"
       },
       {
         "digest": "c25f6997c432c5584711fe34aa6eb6334a4b368f339111ff8e07f9b922f85f4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-06-conformance-rollout.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-06-conformance-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -273,84 +273,84 @@
       {
         "digest": "6896e0d7b8c9e12c7cb2a9d5f79bf5e7accc09b8fd61ec01629faa31401f5ad1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-plan.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-plan.md"
       },
       {
         "digest": "cd761599385805933241a43e39e406d0a91b502c68fdda5c29d9b798475d2043",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-spec.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-spec.md"
       },
       {
         "digest": "b93b6f02d75a73b9e510f68053f56700ce283b3933b6396ba911a41fdd55fc27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/completion.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/completion.md"
       },
       {
         "digest": "3be6b8e93d30f37fbf5da73c4768c223a470d4b613b8399cb106086dc9b3bc5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/deep_implement_config.json"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/deep_implement_config.json"
       },
       {
         "digest": "070255aed993be28a6673d37f5121d6b27260b895f7edfc3665398e02081288c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/release-gate.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/release-gate.md"
       },
       {
         "digest": "89df1be89ee6b15e336c10d29d4874ee681e32dd6c4bf3521c96ac2c57e7c82f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/reviews/self-review-round-1.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/reviews/self-review-round-1.md"
       },
       {
         "digest": "93e023579e4a4bdcaac843c1efec451619377771def130f104579c5b255b2860",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/index.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/index.md"
       },
       {
         "digest": "32b792ea7aeb8576a4214705637b17e0f6cb21fb9ffb1a559a97f14fbadf7e48",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-01-acp-protocol-adapter.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-01-acp-protocol-adapter.md"
       },
       {
         "digest": "457b4ba77ccdf6bbb1eb38ce3eac65073fe5a62c67ef841ea380390d321bff60",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-02-session-resume-process-custody.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-02-session-resume-process-custody.md"
       },
       {
         "digest": "934b6893c4f290cb6d5debfb2bd9bf86e13616df23f73e54490269d127fad53c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-03-gas-city-provider-bridge.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-03-gas-city-provider-bridge.md"
       },
       {
         "digest": "6629c5fc859d6bde2ab641d04ce9965de71e47ff5588fc472793bdb70e831768",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-04-routing-job-economic-integration.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-04-routing-job-economic-integration.md"
       },
       {
         "digest": "5b498a3dcec7716bd3f100fdf926886192926010cc75ff5f54912da82064efcc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-05-ui-observability-user-input.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-05-ui-observability-user-input.md"
       },
       {
         "digest": "c25f6997c432c5584711fe34aa6eb6334a4b368f339111ff8e07f9b922f85f4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-06-conformance-rollout.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-06-conformance-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md",
     "digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.973807Z",
+      "last_evidence_at": "2026-10-06T03:28:17.355670Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
     },
-    "revision": "1",
+    "revision": "7",
     "slug": "211-external-agent-runtime-fabric-acp-gascity",
     "spec_id": "211",
     "title": "Spec 211 — SmartAIHub External Agent Runtime Fabric"
@@ -372,7 +372,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.973807Z"
+    "updated_at": "2026-10-06T03:28:17.355670Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -382,7 +382,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.973807Z",
+    "reconciled_at": "2026-10-06T03:28:17.355670Z",
     "sources": [
       {
         "digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
@@ -392,67 +392,67 @@
       {
         "digest": "6896e0d7b8c9e12c7cb2a9d5f79bf5e7accc09b8fd61ec01629faa31401f5ad1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-plan.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-plan.md"
       },
       {
         "digest": "cd761599385805933241a43e39e406d0a91b502c68fdda5c29d9b798475d2043",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-spec.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-spec.md"
       },
       {
         "digest": "b93b6f02d75a73b9e510f68053f56700ce283b3933b6396ba911a41fdd55fc27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/completion.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/completion.md"
       },
       {
         "digest": "3be6b8e93d30f37fbf5da73c4768c223a470d4b613b8399cb106086dc9b3bc5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/deep_implement_config.json"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/deep_implement_config.json"
       },
       {
         "digest": "070255aed993be28a6673d37f5121d6b27260b895f7edfc3665398e02081288c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/release-gate.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/release-gate.md"
       },
       {
         "digest": "89df1be89ee6b15e336c10d29d4874ee681e32dd6c4bf3521c96ac2c57e7c82f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/reviews/self-review-round-1.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/reviews/self-review-round-1.md"
       },
       {
         "digest": "93e023579e4a4bdcaac843c1efec451619377771def130f104579c5b255b2860",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/index.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/index.md"
       },
       {
         "digest": "32b792ea7aeb8576a4214705637b17e0f6cb21fb9ffb1a559a97f14fbadf7e48",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-01-acp-protocol-adapter.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-01-acp-protocol-adapter.md"
       },
       {
         "digest": "457b4ba77ccdf6bbb1eb38ce3eac65073fe5a62c67ef841ea380390d321bff60",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-02-session-resume-process-custody.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-02-session-resume-process-custody.md"
       },
       {
         "digest": "934b6893c4f290cb6d5debfb2bd9bf86e13616df23f73e54490269d127fad53c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-03-gas-city-provider-bridge.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-03-gas-city-provider-bridge.md"
       },
       {
         "digest": "6629c5fc859d6bde2ab641d04ce9965de71e47ff5588fc472793bdb70e831768",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-04-routing-job-economic-integration.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-04-routing-job-economic-integration.md"
       },
       {
         "digest": "5b498a3dcec7716bd3f100fdf926886192926010cc75ff5f54912da82064efcc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-05-ui-observability-user-input.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-05-ui-observability-user-input.md"
       },
       {
         "digest": "c25f6997c432c5584711fe34aa6eb6334a4b368f339111ff8e07f9b922f85f4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-06-conformance-rollout.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-06-conformance-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -502,67 +502,67 @@
       {
         "digest": "6896e0d7b8c9e12c7cb2a9d5f79bf5e7accc09b8fd61ec01629faa31401f5ad1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-plan.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-plan.md"
       },
       {
         "digest": "cd761599385805933241a43e39e406d0a91b502c68fdda5c29d9b798475d2043",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-spec.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/claude-spec.md"
       },
       {
         "digest": "b93b6f02d75a73b9e510f68053f56700ce283b3933b6396ba911a41fdd55fc27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/completion.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/completion.md"
       },
       {
         "digest": "3be6b8e93d30f37fbf5da73c4768c223a470d4b613b8399cb106086dc9b3bc5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/deep_implement_config.json"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/implementation/deep_implement_config.json"
       },
       {
         "digest": "070255aed993be28a6673d37f5121d6b27260b895f7edfc3665398e02081288c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/release-gate.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/release-gate.md"
       },
       {
         "digest": "89df1be89ee6b15e336c10d29d4874ee681e32dd6c4bf3521c96ac2c57e7c82f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/reviews/self-review-round-1.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/reviews/self-review-round-1.md"
       },
       {
         "digest": "93e023579e4a4bdcaac843c1efec451619377771def130f104579c5b255b2860",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/index.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/index.md"
       },
       {
         "digest": "32b792ea7aeb8576a4214705637b17e0f6cb21fb9ffb1a559a97f14fbadf7e48",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-01-acp-protocol-adapter.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-01-acp-protocol-adapter.md"
       },
       {
         "digest": "457b4ba77ccdf6bbb1eb38ce3eac65073fe5a62c67ef841ea380390d321bff60",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-02-session-resume-process-custody.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-02-session-resume-process-custody.md"
       },
       {
         "digest": "934b6893c4f290cb6d5debfb2bd9bf86e13616df23f73e54490269d127fad53c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-03-gas-city-provider-bridge.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-03-gas-city-provider-bridge.md"
       },
       {
         "digest": "6629c5fc859d6bde2ab641d04ce9965de71e47ff5588fc472793bdb70e831768",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-04-routing-job-economic-integration.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-04-routing-job-economic-integration.md"
       },
       {
         "digest": "5b498a3dcec7716bd3f100fdf926886192926010cc75ff5f54912da82064efcc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-05-ui-observability-user-input.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-05-ui-observability-user-input.md"
       },
       {
         "digest": "c25f6997c432c5584711fe34aa6eb6334a4b368f339111ff8e07f9b922f85f4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-06-conformance-rollout.md"
+        "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-06-conformance-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -580,7 +580,7 @@
     "unresolved": 505
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.973807Z",
+  "updated_at": "2026-10-06T03:28:17.355670Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

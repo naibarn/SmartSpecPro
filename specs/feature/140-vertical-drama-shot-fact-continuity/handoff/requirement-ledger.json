@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L25"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L25"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L25",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L25",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L73"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L73"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L73",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L93"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L93"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L93",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L93",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L165"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L165"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L165",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L171"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L171"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L171",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L213"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L213"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L213",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L217"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L217"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L217",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L223"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L223"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L223",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L223",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L258"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L258"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L258",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L261"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L261"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L261",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L262"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L262"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L262",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L312"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L312"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L312",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L312",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L325"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L325"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L325",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L325",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L352"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L352"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L352",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L357"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L357"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L357",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L357",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L394"
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L394"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L394",
+      "authority_source": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md#L394",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

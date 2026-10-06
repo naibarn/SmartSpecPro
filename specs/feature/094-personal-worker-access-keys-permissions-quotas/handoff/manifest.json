@@ -17,32 +17,32 @@
       {
         "digest": "511b004260b2c10f51fbd774a6103c663611aa68211d1e5a52fa46ae29c39adf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/index.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/index.md"
       },
       {
         "digest": "0ca67422cceacc3df5af1d92fd2e4eca4fdb0e63424579fe455c976726ab6428",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-01-worker-key-ui-and-lifecycle.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-01-worker-key-ui-and-lifecycle.md"
       },
       {
         "digest": "fd9dbac2a6fb0b8c245b597b7353912e577e9be6d4b2869f019395b92b18f2d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-02-registration-key-service-and-handshake.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-02-registration-key-service-and-handshake.md"
       },
       {
         "digest": "c185cde66e497bf695716c74028bc8620fad9630f880c888663e4b23ba3297da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-03-worker-metadata-and-audit-snapshot.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-03-worker-metadata-and-audit-snapshot.md"
       },
       {
         "digest": "1ba52295c20b4ca0d50ea2b5c7a3b052672489a28a2ac542d0b334a01ce09304",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-04-permissions-and-credit-quotas.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-04-permissions-and-credit-quotas.md"
       },
       {
         "digest": "68e33a2267d276002af362f8a405e6b4bb8951ea488b5a387c5543760788d72a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-05-localization-help-and-rollout.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-05-localization-help-and-rollout.md"
       }
     ],
     "predecessors": [],
@@ -73,32 +73,32 @@
       {
         "digest": "511b004260b2c10f51fbd774a6103c663611aa68211d1e5a52fa46ae29c39adf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/index.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/index.md"
       },
       {
         "digest": "0ca67422cceacc3df5af1d92fd2e4eca4fdb0e63424579fe455c976726ab6428",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-01-worker-key-ui-and-lifecycle.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-01-worker-key-ui-and-lifecycle.md"
       },
       {
         "digest": "fd9dbac2a6fb0b8c245b597b7353912e577e9be6d4b2869f019395b92b18f2d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-02-registration-key-service-and-handshake.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-02-registration-key-service-and-handshake.md"
       },
       {
         "digest": "c185cde66e497bf695716c74028bc8620fad9630f880c888663e4b23ba3297da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-03-worker-metadata-and-audit-snapshot.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-03-worker-metadata-and-audit-snapshot.md"
       },
       {
         "digest": "1ba52295c20b4ca0d50ea2b5c7a3b052672489a28a2ac542d0b334a01ce09304",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-04-permissions-and-credit-quotas.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-04-permissions-and-credit-quotas.md"
       },
       {
         "digest": "68e33a2267d276002af362f8a405e6b4bb8951ea488b5a387c5543760788d72a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-05-localization-help-and-rollout.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-05-localization-help-and-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -130,44 +130,44 @@
       {
         "digest": "511b004260b2c10f51fbd774a6103c663611aa68211d1e5a52fa46ae29c39adf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/index.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/index.md"
       },
       {
         "digest": "0ca67422cceacc3df5af1d92fd2e4eca4fdb0e63424579fe455c976726ab6428",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-01-worker-key-ui-and-lifecycle.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-01-worker-key-ui-and-lifecycle.md"
       },
       {
         "digest": "fd9dbac2a6fb0b8c245b597b7353912e577e9be6d4b2869f019395b92b18f2d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-02-registration-key-service-and-handshake.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-02-registration-key-service-and-handshake.md"
       },
       {
         "digest": "c185cde66e497bf695716c74028bc8620fad9630f880c888663e4b23ba3297da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-03-worker-metadata-and-audit-snapshot.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-03-worker-metadata-and-audit-snapshot.md"
       },
       {
         "digest": "1ba52295c20b4ca0d50ea2b5c7a3b052672489a28a2ac542d0b334a01ce09304",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-04-permissions-and-credit-quotas.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-04-permissions-and-credit-quotas.md"
       },
       {
         "digest": "68e33a2267d276002af362f8a405e6b4bb8951ea488b5a387c5543760788d72a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-05-localization-help-and-rollout.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-05-localization-help-and-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md",
     "digest": "74b8bcced5075692192329f74c5564a4f49252d1064c6875396a22ca52e0d402",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.898132Z",
+      "last_evidence_at": "2026-10-06T03:28:15.418824Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-15T08:00:16+07:00",
       "spec_last_changed_at": "2026-04-15T08:00:16+07:00"
@@ -194,7 +194,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.898132Z"
+    "updated_at": "2026-10-06T03:28:15.418824Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -204,7 +204,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.898132Z",
+    "reconciled_at": "2026-10-06T03:28:15.418824Z",
     "sources": [
       {
         "digest": "74b8bcced5075692192329f74c5564a4f49252d1064c6875396a22ca52e0d402",
@@ -214,32 +214,32 @@
       {
         "digest": "511b004260b2c10f51fbd774a6103c663611aa68211d1e5a52fa46ae29c39adf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/index.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/index.md"
       },
       {
         "digest": "0ca67422cceacc3df5af1d92fd2e4eca4fdb0e63424579fe455c976726ab6428",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-01-worker-key-ui-and-lifecycle.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-01-worker-key-ui-and-lifecycle.md"
       },
       {
         "digest": "fd9dbac2a6fb0b8c245b597b7353912e577e9be6d4b2869f019395b92b18f2d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-02-registration-key-service-and-handshake.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-02-registration-key-service-and-handshake.md"
       },
       {
         "digest": "c185cde66e497bf695716c74028bc8620fad9630f880c888663e4b23ba3297da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-03-worker-metadata-and-audit-snapshot.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-03-worker-metadata-and-audit-snapshot.md"
       },
       {
         "digest": "1ba52295c20b4ca0d50ea2b5c7a3b052672489a28a2ac542d0b334a01ce09304",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-04-permissions-and-credit-quotas.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-04-permissions-and-credit-quotas.md"
       },
       {
         "digest": "68e33a2267d276002af362f8a405e6b4bb8951ea488b5a387c5543760788d72a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-05-localization-help-and-rollout.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-05-localization-help-and-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -289,32 +289,32 @@
       {
         "digest": "511b004260b2c10f51fbd774a6103c663611aa68211d1e5a52fa46ae29c39adf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/index.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/index.md"
       },
       {
         "digest": "0ca67422cceacc3df5af1d92fd2e4eca4fdb0e63424579fe455c976726ab6428",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-01-worker-key-ui-and-lifecycle.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-01-worker-key-ui-and-lifecycle.md"
       },
       {
         "digest": "fd9dbac2a6fb0b8c245b597b7353912e577e9be6d4b2869f019395b92b18f2d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-02-registration-key-service-and-handshake.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-02-registration-key-service-and-handshake.md"
       },
       {
         "digest": "c185cde66e497bf695716c74028bc8620fad9630f880c888663e4b23ba3297da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-03-worker-metadata-and-audit-snapshot.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-03-worker-metadata-and-audit-snapshot.md"
       },
       {
         "digest": "1ba52295c20b4ca0d50ea2b5c7a3b052672489a28a2ac542d0b334a01ce09304",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-04-permissions-and-credit-quotas.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-04-permissions-and-credit-quotas.md"
       },
       {
         "digest": "68e33a2267d276002af362f8a405e6b4bb8951ea488b5a387c5543760788d72a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-05-localization-help-and-rollout.md"
+        "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas/sections/section-05-localization-help-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -332,7 +332,7 @@
     "unresolved": 61
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.898132Z",
+  "updated_at": "2026-10-06T03:28:15.418824Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

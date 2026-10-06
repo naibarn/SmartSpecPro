@@ -17,52 +17,52 @@
       {
         "digest": "4dae156119e23edb7d544f8984f844a21ee1e0a80377943e546d85e07a6aeeae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/index.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/index.md"
       },
       {
         "digest": "43037d22694b13136b2b7a3636aa1e7b6a0775cb82a51a8d09ec40f1cf59d1c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-01-maintenance-data-model.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-01-maintenance-data-model.md"
       },
       {
         "digest": "5d3fb2c1b18bf088ab4b52f582c18c3c2584a5040438b9145018438f429beffa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-02-analyzer-and-contract-snapshots.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-02-analyzer-and-contract-snapshots.md"
       },
       {
         "digest": "b748e1bff35d7d7b9859f4309bb3acd636d936812c4163a63b2ea73c7571b755",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-03-single-skill-advice-api.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-03-single-skill-advice-api.md"
       },
       {
         "digest": "6e73176f6866d45501e1be195b00543db308e7a507727200d7823277b5b0d37e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-04-admin-skills-maintenance-ui.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-04-admin-skills-maintenance-ui.md"
       },
       {
         "digest": "28be825da72a176540c9a3b66a997be494643a92fa40929700b1b26b3583361c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-05-apply-runner-and-compatibility-gate.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-05-apply-runner-and-compatibility-gate.md"
       },
       {
         "digest": "6ddd0c10f783489346e84979fabfc1dfb82211232a4d37fed922be5409805ef8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-06-scheduled-sweeps-and-review-queue.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-06-scheduled-sweeps-and-review-queue.md"
       },
       {
         "digest": "ca34af5509044fcabbf29d3074401175af5256cc8ba9ddb28c7a80ccae3351a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-07-genjs-migration-engine-and-bundle-layout.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-07-genjs-migration-engine-and-bundle-layout.md"
       },
       {
         "digest": "046587fb9e94d4fc824dd4d689aa8c9e2b43daec79e1356528db0c21c5b05ec4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-08-orchestration-config-in-admin-edit.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-08-orchestration-config-in-admin-edit.md"
       },
       {
         "digest": "be346f65b20618a6c00772315f337acab4b1f7cdb89280472ec6f72f8a6c134a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-09-fixture-tests-verification-and-rollout.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-09-fixture-tests-verification-and-rollout.md"
       }
     ],
     "predecessors": [],
@@ -93,52 +93,52 @@
       {
         "digest": "4dae156119e23edb7d544f8984f844a21ee1e0a80377943e546d85e07a6aeeae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/index.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/index.md"
       },
       {
         "digest": "43037d22694b13136b2b7a3636aa1e7b6a0775cb82a51a8d09ec40f1cf59d1c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-01-maintenance-data-model.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-01-maintenance-data-model.md"
       },
       {
         "digest": "5d3fb2c1b18bf088ab4b52f582c18c3c2584a5040438b9145018438f429beffa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-02-analyzer-and-contract-snapshots.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-02-analyzer-and-contract-snapshots.md"
       },
       {
         "digest": "b748e1bff35d7d7b9859f4309bb3acd636d936812c4163a63b2ea73c7571b755",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-03-single-skill-advice-api.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-03-single-skill-advice-api.md"
       },
       {
         "digest": "6e73176f6866d45501e1be195b00543db308e7a507727200d7823277b5b0d37e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-04-admin-skills-maintenance-ui.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-04-admin-skills-maintenance-ui.md"
       },
       {
         "digest": "28be825da72a176540c9a3b66a997be494643a92fa40929700b1b26b3583361c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-05-apply-runner-and-compatibility-gate.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-05-apply-runner-and-compatibility-gate.md"
       },
       {
         "digest": "6ddd0c10f783489346e84979fabfc1dfb82211232a4d37fed922be5409805ef8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-06-scheduled-sweeps-and-review-queue.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-06-scheduled-sweeps-and-review-queue.md"
       },
       {
         "digest": "ca34af5509044fcabbf29d3074401175af5256cc8ba9ddb28c7a80ccae3351a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-07-genjs-migration-engine-and-bundle-layout.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-07-genjs-migration-engine-and-bundle-layout.md"
       },
       {
         "digest": "046587fb9e94d4fc824dd4d689aa8c9e2b43daec79e1356528db0c21c5b05ec4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-08-orchestration-config-in-admin-edit.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-08-orchestration-config-in-admin-edit.md"
       },
       {
         "digest": "be346f65b20618a6c00772315f337acab4b1f7cdb89280472ec6f72f8a6c134a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-09-fixture-tests-verification-and-rollout.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-09-fixture-tests-verification-and-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -170,64 +170,64 @@
       {
         "digest": "4dae156119e23edb7d544f8984f844a21ee1e0a80377943e546d85e07a6aeeae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/index.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/index.md"
       },
       {
         "digest": "43037d22694b13136b2b7a3636aa1e7b6a0775cb82a51a8d09ec40f1cf59d1c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-01-maintenance-data-model.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-01-maintenance-data-model.md"
       },
       {
         "digest": "5d3fb2c1b18bf088ab4b52f582c18c3c2584a5040438b9145018438f429beffa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-02-analyzer-and-contract-snapshots.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-02-analyzer-and-contract-snapshots.md"
       },
       {
         "digest": "b748e1bff35d7d7b9859f4309bb3acd636d936812c4163a63b2ea73c7571b755",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-03-single-skill-advice-api.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-03-single-skill-advice-api.md"
       },
       {
         "digest": "6e73176f6866d45501e1be195b00543db308e7a507727200d7823277b5b0d37e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-04-admin-skills-maintenance-ui.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-04-admin-skills-maintenance-ui.md"
       },
       {
         "digest": "28be825da72a176540c9a3b66a997be494643a92fa40929700b1b26b3583361c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-05-apply-runner-and-compatibility-gate.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-05-apply-runner-and-compatibility-gate.md"
       },
       {
         "digest": "6ddd0c10f783489346e84979fabfc1dfb82211232a4d37fed922be5409805ef8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-06-scheduled-sweeps-and-review-queue.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-06-scheduled-sweeps-and-review-queue.md"
       },
       {
         "digest": "ca34af5509044fcabbf29d3074401175af5256cc8ba9ddb28c7a80ccae3351a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-07-genjs-migration-engine-and-bundle-layout.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-07-genjs-migration-engine-and-bundle-layout.md"
       },
       {
         "digest": "046587fb9e94d4fc824dd4d689aa8c9e2b43daec79e1356528db0c21c5b05ec4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-08-orchestration-config-in-admin-edit.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-08-orchestration-config-in-admin-edit.md"
       },
       {
         "digest": "be346f65b20618a6c00772315f337acab4b1f7cdb89280472ec6f72f8a6c134a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-09-fixture-tests-verification-and-rollout.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-09-fixture-tests-verification-and-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/064-skill-maintenance-lifecycle/spec.md",
     "digest": "c04b39249892f7ba0d558cbdef37911343a6a077c4c427e8f4402fff07c01128",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.747648Z",
+      "last_evidence_at": "2026-10-06T03:28:15.127614Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-03-30T12:54:14+07:00",
       "spec_last_changed_at": "2026-03-30T12:54:14+07:00"
@@ -254,7 +254,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.747648Z"
+    "updated_at": "2026-10-06T03:28:15.127614Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -264,7 +264,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.747648Z",
+    "reconciled_at": "2026-10-06T03:28:15.127614Z",
     "sources": [
       {
         "digest": "c04b39249892f7ba0d558cbdef37911343a6a077c4c427e8f4402fff07c01128",
@@ -274,52 +274,52 @@
       {
         "digest": "4dae156119e23edb7d544f8984f844a21ee1e0a80377943e546d85e07a6aeeae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/index.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/index.md"
       },
       {
         "digest": "43037d22694b13136b2b7a3636aa1e7b6a0775cb82a51a8d09ec40f1cf59d1c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-01-maintenance-data-model.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-01-maintenance-data-model.md"
       },
       {
         "digest": "5d3fb2c1b18bf088ab4b52f582c18c3c2584a5040438b9145018438f429beffa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-02-analyzer-and-contract-snapshots.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-02-analyzer-and-contract-snapshots.md"
       },
       {
         "digest": "b748e1bff35d7d7b9859f4309bb3acd636d936812c4163a63b2ea73c7571b755",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-03-single-skill-advice-api.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-03-single-skill-advice-api.md"
       },
       {
         "digest": "6e73176f6866d45501e1be195b00543db308e7a507727200d7823277b5b0d37e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-04-admin-skills-maintenance-ui.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-04-admin-skills-maintenance-ui.md"
       },
       {
         "digest": "28be825da72a176540c9a3b66a997be494643a92fa40929700b1b26b3583361c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-05-apply-runner-and-compatibility-gate.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-05-apply-runner-and-compatibility-gate.md"
       },
       {
         "digest": "6ddd0c10f783489346e84979fabfc1dfb82211232a4d37fed922be5409805ef8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-06-scheduled-sweeps-and-review-queue.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-06-scheduled-sweeps-and-review-queue.md"
       },
       {
         "digest": "ca34af5509044fcabbf29d3074401175af5256cc8ba9ddb28c7a80ccae3351a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-07-genjs-migration-engine-and-bundle-layout.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-07-genjs-migration-engine-and-bundle-layout.md"
       },
       {
         "digest": "046587fb9e94d4fc824dd4d689aa8c9e2b43daec79e1356528db0c21c5b05ec4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-08-orchestration-config-in-admin-edit.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-08-orchestration-config-in-admin-edit.md"
       },
       {
         "digest": "be346f65b20618a6c00772315f337acab4b1f7cdb89280472ec6f72f8a6c134a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-09-fixture-tests-verification-and-rollout.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-09-fixture-tests-verification-and-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -369,52 +369,52 @@
       {
         "digest": "4dae156119e23edb7d544f8984f844a21ee1e0a80377943e546d85e07a6aeeae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/index.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/index.md"
       },
       {
         "digest": "43037d22694b13136b2b7a3636aa1e7b6a0775cb82a51a8d09ec40f1cf59d1c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-01-maintenance-data-model.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-01-maintenance-data-model.md"
       },
       {
         "digest": "5d3fb2c1b18bf088ab4b52f582c18c3c2584a5040438b9145018438f429beffa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-02-analyzer-and-contract-snapshots.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-02-analyzer-and-contract-snapshots.md"
       },
       {
         "digest": "b748e1bff35d7d7b9859f4309bb3acd636d936812c4163a63b2ea73c7571b755",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-03-single-skill-advice-api.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-03-single-skill-advice-api.md"
       },
       {
         "digest": "6e73176f6866d45501e1be195b00543db308e7a507727200d7823277b5b0d37e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-04-admin-skills-maintenance-ui.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-04-admin-skills-maintenance-ui.md"
       },
       {
         "digest": "28be825da72a176540c9a3b66a997be494643a92fa40929700b1b26b3583361c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-05-apply-runner-and-compatibility-gate.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-05-apply-runner-and-compatibility-gate.md"
       },
       {
         "digest": "6ddd0c10f783489346e84979fabfc1dfb82211232a4d37fed922be5409805ef8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-06-scheduled-sweeps-and-review-queue.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-06-scheduled-sweeps-and-review-queue.md"
       },
       {
         "digest": "ca34af5509044fcabbf29d3074401175af5256cc8ba9ddb28c7a80ccae3351a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-07-genjs-migration-engine-and-bundle-layout.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-07-genjs-migration-engine-and-bundle-layout.md"
       },
       {
         "digest": "046587fb9e94d4fc824dd4d689aa8c9e2b43daec79e1356528db0c21c5b05ec4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-08-orchestration-config-in-admin-edit.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-08-orchestration-config-in-admin-edit.md"
       },
       {
         "digest": "be346f65b20618a6c00772315f337acab4b1f7cdb89280472ec6f72f8a6c134a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/sections/section-09-fixture-tests-verification-and-rollout.md"
+        "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-09-fixture-tests-verification-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -432,7 +432,7 @@
     "unresolved": 194
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.747648Z",
+  "updated_at": "2026-10-06T03:28:15.127614Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

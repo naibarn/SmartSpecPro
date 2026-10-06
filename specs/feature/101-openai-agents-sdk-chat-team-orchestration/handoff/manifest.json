@@ -17,97 +17,97 @@
       {
         "digest": "f819c6067c84d15b2ea2d50317a805530ce5cee2ce66ea9dc30493173604b96e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-plan.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-plan.md"
       },
       {
         "digest": "b4018ee2bf9eeccc9efb14e05c122b9e316a3cdf760db7fb1e06db7b9120fc0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-spec.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-spec.md"
       },
       {
         "digest": "2a66d017cb621bed9adea48084b6a4e1c6eb5cdd14edc62b88e2c49c2867c545",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/deep_implement_config.json"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "8ac0f71c05c13e245dc1887b97fe1577a83fd836ce887ac9bb4bbc96237272ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/execution-waves.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/execution-waves.md"
       },
       {
         "digest": "2f64cc838c2f2b2138ed2e40e902066c85b1afe165bea9bc10a6d39b987c4fa0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/responses-runtime-turn-plan.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/responses-runtime-turn-plan.md"
       },
       {
         "digest": "5f5068f30691b6aeca68aa9dcb0965845d1de8675de8fe681237de95d8d91906",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/section-cross-consistency.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/section-cross-consistency.md"
       },
       {
         "digest": "6390de26a473e07b9803ec04135d4618da6ff2e684ba71676de98565cdc70b97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/self-review-round-1.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/self-review-round-1.md"
       },
       {
         "digest": "9c40491742be4145306d6c2f72bedf39ab53cd14ecc83aac52339c70ef2d04ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/index.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/index.md"
       },
       {
         "digest": "63fc8c6bd254ea4acffb2ca9b9c014f62c75208779888b3c3fa350bf9905e4e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-01-shared-contracts-flags.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-01-shared-contracts-flags.md"
       },
       {
         "digest": "ef6d3a592d8e5d1def6880da58c8c3b9438894fc152be110758742ccb1fc9f10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-02-persistence-migrations.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-02-persistence-migrations.md"
       },
       {
         "digest": "329b173195a75d4d4d06cb3e1600b8126d982af57ad6f973f3acc2685302ffc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-03-python-openai-agents-adapter.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-03-python-openai-agents-adapter.md"
       },
       {
         "digest": "6227a845af27ba55d61b36480b394dde08488cb5274b1012e4ccdd7cbdfb23a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-04-node-runtime-client.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-04-node-runtime-client.md"
       },
       {
         "digest": "f3fb143102f6b6bd87d23696fb5bac281e25d54bbf920369d2047d751d6d21da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-05-skill-capability-manifests.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-05-skill-capability-manifests.md"
       },
       {
         "digest": "bcdf6e06577f2e47a6931b4ca32a41da0bec9d16ce0b4c39821387c1f2b81f58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-06-chat-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-06-chat-runtime-integration.md"
       },
       {
         "digest": "99b386fe730784b2edb4b126f95de932489fcf4c7a1f75f9bf68f847a4938ea5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-07-team-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-07-team-runtime-integration.md"
       },
       {
         "digest": "9be6e18a1d1cf958b796e73b12ef472efb71683ef9b05bebb6aaa0e397eb6adc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-08-responses-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-08-responses-runtime-integration.md"
       },
       {
         "digest": "703502eb1e4980b5abbeed724f8fed627ffe8b204dd0a0ba6cac57e0de09f7ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-09-shared-skill-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-09-shared-skill-runtime-integration.md"
       },
       {
         "digest": "dab4b285f354b53abb4a7422807a5e33c1978e694eb43ac32518c0cb0415486e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-10-ledger-ui-debug.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-10-ledger-ui-debug.md"
       },
       {
         "digest": "877d7e7ba1f01742d8533ec91eb35c55394b62b2b1da21fc08b84a83cc9248f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-11-rollout-replay-release-gates.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-11-rollout-replay-release-gates.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "f819c6067c84d15b2ea2d50317a805530ce5cee2ce66ea9dc30493173604b96e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-plan.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-plan.md"
       },
       {
         "digest": "b4018ee2bf9eeccc9efb14e05c122b9e316a3cdf760db7fb1e06db7b9120fc0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-spec.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-spec.md"
       },
       {
         "digest": "2a66d017cb621bed9adea48084b6a4e1c6eb5cdd14edc62b88e2c49c2867c545",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/deep_implement_config.json"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "8ac0f71c05c13e245dc1887b97fe1577a83fd836ce887ac9bb4bbc96237272ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/execution-waves.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/execution-waves.md"
       },
       {
         "digest": "2f64cc838c2f2b2138ed2e40e902066c85b1afe165bea9bc10a6d39b987c4fa0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/responses-runtime-turn-plan.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/responses-runtime-turn-plan.md"
       },
       {
         "digest": "5f5068f30691b6aeca68aa9dcb0965845d1de8675de8fe681237de95d8d91906",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/section-cross-consistency.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/section-cross-consistency.md"
       },
       {
         "digest": "6390de26a473e07b9803ec04135d4618da6ff2e684ba71676de98565cdc70b97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/self-review-round-1.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/self-review-round-1.md"
       },
       {
         "digest": "9c40491742be4145306d6c2f72bedf39ab53cd14ecc83aac52339c70ef2d04ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/index.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/index.md"
       },
       {
         "digest": "63fc8c6bd254ea4acffb2ca9b9c014f62c75208779888b3c3fa350bf9905e4e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-01-shared-contracts-flags.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-01-shared-contracts-flags.md"
       },
       {
         "digest": "ef6d3a592d8e5d1def6880da58c8c3b9438894fc152be110758742ccb1fc9f10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-02-persistence-migrations.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-02-persistence-migrations.md"
       },
       {
         "digest": "329b173195a75d4d4d06cb3e1600b8126d982af57ad6f973f3acc2685302ffc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-03-python-openai-agents-adapter.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-03-python-openai-agents-adapter.md"
       },
       {
         "digest": "6227a845af27ba55d61b36480b394dde08488cb5274b1012e4ccdd7cbdfb23a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-04-node-runtime-client.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-04-node-runtime-client.md"
       },
       {
         "digest": "f3fb143102f6b6bd87d23696fb5bac281e25d54bbf920369d2047d751d6d21da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-05-skill-capability-manifests.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-05-skill-capability-manifests.md"
       },
       {
         "digest": "bcdf6e06577f2e47a6931b4ca32a41da0bec9d16ce0b4c39821387c1f2b81f58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-06-chat-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-06-chat-runtime-integration.md"
       },
       {
         "digest": "99b386fe730784b2edb4b126f95de932489fcf4c7a1f75f9bf68f847a4938ea5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-07-team-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-07-team-runtime-integration.md"
       },
       {
         "digest": "9be6e18a1d1cf958b796e73b12ef472efb71683ef9b05bebb6aaa0e397eb6adc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-08-responses-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-08-responses-runtime-integration.md"
       },
       {
         "digest": "703502eb1e4980b5abbeed724f8fed627ffe8b204dd0a0ba6cac57e0de09f7ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-09-shared-skill-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-09-shared-skill-runtime-integration.md"
       },
       {
         "digest": "dab4b285f354b53abb4a7422807a5e33c1978e694eb43ac32518c0cb0415486e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-10-ledger-ui-debug.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-10-ledger-ui-debug.md"
       },
       {
         "digest": "877d7e7ba1f01742d8533ec91eb35c55394b62b2b1da21fc08b84a83cc9248f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-11-rollout-replay-release-gates.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-11-rollout-replay-release-gates.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "f819c6067c84d15b2ea2d50317a805530ce5cee2ce66ea9dc30493173604b96e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-plan.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-plan.md"
       },
       {
         "digest": "b4018ee2bf9eeccc9efb14e05c122b9e316a3cdf760db7fb1e06db7b9120fc0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-spec.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-spec.md"
       },
       {
         "digest": "2a66d017cb621bed9adea48084b6a4e1c6eb5cdd14edc62b88e2c49c2867c545",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/deep_implement_config.json"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "8ac0f71c05c13e245dc1887b97fe1577a83fd836ce887ac9bb4bbc96237272ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/execution-waves.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/execution-waves.md"
       },
       {
         "digest": "2f64cc838c2f2b2138ed2e40e902066c85b1afe165bea9bc10a6d39b987c4fa0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/responses-runtime-turn-plan.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/responses-runtime-turn-plan.md"
       },
       {
         "digest": "5f5068f30691b6aeca68aa9dcb0965845d1de8675de8fe681237de95d8d91906",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/section-cross-consistency.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/section-cross-consistency.md"
       },
       {
         "digest": "6390de26a473e07b9803ec04135d4618da6ff2e684ba71676de98565cdc70b97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/self-review-round-1.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/self-review-round-1.md"
       },
       {
         "digest": "9c40491742be4145306d6c2f72bedf39ab53cd14ecc83aac52339c70ef2d04ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/index.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/index.md"
       },
       {
         "digest": "63fc8c6bd254ea4acffb2ca9b9c014f62c75208779888b3c3fa350bf9905e4e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-01-shared-contracts-flags.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-01-shared-contracts-flags.md"
       },
       {
         "digest": "ef6d3a592d8e5d1def6880da58c8c3b9438894fc152be110758742ccb1fc9f10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-02-persistence-migrations.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-02-persistence-migrations.md"
       },
       {
         "digest": "329b173195a75d4d4d06cb3e1600b8126d982af57ad6f973f3acc2685302ffc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-03-python-openai-agents-adapter.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-03-python-openai-agents-adapter.md"
       },
       {
         "digest": "6227a845af27ba55d61b36480b394dde08488cb5274b1012e4ccdd7cbdfb23a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-04-node-runtime-client.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-04-node-runtime-client.md"
       },
       {
         "digest": "f3fb143102f6b6bd87d23696fb5bac281e25d54bbf920369d2047d751d6d21da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-05-skill-capability-manifests.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-05-skill-capability-manifests.md"
       },
       {
         "digest": "bcdf6e06577f2e47a6931b4ca32a41da0bec9d16ce0b4c39821387c1f2b81f58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-06-chat-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-06-chat-runtime-integration.md"
       },
       {
         "digest": "99b386fe730784b2edb4b126f95de932489fcf4c7a1f75f9bf68f847a4938ea5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-07-team-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-07-team-runtime-integration.md"
       },
       {
         "digest": "9be6e18a1d1cf958b796e73b12ef472efb71683ef9b05bebb6aaa0e397eb6adc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-08-responses-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-08-responses-runtime-integration.md"
       },
       {
         "digest": "703502eb1e4980b5abbeed724f8fed627ffe8b204dd0a0ba6cac57e0de09f7ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-09-shared-skill-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-09-shared-skill-runtime-integration.md"
       },
       {
         "digest": "dab4b285f354b53abb4a7422807a5e33c1978e694eb43ac32518c0cb0415486e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-10-ledger-ui-debug.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-10-ledger-ui-debug.md"
       },
       {
         "digest": "877d7e7ba1f01742d8533ec91eb35c55394b62b2b1da21fc08b84a83cc9248f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-11-rollout-replay-release-gates.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-11-rollout-replay-release-gates.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/spec.md",
     "digest": "270fda287c7ddc993d9815bee17c1912065f68b736f08821dd3fec78c5ca1d6a",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.951733Z",
+      "last_evidence_at": "2026-10-06T03:28:15.481607Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-23T09:32:16+07:00",
       "spec_last_changed_at": "2026-04-23T09:32:16+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.951733Z"
+    "updated_at": "2026-10-06T03:28:15.481607Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.951733Z",
+    "reconciled_at": "2026-10-06T03:28:15.481607Z",
     "sources": [
       {
         "digest": "270fda287c7ddc993d9815bee17c1912065f68b736f08821dd3fec78c5ca1d6a",
@@ -409,97 +409,97 @@
       {
         "digest": "f819c6067c84d15b2ea2d50317a805530ce5cee2ce66ea9dc30493173604b96e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-plan.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-plan.md"
       },
       {
         "digest": "b4018ee2bf9eeccc9efb14e05c122b9e316a3cdf760db7fb1e06db7b9120fc0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-spec.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-spec.md"
       },
       {
         "digest": "2a66d017cb621bed9adea48084b6a4e1c6eb5cdd14edc62b88e2c49c2867c545",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/deep_implement_config.json"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "8ac0f71c05c13e245dc1887b97fe1577a83fd836ce887ac9bb4bbc96237272ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/execution-waves.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/execution-waves.md"
       },
       {
         "digest": "2f64cc838c2f2b2138ed2e40e902066c85b1afe165bea9bc10a6d39b987c4fa0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/responses-runtime-turn-plan.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/responses-runtime-turn-plan.md"
       },
       {
         "digest": "5f5068f30691b6aeca68aa9dcb0965845d1de8675de8fe681237de95d8d91906",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/section-cross-consistency.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/section-cross-consistency.md"
       },
       {
         "digest": "6390de26a473e07b9803ec04135d4618da6ff2e684ba71676de98565cdc70b97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/self-review-round-1.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/self-review-round-1.md"
       },
       {
         "digest": "9c40491742be4145306d6c2f72bedf39ab53cd14ecc83aac52339c70ef2d04ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/index.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/index.md"
       },
       {
         "digest": "63fc8c6bd254ea4acffb2ca9b9c014f62c75208779888b3c3fa350bf9905e4e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-01-shared-contracts-flags.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-01-shared-contracts-flags.md"
       },
       {
         "digest": "ef6d3a592d8e5d1def6880da58c8c3b9438894fc152be110758742ccb1fc9f10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-02-persistence-migrations.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-02-persistence-migrations.md"
       },
       {
         "digest": "329b173195a75d4d4d06cb3e1600b8126d982af57ad6f973f3acc2685302ffc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-03-python-openai-agents-adapter.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-03-python-openai-agents-adapter.md"
       },
       {
         "digest": "6227a845af27ba55d61b36480b394dde08488cb5274b1012e4ccdd7cbdfb23a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-04-node-runtime-client.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-04-node-runtime-client.md"
       },
       {
         "digest": "f3fb143102f6b6bd87d23696fb5bac281e25d54bbf920369d2047d751d6d21da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-05-skill-capability-manifests.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-05-skill-capability-manifests.md"
       },
       {
         "digest": "bcdf6e06577f2e47a6931b4ca32a41da0bec9d16ce0b4c39821387c1f2b81f58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-06-chat-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-06-chat-runtime-integration.md"
       },
       {
         "digest": "99b386fe730784b2edb4b126f95de932489fcf4c7a1f75f9bf68f847a4938ea5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-07-team-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-07-team-runtime-integration.md"
       },
       {
         "digest": "9be6e18a1d1cf958b796e73b12ef472efb71683ef9b05bebb6aaa0e397eb6adc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-08-responses-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-08-responses-runtime-integration.md"
       },
       {
         "digest": "703502eb1e4980b5abbeed724f8fed627ffe8b204dd0a0ba6cac57e0de09f7ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-09-shared-skill-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-09-shared-skill-runtime-integration.md"
       },
       {
         "digest": "dab4b285f354b53abb4a7422807a5e33c1978e694eb43ac32518c0cb0415486e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-10-ledger-ui-debug.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-10-ledger-ui-debug.md"
       },
       {
         "digest": "877d7e7ba1f01742d8533ec91eb35c55394b62b2b1da21fc08b84a83cc9248f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-11-rollout-replay-release-gates.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-11-rollout-replay-release-gates.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -846,97 +846,97 @@
       {
         "digest": "f819c6067c84d15b2ea2d50317a805530ce5cee2ce66ea9dc30493173604b96e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-plan.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-plan.md"
       },
       {
         "digest": "b4018ee2bf9eeccc9efb14e05c122b9e316a3cdf760db7fb1e06db7b9120fc0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-spec.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/claude-spec.md"
       },
       {
         "digest": "2a66d017cb621bed9adea48084b6a4e1c6eb5cdd14edc62b88e2c49c2867c545",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/deep_implement_config.json"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "8ac0f71c05c13e245dc1887b97fe1577a83fd836ce887ac9bb4bbc96237272ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/execution-waves.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/execution-waves.md"
       },
       {
         "digest": "2f64cc838c2f2b2138ed2e40e902066c85b1afe165bea9bc10a6d39b987c4fa0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/responses-runtime-turn-plan.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation/responses-runtime-turn-plan.md"
       },
       {
         "digest": "5f5068f30691b6aeca68aa9dcb0965845d1de8675de8fe681237de95d8d91906",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/section-cross-consistency.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/section-cross-consistency.md"
       },
       {
         "digest": "6390de26a473e07b9803ec04135d4618da6ff2e684ba71676de98565cdc70b97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/self-review-round-1.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/reviews/self-review-round-1.md"
       },
       {
         "digest": "9c40491742be4145306d6c2f72bedf39ab53cd14ecc83aac52339c70ef2d04ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/index.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/index.md"
       },
       {
         "digest": "63fc8c6bd254ea4acffb2ca9b9c014f62c75208779888b3c3fa350bf9905e4e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-01-shared-contracts-flags.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-01-shared-contracts-flags.md"
       },
       {
         "digest": "ef6d3a592d8e5d1def6880da58c8c3b9438894fc152be110758742ccb1fc9f10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-02-persistence-migrations.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-02-persistence-migrations.md"
       },
       {
         "digest": "329b173195a75d4d4d06cb3e1600b8126d982af57ad6f973f3acc2685302ffc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-03-python-openai-agents-adapter.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-03-python-openai-agents-adapter.md"
       },
       {
         "digest": "6227a845af27ba55d61b36480b394dde08488cb5274b1012e4ccdd7cbdfb23a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-04-node-runtime-client.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-04-node-runtime-client.md"
       },
       {
         "digest": "f3fb143102f6b6bd87d23696fb5bac281e25d54bbf920369d2047d751d6d21da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-05-skill-capability-manifests.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-05-skill-capability-manifests.md"
       },
       {
         "digest": "bcdf6e06577f2e47a6931b4ca32a41da0bec9d16ce0b4c39821387c1f2b81f58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-06-chat-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-06-chat-runtime-integration.md"
       },
       {
         "digest": "99b386fe730784b2edb4b126f95de932489fcf4c7a1f75f9bf68f847a4938ea5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-07-team-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-07-team-runtime-integration.md"
       },
       {
         "digest": "9be6e18a1d1cf958b796e73b12ef472efb71683ef9b05bebb6aaa0e397eb6adc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-08-responses-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-08-responses-runtime-integration.md"
       },
       {
         "digest": "703502eb1e4980b5abbeed724f8fed627ffe8b204dd0a0ba6cac57e0de09f7ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-09-shared-skill-runtime-integration.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-09-shared-skill-runtime-integration.md"
       },
       {
         "digest": "dab4b285f354b53abb4a7422807a5e33c1978e694eb43ac32518c0cb0415486e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-10-ledger-ui-debug.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-10-ledger-ui-debug.md"
       },
       {
         "digest": "877d7e7ba1f01742d8533ec91eb35c55394b62b2b1da21fc08b84a83cc9248f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-11-rollout-replay-release-gates.md"
+        "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections/section-11-rollout-replay-release-gates.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -954,7 +954,7 @@
     "unresolved": 200
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.951733Z",
+  "updated_at": "2026-10-06T03:28:15.481607Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

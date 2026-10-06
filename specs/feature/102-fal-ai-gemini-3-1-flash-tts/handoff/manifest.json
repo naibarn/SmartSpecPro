@@ -17,32 +17,32 @@
       {
         "digest": "350c3b24dee2cb0ce79b4b6f0055dc4519335a127a0b6d15291322ba7557e086",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
       },
       {
         "digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
       },
       {
         "digest": "0a202f2daa94efcf4e0f70b0e059bb0e70caa95a0b818237bbe2a5ba40f95afa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
       },
       {
         "digest": "ed09a651db3ecc4e6e4c32b864e8403fe5415bca097b36ca047d3b860fc11dc2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
       },
       {
         "digest": "ceccfeef49c78c8030b8c23e4eb155e68fa5570f9ffd00be8218cfbbee1d9ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
       },
       {
         "digest": "62c7c9c6641f4a397394e0dd772d5c6c95c9db174055b10f9a04681fcafbe45b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
       }
     ],
     "predecessors": [],
@@ -73,32 +73,32 @@
       {
         "digest": "350c3b24dee2cb0ce79b4b6f0055dc4519335a127a0b6d15291322ba7557e086",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
       },
       {
         "digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
       },
       {
         "digest": "0a202f2daa94efcf4e0f70b0e059bb0e70caa95a0b818237bbe2a5ba40f95afa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
       },
       {
         "digest": "ed09a651db3ecc4e6e4c32b864e8403fe5415bca097b36ca047d3b860fc11dc2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
       },
       {
         "digest": "ceccfeef49c78c8030b8c23e4eb155e68fa5570f9ffd00be8218cfbbee1d9ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
       },
       {
         "digest": "62c7c9c6641f4a397394e0dd772d5c6c95c9db174055b10f9a04681fcafbe45b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -130,44 +130,44 @@
       {
         "digest": "350c3b24dee2cb0ce79b4b6f0055dc4519335a127a0b6d15291322ba7557e086",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
       },
       {
         "digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
       },
       {
         "digest": "0a202f2daa94efcf4e0f70b0e059bb0e70caa95a0b818237bbe2a5ba40f95afa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
       },
       {
         "digest": "ed09a651db3ecc4e6e4c32b864e8403fe5415bca097b36ca047d3b860fc11dc2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
       },
       {
         "digest": "ceccfeef49c78c8030b8c23e4eb155e68fa5570f9ffd00be8218cfbbee1d9ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
       },
       {
         "digest": "62c7c9c6641f4a397394e0dd772d5c6c95c9db174055b10f9a04681fcafbe45b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md",
     "digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.961984Z",
+      "last_evidence_at": "2026-10-06T03:28:15.498759Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-21T14:05:30+07:00",
       "spec_last_changed_at": "2026-04-23T09:32:16+07:00"
@@ -194,7 +194,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.961984Z"
+    "updated_at": "2026-10-06T03:28:15.498759Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -204,7 +204,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.961984Z",
+    "reconciled_at": "2026-10-06T03:28:15.498759Z",
     "sources": [
       {
         "digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
@@ -214,32 +214,32 @@
       {
         "digest": "350c3b24dee2cb0ce79b4b6f0055dc4519335a127a0b6d15291322ba7557e086",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
       },
       {
         "digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
       },
       {
         "digest": "0a202f2daa94efcf4e0f70b0e059bb0e70caa95a0b818237bbe2a5ba40f95afa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
       },
       {
         "digest": "ed09a651db3ecc4e6e4c32b864e8403fe5415bca097b36ca047d3b860fc11dc2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
       },
       {
         "digest": "ceccfeef49c78c8030b8c23e4eb155e68fa5570f9ffd00be8218cfbbee1d9ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
       },
       {
         "digest": "62c7c9c6641f4a397394e0dd772d5c6c95c9db174055b10f9a04681fcafbe45b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -370,32 +370,32 @@
       {
         "digest": "350c3b24dee2cb0ce79b4b6f0055dc4519335a127a0b6d15291322ba7557e086",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
       },
       {
         "digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
       },
       {
         "digest": "0a202f2daa94efcf4e0f70b0e059bb0e70caa95a0b818237bbe2a5ba40f95afa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
       },
       {
         "digest": "ed09a651db3ecc4e6e4c32b864e8403fe5415bca097b36ca047d3b860fc11dc2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
       },
       {
         "digest": "ceccfeef49c78c8030b8c23e4eb155e68fa5570f9ffd00be8218cfbbee1d9ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
       },
       {
         "digest": "62c7c9c6641f4a397394e0dd772d5c6c95c9db174055b10f9a04681fcafbe45b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -413,7 +413,7 @@
     "unresolved": 83
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.961984Z",
+  "updated_at": "2026-10-06T03:28:15.498759Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

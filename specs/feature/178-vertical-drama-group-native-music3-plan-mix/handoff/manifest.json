@@ -17,62 +17,62 @@
       {
         "digest": "7ad6858876d5028681f69edc9d1e28cd75c310231c22a17aab6f81b5e4010264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-plan.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-plan.md"
       },
       {
         "digest": "e2c155d1192e10745e9721820e5b4a7543e5f2e2fd7cb962f33bc203931293e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-spec.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-spec.md"
       },
       {
         "digest": "3ea4a0c82c79c55db38c782055f86d026da22ebc2e22988459b5b32c682e241a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-10-rounds.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-10-rounds.md"
       },
       {
         "digest": "40fedb0658d59ce3ba29a1833e4d4ba696bc63e0bed2c8d6a8a509b4e6162b25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-20-rounds.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-20-rounds.md"
       },
       {
         "digest": "8f967999b4b7d4fba6cf33607cb42f6992e07c84ac8d4f0a954b97df518692e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/section-cross-consistency.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/section-cross-consistency.md"
       },
       {
         "digest": "4551dc7f0f13cb428ac5ac5fc1ec946d02ed4960929c39d59961bfcdd903e3c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/self-review-round-1.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/self-review-round-1.md"
       },
       {
         "digest": "2d7bfd3b463331e1aa796e72f49b6b58c43b6c54aab19c1f40def2d1f8e44665",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/index.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/index.md"
       },
       {
         "digest": "d486c1ac01caf76b33e578b42ec2ce982f01e6762fd459a8c0665623157cec29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-01-contracts-schema.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-01-contracts-schema.md"
       },
       {
         "digest": "c264b73397e0713b2f1b662f26244b1b54f4c72a8149ca664361033358e3851a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-02-final-cut-and-web-services.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-02-final-cut-and-web-services.md"
       },
       {
         "digest": "e719becb66e738b8399a8e0148f312291f1f7f52c4aabe484c2816b6bea1a3e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-03-worker-audio-pipeline.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-03-worker-audio-pipeline.md"
       },
       {
         "digest": "cb2dcfb8fcbb56495f02f9b120ee0e2720700cce6e5f6b586d2c1c93f4ac8234",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-04-production-ui.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-04-production-ui.md"
       },
       {
         "digest": "5d1233f36d5bbf4af5ebbf919703cb246e0ae0d2f6675673576658b67c5273b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-05-integration-migration-proof.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-05-integration-migration-proof.md"
       }
     ],
     "predecessors": [],
@@ -103,62 +103,62 @@
       {
         "digest": "7ad6858876d5028681f69edc9d1e28cd75c310231c22a17aab6f81b5e4010264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-plan.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-plan.md"
       },
       {
         "digest": "e2c155d1192e10745e9721820e5b4a7543e5f2e2fd7cb962f33bc203931293e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-spec.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-spec.md"
       },
       {
         "digest": "3ea4a0c82c79c55db38c782055f86d026da22ebc2e22988459b5b32c682e241a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-10-rounds.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-10-rounds.md"
       },
       {
         "digest": "40fedb0658d59ce3ba29a1833e4d4ba696bc63e0bed2c8d6a8a509b4e6162b25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-20-rounds.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-20-rounds.md"
       },
       {
         "digest": "8f967999b4b7d4fba6cf33607cb42f6992e07c84ac8d4f0a954b97df518692e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/section-cross-consistency.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/section-cross-consistency.md"
       },
       {
         "digest": "4551dc7f0f13cb428ac5ac5fc1ec946d02ed4960929c39d59961bfcdd903e3c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/self-review-round-1.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/self-review-round-1.md"
       },
       {
         "digest": "2d7bfd3b463331e1aa796e72f49b6b58c43b6c54aab19c1f40def2d1f8e44665",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/index.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/index.md"
       },
       {
         "digest": "d486c1ac01caf76b33e578b42ec2ce982f01e6762fd459a8c0665623157cec29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-01-contracts-schema.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-01-contracts-schema.md"
       },
       {
         "digest": "c264b73397e0713b2f1b662f26244b1b54f4c72a8149ca664361033358e3851a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-02-final-cut-and-web-services.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-02-final-cut-and-web-services.md"
       },
       {
         "digest": "e719becb66e738b8399a8e0148f312291f1f7f52c4aabe484c2816b6bea1a3e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-03-worker-audio-pipeline.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-03-worker-audio-pipeline.md"
       },
       {
         "digest": "cb2dcfb8fcbb56495f02f9b120ee0e2720700cce6e5f6b586d2c1c93f4ac8234",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-04-production-ui.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-04-production-ui.md"
       },
       {
         "digest": "5d1233f36d5bbf4af5ebbf919703cb246e0ae0d2f6675673576658b67c5273b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-05-integration-migration-proof.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-05-integration-migration-proof.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -190,74 +190,74 @@
       {
         "digest": "7ad6858876d5028681f69edc9d1e28cd75c310231c22a17aab6f81b5e4010264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-plan.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-plan.md"
       },
       {
         "digest": "e2c155d1192e10745e9721820e5b4a7543e5f2e2fd7cb962f33bc203931293e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-spec.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-spec.md"
       },
       {
         "digest": "3ea4a0c82c79c55db38c782055f86d026da22ebc2e22988459b5b32c682e241a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-10-rounds.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-10-rounds.md"
       },
       {
         "digest": "40fedb0658d59ce3ba29a1833e4d4ba696bc63e0bed2c8d6a8a509b4e6162b25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-20-rounds.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-20-rounds.md"
       },
       {
         "digest": "8f967999b4b7d4fba6cf33607cb42f6992e07c84ac8d4f0a954b97df518692e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/section-cross-consistency.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/section-cross-consistency.md"
       },
       {
         "digest": "4551dc7f0f13cb428ac5ac5fc1ec946d02ed4960929c39d59961bfcdd903e3c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/self-review-round-1.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/self-review-round-1.md"
       },
       {
         "digest": "2d7bfd3b463331e1aa796e72f49b6b58c43b6c54aab19c1f40def2d1f8e44665",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/index.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/index.md"
       },
       {
         "digest": "d486c1ac01caf76b33e578b42ec2ce982f01e6762fd459a8c0665623157cec29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-01-contracts-schema.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-01-contracts-schema.md"
       },
       {
         "digest": "c264b73397e0713b2f1b662f26244b1b54f4c72a8149ca664361033358e3851a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-02-final-cut-and-web-services.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-02-final-cut-and-web-services.md"
       },
       {
         "digest": "e719becb66e738b8399a8e0148f312291f1f7f52c4aabe484c2816b6bea1a3e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-03-worker-audio-pipeline.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-03-worker-audio-pipeline.md"
       },
       {
         "digest": "cb2dcfb8fcbb56495f02f9b120ee0e2720700cce6e5f6b586d2c1c93f4ac8234",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-04-production-ui.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-04-production-ui.md"
       },
       {
         "digest": "5d1233f36d5bbf4af5ebbf919703cb246e0ae0d2f6675673576658b67c5273b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-05-integration-migration-proof.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-05-integration-migration-proof.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/spec.md",
     "digest": "a8d739b5a676dbdbc53536a0625139aef00ddb6e53a8ae74bfa95ea36adb7253",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.546388Z",
+      "last_evidence_at": "2026-10-06T03:28:16.614017Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-07T16:53:03+07:00",
       "spec_last_changed_at": "2026-09-07T16:53:03+07:00"
@@ -284,7 +284,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.546388Z"
+    "updated_at": "2026-10-06T03:28:16.614017Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -294,7 +294,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.546388Z",
+    "reconciled_at": "2026-10-06T03:28:16.614017Z",
     "sources": [
       {
         "digest": "a8d739b5a676dbdbc53536a0625139aef00ddb6e53a8ae74bfa95ea36adb7253",
@@ -304,62 +304,62 @@
       {
         "digest": "7ad6858876d5028681f69edc9d1e28cd75c310231c22a17aab6f81b5e4010264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-plan.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-plan.md"
       },
       {
         "digest": "e2c155d1192e10745e9721820e5b4a7543e5f2e2fd7cb962f33bc203931293e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-spec.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-spec.md"
       },
       {
         "digest": "3ea4a0c82c79c55db38c782055f86d026da22ebc2e22988459b5b32c682e241a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-10-rounds.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-10-rounds.md"
       },
       {
         "digest": "40fedb0658d59ce3ba29a1833e4d4ba696bc63e0bed2c8d6a8a509b4e6162b25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-20-rounds.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-20-rounds.md"
       },
       {
         "digest": "8f967999b4b7d4fba6cf33607cb42f6992e07c84ac8d4f0a954b97df518692e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/section-cross-consistency.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/section-cross-consistency.md"
       },
       {
         "digest": "4551dc7f0f13cb428ac5ac5fc1ec946d02ed4960929c39d59961bfcdd903e3c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/self-review-round-1.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/self-review-round-1.md"
       },
       {
         "digest": "2d7bfd3b463331e1aa796e72f49b6b58c43b6c54aab19c1f40def2d1f8e44665",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/index.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/index.md"
       },
       {
         "digest": "d486c1ac01caf76b33e578b42ec2ce982f01e6762fd459a8c0665623157cec29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-01-contracts-schema.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-01-contracts-schema.md"
       },
       {
         "digest": "c264b73397e0713b2f1b662f26244b1b54f4c72a8149ca664361033358e3851a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-02-final-cut-and-web-services.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-02-final-cut-and-web-services.md"
       },
       {
         "digest": "e719becb66e738b8399a8e0148f312291f1f7f52c4aabe484c2816b6bea1a3e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-03-worker-audio-pipeline.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-03-worker-audio-pipeline.md"
       },
       {
         "digest": "cb2dcfb8fcbb56495f02f9b120ee0e2720700cce6e5f6b586d2c1c93f4ac8234",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-04-production-ui.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-04-production-ui.md"
       },
       {
         "digest": "5d1233f36d5bbf4af5ebbf919703cb246e0ae0d2f6675673576658b67c5273b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-05-integration-migration-proof.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-05-integration-migration-proof.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -409,62 +409,62 @@
       {
         "digest": "7ad6858876d5028681f69edc9d1e28cd75c310231c22a17aab6f81b5e4010264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-plan.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-plan.md"
       },
       {
         "digest": "e2c155d1192e10745e9721820e5b4a7543e5f2e2fd7cb962f33bc203931293e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-spec.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/claude-spec.md"
       },
       {
         "digest": "3ea4a0c82c79c55db38c782055f86d026da22ebc2e22988459b5b32c682e241a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-10-rounds.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-10-rounds.md"
       },
       {
         "digest": "40fedb0658d59ce3ba29a1833e4d4ba696bc63e0bed2c8d6a8a509b4e6162b25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-20-rounds.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/completeness-audit-20-rounds.md"
       },
       {
         "digest": "8f967999b4b7d4fba6cf33607cb42f6992e07c84ac8d4f0a954b97df518692e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/section-cross-consistency.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/section-cross-consistency.md"
       },
       {
         "digest": "4551dc7f0f13cb428ac5ac5fc1ec946d02ed4960929c39d59961bfcdd903e3c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/self-review-round-1.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/reviews/self-review-round-1.md"
       },
       {
         "digest": "2d7bfd3b463331e1aa796e72f49b6b58c43b6c54aab19c1f40def2d1f8e44665",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/index.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/index.md"
       },
       {
         "digest": "d486c1ac01caf76b33e578b42ec2ce982f01e6762fd459a8c0665623157cec29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-01-contracts-schema.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-01-contracts-schema.md"
       },
       {
         "digest": "c264b73397e0713b2f1b662f26244b1b54f4c72a8149ca664361033358e3851a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-02-final-cut-and-web-services.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-02-final-cut-and-web-services.md"
       },
       {
         "digest": "e719becb66e738b8399a8e0148f312291f1f7f52c4aabe484c2816b6bea1a3e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-03-worker-audio-pipeline.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-03-worker-audio-pipeline.md"
       },
       {
         "digest": "cb2dcfb8fcbb56495f02f9b120ee0e2720700cce6e5f6b586d2c1c93f4ac8234",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-04-production-ui.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-04-production-ui.md"
       },
       {
         "digest": "5d1233f36d5bbf4af5ebbf919703cb246e0ae0d2f6675673576658b67c5273b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-05-integration-migration-proof.md"
+        "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/sections/section-05-integration-migration-proof.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -482,7 +482,7 @@
     "unresolved": 41
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.546388Z",
+  "updated_at": "2026-10-06T03:28:16.614017Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

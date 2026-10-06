@@ -17,97 +17,97 @@
       {
         "digest": "ded2343e47777150c9f52052e85519054f45d87b5fb63176cf557ed6721d8d15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-plan.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-plan.md"
       },
       {
         "digest": "06b659609849db9ab6723c4829c2033c2694e516ea086c22c5d480489e367d3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-spec.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-spec.md"
       },
       {
         "digest": "ba455198978445270f22cac03c110bd7deb1b21296dae6ae5adb2ec60c0a6af8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/completeness-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/completeness-audit.md"
       },
       {
         "digest": "b976047190cf93d23ceb4afbe73f7d4fad272b02f4de55b8bd2bfeb215ae7ee7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/deep_implement_config.json"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/deep_implement_config.json"
       },
       {
         "digest": "8a3e8e325381550de2716d777e30e494d2fa86a07f99cc5e2e970f629a934235",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/feature160-traceability.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/feature160-traceability.md"
       },
       {
         "digest": "8fe4d5b1d368616699171801dacb7fe61d78c2f1e740cb6bd5182ea1e5bd5509",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-1.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-1.md"
       },
       {
         "digest": "d1bbbf9c0da7296912a12a896e8c5818a07c8bedd8fe0f5bf5a95e5dedf48c5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-10-image-gate-count-and-story-grounding.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-10-image-gate-count-and-story-grounding.md"
       },
       {
         "digest": "9a479df29d9cd458dd7fc5cbdcf693c465cd5d6f59835fb220e4f8c1a41232df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-2.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-2.md"
       },
       {
         "digest": "1a270ca46f5762ea2c58fb9d28e0c21ace623ecbf06dc7da28cd0d558c752129",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-3.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-3.md"
       },
       {
         "digest": "1e80c0bc09bb661df58fe4b6679b75cfaffa31befac2f4ffccf650fc98f7e8ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-4.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-4.md"
       },
       {
         "digest": "0baa433d119f9c45f1ae847e62460d379080ba90194e1817d2f558a8fba21c97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-5.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-5.md"
       },
       {
         "digest": "8ef62a5837390ed51e7e7742e45cc9c2dd00a3f2c3d79e27c334d4d42f351995",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-6.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-6.md"
       },
       {
         "digest": "ff6059e65e2b3df94496a3e221206dcf8f0c4f83e8649b9c61b02be1260aa6b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-7-r2-five-pass-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-7-r2-five-pass-audit.md"
       },
       {
         "digest": "df78f27552de93586a7f3686d861d0caad2fc29f4f6d921adf3f5289bfb25135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-8-prompt-first-five-pass-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-8-prompt-first-five-pass-audit.md"
       },
       {
         "digest": "5045064fca3468f4298a761a7c7f99e533f539cf67a100063035022f2ac8faf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-9-broll-render-and-shot-ui.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-9-broll-render-and-shot-ui.md"
       },
       {
         "digest": "4d546d59156526077d0dbb4a6911cf3d897c3fbac2a9d28efe94e10eaad2fa3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/ui-browser-evidence.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "9b5c1a38f8898bc908f65ef2072afe16942e640e48544873deef377d3ec71eea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/section-cross-consistency.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/section-cross-consistency.md"
       },
       {
         "digest": "4f4ba90960c16f4f7694acda345e0fea6e90b1f76f850f546451996837e04998",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-1.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-1.md"
       },
       {
         "digest": "246a601b8b21b749d40f98133ce478cc10ecfa5c96b9c13c8d2bda70f273c4ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-2-adversarial.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-2-adversarial.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "ded2343e47777150c9f52052e85519054f45d87b5fb63176cf557ed6721d8d15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-plan.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-plan.md"
       },
       {
         "digest": "06b659609849db9ab6723c4829c2033c2694e516ea086c22c5d480489e367d3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-spec.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-spec.md"
       },
       {
         "digest": "ba455198978445270f22cac03c110bd7deb1b21296dae6ae5adb2ec60c0a6af8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/completeness-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/completeness-audit.md"
       },
       {
         "digest": "b976047190cf93d23ceb4afbe73f7d4fad272b02f4de55b8bd2bfeb215ae7ee7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/deep_implement_config.json"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/deep_implement_config.json"
       },
       {
         "digest": "8a3e8e325381550de2716d777e30e494d2fa86a07f99cc5e2e970f629a934235",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/feature160-traceability.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/feature160-traceability.md"
       },
       {
         "digest": "8fe4d5b1d368616699171801dacb7fe61d78c2f1e740cb6bd5182ea1e5bd5509",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-1.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-1.md"
       },
       {
         "digest": "d1bbbf9c0da7296912a12a896e8c5818a07c8bedd8fe0f5bf5a95e5dedf48c5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-10-image-gate-count-and-story-grounding.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-10-image-gate-count-and-story-grounding.md"
       },
       {
         "digest": "9a479df29d9cd458dd7fc5cbdcf693c465cd5d6f59835fb220e4f8c1a41232df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-2.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-2.md"
       },
       {
         "digest": "1a270ca46f5762ea2c58fb9d28e0c21ace623ecbf06dc7da28cd0d558c752129",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-3.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-3.md"
       },
       {
         "digest": "1e80c0bc09bb661df58fe4b6679b75cfaffa31befac2f4ffccf650fc98f7e8ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-4.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-4.md"
       },
       {
         "digest": "0baa433d119f9c45f1ae847e62460d379080ba90194e1817d2f558a8fba21c97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-5.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-5.md"
       },
       {
         "digest": "8ef62a5837390ed51e7e7742e45cc9c2dd00a3f2c3d79e27c334d4d42f351995",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-6.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-6.md"
       },
       {
         "digest": "ff6059e65e2b3df94496a3e221206dcf8f0c4f83e8649b9c61b02be1260aa6b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-7-r2-five-pass-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-7-r2-five-pass-audit.md"
       },
       {
         "digest": "df78f27552de93586a7f3686d861d0caad2fc29f4f6d921adf3f5289bfb25135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-8-prompt-first-five-pass-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-8-prompt-first-five-pass-audit.md"
       },
       {
         "digest": "5045064fca3468f4298a761a7c7f99e533f539cf67a100063035022f2ac8faf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-9-broll-render-and-shot-ui.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-9-broll-render-and-shot-ui.md"
       },
       {
         "digest": "4d546d59156526077d0dbb4a6911cf3d897c3fbac2a9d28efe94e10eaad2fa3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/ui-browser-evidence.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "9b5c1a38f8898bc908f65ef2072afe16942e640e48544873deef377d3ec71eea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/section-cross-consistency.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/section-cross-consistency.md"
       },
       {
         "digest": "4f4ba90960c16f4f7694acda345e0fea6e90b1f76f850f546451996837e04998",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-1.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-1.md"
       },
       {
         "digest": "246a601b8b21b749d40f98133ce478cc10ecfa5c96b9c13c8d2bda70f273c4ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-2-adversarial.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-2-adversarial.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "ded2343e47777150c9f52052e85519054f45d87b5fb63176cf557ed6721d8d15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-plan.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-plan.md"
       },
       {
         "digest": "06b659609849db9ab6723c4829c2033c2694e516ea086c22c5d480489e367d3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-spec.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-spec.md"
       },
       {
         "digest": "ba455198978445270f22cac03c110bd7deb1b21296dae6ae5adb2ec60c0a6af8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/completeness-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/completeness-audit.md"
       },
       {
         "digest": "b976047190cf93d23ceb4afbe73f7d4fad272b02f4de55b8bd2bfeb215ae7ee7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/deep_implement_config.json"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/deep_implement_config.json"
       },
       {
         "digest": "8a3e8e325381550de2716d777e30e494d2fa86a07f99cc5e2e970f629a934235",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/feature160-traceability.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/feature160-traceability.md"
       },
       {
         "digest": "8fe4d5b1d368616699171801dacb7fe61d78c2f1e740cb6bd5182ea1e5bd5509",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-1.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-1.md"
       },
       {
         "digest": "d1bbbf9c0da7296912a12a896e8c5818a07c8bedd8fe0f5bf5a95e5dedf48c5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-10-image-gate-count-and-story-grounding.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-10-image-gate-count-and-story-grounding.md"
       },
       {
         "digest": "9a479df29d9cd458dd7fc5cbdcf693c465cd5d6f59835fb220e4f8c1a41232df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-2.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-2.md"
       },
       {
         "digest": "1a270ca46f5762ea2c58fb9d28e0c21ace623ecbf06dc7da28cd0d558c752129",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-3.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-3.md"
       },
       {
         "digest": "1e80c0bc09bb661df58fe4b6679b75cfaffa31befac2f4ffccf650fc98f7e8ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-4.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-4.md"
       },
       {
         "digest": "0baa433d119f9c45f1ae847e62460d379080ba90194e1817d2f558a8fba21c97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-5.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-5.md"
       },
       {
         "digest": "8ef62a5837390ed51e7e7742e45cc9c2dd00a3f2c3d79e27c334d4d42f351995",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-6.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-6.md"
       },
       {
         "digest": "ff6059e65e2b3df94496a3e221206dcf8f0c4f83e8649b9c61b02be1260aa6b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-7-r2-five-pass-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-7-r2-five-pass-audit.md"
       },
       {
         "digest": "df78f27552de93586a7f3686d861d0caad2fc29f4f6d921adf3f5289bfb25135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-8-prompt-first-five-pass-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-8-prompt-first-five-pass-audit.md"
       },
       {
         "digest": "5045064fca3468f4298a761a7c7f99e533f539cf67a100063035022f2ac8faf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-9-broll-render-and-shot-ui.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-9-broll-render-and-shot-ui.md"
       },
       {
         "digest": "4d546d59156526077d0dbb4a6911cf3d897c3fbac2a9d28efe94e10eaad2fa3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/ui-browser-evidence.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "9b5c1a38f8898bc908f65ef2072afe16942e640e48544873deef377d3ec71eea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/section-cross-consistency.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/section-cross-consistency.md"
       },
       {
         "digest": "4f4ba90960c16f4f7694acda345e0fea6e90b1f76f850f546451996837e04998",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-1.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-1.md"
       },
       {
         "digest": "246a601b8b21b749d40f98133ce478cc10ecfa5c96b9c13c8d2bda70f273c4ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-2-adversarial.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-2-adversarial.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md",
     "digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.414534Z",
+      "last_evidence_at": "2026-10-06T03:28:16.381938Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-23T10:02:26+07:00",
       "spec_last_changed_at": "2026-08-23T10:02:26+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.414534Z"
+    "updated_at": "2026-10-06T03:28:16.381938Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.414534Z",
+    "reconciled_at": "2026-10-06T03:28:16.381938Z",
     "sources": [
       {
         "digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
@@ -409,142 +409,142 @@
       {
         "digest": "ded2343e47777150c9f52052e85519054f45d87b5fb63176cf557ed6721d8d15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-plan.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-plan.md"
       },
       {
         "digest": "06b659609849db9ab6723c4829c2033c2694e516ea086c22c5d480489e367d3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-spec.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-spec.md"
       },
       {
         "digest": "ba455198978445270f22cac03c110bd7deb1b21296dae6ae5adb2ec60c0a6af8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/completeness-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/completeness-audit.md"
       },
       {
         "digest": "b976047190cf93d23ceb4afbe73f7d4fad272b02f4de55b8bd2bfeb215ae7ee7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/deep_implement_config.json"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/deep_implement_config.json"
       },
       {
         "digest": "8a3e8e325381550de2716d777e30e494d2fa86a07f99cc5e2e970f629a934235",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/feature160-traceability.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/feature160-traceability.md"
       },
       {
         "digest": "8fe4d5b1d368616699171801dacb7fe61d78c2f1e740cb6bd5182ea1e5bd5509",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-1.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-1.md"
       },
       {
         "digest": "d1bbbf9c0da7296912a12a896e8c5818a07c8bedd8fe0f5bf5a95e5dedf48c5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-10-image-gate-count-and-story-grounding.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-10-image-gate-count-and-story-grounding.md"
       },
       {
         "digest": "9a479df29d9cd458dd7fc5cbdcf693c465cd5d6f59835fb220e4f8c1a41232df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-2.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-2.md"
       },
       {
         "digest": "1a270ca46f5762ea2c58fb9d28e0c21ace623ecbf06dc7da28cd0d558c752129",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-3.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-3.md"
       },
       {
         "digest": "1e80c0bc09bb661df58fe4b6679b75cfaffa31befac2f4ffccf650fc98f7e8ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-4.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-4.md"
       },
       {
         "digest": "0baa433d119f9c45f1ae847e62460d379080ba90194e1817d2f558a8fba21c97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-5.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-5.md"
       },
       {
         "digest": "8ef62a5837390ed51e7e7742e45cc9c2dd00a3f2c3d79e27c334d4d42f351995",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-6.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-6.md"
       },
       {
         "digest": "ff6059e65e2b3df94496a3e221206dcf8f0c4f83e8649b9c61b02be1260aa6b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-7-r2-five-pass-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-7-r2-five-pass-audit.md"
       },
       {
         "digest": "df78f27552de93586a7f3686d861d0caad2fc29f4f6d921adf3f5289bfb25135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-8-prompt-first-five-pass-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-8-prompt-first-five-pass-audit.md"
       },
       {
         "digest": "5045064fca3468f4298a761a7c7f99e533f539cf67a100063035022f2ac8faf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-9-broll-render-and-shot-ui.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-9-broll-render-and-shot-ui.md"
       },
       {
         "digest": "4d546d59156526077d0dbb4a6911cf3d897c3fbac2a9d28efe94e10eaad2fa3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/ui-browser-evidence.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "9b5c1a38f8898bc908f65ef2072afe16942e640e48544873deef377d3ec71eea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/section-cross-consistency.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/section-cross-consistency.md"
       },
       {
         "digest": "4f4ba90960c16f4f7694acda345e0fea6e90b1f76f850f546451996837e04998",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-1.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-1.md"
       },
       {
         "digest": "246a601b8b21b749d40f98133ce478cc10ecfa5c96b9c13c8d2bda70f273c4ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-2-adversarial.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-2-adversarial.md"
       },
       {
         "digest": "9287af71d471545b7b1cef34fc926f772c56d36324c9275c9deffaeca831b8b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/index.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/index.md"
       },
       {
         "digest": "6329add17eb00e6c848e64e63b42bfc46cf63616fa3448ee799ab6b80df520d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-01-shared-visual-contracts.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-01-shared-visual-contracts.md"
       },
       {
         "digest": "7b144cc63ccac19fbbcb0c09a97940ce6796ac4ec185dfd1f5fd68fd9e57318e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-02-visual-source-schema.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-02-visual-source-schema.md"
       },
       {
         "digest": "6746156c02016f309cad1f009f468cc30a5b079cfd5064aeada594be4351c589",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-03-prompt-expansion-and-source-slots.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-03-prompt-expansion-and-source-slots.md"
       },
       {
         "digest": "f04cdcde991f77c8cdc645beecca9e32208028cf881f26cbdf4e8cc3e6e7e0b5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-04-visual-canon-story-propagation.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-04-visual-canon-story-propagation.md"
       },
       {
         "digest": "91aa156168d7af9b76eb3ab856d2241d670ddfcd0aa8587bad8987b63ea93ee4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-05-news-report-evidence.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-05-news-report-evidence.md"
       },
       {
         "digest": "b8bb1e06a89adbc4be831e5095f4c128f31c212f64f82ef440831a73f8d53078",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-06-footage-broll-assembly.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-06-footage-broll-assembly.md"
       },
       {
         "digest": "e0d4b161758916847ec11930c8b256750119abd53f56fa264d3995a993c6147f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-07-ui-and-browser-flow.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-07-ui-and-browser-flow.md"
       },
       {
         "digest": "709a18666cf339e95f8569525491f3774f6821000612d1ae6d1098a782c5492f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-08-integration-gates-and-traceability.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-08-integration-gates-and-traceability.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -810,142 +810,142 @@
       {
         "digest": "ded2343e47777150c9f52052e85519054f45d87b5fb63176cf557ed6721d8d15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-plan.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-plan.md"
       },
       {
         "digest": "06b659609849db9ab6723c4829c2033c2694e516ea086c22c5d480489e367d3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-spec.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/claude-spec.md"
       },
       {
         "digest": "ba455198978445270f22cac03c110bd7deb1b21296dae6ae5adb2ec60c0a6af8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/completeness-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/completeness-audit.md"
       },
       {
         "digest": "b976047190cf93d23ceb4afbe73f7d4fad272b02f4de55b8bd2bfeb215ae7ee7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/deep_implement_config.json"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/deep_implement_config.json"
       },
       {
         "digest": "8a3e8e325381550de2716d777e30e494d2fa86a07f99cc5e2e970f629a934235",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/feature160-traceability.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/feature160-traceability.md"
       },
       {
         "digest": "8fe4d5b1d368616699171801dacb7fe61d78c2f1e740cb6bd5182ea1e5bd5509",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-1.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-1.md"
       },
       {
         "digest": "d1bbbf9c0da7296912a12a896e8c5818a07c8bedd8fe0f5bf5a95e5dedf48c5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-10-image-gate-count-and-story-grounding.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-10-image-gate-count-and-story-grounding.md"
       },
       {
         "digest": "9a479df29d9cd458dd7fc5cbdcf693c465cd5d6f59835fb220e4f8c1a41232df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-2.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-2.md"
       },
       {
         "digest": "1a270ca46f5762ea2c58fb9d28e0c21ace623ecbf06dc7da28cd0d558c752129",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-3.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-3.md"
       },
       {
         "digest": "1e80c0bc09bb661df58fe4b6679b75cfaffa31befac2f4ffccf650fc98f7e8ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-4.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-4.md"
       },
       {
         "digest": "0baa433d119f9c45f1ae847e62460d379080ba90194e1817d2f558a8fba21c97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-5.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-5.md"
       },
       {
         "digest": "8ef62a5837390ed51e7e7742e45cc9c2dd00a3f2c3d79e27c334d4d42f351995",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-6.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-6.md"
       },
       {
         "digest": "ff6059e65e2b3df94496a3e221206dcf8f0c4f83e8649b9c61b02be1260aa6b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-7-r2-five-pass-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-7-r2-five-pass-audit.md"
       },
       {
         "digest": "df78f27552de93586a7f3686d861d0caad2fc29f4f6d921adf3f5289bfb25135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-8-prompt-first-five-pass-audit.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-8-prompt-first-five-pass-audit.md"
       },
       {
         "digest": "5045064fca3468f4298a761a7c7f99e533f539cf67a100063035022f2ac8faf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-9-broll-render-and-shot-ui.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/gap-review-round-9-broll-render-and-shot-ui.md"
       },
       {
         "digest": "4d546d59156526077d0dbb4a6911cf3d897c3fbac2a9d28efe94e10eaad2fa3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/ui-browser-evidence.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "9b5c1a38f8898bc908f65ef2072afe16942e640e48544873deef377d3ec71eea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/section-cross-consistency.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/section-cross-consistency.md"
       },
       {
         "digest": "4f4ba90960c16f4f7694acda345e0fea6e90b1f76f850f546451996837e04998",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-1.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-1.md"
       },
       {
         "digest": "246a601b8b21b749d40f98133ce478cc10ecfa5c96b9c13c8d2bda70f273c4ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-2-adversarial.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/reviews/self-review-round-2-adversarial.md"
       },
       {
         "digest": "9287af71d471545b7b1cef34fc926f772c56d36324c9275c9deffaeca831b8b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/index.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/index.md"
       },
       {
         "digest": "6329add17eb00e6c848e64e63b42bfc46cf63616fa3448ee799ab6b80df520d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-01-shared-visual-contracts.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-01-shared-visual-contracts.md"
       },
       {
         "digest": "7b144cc63ccac19fbbcb0c09a97940ce6796ac4ec185dfd1f5fd68fd9e57318e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-02-visual-source-schema.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-02-visual-source-schema.md"
       },
       {
         "digest": "6746156c02016f309cad1f009f468cc30a5b079cfd5064aeada594be4351c589",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-03-prompt-expansion-and-source-slots.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-03-prompt-expansion-and-source-slots.md"
       },
       {
         "digest": "f04cdcde991f77c8cdc645beecca9e32208028cf881f26cbdf4e8cc3e6e7e0b5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-04-visual-canon-story-propagation.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-04-visual-canon-story-propagation.md"
       },
       {
         "digest": "91aa156168d7af9b76eb3ab856d2241d670ddfcd0aa8587bad8987b63ea93ee4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-05-news-report-evidence.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-05-news-report-evidence.md"
       },
       {
         "digest": "b8bb1e06a89adbc4be831e5095f4c128f31c212f64f82ef440831a73f8d53078",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-06-footage-broll-assembly.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-06-footage-broll-assembly.md"
       },
       {
         "digest": "e0d4b161758916847ec11930c8b256750119abd53f56fa264d3995a993c6147f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-07-ui-and-browser-flow.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-07-ui-and-browser-flow.md"
       },
       {
         "digest": "709a18666cf339e95f8569525491f3774f6821000612d1ae6d1098a782c5492f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-08-integration-gates-and-traceability.md"
+        "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/sections/section-08-integration-gates-and-traceability.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -963,7 +963,7 @@
     "unresolved": 110
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.414534Z",
+  "updated_at": "2026-10-06T03:28:16.381938Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

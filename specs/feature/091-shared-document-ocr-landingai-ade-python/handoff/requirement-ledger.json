@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L50"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L50"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L50",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L51"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L51"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L51",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L52"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L52"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L52",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L53"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L53"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L53",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L53",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L54"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L54"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L54",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L54",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L55"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L55"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L55",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L55",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L122"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L122"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L122",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L124"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L124"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L124",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L125"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L125"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L125",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L185"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L185"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L185",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L191"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L191"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L191",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L201"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L201"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L201",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L201",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L207"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L207"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L207",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L209"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L209"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L209",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L242"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L242"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L242",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L254"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L254"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L254",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L276"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L276"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L276",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L277"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L277"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L277",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L278"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L278"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L278",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L279"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L279"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L279",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L280"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L280"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L280",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L281"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L281"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L281",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L282"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L282"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L282",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L283"
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L283"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L283",
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

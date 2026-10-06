@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L70"
+        "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L70"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L70",
+      "authority_source": "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

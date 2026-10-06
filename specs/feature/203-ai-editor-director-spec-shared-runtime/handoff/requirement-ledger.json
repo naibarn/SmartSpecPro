@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L32"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L32"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L32",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L32",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L66"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L66"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L66",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L68"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L68"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L68",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L69"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L69"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L69",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L70"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L70"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L70",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L71"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L71"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L71",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L72"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L72"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L72",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L73"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L73"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L73",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L74"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L74"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L74",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L75"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L75",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L76"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L76"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L76",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L76",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L77"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L77"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L77",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L77",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L78"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L78"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L78",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L79"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L79"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L79",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L80"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L80"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L80",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L81"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L81"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L81",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L85"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L85"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L85",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L86"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L86"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L86",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L87"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L87"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L87",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L88"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L88"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L88",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L89"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L89"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L89",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L90"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L90"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L90",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L91"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L91"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L91",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1384"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1384"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1384",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1386"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1386"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1386",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1386",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1387"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1387"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1387",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1387",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1396"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1396"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1396",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1400"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1400"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1400",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1400",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1401"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1401"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1401",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1566"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1566"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1566",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1566",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1573"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1573"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1573",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L1573",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2168"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2168"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2168",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2749"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2749"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2749",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2749",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2750"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2750"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2750",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2750",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2751"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2751"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2751",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2751",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2752"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2752"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2752",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2752",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2753"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2753"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2753",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2753",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2754"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2754"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2754",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2754",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2755"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2755"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2755",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2756"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2756"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2756",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2757"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2757"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2757",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2758"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2758"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2758",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2759"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2759"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2759",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2759",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2760"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2760"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2760",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2760",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2766"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2766"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2766",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2766",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2768"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2768"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2768",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2768",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2769"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2769"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2769",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2769",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2770"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2770"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2770",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2770",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2771"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2771"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2771",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2771",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2772"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2772"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2772",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2772",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2773"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2773"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2773",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2774"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2774"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2774",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2775"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2775"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2775",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2775",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2776"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2776"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2776",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2776",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2777"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2777"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2777",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2778"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2778"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2778",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2779"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2779"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2779",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2780"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2780"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2780",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L2780",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L3112"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L3112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L3112",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L3112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4138"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4138"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4138",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4357"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4357"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4357",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4357",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4378"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4378"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4378",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4387"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4387"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4387",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4387",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4391"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4391"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4391",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4392"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4392"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4392",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4398"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4398"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4398",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4398",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4399"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4399"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4399",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4411"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4411"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4411",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4411",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4412"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4412"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4412",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4412",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4414"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4414"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4414",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4414",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4417"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4417"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4417",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4446"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4446"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4446",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4454"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4454"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4454",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4454",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4456"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4456"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4456",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4456",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4458"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4458"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4458",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4458",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4460"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4460"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4460",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4460",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4464"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4464"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4464",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4464",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4467"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4467"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4467",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4471"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4471"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4471",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4471",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4475"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4475"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4475",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4475",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4490"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4490"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4490",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4490",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4498"
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4498"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4498",
+      "authority_source": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#L4498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

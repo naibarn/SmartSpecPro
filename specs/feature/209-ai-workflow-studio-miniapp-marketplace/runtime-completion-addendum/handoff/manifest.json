@@ -17,92 +17,92 @@
       {
         "digest": "d231ad117a78217af709eea2ff9b30b79a56cca58ab215654a9f444a6d6666ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-plan.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-plan.md"
       },
       {
         "digest": "b725385426c66150aa3f7d9d10bff18908d2a78a1ee67d97e9a9387c3f4b6a49",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-spec.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-spec.md"
       },
       {
         "digest": "4074264cbd151fab1a6cdde3cb89e62d64d881eaaf160c9303dbb8fcb1110750",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/completion.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/completion.md"
       },
       {
         "digest": "18a60294724eb0db05e418761abc8deedac9f1356a17d2a6a8ed873e498abb82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/deep_implement_config.json"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/deep_implement_config.json"
       },
       {
         "digest": "b1227d30fb9cbace897cf953142e48db9182adb602f0a5e5c543594c261cd696",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/review.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/review.md"
       },
       {
         "digest": "22e44eed65c2fa3d3ff19f987f29515aa71ccacb59e8abbd1d811157a6266086",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/completeness-rounds-10.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/completeness-rounds-10.md"
       },
       {
         "digest": "67adf2d7a770cf94e93b9e876d84e12e3ca2761201c5ce9251fa1855dd98a8f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/cross-consistency.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/cross-consistency.md"
       },
       {
         "digest": "690183e1bb2d9aaa32e69038dc08f2d0995d1783a9ce6ba1f600528c1f07ae6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/self-review-round-1.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/self-review-round-1.md"
       },
       {
         "digest": "556cb4c404876d07cde8de8b25843ded7442b2f4d11d10c17fdb088a9617574a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/ui-interaction-gap-audit.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/ui-interaction-gap-audit.md"
       },
       {
         "digest": "a81d8225f9ca0a62fa5c76f367bc9c5ab9114ff08b630888d07b01720b9c6f40",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/index.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/index.md"
       },
       {
         "digest": "ba816a947fb67c025b529aea7705a53a705338d8bcb6590beb5fb363ff869430",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-01-run-foundation.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-01-run-foundation.md"
       },
       {
         "digest": "5da2d6dd12349380559144c4d262330c2476f28e326c23e605cfc0fa1111e956",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-02-library-marketplace.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-02-library-marketplace.md"
       },
       {
         "digest": "a82b663ca1cb065463ff93b84625d09403bd629afe0f5841ed6571c390b6d545",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-03-job-admission.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-03-job-admission.md"
       },
       {
         "digest": "23b200b6eb7df18591db8a7f374dc6732aa408fbbd29c7e1abea21c24989d36d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-04-checkpoints-run-modes.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-04-checkpoints-run-modes.md"
       },
       {
         "digest": "546016ef0fc43219010bc785463a49977f839a219cf05f5f2a2d0b3aa9580d5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-05-run-lifecycle-controls.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-05-run-lifecycle-controls.md"
       },
       {
         "digest": "074b0a7076e57964e6e8e393eb25822117e03da67d41bbc78cf011f3f2e9a87b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-06-results-observability.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-06-results-observability.md"
       },
       {
         "digest": "4f46d3102c93e7eca9c6113044987bbd060b18fbaf9345af75801f2874cc24cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-07-ui-state-integration.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-07-ui-state-integration.md"
       },
       {
         "digest": "eb10453952ec7af380b1e6ae7896744852bb8f6d1f42a22ccfd42a401f6a6175",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-08-economics-release.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-08-economics-release.md"
       }
     ],
     "predecessors": [],
@@ -133,92 +133,92 @@
       {
         "digest": "d231ad117a78217af709eea2ff9b30b79a56cca58ab215654a9f444a6d6666ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-plan.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-plan.md"
       },
       {
         "digest": "b725385426c66150aa3f7d9d10bff18908d2a78a1ee67d97e9a9387c3f4b6a49",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-spec.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-spec.md"
       },
       {
         "digest": "4074264cbd151fab1a6cdde3cb89e62d64d881eaaf160c9303dbb8fcb1110750",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/completion.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/completion.md"
       },
       {
         "digest": "18a60294724eb0db05e418761abc8deedac9f1356a17d2a6a8ed873e498abb82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/deep_implement_config.json"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/deep_implement_config.json"
       },
       {
         "digest": "b1227d30fb9cbace897cf953142e48db9182adb602f0a5e5c543594c261cd696",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/review.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/review.md"
       },
       {
         "digest": "22e44eed65c2fa3d3ff19f987f29515aa71ccacb59e8abbd1d811157a6266086",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/completeness-rounds-10.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/completeness-rounds-10.md"
       },
       {
         "digest": "67adf2d7a770cf94e93b9e876d84e12e3ca2761201c5ce9251fa1855dd98a8f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/cross-consistency.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/cross-consistency.md"
       },
       {
         "digest": "690183e1bb2d9aaa32e69038dc08f2d0995d1783a9ce6ba1f600528c1f07ae6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/self-review-round-1.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/self-review-round-1.md"
       },
       {
         "digest": "556cb4c404876d07cde8de8b25843ded7442b2f4d11d10c17fdb088a9617574a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/ui-interaction-gap-audit.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/ui-interaction-gap-audit.md"
       },
       {
         "digest": "a81d8225f9ca0a62fa5c76f367bc9c5ab9114ff08b630888d07b01720b9c6f40",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/index.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/index.md"
       },
       {
         "digest": "ba816a947fb67c025b529aea7705a53a705338d8bcb6590beb5fb363ff869430",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-01-run-foundation.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-01-run-foundation.md"
       },
       {
         "digest": "5da2d6dd12349380559144c4d262330c2476f28e326c23e605cfc0fa1111e956",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-02-library-marketplace.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-02-library-marketplace.md"
       },
       {
         "digest": "a82b663ca1cb065463ff93b84625d09403bd629afe0f5841ed6571c390b6d545",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-03-job-admission.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-03-job-admission.md"
       },
       {
         "digest": "23b200b6eb7df18591db8a7f374dc6732aa408fbbd29c7e1abea21c24989d36d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-04-checkpoints-run-modes.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-04-checkpoints-run-modes.md"
       },
       {
         "digest": "546016ef0fc43219010bc785463a49977f839a219cf05f5f2a2d0b3aa9580d5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-05-run-lifecycle-controls.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-05-run-lifecycle-controls.md"
       },
       {
         "digest": "074b0a7076e57964e6e8e393eb25822117e03da67d41bbc78cf011f3f2e9a87b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-06-results-observability.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-06-results-observability.md"
       },
       {
         "digest": "4f46d3102c93e7eca9c6113044987bbd060b18fbaf9345af75801f2874cc24cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-07-ui-state-integration.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-07-ui-state-integration.md"
       },
       {
         "digest": "eb10453952ec7af380b1e6ae7896744852bb8f6d1f42a22ccfd42a401f6a6175",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-08-economics-release.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-08-economics-release.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -250,104 +250,104 @@
       {
         "digest": "d231ad117a78217af709eea2ff9b30b79a56cca58ab215654a9f444a6d6666ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-plan.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-plan.md"
       },
       {
         "digest": "b725385426c66150aa3f7d9d10bff18908d2a78a1ee67d97e9a9387c3f4b6a49",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-spec.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-spec.md"
       },
       {
         "digest": "4074264cbd151fab1a6cdde3cb89e62d64d881eaaf160c9303dbb8fcb1110750",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/completion.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/completion.md"
       },
       {
         "digest": "18a60294724eb0db05e418761abc8deedac9f1356a17d2a6a8ed873e498abb82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/deep_implement_config.json"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/deep_implement_config.json"
       },
       {
         "digest": "b1227d30fb9cbace897cf953142e48db9182adb602f0a5e5c543594c261cd696",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/review.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/review.md"
       },
       {
         "digest": "22e44eed65c2fa3d3ff19f987f29515aa71ccacb59e8abbd1d811157a6266086",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/completeness-rounds-10.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/completeness-rounds-10.md"
       },
       {
         "digest": "67adf2d7a770cf94e93b9e876d84e12e3ca2761201c5ce9251fa1855dd98a8f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/cross-consistency.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/cross-consistency.md"
       },
       {
         "digest": "690183e1bb2d9aaa32e69038dc08f2d0995d1783a9ce6ba1f600528c1f07ae6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/self-review-round-1.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/self-review-round-1.md"
       },
       {
         "digest": "556cb4c404876d07cde8de8b25843ded7442b2f4d11d10c17fdb088a9617574a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/ui-interaction-gap-audit.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/ui-interaction-gap-audit.md"
       },
       {
         "digest": "a81d8225f9ca0a62fa5c76f367bc9c5ab9114ff08b630888d07b01720b9c6f40",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/index.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/index.md"
       },
       {
         "digest": "ba816a947fb67c025b529aea7705a53a705338d8bcb6590beb5fb363ff869430",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-01-run-foundation.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-01-run-foundation.md"
       },
       {
         "digest": "5da2d6dd12349380559144c4d262330c2476f28e326c23e605cfc0fa1111e956",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-02-library-marketplace.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-02-library-marketplace.md"
       },
       {
         "digest": "a82b663ca1cb065463ff93b84625d09403bd629afe0f5841ed6571c390b6d545",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-03-job-admission.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-03-job-admission.md"
       },
       {
         "digest": "23b200b6eb7df18591db8a7f374dc6732aa408fbbd29c7e1abea21c24989d36d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-04-checkpoints-run-modes.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-04-checkpoints-run-modes.md"
       },
       {
         "digest": "546016ef0fc43219010bc785463a49977f839a219cf05f5f2a2d0b3aa9580d5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-05-run-lifecycle-controls.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-05-run-lifecycle-controls.md"
       },
       {
         "digest": "074b0a7076e57964e6e8e393eb25822117e03da67d41bbc78cf011f3f2e9a87b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-06-results-observability.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-06-results-observability.md"
       },
       {
         "digest": "4f46d3102c93e7eca9c6113044987bbd060b18fbaf9345af75801f2874cc24cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-07-ui-state-integration.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-07-ui-state-integration.md"
       },
       {
         "digest": "eb10453952ec7af380b1e6ae7896744852bb8f6d1f42a22ccfd42a401f6a6175",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-08-economics-release.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-08-economics-release.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md",
     "digest": "c41ed697095644dfa61edb57a7014ebd87f51650a6b47610749e0448f3b982e3",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.945937Z",
+      "last_evidence_at": "2026-10-06T03:28:17.307633Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -374,7 +374,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.945937Z"
+    "updated_at": "2026-10-06T03:28:17.307633Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -384,7 +384,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.945937Z",
+    "reconciled_at": "2026-10-06T03:28:17.307633Z",
     "sources": [
       {
         "digest": "c41ed697095644dfa61edb57a7014ebd87f51650a6b47610749e0448f3b982e3",
@@ -394,92 +394,92 @@
       {
         "digest": "d231ad117a78217af709eea2ff9b30b79a56cca58ab215654a9f444a6d6666ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-plan.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-plan.md"
       },
       {
         "digest": "b725385426c66150aa3f7d9d10bff18908d2a78a1ee67d97e9a9387c3f4b6a49",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-spec.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-spec.md"
       },
       {
         "digest": "4074264cbd151fab1a6cdde3cb89e62d64d881eaaf160c9303dbb8fcb1110750",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/completion.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/completion.md"
       },
       {
         "digest": "18a60294724eb0db05e418761abc8deedac9f1356a17d2a6a8ed873e498abb82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/deep_implement_config.json"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/deep_implement_config.json"
       },
       {
         "digest": "b1227d30fb9cbace897cf953142e48db9182adb602f0a5e5c543594c261cd696",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/review.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/review.md"
       },
       {
         "digest": "22e44eed65c2fa3d3ff19f987f29515aa71ccacb59e8abbd1d811157a6266086",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/completeness-rounds-10.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/completeness-rounds-10.md"
       },
       {
         "digest": "67adf2d7a770cf94e93b9e876d84e12e3ca2761201c5ce9251fa1855dd98a8f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/cross-consistency.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/cross-consistency.md"
       },
       {
         "digest": "690183e1bb2d9aaa32e69038dc08f2d0995d1783a9ce6ba1f600528c1f07ae6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/self-review-round-1.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/self-review-round-1.md"
       },
       {
         "digest": "556cb4c404876d07cde8de8b25843ded7442b2f4d11d10c17fdb088a9617574a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/ui-interaction-gap-audit.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/ui-interaction-gap-audit.md"
       },
       {
         "digest": "a81d8225f9ca0a62fa5c76f367bc9c5ab9114ff08b630888d07b01720b9c6f40",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/index.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/index.md"
       },
       {
         "digest": "ba816a947fb67c025b529aea7705a53a705338d8bcb6590beb5fb363ff869430",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-01-run-foundation.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-01-run-foundation.md"
       },
       {
         "digest": "5da2d6dd12349380559144c4d262330c2476f28e326c23e605cfc0fa1111e956",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-02-library-marketplace.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-02-library-marketplace.md"
       },
       {
         "digest": "a82b663ca1cb065463ff93b84625d09403bd629afe0f5841ed6571c390b6d545",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-03-job-admission.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-03-job-admission.md"
       },
       {
         "digest": "23b200b6eb7df18591db8a7f374dc6732aa408fbbd29c7e1abea21c24989d36d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-04-checkpoints-run-modes.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-04-checkpoints-run-modes.md"
       },
       {
         "digest": "546016ef0fc43219010bc785463a49977f839a219cf05f5f2a2d0b3aa9580d5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-05-run-lifecycle-controls.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-05-run-lifecycle-controls.md"
       },
       {
         "digest": "074b0a7076e57964e6e8e393eb25822117e03da67d41bbc78cf011f3f2e9a87b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-06-results-observability.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-06-results-observability.md"
       },
       {
         "digest": "4f46d3102c93e7eca9c6113044987bbd060b18fbaf9345af75801f2874cc24cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-07-ui-state-integration.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-07-ui-state-integration.md"
       },
       {
         "digest": "eb10453952ec7af380b1e6ae7896744852bb8f6d1f42a22ccfd42a401f6a6175",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-08-economics-release.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-08-economics-release.md"
       }
     ],
     "stale_fields": [],
@@ -507,92 +507,92 @@
       {
         "digest": "d231ad117a78217af709eea2ff9b30b79a56cca58ab215654a9f444a6d6666ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-plan.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-plan.md"
       },
       {
         "digest": "b725385426c66150aa3f7d9d10bff18908d2a78a1ee67d97e9a9387c3f4b6a49",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-spec.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-spec.md"
       },
       {
         "digest": "4074264cbd151fab1a6cdde3cb89e62d64d881eaaf160c9303dbb8fcb1110750",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/completion.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/completion.md"
       },
       {
         "digest": "18a60294724eb0db05e418761abc8deedac9f1356a17d2a6a8ed873e498abb82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/deep_implement_config.json"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/deep_implement_config.json"
       },
       {
         "digest": "b1227d30fb9cbace897cf953142e48db9182adb602f0a5e5c543594c261cd696",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/review.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/review.md"
       },
       {
         "digest": "22e44eed65c2fa3d3ff19f987f29515aa71ccacb59e8abbd1d811157a6266086",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/completeness-rounds-10.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/completeness-rounds-10.md"
       },
       {
         "digest": "67adf2d7a770cf94e93b9e876d84e12e3ca2761201c5ce9251fa1855dd98a8f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/cross-consistency.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/cross-consistency.md"
       },
       {
         "digest": "690183e1bb2d9aaa32e69038dc08f2d0995d1783a9ce6ba1f600528c1f07ae6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/self-review-round-1.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/self-review-round-1.md"
       },
       {
         "digest": "556cb4c404876d07cde8de8b25843ded7442b2f4d11d10c17fdb088a9617574a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/ui-interaction-gap-audit.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/ui-interaction-gap-audit.md"
       },
       {
         "digest": "a81d8225f9ca0a62fa5c76f367bc9c5ab9114ff08b630888d07b01720b9c6f40",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/index.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/index.md"
       },
       {
         "digest": "ba816a947fb67c025b529aea7705a53a705338d8bcb6590beb5fb363ff869430",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-01-run-foundation.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-01-run-foundation.md"
       },
       {
         "digest": "5da2d6dd12349380559144c4d262330c2476f28e326c23e605cfc0fa1111e956",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-02-library-marketplace.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-02-library-marketplace.md"
       },
       {
         "digest": "a82b663ca1cb065463ff93b84625d09403bd629afe0f5841ed6571c390b6d545",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-03-job-admission.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-03-job-admission.md"
       },
       {
         "digest": "23b200b6eb7df18591db8a7f374dc6732aa408fbbd29c7e1abea21c24989d36d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-04-checkpoints-run-modes.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-04-checkpoints-run-modes.md"
       },
       {
         "digest": "546016ef0fc43219010bc785463a49977f839a219cf05f5f2a2d0b3aa9580d5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-05-run-lifecycle-controls.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-05-run-lifecycle-controls.md"
       },
       {
         "digest": "074b0a7076e57964e6e8e393eb25822117e03da67d41bbc78cf011f3f2e9a87b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-06-results-observability.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-06-results-observability.md"
       },
       {
         "digest": "4f46d3102c93e7eca9c6113044987bbd060b18fbaf9345af75801f2874cc24cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-07-ui-state-integration.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-07-ui-state-integration.md"
       },
       {
         "digest": "eb10453952ec7af380b1e6ae7896744852bb8f6d1f42a22ccfd42a401f6a6175",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-08-economics-release.md"
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-08-economics-release.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -610,7 +610,7 @@
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.945937Z",
+  "updated_at": "2026-10-06T03:28:17.307633Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

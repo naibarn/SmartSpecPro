@@ -17,62 +17,62 @@
       {
         "digest": "3faf0c16f5ea2e0c20a26a0dacf3d1a2fef1f6153bb36f467437242f061fd910",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/claude-plan.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/claude-plan.md"
       },
       {
         "digest": "f2567a283a285dc502fce3eb8cca1d29a9a2231fb47e7b2d5e9fe01066419287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/index.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/index.md"
       },
       {
         "digest": "6b424d191a5cb9865449cc9a665f4b2a350ce63544f6e483deca4c618f4fe6c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-01-redis-reliability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-01-redis-reliability.md"
       },
       {
         "digest": "2871f64d777bca23bcd3876d945c34b44ad6c08aeb8ac5119ce05aade5d04dd2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-02-worker-capability-adapters.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-02-worker-capability-adapters.md"
       },
       {
         "digest": "2fa9f776c46716e436f7b6916a81ff8dad29ed8c647b326f7b17f3d09dfee8fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-03-r2-resumable-ingest.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-03-r2-resumable-ingest.md"
       },
       {
         "digest": "c0a90f75ac02f882a39d256f6cb6ff584f7c0bb7636ee1134d4507a8e7f13d13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-04-tenant-revision-durability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-04-tenant-revision-durability.md"
       },
       {
         "digest": "d37af8d87f82c4b7f6e18b2bd45b2b05bfe9ee34a26be32574caa40f112d27e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-05-timeline-transform.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-05-timeline-transform.md"
       },
       {
         "digest": "09fb062149ede6033e7b462da85cb1ab6e7eded38c10432890dc729cc176b29d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-06-heavy-adapters.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-06-heavy-adapters.md"
       },
       {
         "digest": "a5c3bc54c524be7f885267c801c66d7cc02bf1537adde85ed99c12abf9d006d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-07-render-export.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-07-render-export.md"
       },
       {
         "digest": "c58bfe7a3fb35f3d831853e91fd1a1b0398f0a258213d0cc071772866bb20155",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-08-browser-ux.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-08-browser-ux.md"
       },
       {
         "digest": "1a0fc02631f64f89861477cd476ccff7c00f09be16c6e9e8f15f7f681641ef7f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-09-security-observability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-09-security-observability.md"
       },
       {
         "digest": "0c04fab34f441f0d31eb396831fbad7b6d0a7e4b2943132c5ace0f915a80675e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-10-rollout-proof.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-10-rollout-proof.md"
       }
     ],
     "predecessors": [],
@@ -103,62 +103,62 @@
       {
         "digest": "3faf0c16f5ea2e0c20a26a0dacf3d1a2fef1f6153bb36f467437242f061fd910",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/claude-plan.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/claude-plan.md"
       },
       {
         "digest": "f2567a283a285dc502fce3eb8cca1d29a9a2231fb47e7b2d5e9fe01066419287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/index.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/index.md"
       },
       {
         "digest": "6b424d191a5cb9865449cc9a665f4b2a350ce63544f6e483deca4c618f4fe6c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-01-redis-reliability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-01-redis-reliability.md"
       },
       {
         "digest": "2871f64d777bca23bcd3876d945c34b44ad6c08aeb8ac5119ce05aade5d04dd2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-02-worker-capability-adapters.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-02-worker-capability-adapters.md"
       },
       {
         "digest": "2fa9f776c46716e436f7b6916a81ff8dad29ed8c647b326f7b17f3d09dfee8fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-03-r2-resumable-ingest.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-03-r2-resumable-ingest.md"
       },
       {
         "digest": "c0a90f75ac02f882a39d256f6cb6ff584f7c0bb7636ee1134d4507a8e7f13d13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-04-tenant-revision-durability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-04-tenant-revision-durability.md"
       },
       {
         "digest": "d37af8d87f82c4b7f6e18b2bd45b2b05bfe9ee34a26be32574caa40f112d27e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-05-timeline-transform.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-05-timeline-transform.md"
       },
       {
         "digest": "09fb062149ede6033e7b462da85cb1ab6e7eded38c10432890dc729cc176b29d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-06-heavy-adapters.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-06-heavy-adapters.md"
       },
       {
         "digest": "a5c3bc54c524be7f885267c801c66d7cc02bf1537adde85ed99c12abf9d006d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-07-render-export.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-07-render-export.md"
       },
       {
         "digest": "c58bfe7a3fb35f3d831853e91fd1a1b0398f0a258213d0cc071772866bb20155",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-08-browser-ux.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-08-browser-ux.md"
       },
       {
         "digest": "1a0fc02631f64f89861477cd476ccff7c00f09be16c6e9e8f15f7f681641ef7f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-09-security-observability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-09-security-observability.md"
       },
       {
         "digest": "0c04fab34f441f0d31eb396831fbad7b6d0a7e4b2943132c5ace0f915a80675e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-10-rollout-proof.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-10-rollout-proof.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -190,79 +190,79 @@
       {
         "digest": "3faf0c16f5ea2e0c20a26a0dacf3d1a2fef1f6153bb36f467437242f061fd910",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/claude-plan.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/claude-plan.md"
       },
       {
         "digest": "f2567a283a285dc502fce3eb8cca1d29a9a2231fb47e7b2d5e9fe01066419287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/index.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/index.md"
       },
       {
         "digest": "6b424d191a5cb9865449cc9a665f4b2a350ce63544f6e483deca4c618f4fe6c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-01-redis-reliability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-01-redis-reliability.md"
       },
       {
         "digest": "2871f64d777bca23bcd3876d945c34b44ad6c08aeb8ac5119ce05aade5d04dd2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-02-worker-capability-adapters.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-02-worker-capability-adapters.md"
       },
       {
         "digest": "2fa9f776c46716e436f7b6916a81ff8dad29ed8c647b326f7b17f3d09dfee8fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-03-r2-resumable-ingest.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-03-r2-resumable-ingest.md"
       },
       {
         "digest": "c0a90f75ac02f882a39d256f6cb6ff584f7c0bb7636ee1134d4507a8e7f13d13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-04-tenant-revision-durability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-04-tenant-revision-durability.md"
       },
       {
         "digest": "d37af8d87f82c4b7f6e18b2bd45b2b05bfe9ee34a26be32574caa40f112d27e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-05-timeline-transform.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-05-timeline-transform.md"
       },
       {
         "digest": "09fb062149ede6033e7b462da85cb1ab6e7eded38c10432890dc729cc176b29d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-06-heavy-adapters.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-06-heavy-adapters.md"
       },
       {
         "digest": "a5c3bc54c524be7f885267c801c66d7cc02bf1537adde85ed99c12abf9d006d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-07-render-export.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-07-render-export.md"
       },
       {
         "digest": "c58bfe7a3fb35f3d831853e91fd1a1b0398f0a258213d0cc071772866bb20155",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-08-browser-ux.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-08-browser-ux.md"
       },
       {
         "digest": "1a0fc02631f64f89861477cd476ccff7c00f09be16c6e9e8f15f7f681641ef7f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-09-security-observability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-09-security-observability.md"
       },
       {
         "digest": "0c04fab34f441f0d31eb396831fbad7b6d0a7e4b2943132c5ace0f915a80675e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-10-rollout-proof.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-10-rollout-proof.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md",
     "digest": "ba947a22f5c72ac287c401ea5939f1e1a3b590be2a77d98df264b29fe4ff88ea",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.582161Z",
+      "last_evidence_at": "2026-10-06T03:28:16.673008Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-13T07:28:45+07:00",
       "spec_last_changed_at": "2026-09-13T07:28:45+07:00"
     },
-    "revision": null,
+    "revision": "2026",
     "slug": "production-grade-20260910",
     "spec_id": "production-grade-20260910",
     "title": "Web Video Editor production-grade completion plan"
@@ -284,7 +284,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.582161Z"
+    "updated_at": "2026-10-06T03:28:16.673008Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -294,7 +294,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.582161Z",
+    "reconciled_at": "2026-10-06T03:28:16.673008Z",
     "sources": [
       {
         "digest": "ba947a22f5c72ac287c401ea5939f1e1a3b590be2a77d98df264b29fe4ff88ea",
@@ -304,62 +304,62 @@
       {
         "digest": "3faf0c16f5ea2e0c20a26a0dacf3d1a2fef1f6153bb36f467437242f061fd910",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/claude-plan.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/claude-plan.md"
       },
       {
         "digest": "f2567a283a285dc502fce3eb8cca1d29a9a2231fb47e7b2d5e9fe01066419287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/index.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/index.md"
       },
       {
         "digest": "6b424d191a5cb9865449cc9a665f4b2a350ce63544f6e483deca4c618f4fe6c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-01-redis-reliability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-01-redis-reliability.md"
       },
       {
         "digest": "2871f64d777bca23bcd3876d945c34b44ad6c08aeb8ac5119ce05aade5d04dd2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-02-worker-capability-adapters.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-02-worker-capability-adapters.md"
       },
       {
         "digest": "2fa9f776c46716e436f7b6916a81ff8dad29ed8c647b326f7b17f3d09dfee8fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-03-r2-resumable-ingest.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-03-r2-resumable-ingest.md"
       },
       {
         "digest": "c0a90f75ac02f882a39d256f6cb6ff584f7c0bb7636ee1134d4507a8e7f13d13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-04-tenant-revision-durability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-04-tenant-revision-durability.md"
       },
       {
         "digest": "d37af8d87f82c4b7f6e18b2bd45b2b05bfe9ee34a26be32574caa40f112d27e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-05-timeline-transform.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-05-timeline-transform.md"
       },
       {
         "digest": "09fb062149ede6033e7b462da85cb1ab6e7eded38c10432890dc729cc176b29d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-06-heavy-adapters.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-06-heavy-adapters.md"
       },
       {
         "digest": "a5c3bc54c524be7f885267c801c66d7cc02bf1537adde85ed99c12abf9d006d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-07-render-export.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-07-render-export.md"
       },
       {
         "digest": "c58bfe7a3fb35f3d831853e91fd1a1b0398f0a258213d0cc071772866bb20155",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-08-browser-ux.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-08-browser-ux.md"
       },
       {
         "digest": "1a0fc02631f64f89861477cd476ccff7c00f09be16c6e9e8f15f7f681641ef7f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-09-security-observability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-09-security-observability.md"
       },
       {
         "digest": "0c04fab34f441f0d31eb396831fbad7b6d0a7e4b2943132c5ace0f915a80675e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-10-rollout-proof.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-10-rollout-proof.md"
       }
     ],
     "stale_fields": [],
@@ -387,62 +387,62 @@
       {
         "digest": "3faf0c16f5ea2e0c20a26a0dacf3d1a2fef1f6153bb36f467437242f061fd910",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/claude-plan.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/claude-plan.md"
       },
       {
         "digest": "f2567a283a285dc502fce3eb8cca1d29a9a2231fb47e7b2d5e9fe01066419287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/index.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/index.md"
       },
       {
         "digest": "6b424d191a5cb9865449cc9a665f4b2a350ce63544f6e483deca4c618f4fe6c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-01-redis-reliability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-01-redis-reliability.md"
       },
       {
         "digest": "2871f64d777bca23bcd3876d945c34b44ad6c08aeb8ac5119ce05aade5d04dd2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-02-worker-capability-adapters.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-02-worker-capability-adapters.md"
       },
       {
         "digest": "2fa9f776c46716e436f7b6916a81ff8dad29ed8c647b326f7b17f3d09dfee8fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-03-r2-resumable-ingest.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-03-r2-resumable-ingest.md"
       },
       {
         "digest": "c0a90f75ac02f882a39d256f6cb6ff584f7c0bb7636ee1134d4507a8e7f13d13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-04-tenant-revision-durability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-04-tenant-revision-durability.md"
       },
       {
         "digest": "d37af8d87f82c4b7f6e18b2bd45b2b05bfe9ee34a26be32574caa40f112d27e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-05-timeline-transform.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-05-timeline-transform.md"
       },
       {
         "digest": "09fb062149ede6033e7b462da85cb1ab6e7eded38c10432890dc729cc176b29d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-06-heavy-adapters.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-06-heavy-adapters.md"
       },
       {
         "digest": "a5c3bc54c524be7f885267c801c66d7cc02bf1537adde85ed99c12abf9d006d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-07-render-export.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-07-render-export.md"
       },
       {
         "digest": "c58bfe7a3fb35f3d831853e91fd1a1b0398f0a258213d0cc071772866bb20155",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-08-browser-ux.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-08-browser-ux.md"
       },
       {
         "digest": "1a0fc02631f64f89861477cd476ccff7c00f09be16c6e9e8f15f7f681641ef7f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-09-security-observability.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-09-security-observability.md"
       },
       {
         "digest": "0c04fab34f441f0d31eb396831fbad7b6d0a7e4b2943132c5ace0f915a80675e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-10-rollout-proof.md"
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-10-rollout-proof.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -460,7 +460,7 @@
     "unresolved": 7
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.582161Z",
+  "updated_at": "2026-10-06T03:28:16.673008Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

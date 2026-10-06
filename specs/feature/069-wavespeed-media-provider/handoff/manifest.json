@@ -17,62 +17,62 @@
       {
         "digest": "8c3d4ffb75399b40bf382c2e528ae1d120a10e0272666055386cd9b87b665d11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/claude-plan.md"
+        "path": "specs/feature/069-wavespeed-media-provider/claude-plan.md"
       },
       {
         "digest": "6b6275c6b3cf1b1d984d413fda4f2d71ced96a63a20fcd304480cd613e95042e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/claude-spec.md"
+        "path": "specs/feature/069-wavespeed-media-provider/claude-spec.md"
       },
       {
         "digest": "504ac5498c810d0e4c9b1bc943450af5659a797ae1ba3a3071d5620cfbf6071d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/implementation/deep_implement_config.json"
+        "path": "specs/feature/069-wavespeed-media-provider/implementation/deep_implement_config.json"
       },
       {
         "digest": "fbfecb1f7da824346f8c77a5a13a9149ebdeabc3a4effd2f9f32a3adcff52cfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/implementation/usage.md"
+        "path": "specs/feature/069-wavespeed-media-provider/implementation/usage.md"
       },
       {
         "digest": "7c0bdc7809098e57e4b790f1996a07f594fa44deb9d55b1354a7ea9fc445af51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "bf97f5333427a583aeb6c3e63f0ac127b76300904355f182bf24c1f8e53fe54c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/section-cross-consistency-review.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "c07d9a95502c5532ac4128e08aff0aa1ebcc385d5edad7a3de4b3281820c9a6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/self-review-round-1.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/self-review-round-1.md"
       },
       {
         "digest": "d2c87c52e9770206a3df47c6bddbdb5ba0b60f01f520e10159c792aa5e423c18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/index.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/index.md"
       },
       {
         "digest": "eba2a4401afbd1ab7a2094314dac827162d495601f337083bc7ff3bfe39d6c8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-01-foundation-and-static-fallback.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-01-foundation-and-static-fallback.md"
       },
       {
         "digest": "1d2d6a88171316033eef35b271e14ea21315154133e6e1044da4557eebeb6036",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-02-admin-provider-and-model-ui.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-02-admin-provider-and-model-ui.md"
       },
       {
         "digest": "a23596189a8bb6ffaedf4ceba55267d936802f4825d970560d131025328d6232",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-03-python-runtime-and-recovery.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-03-python-runtime-and-recovery.md"
       },
       {
         "digest": "83be155d2395c3a3fdbd825bd816fe8e5f5ec9d29708c030a14b9e6bf6486880",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-04-tests-and-verification.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-04-tests-and-verification.md"
       }
     ],
     "predecessors": [],
@@ -103,62 +103,62 @@
       {
         "digest": "8c3d4ffb75399b40bf382c2e528ae1d120a10e0272666055386cd9b87b665d11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/claude-plan.md"
+        "path": "specs/feature/069-wavespeed-media-provider/claude-plan.md"
       },
       {
         "digest": "6b6275c6b3cf1b1d984d413fda4f2d71ced96a63a20fcd304480cd613e95042e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/claude-spec.md"
+        "path": "specs/feature/069-wavespeed-media-provider/claude-spec.md"
       },
       {
         "digest": "504ac5498c810d0e4c9b1bc943450af5659a797ae1ba3a3071d5620cfbf6071d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/implementation/deep_implement_config.json"
+        "path": "specs/feature/069-wavespeed-media-provider/implementation/deep_implement_config.json"
       },
       {
         "digest": "fbfecb1f7da824346f8c77a5a13a9149ebdeabc3a4effd2f9f32a3adcff52cfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/implementation/usage.md"
+        "path": "specs/feature/069-wavespeed-media-provider/implementation/usage.md"
       },
       {
         "digest": "7c0bdc7809098e57e4b790f1996a07f594fa44deb9d55b1354a7ea9fc445af51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "bf97f5333427a583aeb6c3e63f0ac127b76300904355f182bf24c1f8e53fe54c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/section-cross-consistency-review.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "c07d9a95502c5532ac4128e08aff0aa1ebcc385d5edad7a3de4b3281820c9a6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/self-review-round-1.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/self-review-round-1.md"
       },
       {
         "digest": "d2c87c52e9770206a3df47c6bddbdb5ba0b60f01f520e10159c792aa5e423c18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/index.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/index.md"
       },
       {
         "digest": "eba2a4401afbd1ab7a2094314dac827162d495601f337083bc7ff3bfe39d6c8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-01-foundation-and-static-fallback.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-01-foundation-and-static-fallback.md"
       },
       {
         "digest": "1d2d6a88171316033eef35b271e14ea21315154133e6e1044da4557eebeb6036",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-02-admin-provider-and-model-ui.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-02-admin-provider-and-model-ui.md"
       },
       {
         "digest": "a23596189a8bb6ffaedf4ceba55267d936802f4825d970560d131025328d6232",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-03-python-runtime-and-recovery.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-03-python-runtime-and-recovery.md"
       },
       {
         "digest": "83be155d2395c3a3fdbd825bd816fe8e5f5ec9d29708c030a14b9e6bf6486880",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-04-tests-and-verification.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-04-tests-and-verification.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -190,74 +190,74 @@
       {
         "digest": "8c3d4ffb75399b40bf382c2e528ae1d120a10e0272666055386cd9b87b665d11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/claude-plan.md"
+        "path": "specs/feature/069-wavespeed-media-provider/claude-plan.md"
       },
       {
         "digest": "6b6275c6b3cf1b1d984d413fda4f2d71ced96a63a20fcd304480cd613e95042e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/claude-spec.md"
+        "path": "specs/feature/069-wavespeed-media-provider/claude-spec.md"
       },
       {
         "digest": "504ac5498c810d0e4c9b1bc943450af5659a797ae1ba3a3071d5620cfbf6071d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/implementation/deep_implement_config.json"
+        "path": "specs/feature/069-wavespeed-media-provider/implementation/deep_implement_config.json"
       },
       {
         "digest": "fbfecb1f7da824346f8c77a5a13a9149ebdeabc3a4effd2f9f32a3adcff52cfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/implementation/usage.md"
+        "path": "specs/feature/069-wavespeed-media-provider/implementation/usage.md"
       },
       {
         "digest": "7c0bdc7809098e57e4b790f1996a07f594fa44deb9d55b1354a7ea9fc445af51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "bf97f5333427a583aeb6c3e63f0ac127b76300904355f182bf24c1f8e53fe54c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/section-cross-consistency-review.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "c07d9a95502c5532ac4128e08aff0aa1ebcc385d5edad7a3de4b3281820c9a6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/self-review-round-1.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/self-review-round-1.md"
       },
       {
         "digest": "d2c87c52e9770206a3df47c6bddbdb5ba0b60f01f520e10159c792aa5e423c18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/index.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/index.md"
       },
       {
         "digest": "eba2a4401afbd1ab7a2094314dac827162d495601f337083bc7ff3bfe39d6c8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-01-foundation-and-static-fallback.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-01-foundation-and-static-fallback.md"
       },
       {
         "digest": "1d2d6a88171316033eef35b271e14ea21315154133e6e1044da4557eebeb6036",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-02-admin-provider-and-model-ui.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-02-admin-provider-and-model-ui.md"
       },
       {
         "digest": "a23596189a8bb6ffaedf4ceba55267d936802f4825d970560d131025328d6232",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-03-python-runtime-and-recovery.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-03-python-runtime-and-recovery.md"
       },
       {
         "digest": "83be155d2395c3a3fdbd825bd816fe8e5f5ec9d29708c030a14b9e6bf6486880",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-04-tests-and-verification.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-04-tests-and-verification.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/069-wavespeed-media-provider/spec.md",
     "digest": "2e9d670ac20cc2d2e2ed79f9a16b250667dee6c24706b69807d0a46eb27c9b80",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.773792Z",
+      "last_evidence_at": "2026-10-06T03:28:15.180561Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-03T23:51:10+07:00",
       "spec_last_changed_at": "2026-04-03T23:51:10+07:00"
@@ -284,7 +284,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.773792Z"
+    "updated_at": "2026-10-06T03:28:15.180561Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -294,7 +294,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.773792Z",
+    "reconciled_at": "2026-10-06T03:28:15.180561Z",
     "sources": [
       {
         "digest": "2e9d670ac20cc2d2e2ed79f9a16b250667dee6c24706b69807d0a46eb27c9b80",
@@ -304,62 +304,62 @@
       {
         "digest": "8c3d4ffb75399b40bf382c2e528ae1d120a10e0272666055386cd9b87b665d11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/claude-plan.md"
+        "path": "specs/feature/069-wavespeed-media-provider/claude-plan.md"
       },
       {
         "digest": "6b6275c6b3cf1b1d984d413fda4f2d71ced96a63a20fcd304480cd613e95042e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/claude-spec.md"
+        "path": "specs/feature/069-wavespeed-media-provider/claude-spec.md"
       },
       {
         "digest": "504ac5498c810d0e4c9b1bc943450af5659a797ae1ba3a3071d5620cfbf6071d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/implementation/deep_implement_config.json"
+        "path": "specs/feature/069-wavespeed-media-provider/implementation/deep_implement_config.json"
       },
       {
         "digest": "fbfecb1f7da824346f8c77a5a13a9149ebdeabc3a4effd2f9f32a3adcff52cfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/implementation/usage.md"
+        "path": "specs/feature/069-wavespeed-media-provider/implementation/usage.md"
       },
       {
         "digest": "7c0bdc7809098e57e4b790f1996a07f594fa44deb9d55b1354a7ea9fc445af51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "bf97f5333427a583aeb6c3e63f0ac127b76300904355f182bf24c1f8e53fe54c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/section-cross-consistency-review.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "c07d9a95502c5532ac4128e08aff0aa1ebcc385d5edad7a3de4b3281820c9a6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/self-review-round-1.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/self-review-round-1.md"
       },
       {
         "digest": "d2c87c52e9770206a3df47c6bddbdb5ba0b60f01f520e10159c792aa5e423c18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/index.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/index.md"
       },
       {
         "digest": "eba2a4401afbd1ab7a2094314dac827162d495601f337083bc7ff3bfe39d6c8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-01-foundation-and-static-fallback.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-01-foundation-and-static-fallback.md"
       },
       {
         "digest": "1d2d6a88171316033eef35b271e14ea21315154133e6e1044da4557eebeb6036",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-02-admin-provider-and-model-ui.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-02-admin-provider-and-model-ui.md"
       },
       {
         "digest": "a23596189a8bb6ffaedf4ceba55267d936802f4825d970560d131025328d6232",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-03-python-runtime-and-recovery.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-03-python-runtime-and-recovery.md"
       },
       {
         "digest": "83be155d2395c3a3fdbd825bd816fe8e5f5ec9d29708c030a14b9e6bf6486880",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-04-tests-and-verification.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-04-tests-and-verification.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -409,62 +409,62 @@
       {
         "digest": "8c3d4ffb75399b40bf382c2e528ae1d120a10e0272666055386cd9b87b665d11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/claude-plan.md"
+        "path": "specs/feature/069-wavespeed-media-provider/claude-plan.md"
       },
       {
         "digest": "6b6275c6b3cf1b1d984d413fda4f2d71ced96a63a20fcd304480cd613e95042e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/claude-spec.md"
+        "path": "specs/feature/069-wavespeed-media-provider/claude-spec.md"
       },
       {
         "digest": "504ac5498c810d0e4c9b1bc943450af5659a797ae1ba3a3071d5620cfbf6071d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/implementation/deep_implement_config.json"
+        "path": "specs/feature/069-wavespeed-media-provider/implementation/deep_implement_config.json"
       },
       {
         "digest": "fbfecb1f7da824346f8c77a5a13a9149ebdeabc3a4effd2f9f32a3adcff52cfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/implementation/usage.md"
+        "path": "specs/feature/069-wavespeed-media-provider/implementation/usage.md"
       },
       {
         "digest": "7c0bdc7809098e57e4b790f1996a07f594fa44deb9d55b1354a7ea9fc445af51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "bf97f5333427a583aeb6c3e63f0ac127b76300904355f182bf24c1f8e53fe54c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/section-cross-consistency-review.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "c07d9a95502c5532ac4128e08aff0aa1ebcc385d5edad7a3de4b3281820c9a6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/reviews/self-review-round-1.md"
+        "path": "specs/feature/069-wavespeed-media-provider/reviews/self-review-round-1.md"
       },
       {
         "digest": "d2c87c52e9770206a3df47c6bddbdb5ba0b60f01f520e10159c792aa5e423c18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/index.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/index.md"
       },
       {
         "digest": "eba2a4401afbd1ab7a2094314dac827162d495601f337083bc7ff3bfe39d6c8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-01-foundation-and-static-fallback.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-01-foundation-and-static-fallback.md"
       },
       {
         "digest": "1d2d6a88171316033eef35b271e14ea21315154133e6e1044da4557eebeb6036",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-02-admin-provider-and-model-ui.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-02-admin-provider-and-model-ui.md"
       },
       {
         "digest": "a23596189a8bb6ffaedf4ceba55267d936802f4825d970560d131025328d6232",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-03-python-runtime-and-recovery.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-03-python-runtime-and-recovery.md"
       },
       {
         "digest": "83be155d2395c3a3fdbd825bd816fe8e5f5ec9d29708c030a14b9e6bf6486880",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/sections/section-04-tests-and-verification.md"
+        "path": "specs/feature/069-wavespeed-media-provider/sections/section-04-tests-and-verification.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -482,7 +482,7 @@
     "unresolved": 15
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.773792Z",
+  "updated_at": "2026-10-06T03:28:15.180561Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

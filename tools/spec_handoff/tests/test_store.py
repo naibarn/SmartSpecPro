@@ -28,6 +28,18 @@ class StoreTests(unittest.TestCase):
             event = json.loads((handoff / "history.jsonl").read_text().splitlines()[0])
             self.assertEqual(event["event_type"], "RECONCILIATION_SNAPSHOT")
 
+    def test_initialize_uses_inventory_revision_parser_for_bold_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec = self.setup_spec(root)
+            (spec / "spec.md").write_text(
+                "# Spec 281 — Example\n\n**Revision:** R1.0 — Initial design\n",
+                encoding="utf-8",
+            )
+            manifest = initialize(spec, root)
+            self.assertEqual(manifest["identity"]["spec_id"], "001")
+            self.assertEqual(manifest["identity"]["revision"], "1.0")
+
     def test_init_dry_run_does_not_create_any_handoff_files_or_directories(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L10"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L10"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L10",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L10",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L17"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L17"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L17",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L17",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L34"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L34"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L34",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L34",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L40"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L40"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L40",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L40",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L65"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L65"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L65",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L66"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L66"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L66",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L82"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L82"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L82",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L95"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L95"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L95",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L98"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L98"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L98",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L99"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L99",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L102"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L102"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L102",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L104"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L104"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L104",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L106"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L106"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L106",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L107"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L107"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L107",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L109"
+        "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L109"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L109",
+      "authority_source": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

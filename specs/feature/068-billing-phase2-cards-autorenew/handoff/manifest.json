@@ -17,52 +17,52 @@
       {
         "digest": "7664115d065d9eb047469c880a45991c9304bb85a7ecaf4bbb603bfe32338182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/claude-plan.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/claude-plan.md"
       },
       {
         "digest": "123800db5e3d232b3dfe2e07dcea5cc19749ba89b4280fbd3a4c30dd157cac89",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/claude-spec.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/claude-spec.md"
       },
       {
         "digest": "1dc925f422c289b723cc927a5f73d8feb16be6de816abdabbb2dfa6523a3353c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-1.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-1.md"
       },
       {
         "digest": "83a0fbcb6b341ed7d648b9fa2d513c902c01bb33eedb98a365e60fecccf39b25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-2.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-2.md"
       },
       {
         "digest": "7ee459a9d94b4f8d0207b4846dc3167b18fb62ef541013e0cc4d3217634483e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/index.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/index.md"
       },
       {
         "digest": "3a9bf13cef04659287bf7267eb1a63547ac9f3eec14253ba59fd0ecbb45cefeb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-01-payment-methods-and-consent.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-01-payment-methods-and-consent.md"
       },
       {
         "digest": "d059263b458e968b84e1428be8094cc99c72f77d7d6ebbd4df0e02f44407086c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-02-provider-setup-and-vault-references.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-02-provider-setup-and-vault-references.md"
       },
       {
         "digest": "171f60e151943d2314ef6381c5d0fe8efc4e9737f8f48aa212e996072c3787ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-03-auto-renew-orchestration.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-03-auto-renew-orchestration.md"
       },
       {
         "digest": "f157424c2db442a2715f6a38b18a915df0824a7a579cb49fd45b4e928e21256a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-04-retry-dunning-and-manual-fallback.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-04-retry-dunning-and-manual-fallback.md"
       },
       {
         "digest": "9ed306423c5776b0a484e2b09f837a0b3004ed646beed0fd281a9c1995501e95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-05-ui-security-and-rollout.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-05-ui-security-and-rollout.md"
       }
     ],
     "predecessors": [],
@@ -93,52 +93,52 @@
       {
         "digest": "7664115d065d9eb047469c880a45991c9304bb85a7ecaf4bbb603bfe32338182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/claude-plan.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/claude-plan.md"
       },
       {
         "digest": "123800db5e3d232b3dfe2e07dcea5cc19749ba89b4280fbd3a4c30dd157cac89",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/claude-spec.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/claude-spec.md"
       },
       {
         "digest": "1dc925f422c289b723cc927a5f73d8feb16be6de816abdabbb2dfa6523a3353c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-1.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-1.md"
       },
       {
         "digest": "83a0fbcb6b341ed7d648b9fa2d513c902c01bb33eedb98a365e60fecccf39b25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-2.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-2.md"
       },
       {
         "digest": "7ee459a9d94b4f8d0207b4846dc3167b18fb62ef541013e0cc4d3217634483e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/index.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/index.md"
       },
       {
         "digest": "3a9bf13cef04659287bf7267eb1a63547ac9f3eec14253ba59fd0ecbb45cefeb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-01-payment-methods-and-consent.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-01-payment-methods-and-consent.md"
       },
       {
         "digest": "d059263b458e968b84e1428be8094cc99c72f77d7d6ebbd4df0e02f44407086c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-02-provider-setup-and-vault-references.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-02-provider-setup-and-vault-references.md"
       },
       {
         "digest": "171f60e151943d2314ef6381c5d0fe8efc4e9737f8f48aa212e996072c3787ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-03-auto-renew-orchestration.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-03-auto-renew-orchestration.md"
       },
       {
         "digest": "f157424c2db442a2715f6a38b18a915df0824a7a579cb49fd45b4e928e21256a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-04-retry-dunning-and-manual-fallback.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-04-retry-dunning-and-manual-fallback.md"
       },
       {
         "digest": "9ed306423c5776b0a484e2b09f837a0b3004ed646beed0fd281a9c1995501e95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-05-ui-security-and-rollout.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-05-ui-security-and-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -170,64 +170,64 @@
       {
         "digest": "7664115d065d9eb047469c880a45991c9304bb85a7ecaf4bbb603bfe32338182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/claude-plan.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/claude-plan.md"
       },
       {
         "digest": "123800db5e3d232b3dfe2e07dcea5cc19749ba89b4280fbd3a4c30dd157cac89",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/claude-spec.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/claude-spec.md"
       },
       {
         "digest": "1dc925f422c289b723cc927a5f73d8feb16be6de816abdabbb2dfa6523a3353c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-1.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-1.md"
       },
       {
         "digest": "83a0fbcb6b341ed7d648b9fa2d513c902c01bb33eedb98a365e60fecccf39b25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-2.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-2.md"
       },
       {
         "digest": "7ee459a9d94b4f8d0207b4846dc3167b18fb62ef541013e0cc4d3217634483e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/index.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/index.md"
       },
       {
         "digest": "3a9bf13cef04659287bf7267eb1a63547ac9f3eec14253ba59fd0ecbb45cefeb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-01-payment-methods-and-consent.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-01-payment-methods-and-consent.md"
       },
       {
         "digest": "d059263b458e968b84e1428be8094cc99c72f77d7d6ebbd4df0e02f44407086c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-02-provider-setup-and-vault-references.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-02-provider-setup-and-vault-references.md"
       },
       {
         "digest": "171f60e151943d2314ef6381c5d0fe8efc4e9737f8f48aa212e996072c3787ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-03-auto-renew-orchestration.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-03-auto-renew-orchestration.md"
       },
       {
         "digest": "f157424c2db442a2715f6a38b18a915df0824a7a579cb49fd45b4e928e21256a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-04-retry-dunning-and-manual-fallback.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-04-retry-dunning-and-manual-fallback.md"
       },
       {
         "digest": "9ed306423c5776b0a484e2b09f837a0b3004ed646beed0fd281a9c1995501e95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-05-ui-security-and-rollout.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-05-ui-security-and-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/068-billing-phase2-cards-autorenew/spec.md",
     "digest": "c3ed1d8452a5aefe4076702faaed4147c84da91746421e7542e534ebdc56513d",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.768962Z",
+      "last_evidence_at": "2026-10-06T03:28:15.171914Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-08T19:58:29+07:00",
       "spec_last_changed_at": "2026-04-08T19:58:29+07:00"
@@ -254,7 +254,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.768962Z"
+    "updated_at": "2026-10-06T03:28:15.171914Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -264,7 +264,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.768962Z",
+    "reconciled_at": "2026-10-06T03:28:15.171914Z",
     "sources": [
       {
         "digest": "c3ed1d8452a5aefe4076702faaed4147c84da91746421e7542e534ebdc56513d",
@@ -274,52 +274,52 @@
       {
         "digest": "7664115d065d9eb047469c880a45991c9304bb85a7ecaf4bbb603bfe32338182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/claude-plan.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/claude-plan.md"
       },
       {
         "digest": "123800db5e3d232b3dfe2e07dcea5cc19749ba89b4280fbd3a4c30dd157cac89",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/claude-spec.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/claude-spec.md"
       },
       {
         "digest": "1dc925f422c289b723cc927a5f73d8feb16be6de816abdabbb2dfa6523a3353c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-1.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-1.md"
       },
       {
         "digest": "83a0fbcb6b341ed7d648b9fa2d513c902c01bb33eedb98a365e60fecccf39b25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-2.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-2.md"
       },
       {
         "digest": "7ee459a9d94b4f8d0207b4846dc3167b18fb62ef541013e0cc4d3217634483e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/index.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/index.md"
       },
       {
         "digest": "3a9bf13cef04659287bf7267eb1a63547ac9f3eec14253ba59fd0ecbb45cefeb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-01-payment-methods-and-consent.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-01-payment-methods-and-consent.md"
       },
       {
         "digest": "d059263b458e968b84e1428be8094cc99c72f77d7d6ebbd4df0e02f44407086c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-02-provider-setup-and-vault-references.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-02-provider-setup-and-vault-references.md"
       },
       {
         "digest": "171f60e151943d2314ef6381c5d0fe8efc4e9737f8f48aa212e996072c3787ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-03-auto-renew-orchestration.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-03-auto-renew-orchestration.md"
       },
       {
         "digest": "f157424c2db442a2715f6a38b18a915df0824a7a579cb49fd45b4e928e21256a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-04-retry-dunning-and-manual-fallback.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-04-retry-dunning-and-manual-fallback.md"
       },
       {
         "digest": "9ed306423c5776b0a484e2b09f837a0b3004ed646beed0fd281a9c1995501e95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-05-ui-security-and-rollout.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-05-ui-security-and-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -369,52 +369,52 @@
       {
         "digest": "7664115d065d9eb047469c880a45991c9304bb85a7ecaf4bbb603bfe32338182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/claude-plan.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/claude-plan.md"
       },
       {
         "digest": "123800db5e3d232b3dfe2e07dcea5cc19749ba89b4280fbd3a4c30dd157cac89",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/claude-spec.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/claude-spec.md"
       },
       {
         "digest": "1dc925f422c289b723cc927a5f73d8feb16be6de816abdabbb2dfa6523a3353c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-1.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-1.md"
       },
       {
         "digest": "83a0fbcb6b341ed7d648b9fa2d513c902c01bb33eedb98a365e60fecccf39b25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-2.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/reviews/self-review-round-2.md"
       },
       {
         "digest": "7ee459a9d94b4f8d0207b4846dc3167b18fb62ef541013e0cc4d3217634483e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/index.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/index.md"
       },
       {
         "digest": "3a9bf13cef04659287bf7267eb1a63547ac9f3eec14253ba59fd0ecbb45cefeb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-01-payment-methods-and-consent.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-01-payment-methods-and-consent.md"
       },
       {
         "digest": "d059263b458e968b84e1428be8094cc99c72f77d7d6ebbd4df0e02f44407086c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-02-provider-setup-and-vault-references.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-02-provider-setup-and-vault-references.md"
       },
       {
         "digest": "171f60e151943d2314ef6381c5d0fe8efc4e9737f8f48aa212e996072c3787ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-03-auto-renew-orchestration.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-03-auto-renew-orchestration.md"
       },
       {
         "digest": "f157424c2db442a2715f6a38b18a915df0824a7a579cb49fd45b4e928e21256a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-04-retry-dunning-and-manual-fallback.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-04-retry-dunning-and-manual-fallback.md"
       },
       {
         "digest": "9ed306423c5776b0a484e2b09f837a0b3004ed646beed0fd281a9c1995501e95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/sections/section-05-ui-security-and-rollout.md"
+        "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-05-ui-security-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -432,7 +432,7 @@
     "unresolved": 77
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.768962Z",
+  "updated_at": "2026-10-06T03:28:15.171914Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

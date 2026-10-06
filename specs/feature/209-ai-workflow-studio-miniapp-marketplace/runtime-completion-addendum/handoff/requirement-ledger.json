@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L21"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L21"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L21",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L21",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L23"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L23"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L23",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L23",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L27"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L27"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L27",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L27",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L29"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L29"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L29",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L31"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L31"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L31",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L33"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L33"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L33",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L33",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L35"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L35"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L35",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L35",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L37"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L37"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L37",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L39"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L39"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L39",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L39",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L52"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L52"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L52",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L58"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L58"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L58",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L68"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L68"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L68",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L74"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L74"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L74",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L84"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L84"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L84",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L105"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L105"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L105",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L106"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L106"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L106",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L119"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L119"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L119",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L125"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L125"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L125",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L129"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L129"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L129",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L133"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L133",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L135"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L135"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L135",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L137"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L137"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L137",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L147"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L147"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L147",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L149"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L149"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L149",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L150"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L150",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L151"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L151"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L151",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L153"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L153"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L153",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L156"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L156"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L156",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

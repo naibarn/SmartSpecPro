@@ -14,7 +14,7 @@
         "referencing_spec_id": "282",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L110",
+        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L110",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "282",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L119",
+        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L119",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "282",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
+        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "282",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
+        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       }
@@ -120,18 +120,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md",
     "digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.764900Z",
+      "last_evidence_at": "2026-10-06T03:28:18.907964Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-05T10:13:37+07:00",
       "spec_last_changed_at": "2026-10-05T10:13:37+07:00"
     },
-    "revision": null,
+    "revision": "1.0",
     "slug": "282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0",
     "spec_id": "282",
     "title": "Spec 282 — SmartAIHub Continuous Canonicalization & Durable Work Convergence"
@@ -153,7 +153,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.764900Z"
+    "updated_at": "2026-10-06T03:28:18.907964Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -163,7 +163,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.764900Z",
+    "reconciled_at": "2026-10-06T03:28:18.907964Z",
     "sources": [
       {
         "digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
@@ -231,7 +231,7 @@
     "unresolved": 41
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.764900Z",
+  "updated_at": "2026-10-06T03:28:18.907964Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

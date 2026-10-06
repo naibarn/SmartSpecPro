@@ -2,8 +2,8 @@
 # 06 — Exhaustive Reconciliation Proof
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `WAITING_DEPENDENCY`
+- Lifecycle: `WORKING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 1 unresolved of 1
-- Next action: WAITING_POST_RECOVERY_SPEC_UPLOAD: resolve the recovered Work Context Spec 282 authority/numbering conflict with current canonical Spec 282 and reconcile Spec 281 Docker/OCI deployment text against repository policy. Spec 278 is a whitespace-only duplicate of the current canonical Spec. Do not regenerate inventory-derived outputs or begin bulk reconciliation before the selected canonical set is integrated.
-- Manifest generation: 13
+- Next action: RESUME_REPOSITORY_WIDE_RECONCILIATION: post-recovery inventory is refreshed at ade174b306e6e4fcc9b078a616fa1a5634686722 with 291 canonical Specs, 447/447 indexed records, 286 relationship edges, and 315 open review records. Review the eight remaining duplicate-ID groups first; do not close unsupported classifications.
+- Manifest generation: 17

@@ -17,97 +17,97 @@
       {
         "digest": "1826ada476d18d3657d7a72668075d6616fd2ccb7184ee04e5672fd42dadaa96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-self-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "51829227e82e4a7216ff4a28c27427d244e48f9afd46a8fb176e893e75090e80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-summary.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-summary.md"
       },
       {
         "digest": "1e176a201f2ab22f5eea9fb3bd8c83ebb263e8ff08f6c3f612b09f7620d42774",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-01-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-01-review.md"
       },
       {
         "digest": "3cef7adddfd8c291ed99da7692ae51624de59ce6d9d221e3725e6509414176ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-02-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-02-review.md"
       },
       {
         "digest": "11392616b03f660e5ac2e12c4011f25f890694fd9bf8b3d7221c3590aacafcf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-03-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-03-review.md"
       },
       {
         "digest": "90596d0fea8709161ee5d20635da7941a7821fcc0f04a1179ae6b15a8346c75a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-04-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-04-review.md"
       },
       {
         "digest": "186d8e6e2c220b2e0734a86666b40d794f82c8bd18054b582c7cfd445cba29da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-05-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-05-review.md"
       },
       {
         "digest": "36202c04761920f2156c2d29eda702f79528973eac1c08705b8c945aa320d0e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-06-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-06-review.md"
       },
       {
         "digest": "0c3642a8be1a4048c3cd1be009a116a9099e692d4568bb1aa0b3d315b3ec2d22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-07-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-07-review.md"
       },
       {
         "digest": "d50e90d2ea852c599476236a7086c4f97e2efe96c588518cc75ed770dbcf4da8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-08-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-08-review.md"
       },
       {
         "digest": "182fee65dbd6933ffb38846ab1267eb4d6b7ec5453ccea1ff3e2674a8a658f2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-09-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-09-review.md"
       },
       {
         "digest": "baeef05d70fa528d8ee3f4d0710774ca33cd1022260a2da820360e9f6510aaa9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-10-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-10-review.md"
       },
       {
         "digest": "1e27fe1bdc4a7604bab8397bc5e4c657a479de1771f25fe6882caeef8f7d3b34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/index.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/index.md"
       },
       {
         "digest": "a5de97e70c563b23b523fe9c716acb5b415503ef31987b0f80cf79cf75bf7160",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-01-foundation-and-routing.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-01-foundation-and-routing.md"
       },
       {
         "digest": "111d8010df06f0afd26742c937207394edc74830c6324ca99b149f2af55dbfcb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-02-schema-and-persistence.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-02-schema-and-persistence.md"
       },
       {
         "digest": "dfe5173c2121aab51c91a0ffa591455f386800ccd6110ad5604a5edf12f005b7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-03-backend-api-and-services.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-03-backend-api-and-services.md"
       },
       {
         "digest": "1cc44cec284d577a9799982c07d1ff91fbef5eb9cdf1eec1744f2fe6755d7710",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-04-conflict-and-concurrency-hardening.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-04-conflict-and-concurrency-hardening.md"
       },
       {
         "digest": "e7dade95bd73f36b491890599596343ae334b1cbe06e3433fb426c19f6d9379e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-05-frontend-editor-and-document-integration.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-05-frontend-editor-and-document-integration.md"
       },
       {
         "digest": "e282a54b9371b114f70a07258827f1f59dd55b769c3192bd82be51c5110961ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-06-import-conversion-and-compatibility.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-06-import-conversion-and-compatibility.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "1826ada476d18d3657d7a72668075d6616fd2ccb7184ee04e5672fd42dadaa96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-self-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "51829227e82e4a7216ff4a28c27427d244e48f9afd46a8fb176e893e75090e80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-summary.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-summary.md"
       },
       {
         "digest": "1e176a201f2ab22f5eea9fb3bd8c83ebb263e8ff08f6c3f612b09f7620d42774",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-01-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-01-review.md"
       },
       {
         "digest": "3cef7adddfd8c291ed99da7692ae51624de59ce6d9d221e3725e6509414176ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-02-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-02-review.md"
       },
       {
         "digest": "11392616b03f660e5ac2e12c4011f25f890694fd9bf8b3d7221c3590aacafcf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-03-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-03-review.md"
       },
       {
         "digest": "90596d0fea8709161ee5d20635da7941a7821fcc0f04a1179ae6b15a8346c75a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-04-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-04-review.md"
       },
       {
         "digest": "186d8e6e2c220b2e0734a86666b40d794f82c8bd18054b582c7cfd445cba29da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-05-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-05-review.md"
       },
       {
         "digest": "36202c04761920f2156c2d29eda702f79528973eac1c08705b8c945aa320d0e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-06-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-06-review.md"
       },
       {
         "digest": "0c3642a8be1a4048c3cd1be009a116a9099e692d4568bb1aa0b3d315b3ec2d22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-07-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-07-review.md"
       },
       {
         "digest": "d50e90d2ea852c599476236a7086c4f97e2efe96c588518cc75ed770dbcf4da8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-08-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-08-review.md"
       },
       {
         "digest": "182fee65dbd6933ffb38846ab1267eb4d6b7ec5453ccea1ff3e2674a8a658f2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-09-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-09-review.md"
       },
       {
         "digest": "baeef05d70fa528d8ee3f4d0710774ca33cd1022260a2da820360e9f6510aaa9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-10-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-10-review.md"
       },
       {
         "digest": "1e27fe1bdc4a7604bab8397bc5e4c657a479de1771f25fe6882caeef8f7d3b34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/index.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/index.md"
       },
       {
         "digest": "a5de97e70c563b23b523fe9c716acb5b415503ef31987b0f80cf79cf75bf7160",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-01-foundation-and-routing.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-01-foundation-and-routing.md"
       },
       {
         "digest": "111d8010df06f0afd26742c937207394edc74830c6324ca99b149f2af55dbfcb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-02-schema-and-persistence.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-02-schema-and-persistence.md"
       },
       {
         "digest": "dfe5173c2121aab51c91a0ffa591455f386800ccd6110ad5604a5edf12f005b7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-03-backend-api-and-services.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-03-backend-api-and-services.md"
       },
       {
         "digest": "1cc44cec284d577a9799982c07d1ff91fbef5eb9cdf1eec1744f2fe6755d7710",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-04-conflict-and-concurrency-hardening.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-04-conflict-and-concurrency-hardening.md"
       },
       {
         "digest": "e7dade95bd73f36b491890599596343ae334b1cbe06e3433fb426c19f6d9379e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-05-frontend-editor-and-document-integration.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-05-frontend-editor-and-document-integration.md"
       },
       {
         "digest": "e282a54b9371b114f70a07258827f1f59dd55b769c3192bd82be51c5110961ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-06-import-conversion-and-compatibility.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-06-import-conversion-and-compatibility.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "1826ada476d18d3657d7a72668075d6616fd2ccb7184ee04e5672fd42dadaa96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-self-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "51829227e82e4a7216ff4a28c27427d244e48f9afd46a8fb176e893e75090e80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-summary.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-summary.md"
       },
       {
         "digest": "1e176a201f2ab22f5eea9fb3bd8c83ebb263e8ff08f6c3f612b09f7620d42774",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-01-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-01-review.md"
       },
       {
         "digest": "3cef7adddfd8c291ed99da7692ae51624de59ce6d9d221e3725e6509414176ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-02-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-02-review.md"
       },
       {
         "digest": "11392616b03f660e5ac2e12c4011f25f890694fd9bf8b3d7221c3590aacafcf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-03-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-03-review.md"
       },
       {
         "digest": "90596d0fea8709161ee5d20635da7941a7821fcc0f04a1179ae6b15a8346c75a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-04-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-04-review.md"
       },
       {
         "digest": "186d8e6e2c220b2e0734a86666b40d794f82c8bd18054b582c7cfd445cba29da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-05-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-05-review.md"
       },
       {
         "digest": "36202c04761920f2156c2d29eda702f79528973eac1c08705b8c945aa320d0e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-06-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-06-review.md"
       },
       {
         "digest": "0c3642a8be1a4048c3cd1be009a116a9099e692d4568bb1aa0b3d315b3ec2d22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-07-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-07-review.md"
       },
       {
         "digest": "d50e90d2ea852c599476236a7086c4f97e2efe96c588518cc75ed770dbcf4da8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-08-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-08-review.md"
       },
       {
         "digest": "182fee65dbd6933ffb38846ab1267eb4d6b7ec5453ccea1ff3e2674a8a658f2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-09-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-09-review.md"
       },
       {
         "digest": "baeef05d70fa528d8ee3f4d0710774ca33cd1022260a2da820360e9f6510aaa9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-10-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-10-review.md"
       },
       {
         "digest": "1e27fe1bdc4a7604bab8397bc5e4c657a479de1771f25fe6882caeef8f7d3b34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/index.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/index.md"
       },
       {
         "digest": "a5de97e70c563b23b523fe9c716acb5b415503ef31987b0f80cf79cf75bf7160",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-01-foundation-and-routing.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-01-foundation-and-routing.md"
       },
       {
         "digest": "111d8010df06f0afd26742c937207394edc74830c6324ca99b149f2af55dbfcb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-02-schema-and-persistence.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-02-schema-and-persistence.md"
       },
       {
         "digest": "dfe5173c2121aab51c91a0ffa591455f386800ccd6110ad5604a5edf12f005b7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-03-backend-api-and-services.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-03-backend-api-and-services.md"
       },
       {
         "digest": "1cc44cec284d577a9799982c07d1ff91fbef5eb9cdf1eec1744f2fe6755d7710",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-04-conflict-and-concurrency-hardening.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-04-conflict-and-concurrency-hardening.md"
       },
       {
         "digest": "e7dade95bd73f36b491890599596343ae334b1cbe06e3433fb426c19f6d9379e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-05-frontend-editor-and-document-integration.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-05-frontend-editor-and-document-integration.md"
       },
       {
         "digest": "e282a54b9371b114f70a07258827f1f59dd55b769c3192bd82be51c5110961ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-06-import-conversion-and-compatibility.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-06-import-conversion-and-compatibility.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/018-SlideShowAndCanvasEdit/spec.md",
     "digest": "735f065291abb0649ba2f856b5c27686313134b6b18cf3cd9514eee6980249f6",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.448140Z",
+      "last_evidence_at": "2026-10-06T03:28:14.706354Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-02-23T16:44:30+07:00",
       "spec_last_changed_at": "2026-02-23T16:44:30+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.448140Z"
+    "updated_at": "2026-10-06T03:28:14.706354Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.448140Z",
+    "reconciled_at": "2026-10-06T03:28:14.706354Z",
     "sources": [
       {
         "digest": "735f065291abb0649ba2f856b5c27686313134b6b18cf3cd9514eee6980249f6",
@@ -409,117 +409,117 @@
       {
         "digest": "1826ada476d18d3657d7a72668075d6616fd2ccb7184ee04e5672fd42dadaa96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-self-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "51829227e82e4a7216ff4a28c27427d244e48f9afd46a8fb176e893e75090e80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-summary.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-summary.md"
       },
       {
         "digest": "1e176a201f2ab22f5eea9fb3bd8c83ebb263e8ff08f6c3f612b09f7620d42774",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-01-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-01-review.md"
       },
       {
         "digest": "3cef7adddfd8c291ed99da7692ae51624de59ce6d9d221e3725e6509414176ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-02-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-02-review.md"
       },
       {
         "digest": "11392616b03f660e5ac2e12c4011f25f890694fd9bf8b3d7221c3590aacafcf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-03-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-03-review.md"
       },
       {
         "digest": "90596d0fea8709161ee5d20635da7941a7821fcc0f04a1179ae6b15a8346c75a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-04-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-04-review.md"
       },
       {
         "digest": "186d8e6e2c220b2e0734a86666b40d794f82c8bd18054b582c7cfd445cba29da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-05-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-05-review.md"
       },
       {
         "digest": "36202c04761920f2156c2d29eda702f79528973eac1c08705b8c945aa320d0e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-06-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-06-review.md"
       },
       {
         "digest": "0c3642a8be1a4048c3cd1be009a116a9099e692d4568bb1aa0b3d315b3ec2d22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-07-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-07-review.md"
       },
       {
         "digest": "d50e90d2ea852c599476236a7086c4f97e2efe96c588518cc75ed770dbcf4da8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-08-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-08-review.md"
       },
       {
         "digest": "182fee65dbd6933ffb38846ab1267eb4d6b7ec5453ccea1ff3e2674a8a658f2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-09-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-09-review.md"
       },
       {
         "digest": "baeef05d70fa528d8ee3f4d0710774ca33cd1022260a2da820360e9f6510aaa9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-10-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-10-review.md"
       },
       {
         "digest": "1e27fe1bdc4a7604bab8397bc5e4c657a479de1771f25fe6882caeef8f7d3b34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/index.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/index.md"
       },
       {
         "digest": "a5de97e70c563b23b523fe9c716acb5b415503ef31987b0f80cf79cf75bf7160",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-01-foundation-and-routing.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-01-foundation-and-routing.md"
       },
       {
         "digest": "111d8010df06f0afd26742c937207394edc74830c6324ca99b149f2af55dbfcb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-02-schema-and-persistence.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-02-schema-and-persistence.md"
       },
       {
         "digest": "dfe5173c2121aab51c91a0ffa591455f386800ccd6110ad5604a5edf12f005b7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-03-backend-api-and-services.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-03-backend-api-and-services.md"
       },
       {
         "digest": "1cc44cec284d577a9799982c07d1ff91fbef5eb9cdf1eec1744f2fe6755d7710",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-04-conflict-and-concurrency-hardening.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-04-conflict-and-concurrency-hardening.md"
       },
       {
         "digest": "e7dade95bd73f36b491890599596343ae334b1cbe06e3433fb426c19f6d9379e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-05-frontend-editor-and-document-integration.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-05-frontend-editor-and-document-integration.md"
       },
       {
         "digest": "e282a54b9371b114f70a07258827f1f59dd55b769c3192bd82be51c5110961ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-06-import-conversion-and-compatibility.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-06-import-conversion-and-compatibility.md"
       },
       {
         "digest": "9a42a9c54bcb6f8e3e0762d97c2ebcbb3efe523aa8e3c0f9cc6246ee9e5f663b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-07-playback-and-export-pipeline.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-07-playback-and-export-pipeline.md"
       },
       {
         "digest": "94328c88b0fedda164a1bb9bc7a3f16c64286927de05a2a6b6d8e0cf7bd0df95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-08-observability-rollout-and-operations.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-08-observability-rollout-and-operations.md"
       },
       {
         "digest": "4c8453422538d3a5b18760812896df9e5fcc55679345210a417939dcf2366722",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-09-validation-and-regression-suite.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-09-validation-and-regression-suite.md"
       },
       {
         "digest": "d79ee352c63854f801acd5540b2529a2a337274dd87a3ec64a412331f30e8bc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-10-release-readiness-and-handoff.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-10-release-readiness-and-handoff.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -569,117 +569,117 @@
       {
         "digest": "1826ada476d18d3657d7a72668075d6616fd2ccb7184ee04e5672fd42dadaa96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-self-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "51829227e82e4a7216ff4a28c27427d244e48f9afd46a8fb176e893e75090e80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-summary.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/iteration-1-summary.md"
       },
       {
         "digest": "1e176a201f2ab22f5eea9fb3bd8c83ebb263e8ff08f6c3f612b09f7620d42774",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-01-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-01-review.md"
       },
       {
         "digest": "3cef7adddfd8c291ed99da7692ae51624de59ce6d9d221e3725e6509414176ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-02-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-02-review.md"
       },
       {
         "digest": "11392616b03f660e5ac2e12c4011f25f890694fd9bf8b3d7221c3590aacafcf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-03-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-03-review.md"
       },
       {
         "digest": "90596d0fea8709161ee5d20635da7941a7821fcc0f04a1179ae6b15a8346c75a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-04-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-04-review.md"
       },
       {
         "digest": "186d8e6e2c220b2e0734a86666b40d794f82c8bd18054b582c7cfd445cba29da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-05-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-05-review.md"
       },
       {
         "digest": "36202c04761920f2156c2d29eda702f79528973eac1c08705b8c945aa320d0e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-06-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-06-review.md"
       },
       {
         "digest": "0c3642a8be1a4048c3cd1be009a116a9099e692d4568bb1aa0b3d315b3ec2d22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-07-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-07-review.md"
       },
       {
         "digest": "d50e90d2ea852c599476236a7086c4f97e2efe96c588518cc75ed770dbcf4da8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-08-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-08-review.md"
       },
       {
         "digest": "182fee65dbd6933ffb38846ab1267eb4d6b7ec5453ccea1ff3e2674a8a658f2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-09-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-09-review.md"
       },
       {
         "digest": "baeef05d70fa528d8ee3f4d0710774ca33cd1022260a2da820360e9f6510aaa9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/reviews/section-10-review.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/reviews/section-10-review.md"
       },
       {
         "digest": "1e27fe1bdc4a7604bab8397bc5e4c657a479de1771f25fe6882caeef8f7d3b34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/index.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/index.md"
       },
       {
         "digest": "a5de97e70c563b23b523fe9c716acb5b415503ef31987b0f80cf79cf75bf7160",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-01-foundation-and-routing.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-01-foundation-and-routing.md"
       },
       {
         "digest": "111d8010df06f0afd26742c937207394edc74830c6324ca99b149f2af55dbfcb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-02-schema-and-persistence.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-02-schema-and-persistence.md"
       },
       {
         "digest": "dfe5173c2121aab51c91a0ffa591455f386800ccd6110ad5604a5edf12f005b7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-03-backend-api-and-services.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-03-backend-api-and-services.md"
       },
       {
         "digest": "1cc44cec284d577a9799982c07d1ff91fbef5eb9cdf1eec1744f2fe6755d7710",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-04-conflict-and-concurrency-hardening.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-04-conflict-and-concurrency-hardening.md"
       },
       {
         "digest": "e7dade95bd73f36b491890599596343ae334b1cbe06e3433fb426c19f6d9379e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-05-frontend-editor-and-document-integration.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-05-frontend-editor-and-document-integration.md"
       },
       {
         "digest": "e282a54b9371b114f70a07258827f1f59dd55b769c3192bd82be51c5110961ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-06-import-conversion-and-compatibility.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-06-import-conversion-and-compatibility.md"
       },
       {
         "digest": "9a42a9c54bcb6f8e3e0762d97c2ebcbb3efe523aa8e3c0f9cc6246ee9e5f663b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-07-playback-and-export-pipeline.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-07-playback-and-export-pipeline.md"
       },
       {
         "digest": "94328c88b0fedda164a1bb9bc7a3f16c64286927de05a2a6b6d8e0cf7bd0df95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-08-observability-rollout-and-operations.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-08-observability-rollout-and-operations.md"
       },
       {
         "digest": "4c8453422538d3a5b18760812896df9e5fcc55679345210a417939dcf2366722",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-09-validation-and-regression-suite.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-09-validation-and-regression-suite.md"
       },
       {
         "digest": "d79ee352c63854f801acd5540b2529a2a337274dd87a3ec64a412331f30e8bc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/018-SlideShowAndCanvasEdit/sections/section-10-release-readiness-and-handoff.md"
+        "path": "specs/feature/018-SlideShowAndCanvasEdit/sections/section-10-release-readiness-and-handoff.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -697,7 +697,7 @@
     "unresolved": 10
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.448140Z",
+  "updated_at": "2026-10-06T03:28:14.706354Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

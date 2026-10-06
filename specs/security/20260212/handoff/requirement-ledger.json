@@ -5,9 +5,9 @@
     {
       "applicability": "APPLICABLE",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L115"
+        "specs/security/20260212/spec.md#L115"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L115",
+      "authority_source": "specs/security/20260212/spec.md#L115",
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
@@ -32,9 +32,9 @@
     {
       "applicability": "APPLICABLE",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L116"
+        "specs/security/20260212/spec.md#L116"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L116",
+      "authority_source": "specs/security/20260212/spec.md#L116",
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
@@ -59,9 +59,9 @@
     {
       "applicability": "APPLICABLE",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L131"
+        "specs/security/20260212/spec.md#L131"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L131",
+      "authority_source": "specs/security/20260212/spec.md#L131",
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
@@ -86,9 +86,9 @@
     {
       "applicability": "APPLICABLE",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L132"
+        "specs/security/20260212/spec.md#L132"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L132",
+      "authority_source": "specs/security/20260212/spec.md#L132",
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
@@ -112,9 +112,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L142"
+        "specs/security/20260212/spec.md#L142"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L142",
+      "authority_source": "specs/security/20260212/spec.md#L142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -134,9 +134,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L161"
+        "specs/security/20260212/spec.md#L161"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L161",
+      "authority_source": "specs/security/20260212/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -156,9 +156,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L162"
+        "specs/security/20260212/spec.md#L162"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L162",
+      "authority_source": "specs/security/20260212/spec.md#L162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -178,9 +178,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L174"
+        "specs/security/20260212/spec.md#L174"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L174",
+      "authority_source": "specs/security/20260212/spec.md#L174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -200,9 +200,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L175"
+        "specs/security/20260212/spec.md#L175"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L175",
+      "authority_source": "specs/security/20260212/spec.md#L175",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -222,9 +222,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L213"
+        "specs/security/20260212/spec.md#L213"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L213",
+      "authority_source": "specs/security/20260212/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -244,9 +244,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L214"
+        "specs/security/20260212/spec.md#L214"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L214",
+      "authority_source": "specs/security/20260212/spec.md#L214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -266,9 +266,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L215"
+        "specs/security/20260212/spec.md#L215"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L215",
+      "authority_source": "specs/security/20260212/spec.md#L215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -288,9 +288,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L216"
+        "specs/security/20260212/spec.md#L216"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L216",
+      "authority_source": "specs/security/20260212/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -310,9 +310,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L224"
+        "specs/security/20260212/spec.md#L224"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L224",
+      "authority_source": "specs/security/20260212/spec.md#L224",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -332,9 +332,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L225"
+        "specs/security/20260212/spec.md#L225"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L225",
+      "authority_source": "specs/security/20260212/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -354,9 +354,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L226"
+        "specs/security/20260212/spec.md#L226"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L226",
+      "authority_source": "specs/security/20260212/spec.md#L226",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -376,9 +376,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L227"
+        "specs/security/20260212/spec.md#L227"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L227",
+      "authority_source": "specs/security/20260212/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -398,9 +398,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L228"
+        "specs/security/20260212/spec.md#L228"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L228",
+      "authority_source": "specs/security/20260212/spec.md#L228",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -420,9 +420,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L229"
+        "specs/security/20260212/spec.md#L229"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L229",
+      "authority_source": "specs/security/20260212/spec.md#L229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -442,9 +442,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L230"
+        "specs/security/20260212/spec.md#L230"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L230",
+      "authority_source": "specs/security/20260212/spec.md#L230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -464,9 +464,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L234"
+        "specs/security/20260212/spec.md#L234"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L234",
+      "authority_source": "specs/security/20260212/spec.md#L234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -486,9 +486,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L235"
+        "specs/security/20260212/spec.md#L235"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L235",
+      "authority_source": "specs/security/20260212/spec.md#L235",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -508,9 +508,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L236"
+        "specs/security/20260212/spec.md#L236"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L236",
+      "authority_source": "specs/security/20260212/spec.md#L236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -530,9 +530,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L237"
+        "specs/security/20260212/spec.md#L237"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L237",
+      "authority_source": "specs/security/20260212/spec.md#L237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

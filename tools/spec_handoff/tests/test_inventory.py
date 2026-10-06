@@ -65,10 +65,19 @@ class InventoryTests(unittest.TestCase):
             requirements = repo / "specs/project/013-scope/requirements.deep-project/requirements.md"
             requirements.parent.mkdir(parents=True)
             requirements.write_text("# Project requirements\n", encoding="utf-8")
+            for project, title in (("013-scope", "First work unit"), ("014-next-scope", "Second work unit")):
+                unit = repo / "specs/project" / project / "requirements.deep-project/01-work-unit"
+                unit.mkdir(parents=True)
+                (unit / "spec.md").write_text(f"# {title}\n", encoding="utf-8")
             result = inventory(repo)
             parent = next(row for row in result["records"] if row["path"] == "specs/project/013-scope")
             self.assertEqual(parent["record_kind"], "PROJECT_REQUIREMENTS")
             self.assertIsNone(parent["problem"])
+            units = [row for row in result["records"] if row["path"].endswith("requirements.deep-project/01-work-unit")]
+            self.assertEqual(len(units), 2)
+            self.assertTrue(all(row["record_kind"] == "PROJECT_REQUIREMENTS" for row in units))
+            self.assertTrue(all(not row["relationships"]["duplicate_ids"] for row in units))
+            self.assertEqual(result["invariants"]["canonical_spec_count"], 0)
 
     def test_identical_nested_spec_copy_remains_indexed_without_authority_collision(self):
         with tempfile.TemporaryDirectory() as tmp:

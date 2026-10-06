@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L21"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L21"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L21",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L21",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L25"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L25"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L25",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L25",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L27"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L27"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L27",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L27",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L83"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L83"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L83",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L92"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L92"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L92",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L96"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L96"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L96",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L112"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L112",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L114"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L114"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L114",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L122"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L122"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L122",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L136"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L136"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L136",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L136",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L146"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L146"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L146",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L154"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L154"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L154",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L158"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L158"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L158",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L160"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L160"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L160",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L166"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L166"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L166",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L168"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L168"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L168",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L172"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L172"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L172",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L172",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L174"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L174"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L174",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L184"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L184"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L184",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L195"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L195"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L195",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L205"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L205"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L205",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L211"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L211"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L211",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L213"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L213"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L213",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L222"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L222"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L222",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L222",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L230"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L230"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L230",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L234"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L234"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L234",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L238"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L238"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L238",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L358"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L358"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L358",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L358",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L360"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L360"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L360",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L360",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L373"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L373"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L373",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L387"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L387"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L387",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L387",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L393"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L393"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L393",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L393",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L404"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L404"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L404",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L413"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L413"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L413",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L413",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L417"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L417"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L417",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L419"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L419"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L419",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L428"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L428"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L428",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L428",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L430"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L430"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L430",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L440"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L440"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L440",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L440",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L461"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L461"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L461",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L461",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L462"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L462"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L462",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L462",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L464"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L464"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L464",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L464",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L468"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L468"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L468",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L478"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L478"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L478",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L478",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L485"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L485"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L485",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L485",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L489"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L489"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L489",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L499"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L499"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L499",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L499",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L515"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L515"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L515",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L517"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L517"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L517",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L517",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L527"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L527"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L527",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L540"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L540"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L540",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L540",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L544"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L544"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L544",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L546"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L546"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L546",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L546",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L560"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L560"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L560",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L560",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L564"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L564"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L564",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L564",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L566"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L566"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L566",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L566",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L569"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L569"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L569",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L569",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L580"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L580"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L580",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L580",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L582"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L582"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L582",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L582",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L594"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L594"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L594",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L594",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L596"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L596"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L596",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L596",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L600"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L600"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L600",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L600",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L605"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L605"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L605",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L605",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L610"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L610"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L610",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L610",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L613"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L613"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L613",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L613",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L616"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L616"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L616",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L626"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L626"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L626",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L644"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L644"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L644",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L650"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L650"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L650",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L650",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L658"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L658"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L658",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L666"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L666"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L666",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L670"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L670"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L670",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L680"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L680"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L680",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L680",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L690"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L690"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L690",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L692"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L692"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L692",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L694"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L694"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L694",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L694",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L695"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L695"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L695",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L695",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L696"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L696"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L696",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L696",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L697"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L697"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L697",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,10 +1743,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L698",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L711"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L698",
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L711"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L698",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L698",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1766,9 +1766,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L699"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L699"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L699",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1788,9 +1788,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L700"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L700"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L700",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L700",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1810,9 +1810,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L701"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L701"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L701",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1832,10 +1832,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L702",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L714"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L702",
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L714"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L702",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L702",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1855,10 +1855,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L703",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L715"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L703",
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L715"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L703",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1878,9 +1878,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L704"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L704"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L704",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L704",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1900,9 +1900,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L705"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L705"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L705",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L705",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1922,9 +1922,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L706"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L706"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L706",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L706",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1944,9 +1944,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L708"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L708"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L708",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1966,9 +1966,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L710"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L710"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L710",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L710",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1988,9 +1988,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L712"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L712"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L712",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2010,9 +2010,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L713"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L713"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L713",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2032,9 +2032,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L716"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L716"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L716",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L716",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2054,9 +2054,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L717"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L717"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L717",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L717",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2076,9 +2076,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L718"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L718"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L718",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L718",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2098,9 +2098,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L719"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L719"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L719",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L719",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2120,9 +2120,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L720"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L720"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L720",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L720",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2142,9 +2142,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L721"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L721"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L721",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2164,9 +2164,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L722"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L722"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L722",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L722",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2186,9 +2186,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L724"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L724"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L724",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2208,9 +2208,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L726"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L726"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L726",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L726",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2230,9 +2230,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L730"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L730"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L730",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L730",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2252,9 +2252,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L732"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L732"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L732",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L732",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2274,9 +2274,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L733"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L733"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L733",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2296,9 +2296,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L734"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L734"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L734",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2318,9 +2318,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L735"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L735"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L735",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L735",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2340,9 +2340,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L736"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L736"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L736",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L736",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2362,9 +2362,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L737"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L737"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L737",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L737",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2384,9 +2384,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L738"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L738"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L738",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L738",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2406,9 +2406,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L739"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L739"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L739",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L739",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2428,9 +2428,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L740"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L740"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L740",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2450,9 +2450,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L741"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L741"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L741",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2472,9 +2472,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L742"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L742"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L742",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L742",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2494,9 +2494,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L743"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L743"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L743",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L743",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2516,9 +2516,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L744"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L744"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L744",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L744",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2538,9 +2538,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L745"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L745"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L745",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L745",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2560,9 +2560,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L746"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L746"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L746",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2582,9 +2582,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L748"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L748"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L748",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2604,9 +2604,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L754"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L754"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L754",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L754",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2626,9 +2626,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L771"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L771"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L771",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L771",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2648,9 +2648,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L775"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L775"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L775",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L775",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2670,9 +2670,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L777"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L777"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L777",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2692,9 +2692,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L793"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L793"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L793",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L793",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2714,9 +2714,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L808"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L808"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L808",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L808",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2736,9 +2736,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L810"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L810"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L810",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L810",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2758,9 +2758,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L818"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L818"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L818",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L818",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2780,9 +2780,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L820"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L820"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L820",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L820",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2802,9 +2802,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L822"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L822"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L822",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L822",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2824,9 +2824,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L826"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L826"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L826",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L826",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2846,9 +2846,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L847"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L847"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L847",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L847",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2868,9 +2868,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L849"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L849"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L849",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L849",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2890,9 +2890,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L851"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L851"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L851",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L851",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2912,9 +2912,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L853"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L853"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L853",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L853",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2934,9 +2934,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L857"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L857"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L857",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L857",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2956,9 +2956,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L859"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L859"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L859",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L859",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2978,9 +2978,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L868"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L868"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L868",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L868",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3000,9 +3000,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L876"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L876"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L876",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L876",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3022,9 +3022,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L877"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L877"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L877",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L877",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3044,9 +3044,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L878"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L878"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L878",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L878",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3066,9 +3066,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L879"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L879"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L879",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L879",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3088,9 +3088,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L880"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L880"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L880",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L880",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3110,9 +3110,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L881"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L881"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L881",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L881",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3132,9 +3132,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L882"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L882"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L882",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L882",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3154,9 +3154,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L883"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L883"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L883",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L883",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3176,9 +3176,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L884"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L884"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L884",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L884",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3198,9 +3198,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L885"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L885"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L885",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L885",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3220,9 +3220,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L886"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L886"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L886",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L886",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3242,9 +3242,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L892"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L892"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L892",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L892",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3264,9 +3264,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L893"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L893"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L893",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L893",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3286,9 +3286,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L894"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L894"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L894",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L894",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3308,9 +3308,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L895"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L895"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L895",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L895",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3330,9 +3330,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L901"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L901"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L901",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L901",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3352,9 +3352,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L902"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L902"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L902",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L902",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3374,9 +3374,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L908"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L908"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L908",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L908",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3396,9 +3396,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L909"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L909"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L909",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L909",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3418,9 +3418,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L910"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L910"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L910",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L910",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3440,9 +3440,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L911"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L911"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L911",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L911",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3462,9 +3462,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L917"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L917"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L917",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L917",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3484,9 +3484,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L918"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L918"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L918",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L918",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3506,9 +3506,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L919"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L919"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L919",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L919",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3528,9 +3528,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L920"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L920"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L920",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L920",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3550,9 +3550,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L921"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L921"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L921",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L921",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3572,9 +3572,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L922"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L922"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L922",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L922",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3594,9 +3594,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L928"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L928"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L928",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L928",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3616,9 +3616,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L929"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L929"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L929",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L929",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3638,9 +3638,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L930"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L930"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L930",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L930",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3660,9 +3660,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L931"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L931"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L931",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L931",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3682,9 +3682,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L937"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L937"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L937",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L937",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3704,9 +3704,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L938"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L938"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L938",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L938",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3726,9 +3726,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L939"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L939"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L939",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L939",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3748,9 +3748,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L945"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L945"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L945",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L945",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3770,9 +3770,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L946"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L946"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L946",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L946",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3792,9 +3792,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L947"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L947"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L947",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L947",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3814,9 +3814,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L948"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L948"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L948",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L948",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3836,9 +3836,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L954"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L954"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L954",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L954",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3858,9 +3858,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L955"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L955"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L955",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L955",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3880,9 +3880,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L956"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L956"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L956",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L956",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3902,9 +3902,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L957"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L957"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L957",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L957",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3924,9 +3924,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L963"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L963"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L963",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L963",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3946,9 +3946,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L964"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L964"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L964",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L964",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3968,9 +3968,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L965"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L965"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L965",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L965",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3990,9 +3990,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L971"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L971"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L971",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L971",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4012,9 +4012,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L972"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L972"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L972",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L972",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4034,9 +4034,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L973"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L973"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L973",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L973",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4056,9 +4056,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L974"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L974"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L974",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L974",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4078,9 +4078,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L980"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L980"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L980",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L980",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4100,9 +4100,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L981"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L981"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L981",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L981",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4122,9 +4122,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L982"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L982"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L982",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L982",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4144,9 +4144,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L988"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L988"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L988",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L988",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4166,9 +4166,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L989"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L989"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L989",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L989",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4188,9 +4188,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L990"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L990"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L990",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L990",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4210,9 +4210,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L996"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L996"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L996",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4232,9 +4232,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L997"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L997"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L997",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4254,9 +4254,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L998"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L998"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L998",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L998",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4276,9 +4276,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1004"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1004"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1004",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4298,9 +4298,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1005"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1005"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1005",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4320,9 +4320,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1006"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1006"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1006",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1006",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4342,9 +4342,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1012"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1012"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1012",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1012",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4364,9 +4364,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1013"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1013"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1013",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1013",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4386,9 +4386,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1019"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1019"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1019",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1019",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4408,9 +4408,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1020"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1020"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1020",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1020",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4430,9 +4430,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1021"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1021"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1021",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1021",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4452,9 +4452,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1022"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1022"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1022",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1022",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4474,9 +4474,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1026"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1026"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1026",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1026",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4496,9 +4496,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1054"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1054"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1054",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1054",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4518,9 +4518,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1066"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1066"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1066",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1066",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4540,9 +4540,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1078"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1078"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1078",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1078",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4562,9 +4562,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1082"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1082"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1082",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1082",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4584,9 +4584,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1105"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1105"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1105",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4606,9 +4606,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1112"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1112",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4628,9 +4628,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1121"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1121"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1121",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4650,9 +4650,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1124"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1124"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1124",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4672,9 +4672,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1141"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1141"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1141",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4694,9 +4694,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1158"
+        "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1158"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1158",
+      "authority_source": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md#L1158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

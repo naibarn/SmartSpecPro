@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L15"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L15"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L15",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L15",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L51"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L51"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L51",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L52"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L52"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L52",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L53"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L53"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L53",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L53",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L54"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L54"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L54",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L54",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L84"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L84"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L84",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L85"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L85"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L85",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L86"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L86"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L86",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L87"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L87"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L87",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L88"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L88"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L88",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L89"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L89"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L89",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L90"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L90"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L90",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L91"
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L91"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L91",
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

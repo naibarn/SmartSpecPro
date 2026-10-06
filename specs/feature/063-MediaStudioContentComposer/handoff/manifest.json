@@ -17,77 +17,77 @@
       {
         "digest": "b733aeb7c3e624a1d17efeca1dd091860de7ac9481b56fb4f81a33517c0a5a34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/claude-plan.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/claude-plan.md"
       },
       {
         "digest": "0973d158837f5405e2fd8d0e01730f2d2edc46f6786fe570f0e78fc87f450cd0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/claude-spec.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/claude-spec.md"
       },
       {
         "digest": "baed7ea01c318882c60b69ebd257e5cfaa2588e11168ffdd6a7f124f4367c7d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/implementation/deep_implement_config.json"
+        "path": "specs/feature/063-MediaStudioContentComposer/implementation/deep_implement_config.json"
       },
       {
         "digest": "c4518d7342f917d3663978181e81d6c540e217e041ce75ccfd1166aab2366b5e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/reviews/self-review-round-1.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/reviews/self-review-round-1.md"
       },
       {
         "digest": "cc29a3cbb2c9e9f6b9224fefc30b3f10a0b96e0d8804577aa7865f7aea47141e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/index.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/index.md"
       },
       {
         "digest": "d852995c41e341c84178236443dd95cdd8e9ccbaa46757c1b238b0789bef4f6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-01-schema.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-01-schema.md"
       },
       {
         "digest": "356e9e1bffc1ff0f67e58265d14a8c939892138b3de494e1aef0cbd20beea083",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-02-safe-html-state.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-02-safe-html-state.md"
       },
       {
         "digest": "85796a444e8c7afc0bf623e784a889d9e1189c81ef9daf31a7bc79f27359638a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-03-trpc-crud.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-03-trpc-crud.md"
       },
       {
         "digest": "c56025b44063beea800e0138439237a32b18d18c4c329a9b7780b13b2742f442",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-04-skill-agency-selector.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-04-skill-agency-selector.md"
       },
       {
         "digest": "f6b484dbfbd56e068ae42165fd19b3e6b8bcda2c45bad00dcd9f862786c13886",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-05-social-pickers.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-05-social-pickers.md"
       },
       {
         "digest": "56dcf2f4567ea1a93631cc6632e4e07d06ede233b5964381b91f797fa3fd3a95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-06-wizard-steps.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-06-wizard-steps.md"
       },
       {
         "digest": "b011c8d5e6856b08c61c9ce358316420a0324386add53c7831acd11d60da8e81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-07-composer-panel.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-07-composer-panel.md"
       },
       {
         "digest": "412a2681e4b67ee32654e606d212e405d4ed4ec8f323deee61041ae6da970290",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-08-generation-stream.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-08-generation-stream.md"
       },
       {
         "digest": "6b13a502a8f91b44a5d40cee0953d298649946044606dfa08378f575c6b5f1cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-09-publish.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-09-publish.md"
       },
       {
         "digest": "8588d30b0e92432650a543356e6e42f240bf32526deb6c52ab90553626b4119e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-10-tests.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-10-tests.md"
       }
     ],
     "predecessors": [],
@@ -118,77 +118,77 @@
       {
         "digest": "b733aeb7c3e624a1d17efeca1dd091860de7ac9481b56fb4f81a33517c0a5a34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/claude-plan.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/claude-plan.md"
       },
       {
         "digest": "0973d158837f5405e2fd8d0e01730f2d2edc46f6786fe570f0e78fc87f450cd0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/claude-spec.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/claude-spec.md"
       },
       {
         "digest": "baed7ea01c318882c60b69ebd257e5cfaa2588e11168ffdd6a7f124f4367c7d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/implementation/deep_implement_config.json"
+        "path": "specs/feature/063-MediaStudioContentComposer/implementation/deep_implement_config.json"
       },
       {
         "digest": "c4518d7342f917d3663978181e81d6c540e217e041ce75ccfd1166aab2366b5e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/reviews/self-review-round-1.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/reviews/self-review-round-1.md"
       },
       {
         "digest": "cc29a3cbb2c9e9f6b9224fefc30b3f10a0b96e0d8804577aa7865f7aea47141e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/index.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/index.md"
       },
       {
         "digest": "d852995c41e341c84178236443dd95cdd8e9ccbaa46757c1b238b0789bef4f6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-01-schema.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-01-schema.md"
       },
       {
         "digest": "356e9e1bffc1ff0f67e58265d14a8c939892138b3de494e1aef0cbd20beea083",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-02-safe-html-state.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-02-safe-html-state.md"
       },
       {
         "digest": "85796a444e8c7afc0bf623e784a889d9e1189c81ef9daf31a7bc79f27359638a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-03-trpc-crud.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-03-trpc-crud.md"
       },
       {
         "digest": "c56025b44063beea800e0138439237a32b18d18c4c329a9b7780b13b2742f442",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-04-skill-agency-selector.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-04-skill-agency-selector.md"
       },
       {
         "digest": "f6b484dbfbd56e068ae42165fd19b3e6b8bcda2c45bad00dcd9f862786c13886",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-05-social-pickers.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-05-social-pickers.md"
       },
       {
         "digest": "56dcf2f4567ea1a93631cc6632e4e07d06ede233b5964381b91f797fa3fd3a95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-06-wizard-steps.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-06-wizard-steps.md"
       },
       {
         "digest": "b011c8d5e6856b08c61c9ce358316420a0324386add53c7831acd11d60da8e81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-07-composer-panel.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-07-composer-panel.md"
       },
       {
         "digest": "412a2681e4b67ee32654e606d212e405d4ed4ec8f323deee61041ae6da970290",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-08-generation-stream.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-08-generation-stream.md"
       },
       {
         "digest": "6b13a502a8f91b44a5d40cee0953d298649946044606dfa08378f575c6b5f1cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-09-publish.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-09-publish.md"
       },
       {
         "digest": "8588d30b0e92432650a543356e6e42f240bf32526deb6c52ab90553626b4119e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-10-tests.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-10-tests.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -220,89 +220,89 @@
       {
         "digest": "b733aeb7c3e624a1d17efeca1dd091860de7ac9481b56fb4f81a33517c0a5a34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/claude-plan.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/claude-plan.md"
       },
       {
         "digest": "0973d158837f5405e2fd8d0e01730f2d2edc46f6786fe570f0e78fc87f450cd0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/claude-spec.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/claude-spec.md"
       },
       {
         "digest": "baed7ea01c318882c60b69ebd257e5cfaa2588e11168ffdd6a7f124f4367c7d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/implementation/deep_implement_config.json"
+        "path": "specs/feature/063-MediaStudioContentComposer/implementation/deep_implement_config.json"
       },
       {
         "digest": "c4518d7342f917d3663978181e81d6c540e217e041ce75ccfd1166aab2366b5e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/reviews/self-review-round-1.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/reviews/self-review-round-1.md"
       },
       {
         "digest": "cc29a3cbb2c9e9f6b9224fefc30b3f10a0b96e0d8804577aa7865f7aea47141e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/index.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/index.md"
       },
       {
         "digest": "d852995c41e341c84178236443dd95cdd8e9ccbaa46757c1b238b0789bef4f6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-01-schema.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-01-schema.md"
       },
       {
         "digest": "356e9e1bffc1ff0f67e58265d14a8c939892138b3de494e1aef0cbd20beea083",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-02-safe-html-state.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-02-safe-html-state.md"
       },
       {
         "digest": "85796a444e8c7afc0bf623e784a889d9e1189c81ef9daf31a7bc79f27359638a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-03-trpc-crud.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-03-trpc-crud.md"
       },
       {
         "digest": "c56025b44063beea800e0138439237a32b18d18c4c329a9b7780b13b2742f442",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-04-skill-agency-selector.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-04-skill-agency-selector.md"
       },
       {
         "digest": "f6b484dbfbd56e068ae42165fd19b3e6b8bcda2c45bad00dcd9f862786c13886",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-05-social-pickers.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-05-social-pickers.md"
       },
       {
         "digest": "56dcf2f4567ea1a93631cc6632e4e07d06ede233b5964381b91f797fa3fd3a95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-06-wizard-steps.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-06-wizard-steps.md"
       },
       {
         "digest": "b011c8d5e6856b08c61c9ce358316420a0324386add53c7831acd11d60da8e81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-07-composer-panel.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-07-composer-panel.md"
       },
       {
         "digest": "412a2681e4b67ee32654e606d212e405d4ed4ec8f323deee61041ae6da970290",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-08-generation-stream.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-08-generation-stream.md"
       },
       {
         "digest": "6b13a502a8f91b44a5d40cee0953d298649946044606dfa08378f575c6b5f1cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-09-publish.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-09-publish.md"
       },
       {
         "digest": "8588d30b0e92432650a543356e6e42f240bf32526deb6c52ab90553626b4119e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-10-tests.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-10-tests.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/063-MediaStudioContentComposer/spec.md",
     "digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.743266Z",
+      "last_evidence_at": "2026-10-06T03:28:15.119753Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-08T19:58:29+07:00",
       "spec_last_changed_at": "2026-04-08T19:58:29+07:00"
@@ -329,7 +329,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.743266Z"
+    "updated_at": "2026-10-06T03:28:15.119753Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -339,7 +339,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.743266Z",
+    "reconciled_at": "2026-10-06T03:28:15.119753Z",
     "sources": [
       {
         "digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
@@ -349,77 +349,77 @@
       {
         "digest": "b733aeb7c3e624a1d17efeca1dd091860de7ac9481b56fb4f81a33517c0a5a34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/claude-plan.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/claude-plan.md"
       },
       {
         "digest": "0973d158837f5405e2fd8d0e01730f2d2edc46f6786fe570f0e78fc87f450cd0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/claude-spec.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/claude-spec.md"
       },
       {
         "digest": "baed7ea01c318882c60b69ebd257e5cfaa2588e11168ffdd6a7f124f4367c7d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/implementation/deep_implement_config.json"
+        "path": "specs/feature/063-MediaStudioContentComposer/implementation/deep_implement_config.json"
       },
       {
         "digest": "c4518d7342f917d3663978181e81d6c540e217e041ce75ccfd1166aab2366b5e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/reviews/self-review-round-1.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/reviews/self-review-round-1.md"
       },
       {
         "digest": "cc29a3cbb2c9e9f6b9224fefc30b3f10a0b96e0d8804577aa7865f7aea47141e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/index.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/index.md"
       },
       {
         "digest": "d852995c41e341c84178236443dd95cdd8e9ccbaa46757c1b238b0789bef4f6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-01-schema.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-01-schema.md"
       },
       {
         "digest": "356e9e1bffc1ff0f67e58265d14a8c939892138b3de494e1aef0cbd20beea083",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-02-safe-html-state.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-02-safe-html-state.md"
       },
       {
         "digest": "85796a444e8c7afc0bf623e784a889d9e1189c81ef9daf31a7bc79f27359638a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-03-trpc-crud.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-03-trpc-crud.md"
       },
       {
         "digest": "c56025b44063beea800e0138439237a32b18d18c4c329a9b7780b13b2742f442",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-04-skill-agency-selector.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-04-skill-agency-selector.md"
       },
       {
         "digest": "f6b484dbfbd56e068ae42165fd19b3e6b8bcda2c45bad00dcd9f862786c13886",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-05-social-pickers.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-05-social-pickers.md"
       },
       {
         "digest": "56dcf2f4567ea1a93631cc6632e4e07d06ede233b5964381b91f797fa3fd3a95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-06-wizard-steps.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-06-wizard-steps.md"
       },
       {
         "digest": "b011c8d5e6856b08c61c9ce358316420a0324386add53c7831acd11d60da8e81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-07-composer-panel.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-07-composer-panel.md"
       },
       {
         "digest": "412a2681e4b67ee32654e606d212e405d4ed4ec8f323deee61041ae6da970290",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-08-generation-stream.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-08-generation-stream.md"
       },
       {
         "digest": "6b13a502a8f91b44a5d40cee0953d298649946044606dfa08378f575c6b5f1cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-09-publish.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-09-publish.md"
       },
       {
         "digest": "8588d30b0e92432650a543356e6e42f240bf32526deb6c52ab90553626b4119e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-10-tests.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-10-tests.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -469,77 +469,77 @@
       {
         "digest": "b733aeb7c3e624a1d17efeca1dd091860de7ac9481b56fb4f81a33517c0a5a34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/claude-plan.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/claude-plan.md"
       },
       {
         "digest": "0973d158837f5405e2fd8d0e01730f2d2edc46f6786fe570f0e78fc87f450cd0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/claude-spec.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/claude-spec.md"
       },
       {
         "digest": "baed7ea01c318882c60b69ebd257e5cfaa2588e11168ffdd6a7f124f4367c7d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/implementation/deep_implement_config.json"
+        "path": "specs/feature/063-MediaStudioContentComposer/implementation/deep_implement_config.json"
       },
       {
         "digest": "c4518d7342f917d3663978181e81d6c540e217e041ce75ccfd1166aab2366b5e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/reviews/self-review-round-1.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/reviews/self-review-round-1.md"
       },
       {
         "digest": "cc29a3cbb2c9e9f6b9224fefc30b3f10a0b96e0d8804577aa7865f7aea47141e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/index.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/index.md"
       },
       {
         "digest": "d852995c41e341c84178236443dd95cdd8e9ccbaa46757c1b238b0789bef4f6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-01-schema.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-01-schema.md"
       },
       {
         "digest": "356e9e1bffc1ff0f67e58265d14a8c939892138b3de494e1aef0cbd20beea083",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-02-safe-html-state.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-02-safe-html-state.md"
       },
       {
         "digest": "85796a444e8c7afc0bf623e784a889d9e1189c81ef9daf31a7bc79f27359638a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-03-trpc-crud.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-03-trpc-crud.md"
       },
       {
         "digest": "c56025b44063beea800e0138439237a32b18d18c4c329a9b7780b13b2742f442",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-04-skill-agency-selector.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-04-skill-agency-selector.md"
       },
       {
         "digest": "f6b484dbfbd56e068ae42165fd19b3e6b8bcda2c45bad00dcd9f862786c13886",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-05-social-pickers.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-05-social-pickers.md"
       },
       {
         "digest": "56dcf2f4567ea1a93631cc6632e4e07d06ede233b5964381b91f797fa3fd3a95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-06-wizard-steps.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-06-wizard-steps.md"
       },
       {
         "digest": "b011c8d5e6856b08c61c9ce358316420a0324386add53c7831acd11d60da8e81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-07-composer-panel.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-07-composer-panel.md"
       },
       {
         "digest": "412a2681e4b67ee32654e606d212e405d4ed4ec8f323deee61041ae6da970290",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-08-generation-stream.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-08-generation-stream.md"
       },
       {
         "digest": "6b13a502a8f91b44a5d40cee0953d298649946044606dfa08378f575c6b5f1cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-09-publish.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-09-publish.md"
       },
       {
         "digest": "8588d30b0e92432650a543356e6e42f240bf32526deb6c52ab90553626b4119e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/063-MediaStudioContentComposer/sections/section-10-tests.md"
+        "path": "specs/feature/063-MediaStudioContentComposer/sections/section-10-tests.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -557,7 +557,7 @@
     "unresolved": 52
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.743266Z",
+  "updated_at": "2026-10-06T03:28:15.119753Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

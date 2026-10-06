@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L225"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L225"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L225",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L227"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L227"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L227",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L233"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L233"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L233",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L247"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L247"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L247",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L259"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L259"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L259",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L263"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L263"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L263",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L263",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L280"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L280"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L280",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L282"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L282"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L282",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L295"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L295"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L295",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L313"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L313"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L313",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L313",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L317"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L317"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L317",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L334"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L334"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L334",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L334",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L336"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L336"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L336",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L340"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L340"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L340",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L356"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L356"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L356",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L390"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L390"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L390",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L409"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L409"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L409",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L411"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L411"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L411",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L411",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L415"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L415"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L415",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L416"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L416"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L416",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L416",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L417"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L417"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L417",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L418"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L418"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L418",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L418",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L419"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L419"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L419",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L420"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L420"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L420",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L421"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L421"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L421",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L421",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L422"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L422"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L422",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L422",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L423"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L423"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L423",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L423",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L424"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L424"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L424",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L424",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L425"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L425"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L425",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L426"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L426"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L426",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L427"
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L427"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L427",
+      "authority_source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md#L427",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

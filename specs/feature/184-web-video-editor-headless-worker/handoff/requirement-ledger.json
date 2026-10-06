@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L24"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L24"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L24",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L24",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L25"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L25"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L25",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L25",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L26"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L26"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L26",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L26",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L27"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L27"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L27",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L27",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L28"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L28"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L28",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L28",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L29"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L29"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L29",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L174"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L174"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L174",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L197"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L197"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L197",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L209"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L209"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L209",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L233"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L233"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L233",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L239"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L239"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L239",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L269"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L269"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L269",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L338"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L338"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L338",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L338",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L455"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L455"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L455",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L455",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L456"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L456"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L456",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L456",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L457"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L457"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L457",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L457",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L458"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L458"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L458",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L458",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L459"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L459"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L459",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L460"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L460"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L460",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L460",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L461"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L461"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L461",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L461",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L462"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L462"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L462",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L462",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L463"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L463"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L463",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L463",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L464"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L464"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L464",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L464",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L465"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L465"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L465",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L465",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L466"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L466"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L466",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L466",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L467"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L467"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L467",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L468"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L468"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L468",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L469"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L469"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L469",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L469",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L470"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L470"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L470",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L470",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L471"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L471"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L471",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L471",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L472"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L472"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L472",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L472",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L474"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L474"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L474",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L474",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L476"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L476"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L476",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L476",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L477"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L477"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L477",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L477",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L478"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L478"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L478",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L478",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L479"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L479"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L479",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L479",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L480"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L480"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L480",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L484"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L484"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L484",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L484",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L486"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L486"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L486",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L486",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L493"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L493"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L493",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L493",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L529"
+        "specs/feature/184-web-video-editor-headless-worker/spec.md#L529"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/spec.md#L529",
+      "authority_source": "specs/feature/184-web-video-editor-headless-worker/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

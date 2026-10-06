@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L16"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L16"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L16",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L16",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L50"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L50"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L50",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L52"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L52"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L52",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L54"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L54"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L54",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L54",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L55"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L55"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L55",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L55",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L56"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L56"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L56",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L56",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L58"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L58"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L58",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L59"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L59"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L59",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L59",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L61"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L61"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L61",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L63"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L63"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L63",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L63",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L65"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L65"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L65",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L66"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L66"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L66",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L69"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L69"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L69",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L71"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L71"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L71",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L73"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L73"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L73",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L75"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L75",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L79"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L79"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L79",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L85"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L85"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L85",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L88"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L88"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L88",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L133"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L133",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L144"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L144"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L144",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L149"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L149"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L149",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L178"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L178"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L178",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L189"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L189"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L189",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L189",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L219"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L219"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L219",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L242"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L242"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L242",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L248"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L248"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L248",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L256"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L256"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L256",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L262"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L262"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L262",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L322"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L322"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L322",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L326"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L326"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L326",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L326",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L336"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L336"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L336",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L359"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L359"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L359",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L359",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L378"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L378"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L378",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L390"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L390"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L390",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L396"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L396"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L396",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L410"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L410"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L410",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L410",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L426"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L426"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L426",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L445"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L445"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L445",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L466"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L466"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L466",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L466",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L495"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L495"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L495",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L495",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L532"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L532"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L532",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L532",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L538"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L538"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L538",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L538",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L561"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L561"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L561",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L561",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L575"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L575"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L575",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L575",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L577"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L577"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L577",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L577",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L579"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L579"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L579",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L579",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L581"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L581"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L581",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L581",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L583"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L583"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L583",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L583",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L616"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L616"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L616",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L628"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L628"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L628",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L680"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L680"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L680",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L680",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L685"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L685"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L685",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L685",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L718"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L718"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L718",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L718",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L823"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L823"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L823",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L823",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L832"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L832"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L832",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L832",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L846"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L846"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L846",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L846",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L866"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L866"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L866",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L866",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L884"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L884"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L884",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L884",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L906"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L906"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L906",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L906",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,10 +1325,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L944",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4936"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L944",
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4936"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L944",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L944",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1348,9 +1348,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L963"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L963"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L963",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L963",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1370,9 +1370,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L967"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L967"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L967",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L967",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1392,9 +1392,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L969"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L969"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L969",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L969",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1414,9 +1414,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L994"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L994"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L994",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L994",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1436,9 +1436,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L998"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L998"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L998",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L998",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1458,9 +1458,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1017"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1017"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1017",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1017",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1480,9 +1480,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1021"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1021"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1021",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1021",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1502,9 +1502,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1025"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1025"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1025",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1025",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1524,9 +1524,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1051"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1051"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1051",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1051",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1546,9 +1546,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1055"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1055"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1055",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1055",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1568,9 +1568,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1057"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1057"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1057",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1057",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1590,9 +1590,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1064"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1064"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1064",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1064",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1612,9 +1612,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1070"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1070"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1070",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1070",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1634,9 +1634,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1079"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1079"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1079",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1079",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1656,9 +1656,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1081"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1081"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1081",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1081",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1678,9 +1678,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1095"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1095"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1095",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1095",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1700,9 +1700,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1112"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1112",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1722,9 +1722,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1114"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1114"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1114",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1744,9 +1744,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1121"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1121"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1121",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1766,9 +1766,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1123"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1123"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1123",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1788,9 +1788,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1125"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1125"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1125",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1810,9 +1810,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1142"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1142"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1142",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1832,9 +1832,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1144"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1144"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1144",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1854,9 +1854,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1153"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1153"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1153",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1876,9 +1876,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1175"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1175"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1175",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1175",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1898,9 +1898,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1229"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1229"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1229",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1920,9 +1920,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1460"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1460"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1460",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1460",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1942,9 +1942,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1480"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1480"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1480",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1964,9 +1964,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1486"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1486"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1486",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1486",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1986,9 +1986,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1513"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1513"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1513",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1513",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2008,9 +2008,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1551"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1551"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1551",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2030,9 +2030,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1582"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1582"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1582",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1582",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2052,9 +2052,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1584"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1584"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1584",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1584",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2074,9 +2074,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1653"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1653"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1653",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2096,9 +2096,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1669"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1669"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1669",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2118,9 +2118,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1677"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1677"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1677",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1677",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2140,9 +2140,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1685"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1685"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1685",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1685",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2162,9 +2162,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1714"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1714"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1714",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1714",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2184,9 +2184,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1718"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1718"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1718",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1718",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2206,9 +2206,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1767"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1767"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1767",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1767",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2228,9 +2228,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1779"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1779"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1779",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2250,9 +2250,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1815"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1815"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1815",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1815",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2272,9 +2272,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1821"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1821"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1821",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1821",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2294,9 +2294,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1838"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1838"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1838",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1838",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2316,9 +2316,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1852"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1852"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1852",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1852",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2338,9 +2338,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1889"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1889"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1889",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1889",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2360,9 +2360,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1904"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1904"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L1904",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1904",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2382,9 +2382,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2014"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2014"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2014",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2014",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2404,9 +2404,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2040"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2040"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2040",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2040",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2426,9 +2426,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2060"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2060"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2060",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2060",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2448,9 +2448,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2063"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2063"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2063",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2063",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2470,9 +2470,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2065"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2065"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2065",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2065",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2492,9 +2492,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2090"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2090"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2090",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2090",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2514,9 +2514,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2092"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2092"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2092",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2092",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2536,9 +2536,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2106"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2106"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2106",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2558,9 +2558,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2146"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2146"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2146",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2580,9 +2580,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2176"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2176"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2176",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2602,9 +2602,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2219"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2219"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2219",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2624,9 +2624,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2331"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2331"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2331",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2646,9 +2646,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2436"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2436"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2436",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2436",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2668,9 +2668,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2484"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2484"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2484",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2484",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2690,9 +2690,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2721"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2721"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2721",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2712,9 +2712,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2789"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2789"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2789",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2734,9 +2734,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2797"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2797"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2797",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2797",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2756,9 +2756,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2801"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2801"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2801",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2801",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2778,9 +2778,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2803"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2803"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2803",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2803",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2800,9 +2800,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2807"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2807"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2807",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2807",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2822,9 +2822,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2821"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2821"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2821",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2821",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2844,9 +2844,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2843"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2843"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2843",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2843",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2866,9 +2866,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2850"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2850"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2850",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2850",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2888,9 +2888,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2870"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2870"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2870",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2870",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2910,9 +2910,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2878"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2878"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2878",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2878",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2932,9 +2932,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2896"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2896"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2896",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2896",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2954,9 +2954,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2898"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2898"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2898",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2898",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2976,9 +2976,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2913"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2913"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2913",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2913",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2998,9 +2998,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2917"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2917"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2917",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2917",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3020,9 +3020,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2931"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2931"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2931",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2931",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3042,9 +3042,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2933"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2933"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2933",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2933",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3064,9 +3064,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2988"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2988"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L2988",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2988",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3086,9 +3086,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3075"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3075"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3075",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3075",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3108,9 +3108,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3154"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3154"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3154",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3130,9 +3130,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3158"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3158"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3158",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3152,9 +3152,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3198"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3198"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3198",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3174,9 +3174,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3200"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3200"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3200",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3196,9 +3196,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3239"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3239"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3239",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3218,9 +3218,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3284"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3284"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3284",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3240,9 +3240,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3319"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3319"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3319",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3319",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3262,9 +3262,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3397"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3397"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3397",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3284,9 +3284,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3473"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3473"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3473",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3473",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3306,9 +3306,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3489"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3489"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3489",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3328,9 +3328,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3521"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3521"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3521",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3350,9 +3350,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3530"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3530"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3530",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3530",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3372,9 +3372,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3534"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3534"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3534",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3534",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3394,9 +3394,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3538"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3538"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3538",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3538",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3416,9 +3416,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3572"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3572"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3572",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3572",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3438,9 +3438,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3708"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3708"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3708",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3460,9 +3460,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3743"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3743"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3743",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3743",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3482,9 +3482,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3781"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3781"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3781",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3781",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3504,9 +3504,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3822"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3822"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3822",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3822",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3526,9 +3526,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3878"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3878"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3878",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3878",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3548,9 +3548,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3892"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3892"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3892",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3892",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3570,9 +3570,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3896"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3896"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3896",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3896",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3592,9 +3592,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3908"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3908"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3908",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3908",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3614,9 +3614,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3953"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3953"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3953",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3953",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3636,9 +3636,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3969"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3969"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L3969",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3969",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3658,9 +3658,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4029"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4029"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4029",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4029",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3680,9 +3680,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4100"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4100"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4100",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3702,9 +3702,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4187"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4187"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4187",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3724,9 +3724,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4205"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4205"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4205",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3746,9 +3746,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4221"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4221"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4221",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3768,9 +3768,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4265"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4265"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4265",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4265",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3790,9 +3790,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4269"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4269"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4269",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3812,9 +3812,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4284"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4284"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4284",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3834,9 +3834,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4288"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4288"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4288",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3856,9 +3856,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4300"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4300"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4300",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4300",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3878,9 +3878,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4304"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4304"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4304",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3900,9 +3900,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4314"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4314"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4314",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4314",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3922,9 +3922,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4332"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4332"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4332",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3944,9 +3944,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4397"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4397"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4397",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3966,9 +3966,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4432"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4432"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4432",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3988,9 +3988,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4451"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4451"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4451",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4010,9 +4010,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4463"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4463"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4463",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4463",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4032,9 +4032,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4584"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4584"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4584",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4584",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4054,9 +4054,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4697"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4697"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4697",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4076,9 +4076,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4716"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4716"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4716",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4716",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4098,9 +4098,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4810"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4810"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4810",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4810",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4120,9 +4120,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4845"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4845"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4845",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4845",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4142,9 +4142,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4986"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4986"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4986",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4986",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4164,9 +4164,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4997"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4997"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L4997",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4186,9 +4186,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5044"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5044"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5044",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5044",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4208,9 +4208,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5048"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5048"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5048",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5048",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4230,9 +4230,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5065"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5065"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5065",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5065",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4252,9 +4252,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5133"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5133",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4274,9 +4274,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5152"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5152"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5152",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4296,9 +4296,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5194"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5194"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5194",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4318,9 +4318,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5244"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5244"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5244",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4340,9 +4340,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5245"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5245"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5245",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4362,9 +4362,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5246"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5246"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5246",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4384,9 +4384,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5247"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5247"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5247",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4406,9 +4406,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5248"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5248"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5248",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4428,9 +4428,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5249"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5249"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5249",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4450,9 +4450,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5404"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5404"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5404",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4472,9 +4472,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5542"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5542"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5542",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5542",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4494,9 +4494,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5599"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5599"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5599",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5599",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4516,9 +4516,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5639"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5639"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5639",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5639",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4538,9 +4538,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5645"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5645"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5645",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5645",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4560,9 +4560,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5711"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5711"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5711",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5711",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4582,9 +4582,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5877"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5877"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5877",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5877",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4604,9 +4604,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5878"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5878"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5878",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5878",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4626,9 +4626,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5879"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5879"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5879",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5879",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4648,9 +4648,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5880"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5880"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5880",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5880",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4670,9 +4670,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5884"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5884"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5884",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5884",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4692,9 +4692,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5885"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5885"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5885",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5885",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4714,9 +4714,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5886"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5886"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5886",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5886",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4736,9 +4736,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5890"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5890"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5890",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5890",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4758,9 +4758,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5896"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5896"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5896",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5896",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4780,9 +4780,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5900"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5900"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5900",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5900",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4802,9 +4802,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5901"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5901"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5901",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5901",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4824,9 +4824,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5902"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5902"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5902",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5902",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4846,9 +4846,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5903"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5903"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5903",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5903",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4868,9 +4868,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5904"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5904"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L5904",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L5904",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4890,9 +4890,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6013"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6013"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6013",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6013",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4912,9 +4912,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6264"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6264"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6264",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4934,9 +4934,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6267"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6267"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6267",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4956,9 +4956,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6270"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6270"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6270",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4978,9 +4978,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6271"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6271"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6271",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5000,9 +5000,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6298"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6298"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6298",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6298",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5022,9 +5022,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6321"
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6321"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L6321",
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6321",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

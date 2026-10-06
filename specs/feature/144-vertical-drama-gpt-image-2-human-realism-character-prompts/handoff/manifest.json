@@ -17,97 +17,97 @@
       {
         "digest": "e941e0895165d4267e87eff4bb7c6140aae001ae2502090289bedb318d805a51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-plan.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-plan.md"
       },
       {
         "digest": "e69b0340d937c341d9f6b6f08ccf25b1834f577949ca7531d9734f28338cf175",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-spec.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-spec.md"
       },
       {
         "digest": "0ec7ff284b164c7365651f229b4878bde3dffdbe29b5beabde60581bcf20951e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/ab-evaluation-template.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/ab-evaluation-template.md"
       },
       {
         "digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json"
       },
       {
         "digest": "dbb1105bf4b3facb2776ade200c6a0987f09bf1a8cd1c076da632ba5c156e343",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-01-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-01-completeness.md"
       },
       {
         "digest": "6b0a53824b50c38aeeb8c7fcab2fc485a1b6927a22a8e485493c9df9b5fa27c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-02-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-02-completeness.md"
       },
       {
         "digest": "e6cff6dd7b18c95babc0a6c3d446a09b85ea3faa9d04eeddfbeee823e75bc890",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-03-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-03-completeness.md"
       },
       {
         "digest": "afab6d32ffc3ca138c18b3d1ff8ea5e516500c377864c2914b8c19bacc517ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-04-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-04-completeness.md"
       },
       {
         "digest": "5f8f8ee9ad53431ba0d59d33f05ee2b32fd97516b40eeede73e99eb859cda124",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-05-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-05-completeness.md"
       },
       {
         "digest": "b3d943a7c480568b4e23793c00fa992e4faaf5b22de0ef20ffdd55365258b478",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/usage.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/usage.md"
       },
       {
         "digest": "cc876e115de3b7353d908be8ec34b9e38c5d21922a3ed7628599044584eac782",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "171ed361106e8c8458e0a78469fd40d8fff4f780287ee619908da0d8d64b092e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-1.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-1.md"
       },
       {
         "digest": "2ec48321db6d51831346bf3ad3e11607df120fbde600eafc0fe8a0ed36caeb47",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-2.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-2.md"
       },
       {
         "digest": "e07fa474663e205d2e06b3c8c142e02f71d880ef8c4a3679490c9eda39404712",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/index.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/index.md"
       },
       {
         "digest": "b0cb6de0982d3f7717f5691b757f527ec98857ab7d88e2c39496684e5e383f62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-01-capability-and-catalog.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-01-capability-and-catalog.md"
       },
       {
         "digest": "151efb5221b47fb57b2a5b7419aae01beb714cdbfcb9eccfa958684bed5270c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-02-skill-and-generation-contract.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-02-skill-and-generation-contract.md"
       },
       {
         "digest": "b7c65241c9d6fb68e92291fc7c0c79cb2a2db67828832d6974ee6de78d057716",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-03-character-render-normalizer.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-03-character-render-normalizer.md"
       },
       {
         "digest": "343ed82c4124b88490bfa561ed4efbe32521eba8ae4a59904a679e46ae4c499e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-04-transport-persistence-and-compatibility.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-04-transport-persistence-and-compatibility.md"
       },
       {
         "digest": "8620e9c50ff5692fc1791e5fb86c3cb315aeb1a068f9eab56b029dae21e004e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-05-verification-and-ab-evaluation.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-05-verification-and-ab-evaluation.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "e941e0895165d4267e87eff4bb7c6140aae001ae2502090289bedb318d805a51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-plan.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-plan.md"
       },
       {
         "digest": "e69b0340d937c341d9f6b6f08ccf25b1834f577949ca7531d9734f28338cf175",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-spec.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-spec.md"
       },
       {
         "digest": "0ec7ff284b164c7365651f229b4878bde3dffdbe29b5beabde60581bcf20951e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/ab-evaluation-template.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/ab-evaluation-template.md"
       },
       {
         "digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json"
       },
       {
         "digest": "dbb1105bf4b3facb2776ade200c6a0987f09bf1a8cd1c076da632ba5c156e343",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-01-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-01-completeness.md"
       },
       {
         "digest": "6b0a53824b50c38aeeb8c7fcab2fc485a1b6927a22a8e485493c9df9b5fa27c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-02-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-02-completeness.md"
       },
       {
         "digest": "e6cff6dd7b18c95babc0a6c3d446a09b85ea3faa9d04eeddfbeee823e75bc890",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-03-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-03-completeness.md"
       },
       {
         "digest": "afab6d32ffc3ca138c18b3d1ff8ea5e516500c377864c2914b8c19bacc517ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-04-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-04-completeness.md"
       },
       {
         "digest": "5f8f8ee9ad53431ba0d59d33f05ee2b32fd97516b40eeede73e99eb859cda124",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-05-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-05-completeness.md"
       },
       {
         "digest": "b3d943a7c480568b4e23793c00fa992e4faaf5b22de0ef20ffdd55365258b478",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/usage.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/usage.md"
       },
       {
         "digest": "cc876e115de3b7353d908be8ec34b9e38c5d21922a3ed7628599044584eac782",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "171ed361106e8c8458e0a78469fd40d8fff4f780287ee619908da0d8d64b092e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-1.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-1.md"
       },
       {
         "digest": "2ec48321db6d51831346bf3ad3e11607df120fbde600eafc0fe8a0ed36caeb47",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-2.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-2.md"
       },
       {
         "digest": "e07fa474663e205d2e06b3c8c142e02f71d880ef8c4a3679490c9eda39404712",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/index.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/index.md"
       },
       {
         "digest": "b0cb6de0982d3f7717f5691b757f527ec98857ab7d88e2c39496684e5e383f62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-01-capability-and-catalog.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-01-capability-and-catalog.md"
       },
       {
         "digest": "151efb5221b47fb57b2a5b7419aae01beb714cdbfcb9eccfa958684bed5270c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-02-skill-and-generation-contract.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-02-skill-and-generation-contract.md"
       },
       {
         "digest": "b7c65241c9d6fb68e92291fc7c0c79cb2a2db67828832d6974ee6de78d057716",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-03-character-render-normalizer.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-03-character-render-normalizer.md"
       },
       {
         "digest": "343ed82c4124b88490bfa561ed4efbe32521eba8ae4a59904a679e46ae4c499e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-04-transport-persistence-and-compatibility.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-04-transport-persistence-and-compatibility.md"
       },
       {
         "digest": "8620e9c50ff5692fc1791e5fb86c3cb315aeb1a068f9eab56b029dae21e004e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-05-verification-and-ab-evaluation.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-05-verification-and-ab-evaluation.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,114 +260,114 @@
       {
         "digest": "e941e0895165d4267e87eff4bb7c6140aae001ae2502090289bedb318d805a51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-plan.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-plan.md"
       },
       {
         "digest": "e69b0340d937c341d9f6b6f08ccf25b1834f577949ca7531d9734f28338cf175",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-spec.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-spec.md"
       },
       {
         "digest": "0ec7ff284b164c7365651f229b4878bde3dffdbe29b5beabde60581bcf20951e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/ab-evaluation-template.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/ab-evaluation-template.md"
       },
       {
         "digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json"
       },
       {
         "digest": "dbb1105bf4b3facb2776ade200c6a0987f09bf1a8cd1c076da632ba5c156e343",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-01-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-01-completeness.md"
       },
       {
         "digest": "6b0a53824b50c38aeeb8c7fcab2fc485a1b6927a22a8e485493c9df9b5fa27c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-02-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-02-completeness.md"
       },
       {
         "digest": "e6cff6dd7b18c95babc0a6c3d446a09b85ea3faa9d04eeddfbeee823e75bc890",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-03-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-03-completeness.md"
       },
       {
         "digest": "afab6d32ffc3ca138c18b3d1ff8ea5e516500c377864c2914b8c19bacc517ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-04-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-04-completeness.md"
       },
       {
         "digest": "5f8f8ee9ad53431ba0d59d33f05ee2b32fd97516b40eeede73e99eb859cda124",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-05-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-05-completeness.md"
       },
       {
         "digest": "b3d943a7c480568b4e23793c00fa992e4faaf5b22de0ef20ffdd55365258b478",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/usage.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/usage.md"
       },
       {
         "digest": "cc876e115de3b7353d908be8ec34b9e38c5d21922a3ed7628599044584eac782",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "171ed361106e8c8458e0a78469fd40d8fff4f780287ee619908da0d8d64b092e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-1.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-1.md"
       },
       {
         "digest": "2ec48321db6d51831346bf3ad3e11607df120fbde600eafc0fe8a0ed36caeb47",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-2.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-2.md"
       },
       {
         "digest": "e07fa474663e205d2e06b3c8c142e02f71d880ef8c4a3679490c9eda39404712",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/index.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/index.md"
       },
       {
         "digest": "b0cb6de0982d3f7717f5691b757f527ec98857ab7d88e2c39496684e5e383f62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-01-capability-and-catalog.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-01-capability-and-catalog.md"
       },
       {
         "digest": "151efb5221b47fb57b2a5b7419aae01beb714cdbfcb9eccfa958684bed5270c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-02-skill-and-generation-contract.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-02-skill-and-generation-contract.md"
       },
       {
         "digest": "b7c65241c9d6fb68e92291fc7c0c79cb2a2db67828832d6974ee6de78d057716",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-03-character-render-normalizer.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-03-character-render-normalizer.md"
       },
       {
         "digest": "343ed82c4124b88490bfa561ed4efbe32521eba8ae4a59904a679e46ae4c499e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-04-transport-persistence-and-compatibility.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-04-transport-persistence-and-compatibility.md"
       },
       {
         "digest": "8620e9c50ff5692fc1791e5fb86c3cb315aeb1a068f9eab56b029dae21e004e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-05-verification-and-ab-evaluation.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-05-verification-and-ab-evaluation.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md",
     "digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.308961Z",
+      "last_evidence_at": "2026-10-06T03:28:16.153290Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-05T00:46:33+07:00",
       "spec_last_changed_at": "2026-08-09T21:59:09+07:00"
     },
-    "revision": null,
+    "revision": "0.2.0",
     "slug": "144-vertical-drama-gpt-image-2-human-realism-character-prompts",
     "spec_id": "144",
     "title": "Feature 144: Vertical Drama — Natural Human-Realism Character Prompt Contract for GPT Image 2, Nano Banana, and Seedream"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.308961Z"
+    "updated_at": "2026-10-06T03:28:16.153290Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.308961Z",
+    "reconciled_at": "2026-10-06T03:28:16.153290Z",
     "sources": [
       {
         "digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
@@ -409,97 +409,97 @@
       {
         "digest": "e941e0895165d4267e87eff4bb7c6140aae001ae2502090289bedb318d805a51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-plan.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-plan.md"
       },
       {
         "digest": "e69b0340d937c341d9f6b6f08ccf25b1834f577949ca7531d9734f28338cf175",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-spec.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-spec.md"
       },
       {
         "digest": "0ec7ff284b164c7365651f229b4878bde3dffdbe29b5beabde60581bcf20951e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/ab-evaluation-template.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/ab-evaluation-template.md"
       },
       {
         "digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json"
       },
       {
         "digest": "dbb1105bf4b3facb2776ade200c6a0987f09bf1a8cd1c076da632ba5c156e343",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-01-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-01-completeness.md"
       },
       {
         "digest": "6b0a53824b50c38aeeb8c7fcab2fc485a1b6927a22a8e485493c9df9b5fa27c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-02-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-02-completeness.md"
       },
       {
         "digest": "e6cff6dd7b18c95babc0a6c3d446a09b85ea3faa9d04eeddfbeee823e75bc890",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-03-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-03-completeness.md"
       },
       {
         "digest": "afab6d32ffc3ca138c18b3d1ff8ea5e516500c377864c2914b8c19bacc517ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-04-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-04-completeness.md"
       },
       {
         "digest": "5f8f8ee9ad53431ba0d59d33f05ee2b32fd97516b40eeede73e99eb859cda124",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-05-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-05-completeness.md"
       },
       {
         "digest": "b3d943a7c480568b4e23793c00fa992e4faaf5b22de0ef20ffdd55365258b478",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/usage.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/usage.md"
       },
       {
         "digest": "cc876e115de3b7353d908be8ec34b9e38c5d21922a3ed7628599044584eac782",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "171ed361106e8c8458e0a78469fd40d8fff4f780287ee619908da0d8d64b092e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-1.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-1.md"
       },
       {
         "digest": "2ec48321db6d51831346bf3ad3e11607df120fbde600eafc0fe8a0ed36caeb47",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-2.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-2.md"
       },
       {
         "digest": "e07fa474663e205d2e06b3c8c142e02f71d880ef8c4a3679490c9eda39404712",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/index.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/index.md"
       },
       {
         "digest": "b0cb6de0982d3f7717f5691b757f527ec98857ab7d88e2c39496684e5e383f62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-01-capability-and-catalog.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-01-capability-and-catalog.md"
       },
       {
         "digest": "151efb5221b47fb57b2a5b7419aae01beb714cdbfcb9eccfa958684bed5270c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-02-skill-and-generation-contract.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-02-skill-and-generation-contract.md"
       },
       {
         "digest": "b7c65241c9d6fb68e92291fc7c0c79cb2a2db67828832d6974ee6de78d057716",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-03-character-render-normalizer.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-03-character-render-normalizer.md"
       },
       {
         "digest": "343ed82c4124b88490bfa561ed4efbe32521eba8ae4a59904a679e46ae4c499e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-04-transport-persistence-and-compatibility.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-04-transport-persistence-and-compatibility.md"
       },
       {
         "digest": "8620e9c50ff5692fc1791e5fb86c3cb315aeb1a068f9eab56b029dae21e004e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-05-verification-and-ab-evaluation.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-05-verification-and-ab-evaluation.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -684,97 +684,97 @@
       {
         "digest": "e941e0895165d4267e87eff4bb7c6140aae001ae2502090289bedb318d805a51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-plan.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-plan.md"
       },
       {
         "digest": "e69b0340d937c341d9f6b6f08ccf25b1834f577949ca7531d9734f28338cf175",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-spec.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/claude-spec.md"
       },
       {
         "digest": "0ec7ff284b164c7365651f229b4878bde3dffdbe29b5beabde60581bcf20951e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/ab-evaluation-template.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/ab-evaluation-template.md"
       },
       {
         "digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json"
       },
       {
         "digest": "dbb1105bf4b3facb2776ade200c6a0987f09bf1a8cd1c076da632ba5c156e343",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-01-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-01-completeness.md"
       },
       {
         "digest": "6b0a53824b50c38aeeb8c7fcab2fc485a1b6927a22a8e485493c9df9b5fa27c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-02-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-02-completeness.md"
       },
       {
         "digest": "e6cff6dd7b18c95babc0a6c3d446a09b85ea3faa9d04eeddfbeee823e75bc890",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-03-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-03-completeness.md"
       },
       {
         "digest": "afab6d32ffc3ca138c18b3d1ff8ea5e516500c377864c2914b8c19bacc517ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-04-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-04-completeness.md"
       },
       {
         "digest": "5f8f8ee9ad53431ba0d59d33f05ee2b32fd97516b40eeede73e99eb859cda124",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-05-completeness.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/section-05-completeness.md"
       },
       {
         "digest": "b3d943a7c480568b4e23793c00fa992e4faaf5b22de0ef20ffdd55365258b478",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/usage.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/usage.md"
       },
       {
         "digest": "cc876e115de3b7353d908be8ec34b9e38c5d21922a3ed7628599044584eac782",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "171ed361106e8c8458e0a78469fd40d8fff4f780287ee619908da0d8d64b092e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-1.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-1.md"
       },
       {
         "digest": "2ec48321db6d51831346bf3ad3e11607df120fbde600eafc0fe8a0ed36caeb47",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-2.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/reviews/self-review-round-2.md"
       },
       {
         "digest": "e07fa474663e205d2e06b3c8c142e02f71d880ef8c4a3679490c9eda39404712",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/index.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/index.md"
       },
       {
         "digest": "b0cb6de0982d3f7717f5691b757f527ec98857ab7d88e2c39496684e5e383f62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-01-capability-and-catalog.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-01-capability-and-catalog.md"
       },
       {
         "digest": "151efb5221b47fb57b2a5b7419aae01beb714cdbfcb9eccfa958684bed5270c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-02-skill-and-generation-contract.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-02-skill-and-generation-contract.md"
       },
       {
         "digest": "b7c65241c9d6fb68e92291fc7c0c79cb2a2db67828832d6974ee6de78d057716",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-03-character-render-normalizer.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-03-character-render-normalizer.md"
       },
       {
         "digest": "343ed82c4124b88490bfa561ed4efbe32521eba8ae4a59904a679e46ae4c499e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-04-transport-persistence-and-compatibility.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-04-transport-persistence-and-compatibility.md"
       },
       {
         "digest": "8620e9c50ff5692fc1791e5fb86c3cb315aeb1a068f9eab56b029dae21e004e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-05-verification-and-ab-evaluation.md"
+        "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-05-verification-and-ab-evaluation.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -792,7 +792,7 @@
     "unresolved": 94
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.308961Z",
+  "updated_at": "2026-10-06T03:28:16.153290Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

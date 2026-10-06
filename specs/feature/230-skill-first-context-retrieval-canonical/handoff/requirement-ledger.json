@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L21"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L21"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L21",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L21",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L25"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L25"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L25",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L25",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L27"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L27"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L27",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L27",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L98"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L98"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L98",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L111"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L111"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L111",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L112"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L112",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L146"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L146"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L146",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L171"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L171"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L171",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L200"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L200"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L200",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L250"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L250"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L250",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L281"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L281"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L281",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L326"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L326"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L326",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L326",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L334"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L334"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L334",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L334",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L351"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L351"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L351",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L393"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L393"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L393",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L393",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L422"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L422"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L422",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L422",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L441"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L441"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L441",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L441",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L447"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L447"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L447",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L447",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L465"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L465"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L465",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L465",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L507"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L507"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L507",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L507",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L515"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L515"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L515",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L527"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L527"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L527",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L562"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L562"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L562",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L562",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L597"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L597"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L597",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L597",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L611"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L611"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L611",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L625"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L625"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L625",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L704"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L704"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L704",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L704",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L868"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L868"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L868",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L868",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L896"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L896"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L896",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L896",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L914"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L914"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L914",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L914",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L924"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L924"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L924",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L924",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L930"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L930"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L930",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L930",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L938"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L938"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L938",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L938",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L944"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L944"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L944",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L944",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L977"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L977"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L977",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L977",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L985"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L985"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L985",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L985",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L999"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L999"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L999",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L999",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1044"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1044"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1044",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1044",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1105"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1105"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1105",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1111"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1111"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1111",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1206"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1206"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1206",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1320"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1320"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1320",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1341"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1341"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1341",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1347"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1347"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1347",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1353"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1353"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1353",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1359"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1359"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1359",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1359",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1365"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1365"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1365",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1365",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1371"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1371"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1371",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1371",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1383"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1383"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1383",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1396"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1396"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1396",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1402"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1402"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1402",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1475"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1475"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1475",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1475",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1476"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1476"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1476",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1476",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1477"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1477"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1477",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1477",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1478"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1478"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1478",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1478",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1479"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1479"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1479",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1479",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1480"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1480"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1480",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1481"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1481"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1481",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1481",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1482"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1482"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1482",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1482",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1483"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1483"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1483",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1484"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1484"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1484",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1484",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1485"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1485"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1485",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1485",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1486"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1486"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1486",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1486",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1487"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1487"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1487",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1487",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1488"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1488"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1488",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1488",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1489"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1489"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1489",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1490"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1490"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1490",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1490",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1516"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1516"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1516",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1516",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1529"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1529"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1529",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1531"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1531"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1531",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1531",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1543"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1543"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1543",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1545"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1545"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1545",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1545",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1564"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1564"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1564",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1564",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1574"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1574"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1574",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1574",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1578"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1578"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1578",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1578",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1587"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1587"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1587",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1587",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1609"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1609"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1609",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1609",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1615"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1615"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1615",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1615",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1616"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1616"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1616",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1617"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1617"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1617",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1621"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1621"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1621",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1638"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1638"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1638",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1638",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1655"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1655"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1655",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1655",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1665"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1665"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1665",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1665",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1671"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1671"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1671",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1671",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1673"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1673"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1673",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1702"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1702"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1702",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1702",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1766"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1766"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1766",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1766",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1780"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1780"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1780",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1780",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1781"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1781"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1781",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1781",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1782"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1782"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1782",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1782",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1783"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1783"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1783",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1783",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1784"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1784"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1784",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1784",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1785"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1785"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1785",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1785",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1786"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1786"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1786",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1786",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1787"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1787"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1787",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1787",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1788"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1788"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1788",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1788",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1798"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1798"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1798",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1798",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1826"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1826"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1826",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1826",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1835"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1835"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1835",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1835",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1837"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1837"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1837",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1837",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1852"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1852"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1852",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1852",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1865"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1865"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1865",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1865",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1869"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1869"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1869",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1869",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1881"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1881"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1881",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1881",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1885"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1885"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1885",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1885",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1904"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1904"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1904",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1904",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1915"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1915"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1915",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1915",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1919"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1919"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1919",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1919",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1944"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1944"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1944",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1944",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1948"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1948"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1948",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1948",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1966"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1966"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1966",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1966",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2003"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2003"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2003",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2034"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2034"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2034",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2034",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2079"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2079"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2079",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2079",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2105"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2105"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2105",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2123"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2123"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2123",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2128"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2128"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2128",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2130"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2130"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2130",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2147"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2147"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2147",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2161"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2161"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2161",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2168"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2168"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2168",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2172"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2172"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2172",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2172",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2174"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2174"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2174",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2210"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2210"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2210",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2214"
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2214"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2214",
+      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

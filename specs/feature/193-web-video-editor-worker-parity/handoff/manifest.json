@@ -17,97 +17,97 @@
       {
         "digest": "08517ad745121946945174496a3abb1694194af0800e5fd78347eb9b4729f217",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/claude-plan.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/claude-plan.md"
       },
       {
         "digest": "e15fd1df870155f8a00210c0361efa42903192ecd72cb47c110ca52d10416e2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/claude-spec.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/claude-spec.md"
       },
       {
         "digest": "c546c7e72ffb45e15830f6fe32108ff073ad01ade4e76ab0660f1030c7e2c34c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/implementation/deep_implement_config.json"
+        "path": "specs/feature/193-web-video-editor-worker-parity/implementation/deep_implement_config.json"
       },
       {
         "digest": "0610e14f5955897a17d0ee23ce39641c4b2a247735f922bcf39c69babb0fd6fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/implementation/section-status.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/implementation/section-status.md"
       },
       {
         "digest": "16e1a99a27a27c1425f187b34d3c19d3104d7b27c9633777de915a07ab93b9a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-1-shared-contracts.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-1-shared-contracts.md"
       },
       {
         "digest": "3f45e1ea6479a12d4b667cc0509b43bc1dd29b76d744e878782151198b989400",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-2-browser-analysis.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-2-browser-analysis.md"
       },
       {
         "digest": "5179188cfba66d55e7bd0e43af48210e40fa8a531ae6ce1b0222e9955b0a8e2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-3-ui-playback.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-3-ui-playback.md"
       },
       {
         "digest": "67d2cb90c90000099b23b2ecb3dce37f96de7a3f612dcb890a5755d91904971b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-4-routing-render.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-4-routing-render.md"
       },
       {
         "digest": "9c0e32465be869f1afdd705b5011ce9d7e832214ea8fcc5dcfd4fb8ed6123413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-5-final.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-5-final.md"
       },
       {
         "digest": "b43f816b368f1bdd14848c8221d937debdcafa069ec4e9e638607bd90a2770f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-6-to-10-audit.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-6-to-10-audit.md"
       },
       {
         "digest": "5e767feb21a876991a9ab804d6ababac31f99039dab92a7eee9f43ed2efdc0c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-1.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-1.md"
       },
       {
         "digest": "6a68f75b9ef5cdb14533f635ff7ef01794b6a3647154bae60140648c76dd20e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-2.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-2.md"
       },
       {
         "digest": "c1e55d9597a6cedbd40edf38ddf090ac05856fb4328cf3df704a3773b5ad2e69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-3.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-3.md"
       },
       {
         "digest": "07abe08a63629dfca4dd30a8c25b938335c10c19c9b18d3c8168df23d5c603a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-4.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-4.md"
       },
       {
         "digest": "017606c83e9d61b05e9ca88bb5c8063321ce4559f3fc134bc68762cb8756a830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-5.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-5.md"
       },
       {
         "digest": "aec6b60407887b0e8afed55d8e232bc087c1656ac4e4ff6c6e85b2d2d314293d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/index.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/index.md"
       },
       {
         "digest": "61cceef3f2a20df769a5c240283d7c2c042e9bf01f26a1c7e871cdf7e449d168",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "b4fc5d1e51428e73018ea4c22af7de379b5b6cc7834ac89922bfbfafc3cb924b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-02-browser-analysis.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-02-browser-analysis.md"
       },
       {
         "digest": "0a87cf4376576aa694c721602b74051df1a3e5c19a41973e5a055e15f84ddff9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-03-smart-camera-ui.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-03-smart-camera-ui.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "08517ad745121946945174496a3abb1694194af0800e5fd78347eb9b4729f217",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/claude-plan.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/claude-plan.md"
       },
       {
         "digest": "e15fd1df870155f8a00210c0361efa42903192ecd72cb47c110ca52d10416e2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/claude-spec.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/claude-spec.md"
       },
       {
         "digest": "c546c7e72ffb45e15830f6fe32108ff073ad01ade4e76ab0660f1030c7e2c34c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/implementation/deep_implement_config.json"
+        "path": "specs/feature/193-web-video-editor-worker-parity/implementation/deep_implement_config.json"
       },
       {
         "digest": "0610e14f5955897a17d0ee23ce39641c4b2a247735f922bcf39c69babb0fd6fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/implementation/section-status.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/implementation/section-status.md"
       },
       {
         "digest": "16e1a99a27a27c1425f187b34d3c19d3104d7b27c9633777de915a07ab93b9a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-1-shared-contracts.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-1-shared-contracts.md"
       },
       {
         "digest": "3f45e1ea6479a12d4b667cc0509b43bc1dd29b76d744e878782151198b989400",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-2-browser-analysis.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-2-browser-analysis.md"
       },
       {
         "digest": "5179188cfba66d55e7bd0e43af48210e40fa8a531ae6ce1b0222e9955b0a8e2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-3-ui-playback.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-3-ui-playback.md"
       },
       {
         "digest": "67d2cb90c90000099b23b2ecb3dce37f96de7a3f612dcb890a5755d91904971b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-4-routing-render.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-4-routing-render.md"
       },
       {
         "digest": "9c0e32465be869f1afdd705b5011ce9d7e832214ea8fcc5dcfd4fb8ed6123413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-5-final.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-5-final.md"
       },
       {
         "digest": "b43f816b368f1bdd14848c8221d937debdcafa069ec4e9e638607bd90a2770f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-6-to-10-audit.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-6-to-10-audit.md"
       },
       {
         "digest": "5e767feb21a876991a9ab804d6ababac31f99039dab92a7eee9f43ed2efdc0c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-1.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-1.md"
       },
       {
         "digest": "6a68f75b9ef5cdb14533f635ff7ef01794b6a3647154bae60140648c76dd20e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-2.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-2.md"
       },
       {
         "digest": "c1e55d9597a6cedbd40edf38ddf090ac05856fb4328cf3df704a3773b5ad2e69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-3.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-3.md"
       },
       {
         "digest": "07abe08a63629dfca4dd30a8c25b938335c10c19c9b18d3c8168df23d5c603a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-4.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-4.md"
       },
       {
         "digest": "017606c83e9d61b05e9ca88bb5c8063321ce4559f3fc134bc68762cb8756a830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-5.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-5.md"
       },
       {
         "digest": "aec6b60407887b0e8afed55d8e232bc087c1656ac4e4ff6c6e85b2d2d314293d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/index.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/index.md"
       },
       {
         "digest": "61cceef3f2a20df769a5c240283d7c2c042e9bf01f26a1c7e871cdf7e449d168",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "b4fc5d1e51428e73018ea4c22af7de379b5b6cc7834ac89922bfbfafc3cb924b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-02-browser-analysis.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-02-browser-analysis.md"
       },
       {
         "digest": "0a87cf4376576aa694c721602b74051df1a3e5c19a41973e5a055e15f84ddff9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-03-smart-camera-ui.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-03-smart-camera-ui.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "08517ad745121946945174496a3abb1694194af0800e5fd78347eb9b4729f217",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/claude-plan.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/claude-plan.md"
       },
       {
         "digest": "e15fd1df870155f8a00210c0361efa42903192ecd72cb47c110ca52d10416e2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/claude-spec.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/claude-spec.md"
       },
       {
         "digest": "c546c7e72ffb45e15830f6fe32108ff073ad01ade4e76ab0660f1030c7e2c34c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/implementation/deep_implement_config.json"
+        "path": "specs/feature/193-web-video-editor-worker-parity/implementation/deep_implement_config.json"
       },
       {
         "digest": "0610e14f5955897a17d0ee23ce39641c4b2a247735f922bcf39c69babb0fd6fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/implementation/section-status.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/implementation/section-status.md"
       },
       {
         "digest": "16e1a99a27a27c1425f187b34d3c19d3104d7b27c9633777de915a07ab93b9a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-1-shared-contracts.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-1-shared-contracts.md"
       },
       {
         "digest": "3f45e1ea6479a12d4b667cc0509b43bc1dd29b76d744e878782151198b989400",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-2-browser-analysis.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-2-browser-analysis.md"
       },
       {
         "digest": "5179188cfba66d55e7bd0e43af48210e40fa8a531ae6ce1b0222e9955b0a8e2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-3-ui-playback.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-3-ui-playback.md"
       },
       {
         "digest": "67d2cb90c90000099b23b2ecb3dce37f96de7a3f612dcb890a5755d91904971b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-4-routing-render.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-4-routing-render.md"
       },
       {
         "digest": "9c0e32465be869f1afdd705b5011ce9d7e832214ea8fcc5dcfd4fb8ed6123413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-5-final.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-5-final.md"
       },
       {
         "digest": "b43f816b368f1bdd14848c8221d937debdcafa069ec4e9e638607bd90a2770f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-6-to-10-audit.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-6-to-10-audit.md"
       },
       {
         "digest": "5e767feb21a876991a9ab804d6ababac31f99039dab92a7eee9f43ed2efdc0c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-1.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-1.md"
       },
       {
         "digest": "6a68f75b9ef5cdb14533f635ff7ef01794b6a3647154bae60140648c76dd20e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-2.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-2.md"
       },
       {
         "digest": "c1e55d9597a6cedbd40edf38ddf090ac05856fb4328cf3df704a3773b5ad2e69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-3.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-3.md"
       },
       {
         "digest": "07abe08a63629dfca4dd30a8c25b938335c10c19c9b18d3c8168df23d5c603a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-4.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-4.md"
       },
       {
         "digest": "017606c83e9d61b05e9ca88bb5c8063321ce4559f3fc134bc68762cb8756a830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-5.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-5.md"
       },
       {
         "digest": "aec6b60407887b0e8afed55d8e232bc087c1656ac4e4ff6c6e85b2d2d314293d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/index.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/index.md"
       },
       {
         "digest": "61cceef3f2a20df769a5c240283d7c2c042e9bf01f26a1c7e871cdf7e449d168",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "b4fc5d1e51428e73018ea4c22af7de379b5b6cc7834ac89922bfbfafc3cb924b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-02-browser-analysis.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-02-browser-analysis.md"
       },
       {
         "digest": "0a87cf4376576aa694c721602b74051df1a3e5c19a41973e5a055e15f84ddff9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-03-smart-camera-ui.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-03-smart-camera-ui.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/193-web-video-editor-worker-parity/spec.md",
     "digest": "fc0b231b625883e43cd88046feb223faa4ae8bb3dd0e0ba39a52e45ada4f3e6a",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.636077Z",
+      "last_evidence_at": "2026-10-06T03:28:16.762719Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-17T15:42:23+07:00",
       "spec_last_changed_at": "2026-09-17T15:42:23+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.636077Z"
+    "updated_at": "2026-10-06T03:28:16.762719Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.636077Z",
+    "reconciled_at": "2026-10-06T03:28:16.762719Z",
     "sources": [
       {
         "digest": "fc0b231b625883e43cd88046feb223faa4ae8bb3dd0e0ba39a52e45ada4f3e6a",
@@ -409,117 +409,117 @@
       {
         "digest": "08517ad745121946945174496a3abb1694194af0800e5fd78347eb9b4729f217",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/claude-plan.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/claude-plan.md"
       },
       {
         "digest": "e15fd1df870155f8a00210c0361efa42903192ecd72cb47c110ca52d10416e2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/claude-spec.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/claude-spec.md"
       },
       {
         "digest": "c546c7e72ffb45e15830f6fe32108ff073ad01ade4e76ab0660f1030c7e2c34c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/implementation/deep_implement_config.json"
+        "path": "specs/feature/193-web-video-editor-worker-parity/implementation/deep_implement_config.json"
       },
       {
         "digest": "0610e14f5955897a17d0ee23ce39641c4b2a247735f922bcf39c69babb0fd6fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/implementation/section-status.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/implementation/section-status.md"
       },
       {
         "digest": "16e1a99a27a27c1425f187b34d3c19d3104d7b27c9633777de915a07ab93b9a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-1-shared-contracts.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-1-shared-contracts.md"
       },
       {
         "digest": "3f45e1ea6479a12d4b667cc0509b43bc1dd29b76d744e878782151198b989400",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-2-browser-analysis.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-2-browser-analysis.md"
       },
       {
         "digest": "5179188cfba66d55e7bd0e43af48210e40fa8a531ae6ce1b0222e9955b0a8e2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-3-ui-playback.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-3-ui-playback.md"
       },
       {
         "digest": "67d2cb90c90000099b23b2ecb3dce37f96de7a3f612dcb890a5755d91904971b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-4-routing-render.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-4-routing-render.md"
       },
       {
         "digest": "9c0e32465be869f1afdd705b5011ce9d7e832214ea8fcc5dcfd4fb8ed6123413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-5-final.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-5-final.md"
       },
       {
         "digest": "b43f816b368f1bdd14848c8221d937debdcafa069ec4e9e638607bd90a2770f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-6-to-10-audit.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-6-to-10-audit.md"
       },
       {
         "digest": "5e767feb21a876991a9ab804d6ababac31f99039dab92a7eee9f43ed2efdc0c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-1.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-1.md"
       },
       {
         "digest": "6a68f75b9ef5cdb14533f635ff7ef01794b6a3647154bae60140648c76dd20e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-2.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-2.md"
       },
       {
         "digest": "c1e55d9597a6cedbd40edf38ddf090ac05856fb4328cf3df704a3773b5ad2e69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-3.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-3.md"
       },
       {
         "digest": "07abe08a63629dfca4dd30a8c25b938335c10c19c9b18d3c8168df23d5c603a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-4.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-4.md"
       },
       {
         "digest": "017606c83e9d61b05e9ca88bb5c8063321ce4559f3fc134bc68762cb8756a830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-5.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-5.md"
       },
       {
         "digest": "aec6b60407887b0e8afed55d8e232bc087c1656ac4e4ff6c6e85b2d2d314293d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/index.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/index.md"
       },
       {
         "digest": "61cceef3f2a20df769a5c240283d7c2c042e9bf01f26a1c7e871cdf7e449d168",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "b4fc5d1e51428e73018ea4c22af7de379b5b6cc7834ac89922bfbfafc3cb924b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-02-browser-analysis.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-02-browser-analysis.md"
       },
       {
         "digest": "0a87cf4376576aa694c721602b74051df1a3e5c19a41973e5a055e15f84ddff9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-03-smart-camera-ui.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-03-smart-camera-ui.md"
       },
       {
         "digest": "8e8e17b2a4c0612a06c840330a3c029a94f4f52faef08faee4d028f49b8a439e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-04-playback-and-cut-map.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-04-playback-and-cut-map.md"
       },
       {
         "digest": "60fc01d08f9115c1b65ab11945851a88382b9ebc537851c0764eb95cb43d93ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-05-worker-routing.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-05-worker-routing.md"
       },
       {
         "digest": "45c7a0c665258b0ccdd1512899257aee977c0bef5790755ed069a5dc4b5e548d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-06-render-handoff.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-06-render-handoff.md"
       },
       {
         "digest": "53cf758403f7b224b88df75d283d1c44a4afe7ab0aefb93514ccdbea0e15e643",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-07-tests-and-rollout.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-07-tests-and-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -569,117 +569,117 @@
       {
         "digest": "08517ad745121946945174496a3abb1694194af0800e5fd78347eb9b4729f217",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/claude-plan.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/claude-plan.md"
       },
       {
         "digest": "e15fd1df870155f8a00210c0361efa42903192ecd72cb47c110ca52d10416e2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/claude-spec.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/claude-spec.md"
       },
       {
         "digest": "c546c7e72ffb45e15830f6fe32108ff073ad01ade4e76ab0660f1030c7e2c34c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/implementation/deep_implement_config.json"
+        "path": "specs/feature/193-web-video-editor-worker-parity/implementation/deep_implement_config.json"
       },
       {
         "digest": "0610e14f5955897a17d0ee23ce39641c4b2a247735f922bcf39c69babb0fd6fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/implementation/section-status.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/implementation/section-status.md"
       },
       {
         "digest": "16e1a99a27a27c1425f187b34d3c19d3104d7b27c9633777de915a07ab93b9a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-1-shared-contracts.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-1-shared-contracts.md"
       },
       {
         "digest": "3f45e1ea6479a12d4b667cc0509b43bc1dd29b76d744e878782151198b989400",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-2-browser-analysis.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-2-browser-analysis.md"
       },
       {
         "digest": "5179188cfba66d55e7bd0e43af48210e40fa8a531ae6ce1b0222e9955b0a8e2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-3-ui-playback.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-3-ui-playback.md"
       },
       {
         "digest": "67d2cb90c90000099b23b2ecb3dce37f96de7a3f612dcb890a5755d91904971b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-4-routing-render.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-4-routing-render.md"
       },
       {
         "digest": "9c0e32465be869f1afdd705b5011ce9d7e832214ea8fcc5dcfd4fb8ed6123413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-5-final.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-5-final.md"
       },
       {
         "digest": "b43f816b368f1bdd14848c8221d937debdcafa069ec4e9e638607bd90a2770f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-6-to-10-audit.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/implementation-round-6-to-10-audit.md"
       },
       {
         "digest": "5e767feb21a876991a9ab804d6ababac31f99039dab92a7eee9f43ed2efdc0c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-1.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-1.md"
       },
       {
         "digest": "6a68f75b9ef5cdb14533f635ff7ef01794b6a3647154bae60140648c76dd20e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-2.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-2.md"
       },
       {
         "digest": "c1e55d9597a6cedbd40edf38ddf090ac05856fb4328cf3df704a3773b5ad2e69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-3.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-3.md"
       },
       {
         "digest": "07abe08a63629dfca4dd30a8c25b938335c10c19c9b18d3c8168df23d5c603a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-4.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-4.md"
       },
       {
         "digest": "017606c83e9d61b05e9ca88bb5c8063321ce4559f3fc134bc68762cb8756a830",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-5.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/reviews/plan-review-round-5.md"
       },
       {
         "digest": "aec6b60407887b0e8afed55d8e232bc087c1656ac4e4ff6c6e85b2d2d314293d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/index.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/index.md"
       },
       {
         "digest": "61cceef3f2a20df769a5c240283d7c2c042e9bf01f26a1c7e871cdf7e449d168",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "b4fc5d1e51428e73018ea4c22af7de379b5b6cc7834ac89922bfbfafc3cb924b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-02-browser-analysis.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-02-browser-analysis.md"
       },
       {
         "digest": "0a87cf4376576aa694c721602b74051df1a3e5c19a41973e5a055e15f84ddff9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-03-smart-camera-ui.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-03-smart-camera-ui.md"
       },
       {
         "digest": "8e8e17b2a4c0612a06c840330a3c029a94f4f52faef08faee4d028f49b8a439e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-04-playback-and-cut-map.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-04-playback-and-cut-map.md"
       },
       {
         "digest": "60fc01d08f9115c1b65ab11945851a88382b9ebc537851c0764eb95cb43d93ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-05-worker-routing.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-05-worker-routing.md"
       },
       {
         "digest": "45c7a0c665258b0ccdd1512899257aee977c0bef5790755ed069a5dc4b5e548d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-06-render-handoff.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-06-render-handoff.md"
       },
       {
         "digest": "53cf758403f7b224b88df75d283d1c44a4afe7ab0aefb93514ccdbea0e15e643",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/193-web-video-editor-worker-parity/sections/section-07-tests-and-rollout.md"
+        "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-07-tests-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -697,7 +697,7 @@
     "unresolved": 55
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.636077Z",
+  "updated_at": "2026-10-06T03:28:16.762719Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -17,72 +17,72 @@
       {
         "digest": "c657852430b1ce92ea152ce4408e9a5509f15492a4429f9dd92d1a3d5a136f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/claude-plan.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/claude-plan.md"
       },
       {
         "digest": "6d4cb74a518fe9eade8157a737a19bd55bd8ccf1757aeb3a94b769f849416716",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/claude-spec.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/claude-spec.md"
       },
       {
         "digest": "1303308b38ea3296ccd22e1913eb375332af8dfd8c0bec11a3f09f7bf4e9d61d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/implementation/deep_implement_config.json"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "57140d666afaff27bd8851f1f9d19c08f85e181a7606dd61e08a4f39a7b4111e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/reviews/plan-completeness-review-round-2.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/reviews/plan-completeness-review-round-2.md"
       },
       {
         "digest": "da94e27e1c6aa462d0f6a85f6b68f64f54d8b4b6e8e966b4991d292112a2f6a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/reviews/self-review-round-1.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/reviews/self-review-round-1.md"
       },
       {
         "digest": "16765451ebc0cc6c20a3712b7563037d1c8dcff43f619230337d0247b074ea5f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/index.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/index.md"
       },
       {
         "digest": "c4344d1ca6d8d7a21e1241a7e290fa4c7cf17e1222f30161432ade30792892fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-01-schema-and-contracts.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-01-schema-and-contracts.md"
       },
       {
         "digest": "b49d3ce3175aaef41a32d3532113d9ac6db942cfa5df818069082ef917b3bee9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-02-route-policy-and-family-gate.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-02-route-policy-and-family-gate.md"
       },
       {
         "digest": "14bdb7ed0841f8eeeb01747d8b703ecfe7d3e9c67691a38711d379e5ef8e9b15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-03-stage-engine-and-run-loop.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-03-stage-engine-and-run-loop.md"
       },
       {
         "digest": "18794f00ba5f28cbe2869ec955b728f6bbadd8dde80d18d3f40f91846d4b87b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-04-media-job-lifecycle.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-04-media-job-lifecycle.md"
       },
       {
         "digest": "24dce6e7326b0b6fea246ee1605a14f9845931bb3f89c47338b0f090c92b0e8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-05-agency-delegation-and-complex-work.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-05-agency-delegation-and-complex-work.md"
       },
       {
         "digest": "4b263fa8f6901c49db447c77e38f94c6dd6f14164fcf01f2353ba5c164e26406",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-06-review-finalization-and-loop-guards.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-06-review-finalization-and-loop-guards.md"
       },
       {
         "digest": "1de973c15f1272ee21bb3c67329fa51af36a322a484b5fad47d1eff0a7eff97c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-07-workos-team-ui-and-monitoring.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-07-workos-team-ui-and-monitoring.md"
       },
       {
         "digest": "c5181357de1229cfb0a3f4a91d2d82287762c9c2f2d959fec85ef12ed0b99e52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-08-backfill-rollout-debugging-and-e2e.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-08-backfill-rollout-debugging-and-e2e.md"
       }
     ],
     "predecessors": [],
@@ -113,72 +113,72 @@
       {
         "digest": "c657852430b1ce92ea152ce4408e9a5509f15492a4429f9dd92d1a3d5a136f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/claude-plan.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/claude-plan.md"
       },
       {
         "digest": "6d4cb74a518fe9eade8157a737a19bd55bd8ccf1757aeb3a94b769f849416716",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/claude-spec.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/claude-spec.md"
       },
       {
         "digest": "1303308b38ea3296ccd22e1913eb375332af8dfd8c0bec11a3f09f7bf4e9d61d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/implementation/deep_implement_config.json"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "57140d666afaff27bd8851f1f9d19c08f85e181a7606dd61e08a4f39a7b4111e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/reviews/plan-completeness-review-round-2.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/reviews/plan-completeness-review-round-2.md"
       },
       {
         "digest": "da94e27e1c6aa462d0f6a85f6b68f64f54d8b4b6e8e966b4991d292112a2f6a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/reviews/self-review-round-1.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/reviews/self-review-round-1.md"
       },
       {
         "digest": "16765451ebc0cc6c20a3712b7563037d1c8dcff43f619230337d0247b074ea5f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/index.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/index.md"
       },
       {
         "digest": "c4344d1ca6d8d7a21e1241a7e290fa4c7cf17e1222f30161432ade30792892fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-01-schema-and-contracts.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-01-schema-and-contracts.md"
       },
       {
         "digest": "b49d3ce3175aaef41a32d3532113d9ac6db942cfa5df818069082ef917b3bee9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-02-route-policy-and-family-gate.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-02-route-policy-and-family-gate.md"
       },
       {
         "digest": "14bdb7ed0841f8eeeb01747d8b703ecfe7d3e9c67691a38711d379e5ef8e9b15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-03-stage-engine-and-run-loop.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-03-stage-engine-and-run-loop.md"
       },
       {
         "digest": "18794f00ba5f28cbe2869ec955b728f6bbadd8dde80d18d3f40f91846d4b87b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-04-media-job-lifecycle.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-04-media-job-lifecycle.md"
       },
       {
         "digest": "24dce6e7326b0b6fea246ee1605a14f9845931bb3f89c47338b0f090c92b0e8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-05-agency-delegation-and-complex-work.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-05-agency-delegation-and-complex-work.md"
       },
       {
         "digest": "4b263fa8f6901c49db447c77e38f94c6dd6f14164fcf01f2353ba5c164e26406",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-06-review-finalization-and-loop-guards.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-06-review-finalization-and-loop-guards.md"
       },
       {
         "digest": "1de973c15f1272ee21bb3c67329fa51af36a322a484b5fad47d1eff0a7eff97c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-07-workos-team-ui-and-monitoring.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-07-workos-team-ui-and-monitoring.md"
       },
       {
         "digest": "c5181357de1229cfb0a3f4a91d2d82287762c9c2f2d959fec85ef12ed0b99e52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-08-backfill-rollout-debugging-and-e2e.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-08-backfill-rollout-debugging-and-e2e.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -210,84 +210,84 @@
       {
         "digest": "c657852430b1ce92ea152ce4408e9a5509f15492a4429f9dd92d1a3d5a136f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/claude-plan.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/claude-plan.md"
       },
       {
         "digest": "6d4cb74a518fe9eade8157a737a19bd55bd8ccf1757aeb3a94b769f849416716",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/claude-spec.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/claude-spec.md"
       },
       {
         "digest": "1303308b38ea3296ccd22e1913eb375332af8dfd8c0bec11a3f09f7bf4e9d61d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/implementation/deep_implement_config.json"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "57140d666afaff27bd8851f1f9d19c08f85e181a7606dd61e08a4f39a7b4111e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/reviews/plan-completeness-review-round-2.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/reviews/plan-completeness-review-round-2.md"
       },
       {
         "digest": "da94e27e1c6aa462d0f6a85f6b68f64f54d8b4b6e8e966b4991d292112a2f6a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/reviews/self-review-round-1.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/reviews/self-review-round-1.md"
       },
       {
         "digest": "16765451ebc0cc6c20a3712b7563037d1c8dcff43f619230337d0247b074ea5f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/index.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/index.md"
       },
       {
         "digest": "c4344d1ca6d8d7a21e1241a7e290fa4c7cf17e1222f30161432ade30792892fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-01-schema-and-contracts.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-01-schema-and-contracts.md"
       },
       {
         "digest": "b49d3ce3175aaef41a32d3532113d9ac6db942cfa5df818069082ef917b3bee9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-02-route-policy-and-family-gate.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-02-route-policy-and-family-gate.md"
       },
       {
         "digest": "14bdb7ed0841f8eeeb01747d8b703ecfe7d3e9c67691a38711d379e5ef8e9b15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-03-stage-engine-and-run-loop.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-03-stage-engine-and-run-loop.md"
       },
       {
         "digest": "18794f00ba5f28cbe2869ec955b728f6bbadd8dde80d18d3f40f91846d4b87b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-04-media-job-lifecycle.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-04-media-job-lifecycle.md"
       },
       {
         "digest": "24dce6e7326b0b6fea246ee1605a14f9845931bb3f89c47338b0f090c92b0e8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-05-agency-delegation-and-complex-work.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-05-agency-delegation-and-complex-work.md"
       },
       {
         "digest": "4b263fa8f6901c49db447c77e38f94c6dd6f14164fcf01f2353ba5c164e26406",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-06-review-finalization-and-loop-guards.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-06-review-finalization-and-loop-guards.md"
       },
       {
         "digest": "1de973c15f1272ee21bb3c67329fa51af36a322a484b5fad47d1eff0a7eff97c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-07-workos-team-ui-and-monitoring.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-07-workos-team-ui-and-monitoring.md"
       },
       {
         "digest": "c5181357de1229cfb0a3f4a91d2d82287762c9c2f2d959fec85ef12ed0b99e52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-08-backfill-rollout-debugging-and-e2e.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-08-backfill-rollout-debugging-and-e2e.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/098-auto-team-real-execution-and-media-completion/spec.md",
     "digest": "f4b9116d938b1117aea1947edc788cdbab4d2727e8ff186722539b3b04c123be",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.918534Z",
+      "last_evidence_at": "2026-10-06T03:28:15.447159Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-23T09:32:16+07:00",
       "spec_last_changed_at": "2026-04-23T09:32:16+07:00"
@@ -314,7 +314,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.918534Z"
+    "updated_at": "2026-10-06T03:28:15.447159Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -324,7 +324,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.918534Z",
+    "reconciled_at": "2026-10-06T03:28:15.447159Z",
     "sources": [
       {
         "digest": "f4b9116d938b1117aea1947edc788cdbab4d2727e8ff186722539b3b04c123be",
@@ -334,72 +334,72 @@
       {
         "digest": "c657852430b1ce92ea152ce4408e9a5509f15492a4429f9dd92d1a3d5a136f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/claude-plan.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/claude-plan.md"
       },
       {
         "digest": "6d4cb74a518fe9eade8157a737a19bd55bd8ccf1757aeb3a94b769f849416716",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/claude-spec.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/claude-spec.md"
       },
       {
         "digest": "1303308b38ea3296ccd22e1913eb375332af8dfd8c0bec11a3f09f7bf4e9d61d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/implementation/deep_implement_config.json"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "57140d666afaff27bd8851f1f9d19c08f85e181a7606dd61e08a4f39a7b4111e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/reviews/plan-completeness-review-round-2.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/reviews/plan-completeness-review-round-2.md"
       },
       {
         "digest": "da94e27e1c6aa462d0f6a85f6b68f64f54d8b4b6e8e966b4991d292112a2f6a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/reviews/self-review-round-1.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/reviews/self-review-round-1.md"
       },
       {
         "digest": "16765451ebc0cc6c20a3712b7563037d1c8dcff43f619230337d0247b074ea5f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/index.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/index.md"
       },
       {
         "digest": "c4344d1ca6d8d7a21e1241a7e290fa4c7cf17e1222f30161432ade30792892fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-01-schema-and-contracts.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-01-schema-and-contracts.md"
       },
       {
         "digest": "b49d3ce3175aaef41a32d3532113d9ac6db942cfa5df818069082ef917b3bee9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-02-route-policy-and-family-gate.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-02-route-policy-and-family-gate.md"
       },
       {
         "digest": "14bdb7ed0841f8eeeb01747d8b703ecfe7d3e9c67691a38711d379e5ef8e9b15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-03-stage-engine-and-run-loop.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-03-stage-engine-and-run-loop.md"
       },
       {
         "digest": "18794f00ba5f28cbe2869ec955b728f6bbadd8dde80d18d3f40f91846d4b87b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-04-media-job-lifecycle.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-04-media-job-lifecycle.md"
       },
       {
         "digest": "24dce6e7326b0b6fea246ee1605a14f9845931bb3f89c47338b0f090c92b0e8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-05-agency-delegation-and-complex-work.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-05-agency-delegation-and-complex-work.md"
       },
       {
         "digest": "4b263fa8f6901c49db447c77e38f94c6dd6f14164fcf01f2353ba5c164e26406",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-06-review-finalization-and-loop-guards.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-06-review-finalization-and-loop-guards.md"
       },
       {
         "digest": "1de973c15f1272ee21bb3c67329fa51af36a322a484b5fad47d1eff0a7eff97c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-07-workos-team-ui-and-monitoring.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-07-workos-team-ui-and-monitoring.md"
       },
       {
         "digest": "c5181357de1229cfb0a3f4a91d2d82287762c9c2f2d959fec85ef12ed0b99e52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-08-backfill-rollout-debugging-and-e2e.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-08-backfill-rollout-debugging-and-e2e.md"
       }
     ],
     "stale_fields": [],
@@ -427,72 +427,72 @@
       {
         "digest": "c657852430b1ce92ea152ce4408e9a5509f15492a4429f9dd92d1a3d5a136f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/claude-plan.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/claude-plan.md"
       },
       {
         "digest": "6d4cb74a518fe9eade8157a737a19bd55bd8ccf1757aeb3a94b769f849416716",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/claude-spec.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/claude-spec.md"
       },
       {
         "digest": "1303308b38ea3296ccd22e1913eb375332af8dfd8c0bec11a3f09f7bf4e9d61d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/implementation/deep_implement_config.json"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "57140d666afaff27bd8851f1f9d19c08f85e181a7606dd61e08a4f39a7b4111e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/reviews/plan-completeness-review-round-2.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/reviews/plan-completeness-review-round-2.md"
       },
       {
         "digest": "da94e27e1c6aa462d0f6a85f6b68f64f54d8b4b6e8e966b4991d292112a2f6a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/reviews/self-review-round-1.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/reviews/self-review-round-1.md"
       },
       {
         "digest": "16765451ebc0cc6c20a3712b7563037d1c8dcff43f619230337d0247b074ea5f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/index.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/index.md"
       },
       {
         "digest": "c4344d1ca6d8d7a21e1241a7e290fa4c7cf17e1222f30161432ade30792892fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-01-schema-and-contracts.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-01-schema-and-contracts.md"
       },
       {
         "digest": "b49d3ce3175aaef41a32d3532113d9ac6db942cfa5df818069082ef917b3bee9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-02-route-policy-and-family-gate.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-02-route-policy-and-family-gate.md"
       },
       {
         "digest": "14bdb7ed0841f8eeeb01747d8b703ecfe7d3e9c67691a38711d379e5ef8e9b15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-03-stage-engine-and-run-loop.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-03-stage-engine-and-run-loop.md"
       },
       {
         "digest": "18794f00ba5f28cbe2869ec955b728f6bbadd8dde80d18d3f40f91846d4b87b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-04-media-job-lifecycle.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-04-media-job-lifecycle.md"
       },
       {
         "digest": "24dce6e7326b0b6fea246ee1605a14f9845931bb3f89c47338b0f090c92b0e8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-05-agency-delegation-and-complex-work.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-05-agency-delegation-and-complex-work.md"
       },
       {
         "digest": "4b263fa8f6901c49db447c77e38f94c6dd6f14164fcf01f2353ba5c164e26406",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-06-review-finalization-and-loop-guards.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-06-review-finalization-and-loop-guards.md"
       },
       {
         "digest": "1de973c15f1272ee21bb3c67329fa51af36a322a484b5fad47d1eff0a7eff97c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-07-workos-team-ui-and-monitoring.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-07-workos-team-ui-and-monitoring.md"
       },
       {
         "digest": "c5181357de1229cfb0a3f4a91d2d82287762c9c2f2d959fec85ef12ed0b99e52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-08-backfill-rollout-debugging-and-e2e.md"
+        "path": "specs/feature/098-auto-team-real-execution-and-media-completion/sections/section-08-backfill-rollout-debugging-and-e2e.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -510,7 +510,7 @@
     "unresolved": 214
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.918534Z",
+  "updated_at": "2026-10-06T03:28:15.447159Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

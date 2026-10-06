@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
-# 237 — Spec 237 — Realtime Multimodal Agent: Shared Voice, Camera, Screen & Live Co-host
+# 237 — SmartAIHub Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 62 unresolved of 62
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 6
+- Manifest generation: 7
 
 ## Source-declared status and relationship claims
 

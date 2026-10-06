@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L80"
+        "specs/feature/001-workflow-scripts/spec.md#L80"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L80",
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L81"
+        "specs/feature/001-workflow-scripts/spec.md#L81"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L81",
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L82"
+        "specs/feature/001-workflow-scripts/spec.md#L82"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L82",
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L208"
+        "specs/feature/001-workflow-scripts/spec.md#L208"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L208",
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L208",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L209"
+        "specs/feature/001-workflow-scripts/spec.md#L209"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L209",
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L210"
+        "specs/feature/001-workflow-scripts/spec.md#L210"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L210",
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L211"
+        "specs/feature/001-workflow-scripts/spec.md#L211"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L211",
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L212"
+        "specs/feature/001-workflow-scripts/spec.md#L212"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L212",
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L213"
+        "specs/feature/001-workflow-scripts/spec.md#L213"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L213",
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L214"
+        "specs/feature/001-workflow-scripts/spec.md#L214"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/spec.md#L214",
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

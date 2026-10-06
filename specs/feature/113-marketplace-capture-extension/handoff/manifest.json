@@ -17,92 +17,92 @@
       {
         "digest": "adfb669a857b9fd2e9fc79f171d5fcaefc78762ae2fb75a4ff998625355b05fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/claude-plan.md"
+        "path": "specs/feature/113-marketplace-capture-extension/claude-plan.md"
       },
       {
         "digest": "d9dcf727636e90cb4cf5584b7658bfdfa7791205749f19f4a323dcfb3ed9bd4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/claude-spec.md"
+        "path": "specs/feature/113-marketplace-capture-extension/claude-spec.md"
       },
       {
         "digest": "399f5b1741b47158587e9adcf3ed8e06f07e73b2c8d8054002d292f130ad89d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/implementation/deep_implement_config.json"
+        "path": "specs/feature/113-marketplace-capture-extension/implementation/deep_implement_config.json"
       },
       {
         "digest": "9fd3db8cd6bf9e446029f220db6ad10d3559c5fb2e500539d97355e5bf1703ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review-round-2.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review-round-2.md"
       },
       {
         "digest": "49855732328b2993e45499b1b0bd62ba03019c56e1ba4a0ee57ecebea2a3d6b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review.md"
       },
       {
         "digest": "9e637e167795fc81cc7327419bcb7a35a2d4f7a70d110b76e44291db86d2e111",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/self-review-round-1.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/self-review-round-1.md"
       },
       {
         "digest": "b768a44f69239ae20ef7dd716b6101baaf202ef00545a10e0f05d500d4ee4e86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/index.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/index.md"
       },
       {
         "digest": "63c4fb20c4f0d808af6066ac4d4d15af23b6d08b741b5879b3b4af3debf0a9ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-01-database-contracts.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-01-database-contracts.md"
       },
       {
         "digest": "cd5d6f639cb357c8d36f93cdf149f10eb9da22a01d14bb9e25ae981ebdeb794e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-02-backend-foundation.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-02-backend-foundation.md"
       },
       {
         "digest": "d20e42d9233fe51afd038389c92b2d3340ab907b897ca57d0b4357797533b3bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-03-extension-auth-cors.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-03-extension-auth-cors.md"
       },
       {
         "digest": "944206336107247ac44a70ae861d6db6c3a9f8ebb9065b59a3cc77300cfe2a11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-04-captures-assets-candidates.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-04-captures-assets-candidates.md"
       },
       {
         "digest": "6174c4d296899128f95e5a6e52cdf160ec1add8c4b1401a16b83dd7f9007094b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-05-llm-extraction.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-05-llm-extraction.md"
       },
       {
         "digest": "caa89afb50cb0144dc111b3bb3ccc12ec43cfe0e0adced475ccf0581c852f18d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-06-confirm-retention-audit.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-06-confirm-retention-audit.md"
       },
       {
         "digest": "560f2e937955b0a73b0ca2058bb206a2ba4350f48dc81ba2bf8925530ce320a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-07-web-preview-products.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-07-web-preview-products.md"
       },
       {
         "digest": "973f5e938b00c1188a0728ba7563b67893e69974dbf2b384bcd784a8229d75c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-08-extension-workspace.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-08-extension-workspace.md"
       },
       {
         "digest": "0b1af5fd757dffb2b353b39e0ec7ce49633f79fe68ac388643ad4764bc251bbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-09-shopee-category.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-09-shopee-category.md"
       },
       {
         "digest": "716f6f682febdf6ef46f324efa759d5e4a9b65f2f1e281cb50808ad2e0c3fe86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-10-shopee-product-review.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-10-shopee-product-review.md"
       },
       {
         "digest": "d0a4a665251e8a8615a77f5c946684f55bec995cb591d8e06b4bb5e98e0eb1a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-11-security-qa-release.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-11-security-qa-release.md"
       }
     ],
     "predecessors": [],
@@ -133,92 +133,92 @@
       {
         "digest": "adfb669a857b9fd2e9fc79f171d5fcaefc78762ae2fb75a4ff998625355b05fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/claude-plan.md"
+        "path": "specs/feature/113-marketplace-capture-extension/claude-plan.md"
       },
       {
         "digest": "d9dcf727636e90cb4cf5584b7658bfdfa7791205749f19f4a323dcfb3ed9bd4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/claude-spec.md"
+        "path": "specs/feature/113-marketplace-capture-extension/claude-spec.md"
       },
       {
         "digest": "399f5b1741b47158587e9adcf3ed8e06f07e73b2c8d8054002d292f130ad89d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/implementation/deep_implement_config.json"
+        "path": "specs/feature/113-marketplace-capture-extension/implementation/deep_implement_config.json"
       },
       {
         "digest": "9fd3db8cd6bf9e446029f220db6ad10d3559c5fb2e500539d97355e5bf1703ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review-round-2.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review-round-2.md"
       },
       {
         "digest": "49855732328b2993e45499b1b0bd62ba03019c56e1ba4a0ee57ecebea2a3d6b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review.md"
       },
       {
         "digest": "9e637e167795fc81cc7327419bcb7a35a2d4f7a70d110b76e44291db86d2e111",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/self-review-round-1.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/self-review-round-1.md"
       },
       {
         "digest": "b768a44f69239ae20ef7dd716b6101baaf202ef00545a10e0f05d500d4ee4e86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/index.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/index.md"
       },
       {
         "digest": "63c4fb20c4f0d808af6066ac4d4d15af23b6d08b741b5879b3b4af3debf0a9ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-01-database-contracts.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-01-database-contracts.md"
       },
       {
         "digest": "cd5d6f639cb357c8d36f93cdf149f10eb9da22a01d14bb9e25ae981ebdeb794e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-02-backend-foundation.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-02-backend-foundation.md"
       },
       {
         "digest": "d20e42d9233fe51afd038389c92b2d3340ab907b897ca57d0b4357797533b3bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-03-extension-auth-cors.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-03-extension-auth-cors.md"
       },
       {
         "digest": "944206336107247ac44a70ae861d6db6c3a9f8ebb9065b59a3cc77300cfe2a11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-04-captures-assets-candidates.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-04-captures-assets-candidates.md"
       },
       {
         "digest": "6174c4d296899128f95e5a6e52cdf160ec1add8c4b1401a16b83dd7f9007094b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-05-llm-extraction.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-05-llm-extraction.md"
       },
       {
         "digest": "caa89afb50cb0144dc111b3bb3ccc12ec43cfe0e0adced475ccf0581c852f18d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-06-confirm-retention-audit.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-06-confirm-retention-audit.md"
       },
       {
         "digest": "560f2e937955b0a73b0ca2058bb206a2ba4350f48dc81ba2bf8925530ce320a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-07-web-preview-products.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-07-web-preview-products.md"
       },
       {
         "digest": "973f5e938b00c1188a0728ba7563b67893e69974dbf2b384bcd784a8229d75c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-08-extension-workspace.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-08-extension-workspace.md"
       },
       {
         "digest": "0b1af5fd757dffb2b353b39e0ec7ce49633f79fe68ac388643ad4764bc251bbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-09-shopee-category.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-09-shopee-category.md"
       },
       {
         "digest": "716f6f682febdf6ef46f324efa759d5e4a9b65f2f1e281cb50808ad2e0c3fe86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-10-shopee-product-review.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-10-shopee-product-review.md"
       },
       {
         "digest": "d0a4a665251e8a8615a77f5c946684f55bec995cb591d8e06b4bb5e98e0eb1a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-11-security-qa-release.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-11-security-qa-release.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -250,104 +250,104 @@
       {
         "digest": "adfb669a857b9fd2e9fc79f171d5fcaefc78762ae2fb75a4ff998625355b05fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/claude-plan.md"
+        "path": "specs/feature/113-marketplace-capture-extension/claude-plan.md"
       },
       {
         "digest": "d9dcf727636e90cb4cf5584b7658bfdfa7791205749f19f4a323dcfb3ed9bd4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/claude-spec.md"
+        "path": "specs/feature/113-marketplace-capture-extension/claude-spec.md"
       },
       {
         "digest": "399f5b1741b47158587e9adcf3ed8e06f07e73b2c8d8054002d292f130ad89d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/implementation/deep_implement_config.json"
+        "path": "specs/feature/113-marketplace-capture-extension/implementation/deep_implement_config.json"
       },
       {
         "digest": "9fd3db8cd6bf9e446029f220db6ad10d3559c5fb2e500539d97355e5bf1703ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review-round-2.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review-round-2.md"
       },
       {
         "digest": "49855732328b2993e45499b1b0bd62ba03019c56e1ba4a0ee57ecebea2a3d6b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review.md"
       },
       {
         "digest": "9e637e167795fc81cc7327419bcb7a35a2d4f7a70d110b76e44291db86d2e111",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/self-review-round-1.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/self-review-round-1.md"
       },
       {
         "digest": "b768a44f69239ae20ef7dd716b6101baaf202ef00545a10e0f05d500d4ee4e86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/index.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/index.md"
       },
       {
         "digest": "63c4fb20c4f0d808af6066ac4d4d15af23b6d08b741b5879b3b4af3debf0a9ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-01-database-contracts.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-01-database-contracts.md"
       },
       {
         "digest": "cd5d6f639cb357c8d36f93cdf149f10eb9da22a01d14bb9e25ae981ebdeb794e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-02-backend-foundation.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-02-backend-foundation.md"
       },
       {
         "digest": "d20e42d9233fe51afd038389c92b2d3340ab907b897ca57d0b4357797533b3bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-03-extension-auth-cors.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-03-extension-auth-cors.md"
       },
       {
         "digest": "944206336107247ac44a70ae861d6db6c3a9f8ebb9065b59a3cc77300cfe2a11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-04-captures-assets-candidates.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-04-captures-assets-candidates.md"
       },
       {
         "digest": "6174c4d296899128f95e5a6e52cdf160ec1add8c4b1401a16b83dd7f9007094b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-05-llm-extraction.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-05-llm-extraction.md"
       },
       {
         "digest": "caa89afb50cb0144dc111b3bb3ccc12ec43cfe0e0adced475ccf0581c852f18d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-06-confirm-retention-audit.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-06-confirm-retention-audit.md"
       },
       {
         "digest": "560f2e937955b0a73b0ca2058bb206a2ba4350f48dc81ba2bf8925530ce320a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-07-web-preview-products.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-07-web-preview-products.md"
       },
       {
         "digest": "973f5e938b00c1188a0728ba7563b67893e69974dbf2b384bcd784a8229d75c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-08-extension-workspace.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-08-extension-workspace.md"
       },
       {
         "digest": "0b1af5fd757dffb2b353b39e0ec7ce49633f79fe68ac388643ad4764bc251bbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-09-shopee-category.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-09-shopee-category.md"
       },
       {
         "digest": "716f6f682febdf6ef46f324efa759d5e4a9b65f2f1e281cb50808ad2e0c3fe86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-10-shopee-product-review.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-10-shopee-product-review.md"
       },
       {
         "digest": "d0a4a665251e8a8615a77f5c946684f55bec995cb591d8e06b4bb5e98e0eb1a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-11-security-qa-release.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-11-security-qa-release.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/113-marketplace-capture-extension/spec.md",
     "digest": "1867ffa8384f2999543679813035d8466adbb9b330b0cae02b012fb8f2b6c22a",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.028654Z",
+      "last_evidence_at": "2026-10-06T03:28:15.626243Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-05-17T21:01:10+07:00",
       "spec_last_changed_at": "2026-05-21T19:24:03+07:00"
@@ -374,7 +374,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.028654Z"
+    "updated_at": "2026-10-06T03:28:15.626243Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -384,7 +384,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.028654Z",
+    "reconciled_at": "2026-10-06T03:28:15.626243Z",
     "sources": [
       {
         "digest": "1867ffa8384f2999543679813035d8466adbb9b330b0cae02b012fb8f2b6c22a",
@@ -394,92 +394,92 @@
       {
         "digest": "adfb669a857b9fd2e9fc79f171d5fcaefc78762ae2fb75a4ff998625355b05fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/claude-plan.md"
+        "path": "specs/feature/113-marketplace-capture-extension/claude-plan.md"
       },
       {
         "digest": "d9dcf727636e90cb4cf5584b7658bfdfa7791205749f19f4a323dcfb3ed9bd4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/claude-spec.md"
+        "path": "specs/feature/113-marketplace-capture-extension/claude-spec.md"
       },
       {
         "digest": "399f5b1741b47158587e9adcf3ed8e06f07e73b2c8d8054002d292f130ad89d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/implementation/deep_implement_config.json"
+        "path": "specs/feature/113-marketplace-capture-extension/implementation/deep_implement_config.json"
       },
       {
         "digest": "9fd3db8cd6bf9e446029f220db6ad10d3559c5fb2e500539d97355e5bf1703ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review-round-2.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review-round-2.md"
       },
       {
         "digest": "49855732328b2993e45499b1b0bd62ba03019c56e1ba4a0ee57ecebea2a3d6b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review.md"
       },
       {
         "digest": "9e637e167795fc81cc7327419bcb7a35a2d4f7a70d110b76e44291db86d2e111",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/self-review-round-1.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/self-review-round-1.md"
       },
       {
         "digest": "b768a44f69239ae20ef7dd716b6101baaf202ef00545a10e0f05d500d4ee4e86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/index.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/index.md"
       },
       {
         "digest": "63c4fb20c4f0d808af6066ac4d4d15af23b6d08b741b5879b3b4af3debf0a9ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-01-database-contracts.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-01-database-contracts.md"
       },
       {
         "digest": "cd5d6f639cb357c8d36f93cdf149f10eb9da22a01d14bb9e25ae981ebdeb794e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-02-backend-foundation.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-02-backend-foundation.md"
       },
       {
         "digest": "d20e42d9233fe51afd038389c92b2d3340ab907b897ca57d0b4357797533b3bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-03-extension-auth-cors.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-03-extension-auth-cors.md"
       },
       {
         "digest": "944206336107247ac44a70ae861d6db6c3a9f8ebb9065b59a3cc77300cfe2a11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-04-captures-assets-candidates.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-04-captures-assets-candidates.md"
       },
       {
         "digest": "6174c4d296899128f95e5a6e52cdf160ec1add8c4b1401a16b83dd7f9007094b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-05-llm-extraction.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-05-llm-extraction.md"
       },
       {
         "digest": "caa89afb50cb0144dc111b3bb3ccc12ec43cfe0e0adced475ccf0581c852f18d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-06-confirm-retention-audit.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-06-confirm-retention-audit.md"
       },
       {
         "digest": "560f2e937955b0a73b0ca2058bb206a2ba4350f48dc81ba2bf8925530ce320a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-07-web-preview-products.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-07-web-preview-products.md"
       },
       {
         "digest": "973f5e938b00c1188a0728ba7563b67893e69974dbf2b384bcd784a8229d75c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-08-extension-workspace.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-08-extension-workspace.md"
       },
       {
         "digest": "0b1af5fd757dffb2b353b39e0ec7ce49633f79fe68ac388643ad4764bc251bbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-09-shopee-category.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-09-shopee-category.md"
       },
       {
         "digest": "716f6f682febdf6ef46f324efa759d5e4a9b65f2f1e281cb50808ad2e0c3fe86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-10-shopee-product-review.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-10-shopee-product-review.md"
       },
       {
         "digest": "d0a4a665251e8a8615a77f5c946684f55bec995cb591d8e06b4bb5e98e0eb1a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-11-security-qa-release.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-11-security-qa-release.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -529,92 +529,92 @@
       {
         "digest": "adfb669a857b9fd2e9fc79f171d5fcaefc78762ae2fb75a4ff998625355b05fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/claude-plan.md"
+        "path": "specs/feature/113-marketplace-capture-extension/claude-plan.md"
       },
       {
         "digest": "d9dcf727636e90cb4cf5584b7658bfdfa7791205749f19f4a323dcfb3ed9bd4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/claude-spec.md"
+        "path": "specs/feature/113-marketplace-capture-extension/claude-spec.md"
       },
       {
         "digest": "399f5b1741b47158587e9adcf3ed8e06f07e73b2c8d8054002d292f130ad89d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/implementation/deep_implement_config.json"
+        "path": "specs/feature/113-marketplace-capture-extension/implementation/deep_implement_config.json"
       },
       {
         "digest": "9fd3db8cd6bf9e446029f220db6ad10d3559c5fb2e500539d97355e5bf1703ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review-round-2.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review-round-2.md"
       },
       {
         "digest": "49855732328b2993e45499b1b0bd62ba03019c56e1ba4a0ee57ecebea2a3d6b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/plan-completeness-review.md"
       },
       {
         "digest": "9e637e167795fc81cc7327419bcb7a35a2d4f7a70d110b76e44291db86d2e111",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/reviews/self-review-round-1.md"
+        "path": "specs/feature/113-marketplace-capture-extension/reviews/self-review-round-1.md"
       },
       {
         "digest": "b768a44f69239ae20ef7dd716b6101baaf202ef00545a10e0f05d500d4ee4e86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/index.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/index.md"
       },
       {
         "digest": "63c4fb20c4f0d808af6066ac4d4d15af23b6d08b741b5879b3b4af3debf0a9ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-01-database-contracts.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-01-database-contracts.md"
       },
       {
         "digest": "cd5d6f639cb357c8d36f93cdf149f10eb9da22a01d14bb9e25ae981ebdeb794e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-02-backend-foundation.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-02-backend-foundation.md"
       },
       {
         "digest": "d20e42d9233fe51afd038389c92b2d3340ab907b897ca57d0b4357797533b3bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-03-extension-auth-cors.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-03-extension-auth-cors.md"
       },
       {
         "digest": "944206336107247ac44a70ae861d6db6c3a9f8ebb9065b59a3cc77300cfe2a11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-04-captures-assets-candidates.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-04-captures-assets-candidates.md"
       },
       {
         "digest": "6174c4d296899128f95e5a6e52cdf160ec1add8c4b1401a16b83dd7f9007094b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-05-llm-extraction.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-05-llm-extraction.md"
       },
       {
         "digest": "caa89afb50cb0144dc111b3bb3ccc12ec43cfe0e0adced475ccf0581c852f18d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-06-confirm-retention-audit.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-06-confirm-retention-audit.md"
       },
       {
         "digest": "560f2e937955b0a73b0ca2058bb206a2ba4350f48dc81ba2bf8925530ce320a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-07-web-preview-products.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-07-web-preview-products.md"
       },
       {
         "digest": "973f5e938b00c1188a0728ba7563b67893e69974dbf2b384bcd784a8229d75c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-08-extension-workspace.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-08-extension-workspace.md"
       },
       {
         "digest": "0b1af5fd757dffb2b353b39e0ec7ce49633f79fe68ac388643ad4764bc251bbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-09-shopee-category.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-09-shopee-category.md"
       },
       {
         "digest": "716f6f682febdf6ef46f324efa759d5e4a9b65f2f1e281cb50808ad2e0c3fe86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-10-shopee-product-review.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-10-shopee-product-review.md"
       },
       {
         "digest": "d0a4a665251e8a8615a77f5c946684f55bec995cb591d8e06b4bb5e98e0eb1a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/sections/section-11-security-qa-release.md"
+        "path": "specs/feature/113-marketplace-capture-extension/sections/section-11-security-qa-release.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -632,7 +632,7 @@
     "unresolved": 176
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.028654Z",
+  "updated_at": "2026-10-06T03:28:15.626243Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

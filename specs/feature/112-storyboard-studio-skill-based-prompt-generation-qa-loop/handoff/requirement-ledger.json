@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L23"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L23"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L23",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L23",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L29"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L29"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L29",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L30"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L30"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L30",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L30",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L31"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L31"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L31",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L32"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L32"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L32",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L32",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L33"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L33"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L33",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L33",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L34"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L34"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L34",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L34",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L35"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L35"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L35",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L35",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L36"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L36"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L36",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L36",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L37"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L37"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L37",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L57"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L57"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L57",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L57",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L58"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L58"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L58",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L60"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L60"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L60",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L60",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L62"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L62"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L62",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L63"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L63"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L63",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L63",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L66"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L66"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L66",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L67"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L67"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L67",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L248"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L248"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L248",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L336"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L336"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L336",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L402"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L402"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L402",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L426"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L426"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L426",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L506"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L506"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L506",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L506",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L728"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L728"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L728",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L728",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L734"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L734"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L734",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L749"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L749"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L749",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L749",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L865"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L865"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L865",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L865",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L956"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L956"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L956",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L956",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L998"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L998"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L998",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L998",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L999"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L999"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L999",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L999",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1140"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1140"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1140",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1141"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1141"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1141",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1142"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1142"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1142",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1143"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1143"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1143",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1144"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1144"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1144",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1154"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1154"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1154",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1160"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1160"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1160",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1210"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1210"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1210",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1290"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1290"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1290",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1416"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1416"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1416",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1416",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1424"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1424"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1424",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1424",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1470"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1470"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1470",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1470",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1522"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1522"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1522",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1522",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1523"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1523"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1523",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1523",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1524"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1524"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1524",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1524",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1525"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1525"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1525",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1526"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1526"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1526",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1527"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1527"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1527",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1528"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1528"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1528",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1528",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1529"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1529"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1529",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1530"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1530"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1530",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1530",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1531"
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1531"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1531",
+      "authority_source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md#L1531",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

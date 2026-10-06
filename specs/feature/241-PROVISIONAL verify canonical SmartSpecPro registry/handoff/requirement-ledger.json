@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L32"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L32"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L32",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L32",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L41"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L41"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L41",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L41",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L42"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L42"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L42",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L42",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L43"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L43"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L43",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L43",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L44"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L44"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L44",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L44",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L45"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L45"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L45",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L45",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L46"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L46"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L46",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L50"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L50"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L50",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L61"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L61"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L61",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L72"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L72"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L72",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L91"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L91"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L91",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L129"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L129"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L129",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L137"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L137"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L137",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L146"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L146"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L146",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L148"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L148"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L148",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L296"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L296"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L296",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L297"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L297"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L297",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L325"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L325"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L325",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L325",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L329"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L329"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L329",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L329",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L331"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L331"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L331",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L332"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L332"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L332",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L333"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L333"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L333",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L333",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L334"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L334"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L334",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L334",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L335"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L335"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L335",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L336"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L336"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L336",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L337"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L337"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L337",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L338"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L338"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L338",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L338",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L339"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L339"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L339",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L339",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L340"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L340"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L340",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L341"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L341"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L341",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L342"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L342"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L342",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L342",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L343"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L343"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L343",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L343",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L344"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L344"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L344",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L345"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L345"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L345",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L345",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L346"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L346"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L346",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L347"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L347"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L347",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L348"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L348"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L348",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L349"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L349"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L349",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L349",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L350"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L350"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L350",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L350",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L351"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L351"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L351",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L352"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L352"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L352",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L353"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L353"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L353",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L354"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L354"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L354",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L354",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L355"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L355"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L355",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L355",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L374"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L374"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L374",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L374",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L408"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L408"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L408",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L410"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L410"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L410",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L410",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L418"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L418"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L418",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L418",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L428"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L428"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L428",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L428",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L444"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L444"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L444",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L444",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L446"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L446"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L446",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L452"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L452"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L452",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L452",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L454"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L454"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L454",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L454",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L462"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L462"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L462",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L462",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L464"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L464"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L464",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L464",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L470"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L470"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L470",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L470",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L480"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L480"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L480",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L488"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L488"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L488",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L488",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L513"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L513"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L513",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L513",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L525"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L525"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L525",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L558"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L558"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L558",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L558",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L568"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L568"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L568",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L568",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L578"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L578"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L578",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L578",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L584"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L584"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L584",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L584",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L586"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L586"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L586",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L586",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L596"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L596"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L596",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L596",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L606"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L606"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L606",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L606",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L608"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L608"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L608",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L608",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L616"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L616"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L616",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L618"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L618"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L618",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L626"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L626"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L626",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L636"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L636"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L636",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L638"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L638"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L638",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L638",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L640"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L640"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L640",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L648"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L648"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L648",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L648",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L670"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L670"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L670",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L676"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L676"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L676",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L676",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L680"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L680"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L680",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L680",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L686"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L686"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L686",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L686",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L690"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L690"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L690",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L691"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L691"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L691",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L692"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L692"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L692",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L693"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L693"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L693",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L693",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L694"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L694"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L694",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L694",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L695"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L695"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L695",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L695",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L696"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L696"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L696",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L696",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L697"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L697"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L697",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L698"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L698"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L698",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L698",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L699"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L699"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L699",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L700"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L700"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L700",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L700",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L701"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L701"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L701",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L702"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L702"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L702",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L702",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L703"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L703"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L703",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L704"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L704"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L704",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L704",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L705"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L705"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L705",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L705",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L706"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L706"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L706",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L706",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L707"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L707"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L707",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L707",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L708"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L708"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L708",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L709"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L709"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L709",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L709",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L710"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L710"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L710",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L710",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L711"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L711"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L711",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L711",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L712"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L712"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L712",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L713"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L713"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L713",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L744"
+        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L744"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L744",
+      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L744",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

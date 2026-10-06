@@ -4,7 +4,7 @@
   "requirements": [
     {
       "applicability": "UNASSESSED",
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/canonical-spec-handoff-reconciliation/03-evidence-reconciliation-engine/spec.md",
+      "authority_source": "specs/project/canonical-spec-handoff-reconciliation/03-evidence-reconciliation-engine/spec.md",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

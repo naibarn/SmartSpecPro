@@ -17,97 +17,97 @@
       {
         "digest": "015d81df65d6475e1a95a7530c152c743373f35cdae3ac77c8ccd3bf2ab3149d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/claude-plan.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/claude-plan.md"
       },
       {
         "digest": "319614f806210557156b20267ef165d43fca96f221b439b974fc80e73ad96f22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/claude-spec.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/claude-spec.md"
       },
       {
         "digest": "418602d8b2f8b7a52659466686722db23d5a1087650c45e816101c4578576441",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/implementation/deep_implement_config.json"
+        "path": "specs/feature/185-skill-framework-storyboard-project/implementation/deep_implement_config.json"
       },
       {
         "digest": "d6bf156252ba1ce88f75ce0b01b72c50b33d11bdfaad8db8c73902a08d513cc5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/implementation/section-status.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/implementation/section-status.md"
       },
       {
         "digest": "f6f8a5b37a378a7b12c95f9b78c7e8d80091e08037fe6d1066475b8d4da58631",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/adversarial-review-round-1.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/adversarial-review-round-1.md"
       },
       {
         "digest": "600fc12772cc21d7a336bca05f3a3d3423480dc7ba575743719205e1bb05ba31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-10-rounds-rerun.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-10-rounds-rerun.md"
       },
       {
         "digest": "834d7786a82f604baffa579aebab0ce2a989ce1643076f0e195be67fdbb9f359",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-20-rounds.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-20-rounds.md"
       },
       {
         "digest": "4151a7dc4ad76115bec868d7f32cbfa0482e41b6d544bf73aaafa0c56ed58136",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/self-review-round-1.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/self-review-round-1.md"
       },
       {
         "digest": "62139ee8d05775281a473742de901ee98df42c582cac2da980c998eceb7124a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/index.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/index.md"
       },
       {
         "digest": "8b7f09c4959260309cc12f656186fb074379f849c9ba711d1342aae53eefcade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-01-contracts-and-fixtures.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-01-contracts-and-fixtures.md"
       },
       {
         "digest": "28d9e747a1bd92ed00124b6957893c2f75637a187c09cc77cce108ef06db243a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-02-skill-registry-and-model-capabilities.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-02-skill-registry-and-model-capabilities.md"
       },
       {
         "digest": "1ff9e4bdaa0f4a8a248ce6aa4e13de722d76708267d518a328de85c7f2949d0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-03-persistence-and-migrations.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-03-persistence-and-migrations.md"
       },
       {
         "digest": "fd14276e16b8f3bc43558a9065673caeff4513fddaee2570b2739ce953013116",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-04-project-run-lifecycle.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-04-project-run-lifecycle.md"
       },
       {
         "digest": "b04deed15e63155b5c01ab0a8c5758f902e574bb20074b40298fce2140fa6c4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-05-prompt-image-video-pipeline.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-05-prompt-image-video-pipeline.md"
       },
       {
         "digest": "8acff54527fd4852f712877f677c8164e3d04c2317f0d4e651d81d57715b8151",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-06-review-projection-and-integration.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-06-review-projection-and-integration.md"
       },
       {
         "digest": "aaf75d57a33d6b3f30de8bd30d3219fd48e171b7df27076855e33e6cf84f84de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-07-character-library-backend.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-07-character-library-backend.md"
       },
       {
         "digest": "f93637b208acc605fc9096b174247fcbde7045aa1ee447e35fb2b3ec34e3bc38",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-08-shared-character-ui.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-08-shared-character-ui.md"
       },
       {
         "digest": "ec2c13a3f4ee3aa14b1e9cd99b4b44c89f9c7d9f35060f15d501234ed88fc490",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-09-skill-framework-wizard-ui.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-09-skill-framework-wizard-ui.md"
       },
       {
         "digest": "f17ca419a67245650afc9b7766cfd97be031909059bbd79b315bfb15f3287312",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-10-integration-verification-and-rollout.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-10-integration-verification-and-rollout.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "015d81df65d6475e1a95a7530c152c743373f35cdae3ac77c8ccd3bf2ab3149d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/claude-plan.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/claude-plan.md"
       },
       {
         "digest": "319614f806210557156b20267ef165d43fca96f221b439b974fc80e73ad96f22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/claude-spec.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/claude-spec.md"
       },
       {
         "digest": "418602d8b2f8b7a52659466686722db23d5a1087650c45e816101c4578576441",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/implementation/deep_implement_config.json"
+        "path": "specs/feature/185-skill-framework-storyboard-project/implementation/deep_implement_config.json"
       },
       {
         "digest": "d6bf156252ba1ce88f75ce0b01b72c50b33d11bdfaad8db8c73902a08d513cc5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/implementation/section-status.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/implementation/section-status.md"
       },
       {
         "digest": "f6f8a5b37a378a7b12c95f9b78c7e8d80091e08037fe6d1066475b8d4da58631",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/adversarial-review-round-1.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/adversarial-review-round-1.md"
       },
       {
         "digest": "600fc12772cc21d7a336bca05f3a3d3423480dc7ba575743719205e1bb05ba31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-10-rounds-rerun.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-10-rounds-rerun.md"
       },
       {
         "digest": "834d7786a82f604baffa579aebab0ce2a989ce1643076f0e195be67fdbb9f359",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-20-rounds.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-20-rounds.md"
       },
       {
         "digest": "4151a7dc4ad76115bec868d7f32cbfa0482e41b6d544bf73aaafa0c56ed58136",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/self-review-round-1.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/self-review-round-1.md"
       },
       {
         "digest": "62139ee8d05775281a473742de901ee98df42c582cac2da980c998eceb7124a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/index.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/index.md"
       },
       {
         "digest": "8b7f09c4959260309cc12f656186fb074379f849c9ba711d1342aae53eefcade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-01-contracts-and-fixtures.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-01-contracts-and-fixtures.md"
       },
       {
         "digest": "28d9e747a1bd92ed00124b6957893c2f75637a187c09cc77cce108ef06db243a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-02-skill-registry-and-model-capabilities.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-02-skill-registry-and-model-capabilities.md"
       },
       {
         "digest": "1ff9e4bdaa0f4a8a248ce6aa4e13de722d76708267d518a328de85c7f2949d0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-03-persistence-and-migrations.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-03-persistence-and-migrations.md"
       },
       {
         "digest": "fd14276e16b8f3bc43558a9065673caeff4513fddaee2570b2739ce953013116",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-04-project-run-lifecycle.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-04-project-run-lifecycle.md"
       },
       {
         "digest": "b04deed15e63155b5c01ab0a8c5758f902e574bb20074b40298fce2140fa6c4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-05-prompt-image-video-pipeline.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-05-prompt-image-video-pipeline.md"
       },
       {
         "digest": "8acff54527fd4852f712877f677c8164e3d04c2317f0d4e651d81d57715b8151",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-06-review-projection-and-integration.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-06-review-projection-and-integration.md"
       },
       {
         "digest": "aaf75d57a33d6b3f30de8bd30d3219fd48e171b7df27076855e33e6cf84f84de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-07-character-library-backend.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-07-character-library-backend.md"
       },
       {
         "digest": "f93637b208acc605fc9096b174247fcbde7045aa1ee447e35fb2b3ec34e3bc38",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-08-shared-character-ui.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-08-shared-character-ui.md"
       },
       {
         "digest": "ec2c13a3f4ee3aa14b1e9cd99b4b44c89f9c7d9f35060f15d501234ed88fc490",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-09-skill-framework-wizard-ui.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-09-skill-framework-wizard-ui.md"
       },
       {
         "digest": "f17ca419a67245650afc9b7766cfd97be031909059bbd79b315bfb15f3287312",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-10-integration-verification-and-rollout.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-10-integration-verification-and-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "015d81df65d6475e1a95a7530c152c743373f35cdae3ac77c8ccd3bf2ab3149d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/claude-plan.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/claude-plan.md"
       },
       {
         "digest": "319614f806210557156b20267ef165d43fca96f221b439b974fc80e73ad96f22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/claude-spec.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/claude-spec.md"
       },
       {
         "digest": "418602d8b2f8b7a52659466686722db23d5a1087650c45e816101c4578576441",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/implementation/deep_implement_config.json"
+        "path": "specs/feature/185-skill-framework-storyboard-project/implementation/deep_implement_config.json"
       },
       {
         "digest": "d6bf156252ba1ce88f75ce0b01b72c50b33d11bdfaad8db8c73902a08d513cc5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/implementation/section-status.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/implementation/section-status.md"
       },
       {
         "digest": "f6f8a5b37a378a7b12c95f9b78c7e8d80091e08037fe6d1066475b8d4da58631",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/adversarial-review-round-1.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/adversarial-review-round-1.md"
       },
       {
         "digest": "600fc12772cc21d7a336bca05f3a3d3423480dc7ba575743719205e1bb05ba31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-10-rounds-rerun.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-10-rounds-rerun.md"
       },
       {
         "digest": "834d7786a82f604baffa579aebab0ce2a989ce1643076f0e195be67fdbb9f359",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-20-rounds.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-20-rounds.md"
       },
       {
         "digest": "4151a7dc4ad76115bec868d7f32cbfa0482e41b6d544bf73aaafa0c56ed58136",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/self-review-round-1.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/self-review-round-1.md"
       },
       {
         "digest": "62139ee8d05775281a473742de901ee98df42c582cac2da980c998eceb7124a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/index.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/index.md"
       },
       {
         "digest": "8b7f09c4959260309cc12f656186fb074379f849c9ba711d1342aae53eefcade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-01-contracts-and-fixtures.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-01-contracts-and-fixtures.md"
       },
       {
         "digest": "28d9e747a1bd92ed00124b6957893c2f75637a187c09cc77cce108ef06db243a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-02-skill-registry-and-model-capabilities.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-02-skill-registry-and-model-capabilities.md"
       },
       {
         "digest": "1ff9e4bdaa0f4a8a248ce6aa4e13de722d76708267d518a328de85c7f2949d0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-03-persistence-and-migrations.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-03-persistence-and-migrations.md"
       },
       {
         "digest": "fd14276e16b8f3bc43558a9065673caeff4513fddaee2570b2739ce953013116",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-04-project-run-lifecycle.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-04-project-run-lifecycle.md"
       },
       {
         "digest": "b04deed15e63155b5c01ab0a8c5758f902e574bb20074b40298fce2140fa6c4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-05-prompt-image-video-pipeline.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-05-prompt-image-video-pipeline.md"
       },
       {
         "digest": "8acff54527fd4852f712877f677c8164e3d04c2317f0d4e651d81d57715b8151",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-06-review-projection-and-integration.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-06-review-projection-and-integration.md"
       },
       {
         "digest": "aaf75d57a33d6b3f30de8bd30d3219fd48e171b7df27076855e33e6cf84f84de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-07-character-library-backend.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-07-character-library-backend.md"
       },
       {
         "digest": "f93637b208acc605fc9096b174247fcbde7045aa1ee447e35fb2b3ec34e3bc38",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-08-shared-character-ui.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-08-shared-character-ui.md"
       },
       {
         "digest": "ec2c13a3f4ee3aa14b1e9cd99b4b44c89f9c7d9f35060f15d501234ed88fc490",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-09-skill-framework-wizard-ui.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-09-skill-framework-wizard-ui.md"
       },
       {
         "digest": "f17ca419a67245650afc9b7766cfd97be031909059bbd79b315bfb15f3287312",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-10-integration-verification-and-rollout.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-10-integration-verification-and-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/185-skill-framework-storyboard-project/spec.md",
     "digest": "a30e4ed1e5db7bf7036f1dd65b130ccdae936bffbf83653949c8724f2fff1cb4",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.585978Z",
+      "last_evidence_at": "2026-10-06T03:28:16.678001Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-13T07:28:45+07:00",
       "spec_last_changed_at": "2026-09-13T07:28:45+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.585978Z"
+    "updated_at": "2026-10-06T03:28:16.678001Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.585978Z",
+    "reconciled_at": "2026-10-06T03:28:16.678001Z",
     "sources": [
       {
         "digest": "a30e4ed1e5db7bf7036f1dd65b130ccdae936bffbf83653949c8724f2fff1cb4",
@@ -409,97 +409,97 @@
       {
         "digest": "015d81df65d6475e1a95a7530c152c743373f35cdae3ac77c8ccd3bf2ab3149d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/claude-plan.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/claude-plan.md"
       },
       {
         "digest": "319614f806210557156b20267ef165d43fca96f221b439b974fc80e73ad96f22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/claude-spec.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/claude-spec.md"
       },
       {
         "digest": "418602d8b2f8b7a52659466686722db23d5a1087650c45e816101c4578576441",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/implementation/deep_implement_config.json"
+        "path": "specs/feature/185-skill-framework-storyboard-project/implementation/deep_implement_config.json"
       },
       {
         "digest": "d6bf156252ba1ce88f75ce0b01b72c50b33d11bdfaad8db8c73902a08d513cc5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/implementation/section-status.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/implementation/section-status.md"
       },
       {
         "digest": "f6f8a5b37a378a7b12c95f9b78c7e8d80091e08037fe6d1066475b8d4da58631",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/adversarial-review-round-1.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/adversarial-review-round-1.md"
       },
       {
         "digest": "600fc12772cc21d7a336bca05f3a3d3423480dc7ba575743719205e1bb05ba31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-10-rounds-rerun.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-10-rounds-rerun.md"
       },
       {
         "digest": "834d7786a82f604baffa579aebab0ce2a989ce1643076f0e195be67fdbb9f359",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-20-rounds.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-20-rounds.md"
       },
       {
         "digest": "4151a7dc4ad76115bec868d7f32cbfa0482e41b6d544bf73aaafa0c56ed58136",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/self-review-round-1.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/self-review-round-1.md"
       },
       {
         "digest": "62139ee8d05775281a473742de901ee98df42c582cac2da980c998eceb7124a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/index.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/index.md"
       },
       {
         "digest": "8b7f09c4959260309cc12f656186fb074379f849c9ba711d1342aae53eefcade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-01-contracts-and-fixtures.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-01-contracts-and-fixtures.md"
       },
       {
         "digest": "28d9e747a1bd92ed00124b6957893c2f75637a187c09cc77cce108ef06db243a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-02-skill-registry-and-model-capabilities.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-02-skill-registry-and-model-capabilities.md"
       },
       {
         "digest": "1ff9e4bdaa0f4a8a248ce6aa4e13de722d76708267d518a328de85c7f2949d0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-03-persistence-and-migrations.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-03-persistence-and-migrations.md"
       },
       {
         "digest": "fd14276e16b8f3bc43558a9065673caeff4513fddaee2570b2739ce953013116",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-04-project-run-lifecycle.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-04-project-run-lifecycle.md"
       },
       {
         "digest": "b04deed15e63155b5c01ab0a8c5758f902e574bb20074b40298fce2140fa6c4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-05-prompt-image-video-pipeline.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-05-prompt-image-video-pipeline.md"
       },
       {
         "digest": "8acff54527fd4852f712877f677c8164e3d04c2317f0d4e651d81d57715b8151",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-06-review-projection-and-integration.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-06-review-projection-and-integration.md"
       },
       {
         "digest": "aaf75d57a33d6b3f30de8bd30d3219fd48e171b7df27076855e33e6cf84f84de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-07-character-library-backend.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-07-character-library-backend.md"
       },
       {
         "digest": "f93637b208acc605fc9096b174247fcbde7045aa1ee447e35fb2b3ec34e3bc38",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-08-shared-character-ui.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-08-shared-character-ui.md"
       },
       {
         "digest": "ec2c13a3f4ee3aa14b1e9cd99b4b44c89f9c7d9f35060f15d501234ed88fc490",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-09-skill-framework-wizard-ui.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-09-skill-framework-wizard-ui.md"
       },
       {
         "digest": "f17ca419a67245650afc9b7766cfd97be031909059bbd79b315bfb15f3287312",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-10-integration-verification-and-rollout.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-10-integration-verification-and-rollout.md"
       }
     ],
     "stale_fields": [],
@@ -527,97 +527,97 @@
       {
         "digest": "015d81df65d6475e1a95a7530c152c743373f35cdae3ac77c8ccd3bf2ab3149d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/claude-plan.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/claude-plan.md"
       },
       {
         "digest": "319614f806210557156b20267ef165d43fca96f221b439b974fc80e73ad96f22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/claude-spec.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/claude-spec.md"
       },
       {
         "digest": "418602d8b2f8b7a52659466686722db23d5a1087650c45e816101c4578576441",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/implementation/deep_implement_config.json"
+        "path": "specs/feature/185-skill-framework-storyboard-project/implementation/deep_implement_config.json"
       },
       {
         "digest": "d6bf156252ba1ce88f75ce0b01b72c50b33d11bdfaad8db8c73902a08d513cc5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/implementation/section-status.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/implementation/section-status.md"
       },
       {
         "digest": "f6f8a5b37a378a7b12c95f9b78c7e8d80091e08037fe6d1066475b8d4da58631",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/adversarial-review-round-1.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/adversarial-review-round-1.md"
       },
       {
         "digest": "600fc12772cc21d7a336bca05f3a3d3423480dc7ba575743719205e1bb05ba31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-10-rounds-rerun.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-10-rounds-rerun.md"
       },
       {
         "digest": "834d7786a82f604baffa579aebab0ce2a989ce1643076f0e195be67fdbb9f359",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-20-rounds.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/implementation-audit-20-rounds.md"
       },
       {
         "digest": "4151a7dc4ad76115bec868d7f32cbfa0482e41b6d544bf73aaafa0c56ed58136",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/reviews/self-review-round-1.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/reviews/self-review-round-1.md"
       },
       {
         "digest": "62139ee8d05775281a473742de901ee98df42c582cac2da980c998eceb7124a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/index.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/index.md"
       },
       {
         "digest": "8b7f09c4959260309cc12f656186fb074379f849c9ba711d1342aae53eefcade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-01-contracts-and-fixtures.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-01-contracts-and-fixtures.md"
       },
       {
         "digest": "28d9e747a1bd92ed00124b6957893c2f75637a187c09cc77cce108ef06db243a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-02-skill-registry-and-model-capabilities.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-02-skill-registry-and-model-capabilities.md"
       },
       {
         "digest": "1ff9e4bdaa0f4a8a248ce6aa4e13de722d76708267d518a328de85c7f2949d0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-03-persistence-and-migrations.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-03-persistence-and-migrations.md"
       },
       {
         "digest": "fd14276e16b8f3bc43558a9065673caeff4513fddaee2570b2739ce953013116",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-04-project-run-lifecycle.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-04-project-run-lifecycle.md"
       },
       {
         "digest": "b04deed15e63155b5c01ab0a8c5758f902e574bb20074b40298fce2140fa6c4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-05-prompt-image-video-pipeline.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-05-prompt-image-video-pipeline.md"
       },
       {
         "digest": "8acff54527fd4852f712877f677c8164e3d04c2317f0d4e651d81d57715b8151",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-06-review-projection-and-integration.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-06-review-projection-and-integration.md"
       },
       {
         "digest": "aaf75d57a33d6b3f30de8bd30d3219fd48e171b7df27076855e33e6cf84f84de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-07-character-library-backend.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-07-character-library-backend.md"
       },
       {
         "digest": "f93637b208acc605fc9096b174247fcbde7045aa1ee447e35fb2b3ec34e3bc38",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-08-shared-character-ui.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-08-shared-character-ui.md"
       },
       {
         "digest": "ec2c13a3f4ee3aa14b1e9cd99b4b44c89f9c7d9f35060f15d501234ed88fc490",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-09-skill-framework-wizard-ui.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-09-skill-framework-wizard-ui.md"
       },
       {
         "digest": "f17ca419a67245650afc9b7766cfd97be031909059bbd79b315bfb15f3287312",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/185-skill-framework-storyboard-project/sections/section-10-integration-verification-and-rollout.md"
+        "path": "specs/feature/185-skill-framework-storyboard-project/sections/section-10-integration-verification-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -635,7 +635,7 @@
     "unresolved": 33
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.585978Z",
+  "updated_at": "2026-10-06T03:28:16.678001Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

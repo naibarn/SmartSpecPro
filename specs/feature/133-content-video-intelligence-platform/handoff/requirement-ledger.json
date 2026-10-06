@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L66"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L66"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L66",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L126"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L126"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L126",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L230"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L230"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L230",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L274"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L274"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L274",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L274",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L536"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L536"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L536",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L536",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L539"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L539"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L539",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L539",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L543"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L543"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L543",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L571"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L571"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L571",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L571",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L596"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L596"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L596",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L596",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L665"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L665"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L665",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L665",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L673"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L673"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L673",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L895"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L895"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L895",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L895",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1062"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1062"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1062",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1062",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1064"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1064"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1064",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1064",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1066"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1066"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1066",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1066",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1071"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1071"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1071",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1071",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1081"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1081"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1081",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1081",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1082"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1082"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1082",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1082",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1083"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1083"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1083",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1083",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1084"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1084"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1084",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1084",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1085"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1085"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1085",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1085",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1086"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1086"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1086",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1086",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1102"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1102"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1102",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1103"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1103"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1103",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1104"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1104"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1104",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1105"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1105"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1105",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1106"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1106"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1106",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1107"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1107"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1107",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1108"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1108"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1108",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1157"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1157"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1157",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1180"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1180"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1180",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1261"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1261"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1261",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1294"
+        "specs/feature/133-content-video-intelligence-platform/spec.md#L1294"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/spec.md#L1294",
+      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

@@ -17,97 +17,97 @@
       {
         "digest": "c0f2ec791e1e7a85354be6b289a153730d622aa127d4faa880bd6a7a2beac914",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/claude-plan.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/claude-plan.md"
       },
       {
         "digest": "3d18a21cfa936e06dcac0891b9c36d754e8cedaa1b359dabea3086d762506d56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/claude-spec.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/claude-spec.md"
       },
       {
         "digest": "d5f5b9e6b85ebaee63907938c2bfc2474717116710e5ae1b6596bad94aa0a9b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/deep_implement_config.json"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/deep_implement_config.json"
       },
       {
         "digest": "a447aec7c72071ebea376c62fb9e40cd93686fc026436da9c4016d17b9145894",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-1.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-1.md"
       },
       {
         "digest": "8e0d4bd8f16b14e60edf9768c64e81692c1f743dcbc81371744aec8472ad09ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-10.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-10.md"
       },
       {
         "digest": "f554950ac7a76ed051a74006474a51a70acec70cc85e1719deaa174af87c2e34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-11.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-11.md"
       },
       {
         "digest": "697a440a2dd5c0faa5a8c8f70b591f8eca7f72ca8c1e4d5cd2f085c018ff232e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-12.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-12.md"
       },
       {
         "digest": "9c2f187b0b8516efcee35dca898d132414bc4fef1f4436c989e13feee71536a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-2.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-2.md"
       },
       {
         "digest": "517154948158975bb74197d9ed0ab4bfa53fb47aa7a49e27fa28d0c5d0903a39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-3.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-3.md"
       },
       {
         "digest": "211ee0845faa15c515cd33ec44f23884eddc6dbe3fb4d5c93a8b20577a56c0a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-4.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-4.md"
       },
       {
         "digest": "bede3f7bd77eb397c5fba835e28c4b350d4ded423949a1380fa65da8be3bef50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-5.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-5.md"
       },
       {
         "digest": "17a0b31aebb93507dce059ae02ce70ef0d8000cc12b480526a6faabc7abef634",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-6.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-6.md"
       },
       {
         "digest": "23cde41ab306714c6a5095ead8d269e2beb85274fbad88535447624543f39f10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-7.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-7.md"
       },
       {
         "digest": "6745df88e071b50d6db8e6ae98584b05b1d9aa078c6f4c913a4d5f9b84ed108e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-8.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-8.md"
       },
       {
         "digest": "87def6768d6affc357dd87ba97befba9fa28df7f6f32565b4e72648f7c3a2fd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-9.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-9.md"
       },
       {
         "digest": "de1224c14a3917819ac4607e39ae88680d72e01765e9d1d03380901121efff44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/usage.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/usage.md"
       },
       {
         "digest": "edbf2e54b4472620e3a4773d27a80ee21003847679f09d4f60634375c587be1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-1.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-1.md"
       },
       {
         "digest": "5136b275ff3e6420d63d950d27935abed2fcb881f6ee619854bee560a507b99a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-2.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-2.md"
       },
       {
         "digest": "be8714158217016fb2881a2d6ac058d69e058e8bd398b78703b75581e77a5e2a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-3.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-3.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "c0f2ec791e1e7a85354be6b289a153730d622aa127d4faa880bd6a7a2beac914",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/claude-plan.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/claude-plan.md"
       },
       {
         "digest": "3d18a21cfa936e06dcac0891b9c36d754e8cedaa1b359dabea3086d762506d56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/claude-spec.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/claude-spec.md"
       },
       {
         "digest": "d5f5b9e6b85ebaee63907938c2bfc2474717116710e5ae1b6596bad94aa0a9b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/deep_implement_config.json"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/deep_implement_config.json"
       },
       {
         "digest": "a447aec7c72071ebea376c62fb9e40cd93686fc026436da9c4016d17b9145894",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-1.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-1.md"
       },
       {
         "digest": "8e0d4bd8f16b14e60edf9768c64e81692c1f743dcbc81371744aec8472ad09ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-10.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-10.md"
       },
       {
         "digest": "f554950ac7a76ed051a74006474a51a70acec70cc85e1719deaa174af87c2e34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-11.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-11.md"
       },
       {
         "digest": "697a440a2dd5c0faa5a8c8f70b591f8eca7f72ca8c1e4d5cd2f085c018ff232e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-12.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-12.md"
       },
       {
         "digest": "9c2f187b0b8516efcee35dca898d132414bc4fef1f4436c989e13feee71536a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-2.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-2.md"
       },
       {
         "digest": "517154948158975bb74197d9ed0ab4bfa53fb47aa7a49e27fa28d0c5d0903a39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-3.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-3.md"
       },
       {
         "digest": "211ee0845faa15c515cd33ec44f23884eddc6dbe3fb4d5c93a8b20577a56c0a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-4.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-4.md"
       },
       {
         "digest": "bede3f7bd77eb397c5fba835e28c4b350d4ded423949a1380fa65da8be3bef50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-5.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-5.md"
       },
       {
         "digest": "17a0b31aebb93507dce059ae02ce70ef0d8000cc12b480526a6faabc7abef634",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-6.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-6.md"
       },
       {
         "digest": "23cde41ab306714c6a5095ead8d269e2beb85274fbad88535447624543f39f10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-7.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-7.md"
       },
       {
         "digest": "6745df88e071b50d6db8e6ae98584b05b1d9aa078c6f4c913a4d5f9b84ed108e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-8.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-8.md"
       },
       {
         "digest": "87def6768d6affc357dd87ba97befba9fa28df7f6f32565b4e72648f7c3a2fd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-9.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-9.md"
       },
       {
         "digest": "de1224c14a3917819ac4607e39ae88680d72e01765e9d1d03380901121efff44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/usage.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/usage.md"
       },
       {
         "digest": "edbf2e54b4472620e3a4773d27a80ee21003847679f09d4f60634375c587be1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-1.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-1.md"
       },
       {
         "digest": "5136b275ff3e6420d63d950d27935abed2fcb881f6ee619854bee560a507b99a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-2.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-2.md"
       },
       {
         "digest": "be8714158217016fb2881a2d6ac058d69e058e8bd398b78703b75581e77a5e2a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-3.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-3.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "c0f2ec791e1e7a85354be6b289a153730d622aa127d4faa880bd6a7a2beac914",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/claude-plan.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/claude-plan.md"
       },
       {
         "digest": "3d18a21cfa936e06dcac0891b9c36d754e8cedaa1b359dabea3086d762506d56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/claude-spec.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/claude-spec.md"
       },
       {
         "digest": "d5f5b9e6b85ebaee63907938c2bfc2474717116710e5ae1b6596bad94aa0a9b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/deep_implement_config.json"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/deep_implement_config.json"
       },
       {
         "digest": "a447aec7c72071ebea376c62fb9e40cd93686fc026436da9c4016d17b9145894",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-1.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-1.md"
       },
       {
         "digest": "8e0d4bd8f16b14e60edf9768c64e81692c1f743dcbc81371744aec8472ad09ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-10.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-10.md"
       },
       {
         "digest": "f554950ac7a76ed051a74006474a51a70acec70cc85e1719deaa174af87c2e34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-11.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-11.md"
       },
       {
         "digest": "697a440a2dd5c0faa5a8c8f70b591f8eca7f72ca8c1e4d5cd2f085c018ff232e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-12.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-12.md"
       },
       {
         "digest": "9c2f187b0b8516efcee35dca898d132414bc4fef1f4436c989e13feee71536a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-2.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-2.md"
       },
       {
         "digest": "517154948158975bb74197d9ed0ab4bfa53fb47aa7a49e27fa28d0c5d0903a39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-3.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-3.md"
       },
       {
         "digest": "211ee0845faa15c515cd33ec44f23884eddc6dbe3fb4d5c93a8b20577a56c0a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-4.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-4.md"
       },
       {
         "digest": "bede3f7bd77eb397c5fba835e28c4b350d4ded423949a1380fa65da8be3bef50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-5.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-5.md"
       },
       {
         "digest": "17a0b31aebb93507dce059ae02ce70ef0d8000cc12b480526a6faabc7abef634",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-6.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-6.md"
       },
       {
         "digest": "23cde41ab306714c6a5095ead8d269e2beb85274fbad88535447624543f39f10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-7.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-7.md"
       },
       {
         "digest": "6745df88e071b50d6db8e6ae98584b05b1d9aa078c6f4c913a4d5f9b84ed108e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-8.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-8.md"
       },
       {
         "digest": "87def6768d6affc357dd87ba97befba9fa28df7f6f32565b4e72648f7c3a2fd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-9.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-9.md"
       },
       {
         "digest": "de1224c14a3917819ac4607e39ae88680d72e01765e9d1d03380901121efff44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/usage.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/usage.md"
       },
       {
         "digest": "edbf2e54b4472620e3a4773d27a80ee21003847679f09d4f60634375c587be1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-1.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-1.md"
       },
       {
         "digest": "5136b275ff3e6420d63d950d27935abed2fcb881f6ee619854bee560a507b99a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-2.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-2.md"
       },
       {
         "digest": "be8714158217016fb2881a2d6ac058d69e058e8bd398b78703b75581e77a5e2a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-3.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-3.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/174-vertical-drama-object-reference-catalog/spec.md",
     "digest": "0cef38d318397fc5b2b90fed5a563b8047d334cc67963004fd4279432ff25368",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.518322Z",
+      "last_evidence_at": "2026-10-06T03:28:16.569494Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-03T07:39:40+07:00",
       "spec_last_changed_at": "2026-09-03T07:39:40+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.518322Z"
+    "updated_at": "2026-10-06T03:28:16.569494Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.518322Z",
+    "reconciled_at": "2026-10-06T03:28:16.569494Z",
     "sources": [
       {
         "digest": "0cef38d318397fc5b2b90fed5a563b8047d334cc67963004fd4279432ff25368",
@@ -409,162 +409,162 @@
       {
         "digest": "c0f2ec791e1e7a85354be6b289a153730d622aa127d4faa880bd6a7a2beac914",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/claude-plan.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/claude-plan.md"
       },
       {
         "digest": "3d18a21cfa936e06dcac0891b9c36d754e8cedaa1b359dabea3086d762506d56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/claude-spec.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/claude-spec.md"
       },
       {
         "digest": "d5f5b9e6b85ebaee63907938c2bfc2474717116710e5ae1b6596bad94aa0a9b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/deep_implement_config.json"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/deep_implement_config.json"
       },
       {
         "digest": "a447aec7c72071ebea376c62fb9e40cd93686fc026436da9c4016d17b9145894",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-1.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-1.md"
       },
       {
         "digest": "8e0d4bd8f16b14e60edf9768c64e81692c1f743dcbc81371744aec8472ad09ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-10.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-10.md"
       },
       {
         "digest": "f554950ac7a76ed051a74006474a51a70acec70cc85e1719deaa174af87c2e34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-11.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-11.md"
       },
       {
         "digest": "697a440a2dd5c0faa5a8c8f70b591f8eca7f72ca8c1e4d5cd2f085c018ff232e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-12.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-12.md"
       },
       {
         "digest": "9c2f187b0b8516efcee35dca898d132414bc4fef1f4436c989e13feee71536a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-2.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-2.md"
       },
       {
         "digest": "517154948158975bb74197d9ed0ab4bfa53fb47aa7a49e27fa28d0c5d0903a39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-3.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-3.md"
       },
       {
         "digest": "211ee0845faa15c515cd33ec44f23884eddc6dbe3fb4d5c93a8b20577a56c0a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-4.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-4.md"
       },
       {
         "digest": "bede3f7bd77eb397c5fba835e28c4b350d4ded423949a1380fa65da8be3bef50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-5.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-5.md"
       },
       {
         "digest": "17a0b31aebb93507dce059ae02ce70ef0d8000cc12b480526a6faabc7abef634",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-6.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-6.md"
       },
       {
         "digest": "23cde41ab306714c6a5095ead8d269e2beb85274fbad88535447624543f39f10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-7.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-7.md"
       },
       {
         "digest": "6745df88e071b50d6db8e6ae98584b05b1d9aa078c6f4c913a4d5f9b84ed108e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-8.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-8.md"
       },
       {
         "digest": "87def6768d6affc357dd87ba97befba9fa28df7f6f32565b4e72648f7c3a2fd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-9.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-9.md"
       },
       {
         "digest": "de1224c14a3917819ac4607e39ae88680d72e01765e9d1d03380901121efff44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/usage.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/usage.md"
       },
       {
         "digest": "edbf2e54b4472620e3a4773d27a80ee21003847679f09d4f60634375c587be1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-1.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-1.md"
       },
       {
         "digest": "5136b275ff3e6420d63d950d27935abed2fcb881f6ee619854bee560a507b99a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-2.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-2.md"
       },
       {
         "digest": "be8714158217016fb2881a2d6ac058d69e058e8bd398b78703b75581e77a5e2a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-3.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-3.md"
       },
       {
         "digest": "23b236187d7ac33976a97c77ff090c5f6d129c3fa8d8d9f0489a552fcd475397",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-4.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-4.md"
       },
       {
         "digest": "b3568088d3b8a29f2f03c0ee42559bf780a708d17f0ad9ba471709acea943d25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-5.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-5.md"
       },
       {
         "digest": "b5bc871720ce267e0b90542a60a729fdf2e7e1a0f07b4cc78444cc835247a399",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/index.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/index.md"
       },
       {
         "digest": "9ffb1ef119f13649fcd35c5bdac1659ec70de35a6d2788eb7d79be41e6c55107",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-01-contracts.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-01-contracts.md"
       },
       {
         "digest": "4cb8b617b7860cfa13ea0a6d689393171707b9c17a9c9fe1da216ae83017d07c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-02-schema-migration.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-02-schema-migration.md"
       },
       {
         "digest": "cb9afa57d21094d8ecc872a6300f4dd656b6b6afe1639a2b6035cad797e62076",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-03-catalog-service-router.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-03-catalog-service-router.md"
       },
       {
         "digest": "8d6f57202bf1f897bfc4d53114e7f854f75033d28298d81162efffc2e09016bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-04-special-product-bridge.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-04-special-product-bridge.md"
       },
       {
         "digest": "cef31386005a73ff34159f689a3c05dc096d238baff8a34debc57cd28476c717",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-05-context-detection.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-05-context-detection.md"
       },
       {
         "digest": "5c386aa4a6295dd6f0b6386bdf6371dd4d528edd33c70a7c320c4c2913ab98f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-06-shot-projection.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-06-shot-projection.md"
       },
       {
         "digest": "900462ce53220fe9c3bff37eb0c07f40699c2e9f8b2ebb8c67564631f9d9a14d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-07-prompt-media.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-07-prompt-media.md"
       },
       {
         "digest": "29b7917ce39c2f39afe62584eb7319b00d4faeb7d02b04de70cf35608d591fe1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-08-central-ui.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-08-central-ui.md"
       },
       {
         "digest": "dc507bb97542ffe31c874512ef89bb9c55838222a15fbb4d453c18367b51eb2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-09-observability-reliability.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-09-observability-reliability.md"
       },
       {
         "digest": "83a212953a2d818df9a4d61c473b53a9f5ecaf215322be079153c1becfb7b565",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-10-integration-release.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-10-integration-release.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -614,162 +614,162 @@
       {
         "digest": "c0f2ec791e1e7a85354be6b289a153730d622aa127d4faa880bd6a7a2beac914",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/claude-plan.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/claude-plan.md"
       },
       {
         "digest": "3d18a21cfa936e06dcac0891b9c36d754e8cedaa1b359dabea3086d762506d56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/claude-spec.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/claude-spec.md"
       },
       {
         "digest": "d5f5b9e6b85ebaee63907938c2bfc2474717116710e5ae1b6596bad94aa0a9b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/deep_implement_config.json"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/deep_implement_config.json"
       },
       {
         "digest": "a447aec7c72071ebea376c62fb9e40cd93686fc026436da9c4016d17b9145894",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-1.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-1.md"
       },
       {
         "digest": "8e0d4bd8f16b14e60edf9768c64e81692c1f743dcbc81371744aec8472ad09ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-10.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-10.md"
       },
       {
         "digest": "f554950ac7a76ed051a74006474a51a70acec70cc85e1719deaa174af87c2e34",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-11.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-11.md"
       },
       {
         "digest": "697a440a2dd5c0faa5a8c8f70b591f8eca7f72ca8c1e4d5cd2f085c018ff232e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-12.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-12.md"
       },
       {
         "digest": "9c2f187b0b8516efcee35dca898d132414bc4fef1f4436c989e13feee71536a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-2.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-2.md"
       },
       {
         "digest": "517154948158975bb74197d9ed0ab4bfa53fb47aa7a49e27fa28d0c5d0903a39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-3.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-3.md"
       },
       {
         "digest": "211ee0845faa15c515cd33ec44f23884eddc6dbe3fb4d5c93a8b20577a56c0a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-4.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-4.md"
       },
       {
         "digest": "bede3f7bd77eb397c5fba835e28c4b350d4ded423949a1380fa65da8be3bef50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-5.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-5.md"
       },
       {
         "digest": "17a0b31aebb93507dce059ae02ce70ef0d8000cc12b480526a6faabc7abef634",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-6.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-6.md"
       },
       {
         "digest": "23cde41ab306714c6a5095ead8d269e2beb85274fbad88535447624543f39f10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-7.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-7.md"
       },
       {
         "digest": "6745df88e071b50d6db8e6ae98584b05b1d9aa078c6f4c913a4d5f9b84ed108e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-8.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-8.md"
       },
       {
         "digest": "87def6768d6affc357dd87ba97befba9fa28df7f6f32565b4e72648f7c3a2fd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-9.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/reviews/implementation-audit-round-9.md"
       },
       {
         "digest": "de1224c14a3917819ac4607e39ae88680d72e01765e9d1d03380901121efff44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/implementation/usage.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/implementation/usage.md"
       },
       {
         "digest": "edbf2e54b4472620e3a4773d27a80ee21003847679f09d4f60634375c587be1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-1.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-1.md"
       },
       {
         "digest": "5136b275ff3e6420d63d950d27935abed2fcb881f6ee619854bee560a507b99a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-2.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-2.md"
       },
       {
         "digest": "be8714158217016fb2881a2d6ac058d69e058e8bd398b78703b75581e77a5e2a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-3.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-3.md"
       },
       {
         "digest": "23b236187d7ac33976a97c77ff090c5f6d129c3fa8d8d9f0489a552fcd475397",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-4.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-4.md"
       },
       {
         "digest": "b3568088d3b8a29f2f03c0ee42559bf780a708d17f0ad9ba471709acea943d25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-5.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/reviews/self-review-round-5.md"
       },
       {
         "digest": "b5bc871720ce267e0b90542a60a729fdf2e7e1a0f07b4cc78444cc835247a399",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/index.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/index.md"
       },
       {
         "digest": "9ffb1ef119f13649fcd35c5bdac1659ec70de35a6d2788eb7d79be41e6c55107",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-01-contracts.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-01-contracts.md"
       },
       {
         "digest": "4cb8b617b7860cfa13ea0a6d689393171707b9c17a9c9fe1da216ae83017d07c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-02-schema-migration.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-02-schema-migration.md"
       },
       {
         "digest": "cb9afa57d21094d8ecc872a6300f4dd656b6b6afe1639a2b6035cad797e62076",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-03-catalog-service-router.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-03-catalog-service-router.md"
       },
       {
         "digest": "8d6f57202bf1f897bfc4d53114e7f854f75033d28298d81162efffc2e09016bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-04-special-product-bridge.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-04-special-product-bridge.md"
       },
       {
         "digest": "cef31386005a73ff34159f689a3c05dc096d238baff8a34debc57cd28476c717",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-05-context-detection.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-05-context-detection.md"
       },
       {
         "digest": "5c386aa4a6295dd6f0b6386bdf6371dd4d528edd33c70a7c320c4c2913ab98f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-06-shot-projection.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-06-shot-projection.md"
       },
       {
         "digest": "900462ce53220fe9c3bff37eb0c07f40699c2e9f8b2ebb8c67564631f9d9a14d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-07-prompt-media.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-07-prompt-media.md"
       },
       {
         "digest": "29b7917ce39c2f39afe62584eb7319b00d4faeb7d02b04de70cf35608d591fe1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-08-central-ui.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-08-central-ui.md"
       },
       {
         "digest": "dc507bb97542ffe31c874512ef89bb9c55838222a15fbb4d453c18367b51eb2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-09-observability-reliability.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-09-observability-reliability.md"
       },
       {
         "digest": "83a212953a2d818df9a4d61c473b53a9f5ecaf215322be079153c1becfb7b565",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/174-vertical-drama-object-reference-catalog/sections/section-10-integration-release.md"
+        "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-10-integration-release.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -787,7 +787,7 @@
     "unresolved": 183
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.518322Z",
+  "updated_at": "2026-10-06T03:28:16.569494Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

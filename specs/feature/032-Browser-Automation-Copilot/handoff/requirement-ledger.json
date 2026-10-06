@@ -4,7 +4,7 @@
   "requirements": [
     {
       "applicability": "UNASSESSED",
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/032-Browser-Automation-Copilot/spec.md",
+      "authority_source": "specs/feature/032-Browser-Automation-Copilot/spec.md",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

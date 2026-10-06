@@ -17,87 +17,87 @@
       {
         "digest": "2dda6f05f6a629896b79b741fee425e8c630e7cc075d2d2a42130ce47cff8302",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/claude-plan.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/claude-plan.md"
       },
       {
         "digest": "d0ab3164d1f7021778efe31ff8b0f706abf308aed8d5ce918bec42fc02571957",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/claude-spec.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/claude-spec.md"
       },
       {
         "digest": "a4913bd5970a61bc90e2d48af7dfe230ba224934ccbd4386d8ca2ede28b51fe4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/implementation/deep_implement_config.json"
+        "path": "specs/feature/145-hermes-remotion-render-executor/implementation/deep_implement_config.json"
       },
       {
         "digest": "34391e27e10322106db250307a3fdbc0bf96231a7658c074f0ba8b72c4226cb4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/implementation/evidence.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/implementation/evidence.md"
       },
       {
         "digest": "35e0a47b91b216f180a6d3fafa8ebf971fe33f02d5c1a4cf31a2a408555b3f91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/pre-deep-implement-audit.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/pre-deep-implement-audit.md"
       },
       {
         "digest": "efd243791dd7f2be95789bc17bbdf64ee2ac4dcf664ec6c778c86cada76c4fd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-1.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-1.md"
       },
       {
         "digest": "430034e7fc17f3083bc52dd5faa21f76dabd4566338a81357a0257dde4253185",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-2.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-2.md"
       },
       {
         "digest": "b300fdbf14d3824bff1bbc6d5f7bc8833fa5861474203d55f00c21c52043f5ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/index.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/index.md"
       },
       {
         "digest": "4d86e52533e8c9d5ba85cb273f41b3ea74a665bb4691232e89b320a638551f52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "57e48f3dd7bf38f8a90de1027df709647c63962bda40d5e37a3596872aaa3cdc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-02-scheduler-admission.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-02-scheduler-admission.md"
       },
       {
         "digest": "873628a2df75cd482a925804d982f5419ca7ae46f428518a91346c2d757ee491",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-03-hermes-mcp.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-03-hermes-mcp.md"
       },
       {
         "digest": "4159da6c546bdcd50d069305cf0514d991a50e93b91e59ca8259e1d8203668c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-04-executor-core.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-04-executor-core.md"
       },
       {
         "digest": "4f99c36be8d67fa87ac70dc9a9e0bb29e51e921bb40f6988d56707228f80cdd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-05-artifact-media-access.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-05-artifact-media-access.md"
       },
       {
         "digest": "3a4c794c2a7836decf7cb317e87fb45a84eb76badf2b57a6165907b00c8b7cc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-06-platform-packs.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-06-platform-packs.md"
       },
       {
         "digest": "dfed52782faab4a38443ff937f12b15c06591ea8ac71c38dfad145e06ce6e70a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-07-redis-security.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-07-redis-security.md"
       },
       {
         "digest": "32bc6ece9bd611359143afc2063d59541b666371079ff87747aba43b97c71ac2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-08-e2e-rollout.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-08-e2e-rollout.md"
       },
       {
         "digest": "5588fdb4ed3cfee6cc43f262897dcdbd9cb45c940f5a73a1cbfb6d19b5d2ca02",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-09-remote-mcp-device-management.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-09-remote-mcp-device-management.md"
       }
     ],
     "predecessors": [],
@@ -128,87 +128,87 @@
       {
         "digest": "2dda6f05f6a629896b79b741fee425e8c630e7cc075d2d2a42130ce47cff8302",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/claude-plan.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/claude-plan.md"
       },
       {
         "digest": "d0ab3164d1f7021778efe31ff8b0f706abf308aed8d5ce918bec42fc02571957",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/claude-spec.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/claude-spec.md"
       },
       {
         "digest": "a4913bd5970a61bc90e2d48af7dfe230ba224934ccbd4386d8ca2ede28b51fe4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/implementation/deep_implement_config.json"
+        "path": "specs/feature/145-hermes-remotion-render-executor/implementation/deep_implement_config.json"
       },
       {
         "digest": "34391e27e10322106db250307a3fdbc0bf96231a7658c074f0ba8b72c4226cb4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/implementation/evidence.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/implementation/evidence.md"
       },
       {
         "digest": "35e0a47b91b216f180a6d3fafa8ebf971fe33f02d5c1a4cf31a2a408555b3f91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/pre-deep-implement-audit.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/pre-deep-implement-audit.md"
       },
       {
         "digest": "efd243791dd7f2be95789bc17bbdf64ee2ac4dcf664ec6c778c86cada76c4fd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-1.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-1.md"
       },
       {
         "digest": "430034e7fc17f3083bc52dd5faa21f76dabd4566338a81357a0257dde4253185",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-2.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-2.md"
       },
       {
         "digest": "b300fdbf14d3824bff1bbc6d5f7bc8833fa5861474203d55f00c21c52043f5ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/index.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/index.md"
       },
       {
         "digest": "4d86e52533e8c9d5ba85cb273f41b3ea74a665bb4691232e89b320a638551f52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "57e48f3dd7bf38f8a90de1027df709647c63962bda40d5e37a3596872aaa3cdc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-02-scheduler-admission.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-02-scheduler-admission.md"
       },
       {
         "digest": "873628a2df75cd482a925804d982f5419ca7ae46f428518a91346c2d757ee491",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-03-hermes-mcp.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-03-hermes-mcp.md"
       },
       {
         "digest": "4159da6c546bdcd50d069305cf0514d991a50e93b91e59ca8259e1d8203668c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-04-executor-core.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-04-executor-core.md"
       },
       {
         "digest": "4f99c36be8d67fa87ac70dc9a9e0bb29e51e921bb40f6988d56707228f80cdd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-05-artifact-media-access.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-05-artifact-media-access.md"
       },
       {
         "digest": "3a4c794c2a7836decf7cb317e87fb45a84eb76badf2b57a6165907b00c8b7cc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-06-platform-packs.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-06-platform-packs.md"
       },
       {
         "digest": "dfed52782faab4a38443ff937f12b15c06591ea8ac71c38dfad145e06ce6e70a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-07-redis-security.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-07-redis-security.md"
       },
       {
         "digest": "32bc6ece9bd611359143afc2063d59541b666371079ff87747aba43b97c71ac2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-08-e2e-rollout.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-08-e2e-rollout.md"
       },
       {
         "digest": "5588fdb4ed3cfee6cc43f262897dcdbd9cb45c940f5a73a1cbfb6d19b5d2ca02",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-09-remote-mcp-device-management.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-09-remote-mcp-device-management.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -240,104 +240,104 @@
       {
         "digest": "2dda6f05f6a629896b79b741fee425e8c630e7cc075d2d2a42130ce47cff8302",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/claude-plan.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/claude-plan.md"
       },
       {
         "digest": "d0ab3164d1f7021778efe31ff8b0f706abf308aed8d5ce918bec42fc02571957",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/claude-spec.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/claude-spec.md"
       },
       {
         "digest": "a4913bd5970a61bc90e2d48af7dfe230ba224934ccbd4386d8ca2ede28b51fe4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/implementation/deep_implement_config.json"
+        "path": "specs/feature/145-hermes-remotion-render-executor/implementation/deep_implement_config.json"
       },
       {
         "digest": "34391e27e10322106db250307a3fdbc0bf96231a7658c074f0ba8b72c4226cb4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/implementation/evidence.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/implementation/evidence.md"
       },
       {
         "digest": "35e0a47b91b216f180a6d3fafa8ebf971fe33f02d5c1a4cf31a2a408555b3f91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/pre-deep-implement-audit.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/pre-deep-implement-audit.md"
       },
       {
         "digest": "efd243791dd7f2be95789bc17bbdf64ee2ac4dcf664ec6c778c86cada76c4fd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-1.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-1.md"
       },
       {
         "digest": "430034e7fc17f3083bc52dd5faa21f76dabd4566338a81357a0257dde4253185",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-2.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-2.md"
       },
       {
         "digest": "b300fdbf14d3824bff1bbc6d5f7bc8833fa5861474203d55f00c21c52043f5ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/index.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/index.md"
       },
       {
         "digest": "4d86e52533e8c9d5ba85cb273f41b3ea74a665bb4691232e89b320a638551f52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "57e48f3dd7bf38f8a90de1027df709647c63962bda40d5e37a3596872aaa3cdc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-02-scheduler-admission.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-02-scheduler-admission.md"
       },
       {
         "digest": "873628a2df75cd482a925804d982f5419ca7ae46f428518a91346c2d757ee491",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-03-hermes-mcp.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-03-hermes-mcp.md"
       },
       {
         "digest": "4159da6c546bdcd50d069305cf0514d991a50e93b91e59ca8259e1d8203668c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-04-executor-core.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-04-executor-core.md"
       },
       {
         "digest": "4f99c36be8d67fa87ac70dc9a9e0bb29e51e921bb40f6988d56707228f80cdd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-05-artifact-media-access.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-05-artifact-media-access.md"
       },
       {
         "digest": "3a4c794c2a7836decf7cb317e87fb45a84eb76badf2b57a6165907b00c8b7cc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-06-platform-packs.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-06-platform-packs.md"
       },
       {
         "digest": "dfed52782faab4a38443ff937f12b15c06591ea8ac71c38dfad145e06ce6e70a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-07-redis-security.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-07-redis-security.md"
       },
       {
         "digest": "32bc6ece9bd611359143afc2063d59541b666371079ff87747aba43b97c71ac2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-08-e2e-rollout.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-08-e2e-rollout.md"
       },
       {
         "digest": "5588fdb4ed3cfee6cc43f262897dcdbd9cb45c940f5a73a1cbfb6d19b5d2ca02",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-09-remote-mcp-device-management.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-09-remote-mcp-device-management.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/145-hermes-remotion-render-executor/spec.md",
     "digest": "1781c78e876eb1aaa59d8494d82859f9151ead46e54441d35c21db73e69dc49a",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.314967Z",
+      "last_evidence_at": "2026-10-06T03:28:16.164549Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-19T02:18:53+07:00",
       "spec_last_changed_at": "2026-08-19T02:18:53+07:00"
     },
-    "revision": null,
+    "revision": "0.9.0",
     "slug": "145-hermes-remotion-render-executor",
     "spec_id": "145",
     "title": "Feature 145: Hermes-triggered Dedicated Remotion Render Executor"
@@ -359,7 +359,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.314967Z"
+    "updated_at": "2026-10-06T03:28:16.164549Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -369,7 +369,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.314967Z",
+    "reconciled_at": "2026-10-06T03:28:16.164549Z",
     "sources": [
       {
         "digest": "1781c78e876eb1aaa59d8494d82859f9151ead46e54441d35c21db73e69dc49a",
@@ -379,87 +379,87 @@
       {
         "digest": "2dda6f05f6a629896b79b741fee425e8c630e7cc075d2d2a42130ce47cff8302",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/claude-plan.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/claude-plan.md"
       },
       {
         "digest": "d0ab3164d1f7021778efe31ff8b0f706abf308aed8d5ce918bec42fc02571957",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/claude-spec.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/claude-spec.md"
       },
       {
         "digest": "a4913bd5970a61bc90e2d48af7dfe230ba224934ccbd4386d8ca2ede28b51fe4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/implementation/deep_implement_config.json"
+        "path": "specs/feature/145-hermes-remotion-render-executor/implementation/deep_implement_config.json"
       },
       {
         "digest": "34391e27e10322106db250307a3fdbc0bf96231a7658c074f0ba8b72c4226cb4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/implementation/evidence.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/implementation/evidence.md"
       },
       {
         "digest": "35e0a47b91b216f180a6d3fafa8ebf971fe33f02d5c1a4cf31a2a408555b3f91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/pre-deep-implement-audit.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/pre-deep-implement-audit.md"
       },
       {
         "digest": "efd243791dd7f2be95789bc17bbdf64ee2ac4dcf664ec6c778c86cada76c4fd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-1.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-1.md"
       },
       {
         "digest": "430034e7fc17f3083bc52dd5faa21f76dabd4566338a81357a0257dde4253185",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-2.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-2.md"
       },
       {
         "digest": "b300fdbf14d3824bff1bbc6d5f7bc8833fa5861474203d55f00c21c52043f5ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/index.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/index.md"
       },
       {
         "digest": "4d86e52533e8c9d5ba85cb273f41b3ea74a665bb4691232e89b320a638551f52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "57e48f3dd7bf38f8a90de1027df709647c63962bda40d5e37a3596872aaa3cdc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-02-scheduler-admission.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-02-scheduler-admission.md"
       },
       {
         "digest": "873628a2df75cd482a925804d982f5419ca7ae46f428518a91346c2d757ee491",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-03-hermes-mcp.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-03-hermes-mcp.md"
       },
       {
         "digest": "4159da6c546bdcd50d069305cf0514d991a50e93b91e59ca8259e1d8203668c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-04-executor-core.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-04-executor-core.md"
       },
       {
         "digest": "4f99c36be8d67fa87ac70dc9a9e0bb29e51e921bb40f6988d56707228f80cdd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-05-artifact-media-access.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-05-artifact-media-access.md"
       },
       {
         "digest": "3a4c794c2a7836decf7cb317e87fb45a84eb76badf2b57a6165907b00c8b7cc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-06-platform-packs.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-06-platform-packs.md"
       },
       {
         "digest": "dfed52782faab4a38443ff937f12b15c06591ea8ac71c38dfad145e06ce6e70a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-07-redis-security.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-07-redis-security.md"
       },
       {
         "digest": "32bc6ece9bd611359143afc2063d59541b666371079ff87747aba43b97c71ac2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-08-e2e-rollout.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-08-e2e-rollout.md"
       },
       {
         "digest": "5588fdb4ed3cfee6cc43f262897dcdbd9cb45c940f5a73a1cbfb6d19b5d2ca02",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-09-remote-mcp-device-management.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-09-remote-mcp-device-management.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -509,87 +509,87 @@
       {
         "digest": "2dda6f05f6a629896b79b741fee425e8c630e7cc075d2d2a42130ce47cff8302",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/claude-plan.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/claude-plan.md"
       },
       {
         "digest": "d0ab3164d1f7021778efe31ff8b0f706abf308aed8d5ce918bec42fc02571957",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/claude-spec.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/claude-spec.md"
       },
       {
         "digest": "a4913bd5970a61bc90e2d48af7dfe230ba224934ccbd4386d8ca2ede28b51fe4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/implementation/deep_implement_config.json"
+        "path": "specs/feature/145-hermes-remotion-render-executor/implementation/deep_implement_config.json"
       },
       {
         "digest": "34391e27e10322106db250307a3fdbc0bf96231a7658c074f0ba8b72c4226cb4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/implementation/evidence.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/implementation/evidence.md"
       },
       {
         "digest": "35e0a47b91b216f180a6d3fafa8ebf971fe33f02d5c1a4cf31a2a408555b3f91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/pre-deep-implement-audit.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/pre-deep-implement-audit.md"
       },
       {
         "digest": "efd243791dd7f2be95789bc17bbdf64ee2ac4dcf664ec6c778c86cada76c4fd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-1.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-1.md"
       },
       {
         "digest": "430034e7fc17f3083bc52dd5faa21f76dabd4566338a81357a0257dde4253185",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-2.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/reviews/self-review-round-2.md"
       },
       {
         "digest": "b300fdbf14d3824bff1bbc6d5f7bc8833fa5861474203d55f00c21c52043f5ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/index.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/index.md"
       },
       {
         "digest": "4d86e52533e8c9d5ba85cb273f41b3ea74a665bb4691232e89b320a638551f52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-01-shared-contracts.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "57e48f3dd7bf38f8a90de1027df709647c63962bda40d5e37a3596872aaa3cdc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-02-scheduler-admission.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-02-scheduler-admission.md"
       },
       {
         "digest": "873628a2df75cd482a925804d982f5419ca7ae46f428518a91346c2d757ee491",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-03-hermes-mcp.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-03-hermes-mcp.md"
       },
       {
         "digest": "4159da6c546bdcd50d069305cf0514d991a50e93b91e59ca8259e1d8203668c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-04-executor-core.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-04-executor-core.md"
       },
       {
         "digest": "4f99c36be8d67fa87ac70dc9a9e0bb29e51e921bb40f6988d56707228f80cdd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-05-artifact-media-access.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-05-artifact-media-access.md"
       },
       {
         "digest": "3a4c794c2a7836decf7cb317e87fb45a84eb76badf2b57a6165907b00c8b7cc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-06-platform-packs.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-06-platform-packs.md"
       },
       {
         "digest": "dfed52782faab4a38443ff937f12b15c06591ea8ac71c38dfad145e06ce6e70a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-07-redis-security.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-07-redis-security.md"
       },
       {
         "digest": "32bc6ece9bd611359143afc2063d59541b666371079ff87747aba43b97c71ac2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-08-e2e-rollout.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-08-e2e-rollout.md"
       },
       {
         "digest": "5588fdb4ed3cfee6cc43f262897dcdbd9cb45c940f5a73a1cbfb6d19b5d2ca02",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/145-hermes-remotion-render-executor/sections/section-09-remote-mcp-device-management.md"
+        "path": "specs/feature/145-hermes-remotion-render-executor/sections/section-09-remote-mcp-device-management.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -607,7 +607,7 @@
     "unresolved": 256
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.314967Z",
+  "updated_at": "2026-10-06T03:28:16.164549Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

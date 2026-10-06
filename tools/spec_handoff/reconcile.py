@@ -212,6 +212,17 @@ def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_
             "residual_requirements": [], "evidence": [spec_path.relative_to(repo).as_posix(), digest],
             "next_action": "Reconcile requirements and invalidate only affected evidence.",
         }
+    if inventory_record is not None:
+        # Keep the canonical handoff identity in sync with the same parser and
+        # directory identity used by dynamic inventory, even when the Spec
+        # digest itself has not changed since an older parser version.
+        previous["identity"].update({
+            "spec_id": inventory_record.get("spec_id") or previous["identity"].get("spec_id"),
+            "slug": inventory_record.get("slug", spec_dir.name),
+            "title": inventory_record.get("title", spec_dir.name),
+            "canonical_path": inventory_record.get("spec_path") or spec_path.relative_to(repo).as_posix(),
+            "revision": inventory_record.get("revision"),
+        })
         previous["reconciliation"]["reconciled_at"] = utc_now()
     evidence = [{"path": spec_path.relative_to(repo).as_posix(), "kind": "NORMATIVE_SPEC", "digest": digest}] + _supporting_evidence(spec_dir, repo)
     reconciled_at = previous["reconciliation"].get("reconciled_at") or utc_now()

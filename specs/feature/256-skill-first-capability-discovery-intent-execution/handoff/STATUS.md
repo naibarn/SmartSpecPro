@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
-# 256 — Spec 256 — Skill-First Capability Discovery & Intent Execution (R1.2)
+# 256 — SmartAIHub Skill-First Capability Discovery & Intent Execution
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 161 unresolved of 161
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 6
+- Manifest generation: 8
 
 ## Source-declared status and relationship claims
 

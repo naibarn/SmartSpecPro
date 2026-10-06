@@ -17,72 +17,72 @@
       {
         "digest": "7ddfbab8f26e64b7b00d1a8df919fa360acf91dee18b54b33d0bfca88b8c6d01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/claude-plan.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/claude-plan.md"
       },
       {
         "digest": "29dd5c7cc75413863752dfffd42ee7c63883d5480c5f45690051173e019c0cb9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/claude-spec.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/claude-spec.md"
       },
       {
         "digest": "0bf0be747be305d97323e676fbe9a9fcd564e12ee2064ef9bc30c22f8e82bfbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/completeness-review.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/completeness-review.md"
       },
       {
         "digest": "99cef90adc542027d177a316da1ba120da42d8fb7223c78f8fc8a8bf5b87232e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/deep_implement_config.json"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/deep_implement_config.json"
       },
       {
         "digest": "bd0e95865246ce183a64c74c36e5095abe6739ae68a7300d49d1649bcd56e5b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/usage.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/usage.md"
       },
       {
         "digest": "ac6b614e9a18adf6bfd73b1e3fe33c7fb0845bf006cf96e383290624f4240929",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/reviews/self-review-round-1.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/reviews/self-review-round-1.md"
       },
       {
         "digest": "0dc90b71360b0a2279df43b61dec99c9758b354710706920286a8c684269a3a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/index.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/index.md"
       },
       {
         "digest": "381d82f967ed8f7f0d36246517f6177b791fcf122736224afdade311ebec098d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-01-schema-contracts.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-01-schema-contracts.md"
       },
       {
         "digest": "793f3e72eda686ae853abf98844aefaf3ef70a029ebd103a33a4b75f8fba4e61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-02-resolver-linking.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-02-resolver-linking.md"
       },
       {
         "digest": "2e7f92d13e0d267108087ff39f95a5aa49ae379052ab3c6b6957de76dd3407d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-03-billing-propagation.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-03-billing-propagation.md"
       },
       {
         "digest": "741089e74238ac523beca1aa941d594553c3fd63c0679122e9444746ba340762",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-04-backfill-audit.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-04-backfill-audit.md"
       },
       {
         "digest": "a4a220abe95f1fecfa47f5e1104bbfd35a3796726a6713216be300927a3bedbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-05-reports-api.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-05-reports-api.md"
       },
       {
         "digest": "0eb975a65398e3fd7e004eff36084e1e92b6e05eae1234b037d28f81b58fbc9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-06-credits-ui.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-06-credits-ui.md"
       },
       {
         "digest": "8684f18eb7dbd9fa655121e1c2885c4512b924f1c3ddec14fecd4afb37a9db71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-07-verification-operations.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-07-verification-operations.md"
       }
     ],
     "predecessors": [],
@@ -113,72 +113,72 @@
       {
         "digest": "7ddfbab8f26e64b7b00d1a8df919fa360acf91dee18b54b33d0bfca88b8c6d01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/claude-plan.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/claude-plan.md"
       },
       {
         "digest": "29dd5c7cc75413863752dfffd42ee7c63883d5480c5f45690051173e019c0cb9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/claude-spec.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/claude-spec.md"
       },
       {
         "digest": "0bf0be747be305d97323e676fbe9a9fcd564e12ee2064ef9bc30c22f8e82bfbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/completeness-review.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/completeness-review.md"
       },
       {
         "digest": "99cef90adc542027d177a316da1ba120da42d8fb7223c78f8fc8a8bf5b87232e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/deep_implement_config.json"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/deep_implement_config.json"
       },
       {
         "digest": "bd0e95865246ce183a64c74c36e5095abe6739ae68a7300d49d1649bcd56e5b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/usage.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/usage.md"
       },
       {
         "digest": "ac6b614e9a18adf6bfd73b1e3fe33c7fb0845bf006cf96e383290624f4240929",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/reviews/self-review-round-1.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/reviews/self-review-round-1.md"
       },
       {
         "digest": "0dc90b71360b0a2279df43b61dec99c9758b354710706920286a8c684269a3a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/index.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/index.md"
       },
       {
         "digest": "381d82f967ed8f7f0d36246517f6177b791fcf122736224afdade311ebec098d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-01-schema-contracts.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-01-schema-contracts.md"
       },
       {
         "digest": "793f3e72eda686ae853abf98844aefaf3ef70a029ebd103a33a4b75f8fba4e61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-02-resolver-linking.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-02-resolver-linking.md"
       },
       {
         "digest": "2e7f92d13e0d267108087ff39f95a5aa49ae379052ab3c6b6957de76dd3407d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-03-billing-propagation.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-03-billing-propagation.md"
       },
       {
         "digest": "741089e74238ac523beca1aa941d594553c3fd63c0679122e9444746ba340762",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-04-backfill-audit.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-04-backfill-audit.md"
       },
       {
         "digest": "a4a220abe95f1fecfa47f5e1104bbfd35a3796726a6713216be300927a3bedbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-05-reports-api.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-05-reports-api.md"
       },
       {
         "digest": "0eb975a65398e3fd7e004eff36084e1e92b6e05eae1234b037d28f81b58fbc9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-06-credits-ui.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-06-credits-ui.md"
       },
       {
         "digest": "8684f18eb7dbd9fa655121e1c2885c4512b924f1c3ddec14fecd4afb37a9db71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-07-verification-operations.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-07-verification-operations.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -210,89 +210,89 @@
       {
         "digest": "7ddfbab8f26e64b7b00d1a8df919fa360acf91dee18b54b33d0bfca88b8c6d01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/claude-plan.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/claude-plan.md"
       },
       {
         "digest": "29dd5c7cc75413863752dfffd42ee7c63883d5480c5f45690051173e019c0cb9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/claude-spec.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/claude-spec.md"
       },
       {
         "digest": "0bf0be747be305d97323e676fbe9a9fcd564e12ee2064ef9bc30c22f8e82bfbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/completeness-review.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/completeness-review.md"
       },
       {
         "digest": "99cef90adc542027d177a316da1ba120da42d8fb7223c78f8fc8a8bf5b87232e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/deep_implement_config.json"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/deep_implement_config.json"
       },
       {
         "digest": "bd0e95865246ce183a64c74c36e5095abe6739ae68a7300d49d1649bcd56e5b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/usage.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/usage.md"
       },
       {
         "digest": "ac6b614e9a18adf6bfd73b1e3fe33c7fb0845bf006cf96e383290624f4240929",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/reviews/self-review-round-1.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/reviews/self-review-round-1.md"
       },
       {
         "digest": "0dc90b71360b0a2279df43b61dec99c9758b354710706920286a8c684269a3a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/index.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/index.md"
       },
       {
         "digest": "381d82f967ed8f7f0d36246517f6177b791fcf122736224afdade311ebec098d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-01-schema-contracts.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-01-schema-contracts.md"
       },
       {
         "digest": "793f3e72eda686ae853abf98844aefaf3ef70a029ebd103a33a4b75f8fba4e61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-02-resolver-linking.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-02-resolver-linking.md"
       },
       {
         "digest": "2e7f92d13e0d267108087ff39f95a5aa49ae379052ab3c6b6957de76dd3407d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-03-billing-propagation.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-03-billing-propagation.md"
       },
       {
         "digest": "741089e74238ac523beca1aa941d594553c3fd63c0679122e9444746ba340762",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-04-backfill-audit.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-04-backfill-audit.md"
       },
       {
         "digest": "a4a220abe95f1fecfa47f5e1104bbfd35a3796726a6713216be300927a3bedbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-05-reports-api.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-05-reports-api.md"
       },
       {
         "digest": "0eb975a65398e3fd7e004eff36084e1e92b6e05eae1234b037d28f81b58fbc9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-06-credits-ui.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-06-credits-ui.md"
       },
       {
         "digest": "8684f18eb7dbd9fa655121e1c2885c4512b924f1c3ddec14fecd4afb37a9db71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-07-verification-operations.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-07-verification-operations.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
     "digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.465364Z",
+      "last_evidence_at": "2026-10-06T03:28:16.473463Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-30T21:05:27+07:00",
       "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
     },
-    "revision": null,
+    "revision": "1.10.0",
     "slug": "166-credit-context-polymorphic-lineage",
     "spec_id": "166",
     "title": "Feature 166: Polymorphic Credit Context and Work Lineage"
@@ -314,7 +314,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.465364Z"
+    "updated_at": "2026-10-06T03:28:16.473463Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -324,7 +324,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.465364Z",
+    "reconciled_at": "2026-10-06T03:28:16.473463Z",
     "sources": [
       {
         "digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
@@ -334,72 +334,72 @@
       {
         "digest": "7ddfbab8f26e64b7b00d1a8df919fa360acf91dee18b54b33d0bfca88b8c6d01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/claude-plan.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/claude-plan.md"
       },
       {
         "digest": "29dd5c7cc75413863752dfffd42ee7c63883d5480c5f45690051173e019c0cb9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/claude-spec.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/claude-spec.md"
       },
       {
         "digest": "0bf0be747be305d97323e676fbe9a9fcd564e12ee2064ef9bc30c22f8e82bfbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/completeness-review.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/completeness-review.md"
       },
       {
         "digest": "99cef90adc542027d177a316da1ba120da42d8fb7223c78f8fc8a8bf5b87232e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/deep_implement_config.json"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/deep_implement_config.json"
       },
       {
         "digest": "bd0e95865246ce183a64c74c36e5095abe6739ae68a7300d49d1649bcd56e5b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/usage.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/usage.md"
       },
       {
         "digest": "ac6b614e9a18adf6bfd73b1e3fe33c7fb0845bf006cf96e383290624f4240929",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/reviews/self-review-round-1.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/reviews/self-review-round-1.md"
       },
       {
         "digest": "0dc90b71360b0a2279df43b61dec99c9758b354710706920286a8c684269a3a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/index.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/index.md"
       },
       {
         "digest": "381d82f967ed8f7f0d36246517f6177b791fcf122736224afdade311ebec098d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-01-schema-contracts.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-01-schema-contracts.md"
       },
       {
         "digest": "793f3e72eda686ae853abf98844aefaf3ef70a029ebd103a33a4b75f8fba4e61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-02-resolver-linking.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-02-resolver-linking.md"
       },
       {
         "digest": "2e7f92d13e0d267108087ff39f95a5aa49ae379052ab3c6b6957de76dd3407d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-03-billing-propagation.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-03-billing-propagation.md"
       },
       {
         "digest": "741089e74238ac523beca1aa941d594553c3fd63c0679122e9444746ba340762",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-04-backfill-audit.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-04-backfill-audit.md"
       },
       {
         "digest": "a4a220abe95f1fecfa47f5e1104bbfd35a3796726a6713216be300927a3bedbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-05-reports-api.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-05-reports-api.md"
       },
       {
         "digest": "0eb975a65398e3fd7e004eff36084e1e92b6e05eae1234b037d28f81b58fbc9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-06-credits-ui.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-06-credits-ui.md"
       },
       {
         "digest": "8684f18eb7dbd9fa655121e1c2885c4512b924f1c3ddec14fecd4afb37a9db71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-07-verification-operations.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-07-verification-operations.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -449,72 +449,72 @@
       {
         "digest": "7ddfbab8f26e64b7b00d1a8df919fa360acf91dee18b54b33d0bfca88b8c6d01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/claude-plan.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/claude-plan.md"
       },
       {
         "digest": "29dd5c7cc75413863752dfffd42ee7c63883d5480c5f45690051173e019c0cb9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/claude-spec.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/claude-spec.md"
       },
       {
         "digest": "0bf0be747be305d97323e676fbe9a9fcd564e12ee2064ef9bc30c22f8e82bfbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/completeness-review.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/completeness-review.md"
       },
       {
         "digest": "99cef90adc542027d177a316da1ba120da42d8fb7223c78f8fc8a8bf5b87232e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/deep_implement_config.json"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/deep_implement_config.json"
       },
       {
         "digest": "bd0e95865246ce183a64c74c36e5095abe6739ae68a7300d49d1649bcd56e5b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/implementation/usage.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/implementation/usage.md"
       },
       {
         "digest": "ac6b614e9a18adf6bfd73b1e3fe33c7fb0845bf006cf96e383290624f4240929",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/reviews/self-review-round-1.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/reviews/self-review-round-1.md"
       },
       {
         "digest": "0dc90b71360b0a2279df43b61dec99c9758b354710706920286a8c684269a3a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/index.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/index.md"
       },
       {
         "digest": "381d82f967ed8f7f0d36246517f6177b791fcf122736224afdade311ebec098d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-01-schema-contracts.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-01-schema-contracts.md"
       },
       {
         "digest": "793f3e72eda686ae853abf98844aefaf3ef70a029ebd103a33a4b75f8fba4e61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-02-resolver-linking.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-02-resolver-linking.md"
       },
       {
         "digest": "2e7f92d13e0d267108087ff39f95a5aa49ae379052ab3c6b6957de76dd3407d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-03-billing-propagation.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-03-billing-propagation.md"
       },
       {
         "digest": "741089e74238ac523beca1aa941d594553c3fd63c0679122e9444746ba340762",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-04-backfill-audit.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-04-backfill-audit.md"
       },
       {
         "digest": "a4a220abe95f1fecfa47f5e1104bbfd35a3796726a6713216be300927a3bedbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-05-reports-api.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-05-reports-api.md"
       },
       {
         "digest": "0eb975a65398e3fd7e004eff36084e1e92b6e05eae1234b037d28f81b58fbc9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-06-credits-ui.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-06-credits-ui.md"
       },
       {
         "digest": "8684f18eb7dbd9fa655121e1c2885c4512b924f1c3ddec14fecd4afb37a9db71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/166-credit-context-polymorphic-lineage/sections/section-07-verification-operations.md"
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-07-verification-operations.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -532,7 +532,7 @@
     "unresolved": 260
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.465364Z",
+  "updated_at": "2026-10-06T03:28:16.473463Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

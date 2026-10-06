@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L51"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L51"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L51",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L113"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L113"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L113",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L133"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L133",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L161"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L161"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L161",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L233"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L233"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L233",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L288"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L288"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L288",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L351"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L351"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L351",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L381"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L381"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L381",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L393"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L393"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L393",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L393",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L420"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L420"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L420",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L459"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L459"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L459",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L491"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L491"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L491",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L491",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L570"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L570"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L570",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L570",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L582"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L582"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L582",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L582",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L672"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L672"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L672",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L773"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L773"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L773",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L789"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L789"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L789",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L816"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L816"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L816",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L816",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L830"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L830"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L830",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L830",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L846"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L846"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L846",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L846",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L854"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L854"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L854",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L854",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L864"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L864"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L864",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L864",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L877"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L877"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L877",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L877",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L881"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L881"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L881",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L881",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L887"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L887"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L887",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L887",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L909"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L909"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L909",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L909",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L913"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L913"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L913",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L913",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L929"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L929"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L929",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L929",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L952"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L952"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L952",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L952",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L956"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L956"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L956",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L956",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L978"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L978"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L978",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L978",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L996"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L996"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L996",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1007"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1007"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1007",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1007",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1072"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1072"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1072",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1072",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1073"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1073"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1073",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1073",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1074"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1074"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1074",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1075"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1075"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1075",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1075",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1076"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1076"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1076",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1076",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1077"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1077"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1077",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1077",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1078"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1078"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1078",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1078",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1079"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1079"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1079",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1079",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1080"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1080"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1080",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1080",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1081"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1081"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1081",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1081",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1082"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1082"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1082",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1082",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1083"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1083"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1083",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1083",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1084"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1084"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1084",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1084",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1085"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1085"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1085",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1085",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1086"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1086"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1086",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1086",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1087"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1087"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1087",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1087",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1088"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1088"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1088",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1088",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1089"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1089"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1089",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1089",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1090"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1090"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1090",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1090",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1091"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1091"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1091",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1091",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1092"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1092"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1092",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1092",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1093"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1093"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1093",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1093",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1094"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1094"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1094",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1094",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1095"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1095"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1095",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1095",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1096"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1096"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1096",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1096",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1097"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1097"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1097",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1097",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1098"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1098"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1098",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1098",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1099"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1099"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1099",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1099",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1100"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1100"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1100",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1101"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1101"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1101",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1119"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1119"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1119",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1144"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1144"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1144",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1205"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1205"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1205",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1215"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1215"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1215",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1221"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1221"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1221",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1223"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1223"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1223",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1223",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1231"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1231"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1231",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1233"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1233"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1233",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1246"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1246"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1246",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1249"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1249"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1249",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1255"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1255"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1255",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1273"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1273"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1273",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1273",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1295"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1295"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1295",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1317"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1317"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1317",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1331"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1331"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1331",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1342"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1342"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1342",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1342",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1356"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1356"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1356",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1358"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1358"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1358",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1358",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1378"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1378"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1378",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1382"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1382"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1382",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1384"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1384"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1384",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1402"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1402"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1402",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1412"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1412"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1412",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1412",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1420"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1420"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1420",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1422"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1422"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1422",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1422",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1440"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1440"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1440",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1440",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1442"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1442"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1442",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1442",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1471"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1471"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1471",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1471",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1493"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1493"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1493",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1493",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1494"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1494"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1494",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1494",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1495"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1495"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1495",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1495",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1496"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1496"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1496",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1496",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1497"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1497"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1497",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1497",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1498"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1498"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1498",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1499"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1499"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1499",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1499",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1500"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1500"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1500",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1501"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1501"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1501",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1501",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1502"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1502"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1502",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1502",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1503"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1503"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1503",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1503",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1504"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1504"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1504",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1504",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1505"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1505"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1505",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1505",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1506"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1506"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1506",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1506",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1507"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1507"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1507",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1507",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1508"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1508"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1508",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1508",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1509"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1509"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1509",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1509",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1510"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1510"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1510",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1510",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1511"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1511"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1511",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1512"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1512"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1512",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1512",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1513"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1513"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1513",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1513",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1514"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1514"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1514",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1514",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1515"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1515"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1515",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1516"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1516"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1516",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1516",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1517"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1517"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1517",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1517",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1518"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1518"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1518",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1519"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1519"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1519",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1519",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1520"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1520"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1520",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1520",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1521"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1521"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1521",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1522"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1522"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1522",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1522",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1523"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1523"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1523",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1523",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1524"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1524"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1524",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1524",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1525"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1525"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1525",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1526"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1526"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1526",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1527"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1527"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1527",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1528"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1528"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1528",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1528",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1529"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1529"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1529",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1530"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1530"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1530",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1530",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1542"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1542"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1542",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1542",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1543"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1543"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1543",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1544"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1544"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1544",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1545"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1545"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1545",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1545",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1546"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1546"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1546",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1546",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1547"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1547"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1547",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1547",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1548"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1548"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1548",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1548",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1549"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1549"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1549",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1550"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1550"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1550",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1550",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1590"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1590"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1590",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1590",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1594"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1594"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1594",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1594",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1618"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1618"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1618",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1649"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1649"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1649",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1655"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1655"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1655",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1655",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1657"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1657"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1657",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1674"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1674"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1674",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1674",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1678"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1678"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1678",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1678",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1684"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1684"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1684",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1684",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1701"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1701"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1701",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1707"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1707"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1707",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1707",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1711"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1711"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1711",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1711",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1733"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1733"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1733",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1752"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1752"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1752",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1752",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1758"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1758"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1758",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1776"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1776"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1776",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1776",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1818"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1818"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1818",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1818",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1819"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1819"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1819",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1819",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1820"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1820"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1820",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1820",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1821"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1821"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1821",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1821",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1822"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1822"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1822",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1822",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1823"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1823"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1823",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1823",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1824"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1824"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1824",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1824",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3569,9 +3569,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1825"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1825"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1825",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1825",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3591,9 +3591,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1826"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1826"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1826",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1826",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3613,9 +3613,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1827"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1827"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1827",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1827",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3635,9 +3635,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1828"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1828"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1828",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1828",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3657,9 +3657,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1829"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1829"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1829",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1829",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3679,9 +3679,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1830"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1830"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1830",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1830",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3701,9 +3701,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1831"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1831"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1831",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1831",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3723,9 +3723,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1832"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1832"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1832",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1832",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3745,9 +3745,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1833"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1833"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1833",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1833",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3767,9 +3767,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1834"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1834"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1834",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1834",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3789,9 +3789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1835"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1835"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1835",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1835",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3811,9 +3811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1836"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1836"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1836",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1836",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3833,9 +3833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1837"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1837"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1837",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1837",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3855,9 +3855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1838"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1838"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1838",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1838",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3877,9 +3877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1839"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1839"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1839",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1839",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3899,9 +3899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1840"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1840"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1840",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1840",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3921,9 +3921,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1841"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1841"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1841",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1841",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3943,9 +3943,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1842"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1842"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1842",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1842",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3965,9 +3965,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1843"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1843"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1843",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1843",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3987,9 +3987,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1844"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1844"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1844",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1844",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4009,9 +4009,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1845"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1845"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1845",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1845",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4031,9 +4031,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1846"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1846"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1846",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1846",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4053,9 +4053,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1847"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1847"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1847",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1847",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4075,9 +4075,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1848"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1848"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1848",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1848",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4097,9 +4097,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1849"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1849"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1849",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1849",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4119,9 +4119,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1850"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1850"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1850",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1850",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4141,9 +4141,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1851"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1851"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1851",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1851",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4163,9 +4163,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1852"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1852"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1852",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1852",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4185,9 +4185,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1853"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1853"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1853",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1853",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4207,9 +4207,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1865"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1865"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1865",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1865",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4229,9 +4229,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1899"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1899"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1899",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1899",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4251,9 +4251,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1903"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1903"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1903",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1903",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4273,9 +4273,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1907"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1907"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1907",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1907",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4295,9 +4295,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1911"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1911"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1911",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1911",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4317,9 +4317,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1923"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1923"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1923",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1923",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4339,9 +4339,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1924"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1924"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1924",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1924",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4361,9 +4361,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1925"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1925"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1925",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1925",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4383,9 +4383,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1926"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1926"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1926",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1926",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4405,9 +4405,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1927"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1927"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1927",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1927",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4427,9 +4427,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1928"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1928"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1928",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1928",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4449,9 +4449,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1929"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1929"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1929",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1929",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4471,9 +4471,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1930"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1930"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1930",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1930",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4493,9 +4493,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1931"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1931"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1931",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1931",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4515,9 +4515,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1932"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1932"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1932",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1932",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4537,9 +4537,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1944"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1944"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1944",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1944",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4559,9 +4559,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1976"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1976"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1976",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1976",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4581,9 +4581,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1977"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1977"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1977",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1977",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4603,9 +4603,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1978"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1978"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1978",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1978",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4625,9 +4625,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1979"
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1979"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1979",
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1979",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

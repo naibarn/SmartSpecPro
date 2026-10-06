@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/spec.md#L342"
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L342"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/spec.md#L342",
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L342",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/spec.md#L352"
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L352"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/spec.md#L352",
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/spec.md#L879"
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L879"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/spec.md#L879",
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L879",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

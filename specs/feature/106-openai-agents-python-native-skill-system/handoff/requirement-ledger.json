@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L133"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L133",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L163"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L163"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L163",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L164"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L164"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L164",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L165"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L165"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L165",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L166"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L166"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L166",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L167"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L167"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L167",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L167",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L171"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L171"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L171",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L172"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L172"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L172",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L172",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L173"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L173"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L173",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L173",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L174"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L174"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L174",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L175"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L175"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L175",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L175",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L179"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L179"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L179",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L180"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L180"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L180",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L181"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L181"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L181",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L182"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L182"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L182",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L183"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L183"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L183",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L184"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L184"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L184",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L210"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L210"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L210",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L217"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L217"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L217",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L218"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L218"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L218",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L220"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L220"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L220",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L220",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L221"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L221"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L221",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L224"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L224"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L224",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L224",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L226"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L226"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L226",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L226",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L228"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L228"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L228",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L228",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L229"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L229"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L229",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L241"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L241"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L241",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L298"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L298"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L298",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L298",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L306"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L306"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L306",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L306",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L332"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L332"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L332",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L343"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L343"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L343",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L343",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L345"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L345"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L345",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L345",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L346"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L346"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L346",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L347"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L347"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L347",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L348"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L348"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L348",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L349"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L349"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L349",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L349",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L350"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L350"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L350",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L350",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L351"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L351"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L351",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L355"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L355"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L355",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L355",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L357"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L357"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L357",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L357",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L358"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L358"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L358",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L358",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L362"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L362"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L362",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L362",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L363"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L363"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L363",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L364"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L364"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L364",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L364",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L365"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L365"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L365",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L365",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L366"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L366"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L366",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L370"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L370"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L370",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L372"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L372"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L372",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L373"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L373"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L373",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L374"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L374"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L374",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L374",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L375"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L375"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L375",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L376"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L376"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L376",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L380"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L380"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L380",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L380",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L382"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L382"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L382",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L383"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L383"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L383",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L384"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L384"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L384",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L385"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L385"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L385",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L385",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L386"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L386"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L386",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L386",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L387"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L387"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L387",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L387",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L388"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L388"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L388",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L388",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L389"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L389"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L389",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L417"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L417"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L417",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L476"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L476"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L476",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L476",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L482"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L482"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L482",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L482",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L503"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L503"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L503",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L503",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L513"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L513"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L513",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L513",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L531"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L531"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L531",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L531",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L543"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L543"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L543",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L555"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L555"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L555",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L555",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L564"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L564"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L564",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L564",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L574"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L574"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L574",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L574",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L587"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L587"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L587",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L587",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L597"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L597"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L597",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L597",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L598"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L598"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L598",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L598",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L599"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L599"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L599",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L599",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L603"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L603"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L603",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L614"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L614"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L614",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L614",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L625"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L625"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L625",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L634"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L634"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L634",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L636"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L636"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L636",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L638"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L638"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L638",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L638",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L647"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L647"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L647",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L647",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L660"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L660"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L660",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L660",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L694"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L694"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L694",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L694",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L740"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L740"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L740",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L741"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L741"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L741",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L742"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L742"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L742",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L742",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L746"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L746"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L746",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L752"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L752"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L752",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L752",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L756"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L756"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L756",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L762"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L762"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L762",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L762",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L767"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L767"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L767",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L767",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,12 +2029,12 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L811",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L819",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L829",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L838"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L811",
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L819",
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L829",
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L838"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L811",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L811",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2054,9 +2054,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L813"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L813"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L813",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L813",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2076,9 +2076,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L814"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L814"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L814",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2098,9 +2098,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L815"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L815"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L815",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L815",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2120,9 +2120,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L821"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L821"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L821",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L821",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2142,9 +2142,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L822"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L822"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L822",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L822",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2164,9 +2164,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L823"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L823"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L823",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L823",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2186,9 +2186,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L824"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L824"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L824",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L824",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2208,9 +2208,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L825"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L825"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L825",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L825",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2230,9 +2230,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L831"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L831"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L831",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L831",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2252,9 +2252,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L832"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L832"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L832",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L832",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2274,9 +2274,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L833"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L833"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L833",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L833",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2296,9 +2296,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L834"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L834"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L834",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L834",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2318,9 +2318,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L840"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L840"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L840",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L840",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2340,9 +2340,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L841"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L841"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L841",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L841",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2362,9 +2362,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L842"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L842"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L842",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L842",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2384,9 +2384,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L843"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L843"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L843",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L843",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2406,9 +2406,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L844"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L844"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L844",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L844",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2428,9 +2428,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L850"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L850"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L850",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L850",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2450,9 +2450,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L851"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L851"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L851",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L851",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2472,9 +2472,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L857"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L857"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L857",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L857",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2494,9 +2494,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L869"
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L869"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/spec.md#L869",
+      "authority_source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md#L869",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

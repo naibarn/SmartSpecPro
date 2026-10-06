@@ -17,7 +17,7 @@
       {
         "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/006-docker-dev-environment/plan.md"
+        "path": "specs/feature/006-docker-dev-environment/plan.md"
       }
     ],
     "predecessors": [],
@@ -48,7 +48,7 @@
       {
         "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/006-docker-dev-environment/plan.md"
+        "path": "specs/feature/006-docker-dev-environment/plan.md"
       },
       {
         "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
@@ -87,19 +87,19 @@
       {
         "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/006-docker-dev-environment/plan.md"
+        "path": "specs/feature/006-docker-dev-environment/plan.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/006-docker-dev-environment/spec.md",
     "digest": "d6cae7c41a963e3c05a599d8e52030d1d57f0391bae199648ba171a92658f8b3",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.385210Z",
+      "last_evidence_at": "2026-10-06T03:28:14.615911Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-01-05T19:46:20+07:00",
       "spec_last_changed_at": "2026-01-05T19:46:20+07:00"
@@ -126,7 +126,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.385210Z"
+    "updated_at": "2026-10-06T03:28:14.615911Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -136,7 +136,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.385210Z",
+    "reconciled_at": "2026-10-06T03:28:14.615911Z",
     "sources": [
       {
         "digest": "d6cae7c41a963e3c05a599d8e52030d1d57f0391bae199648ba171a92658f8b3",
@@ -146,7 +146,7 @@
       {
         "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/006-docker-dev-environment/plan.md"
+        "path": "specs/feature/006-docker-dev-environment/plan.md"
       },
       {
         "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
@@ -189,7 +189,7 @@
       {
         "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/006-docker-dev-environment/plan.md"
+        "path": "specs/feature/006-docker-dev-environment/plan.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -207,7 +207,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.385210Z",
+  "updated_at": "2026-10-06T03:28:14.615911Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

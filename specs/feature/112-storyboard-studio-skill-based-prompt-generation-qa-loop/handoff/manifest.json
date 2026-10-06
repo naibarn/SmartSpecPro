@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md",
     "digest": "429703c1006e5ca19c47db60c305dadc6700f5321a225f78078e632a42c560ec",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.022832Z",
+      "last_evidence_at": "2026-10-06T03:28:15.617727Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-05-12T19:33:57+07:00",
       "spec_last_changed_at": "2026-05-12T19:33:57+07:00"
@@ -104,7 +104,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.022832Z"
+    "updated_at": "2026-10-06T03:28:15.617727Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,7 +114,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.022832Z",
+    "reconciled_at": "2026-10-06T03:28:15.617727Z",
     "sources": [
       {
         "digest": "429703c1006e5ca19c47db60c305dadc6700f5321a225f78078e632a42c560ec",
@@ -182,7 +182,7 @@
     "unresolved": 51
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.022832Z",
+  "updated_at": "2026-10-06T03:28:15.617727Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -130,6 +130,11 @@ def inventory(repo: Path) -> dict[str, Any]:
                 kind = "HISTORICAL_SPEC" if has_spec else "HISTORICAL_CANDIDATE"
             elif duplicate_parent:
                 kind = "DUPLICATE_SPEC_COPY"
+            elif has_spec and "requirements.deep-project" in path.relative_to(repo).parts:
+                # Deep-project unit specs are project requirements, not
+                # repository-wide Spec IDs. Keep them discoverable without
+                # treating their local sequence numbers as canonical IDs.
+                kind = "PROJECT_REQUIREMENTS"
             elif has_spec:
                 kind = "CANONICAL_SPEC" if problem is None else "INVALID_SPEC"
             elif root_name in config["planning_roots"]:
