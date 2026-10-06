@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542",
+    "expected_canonical_sha": "07e8ca3ec5f5cacbb81eb0feb15f043c0705a332",
     "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
   },
   "continuation": {
-    "next_action": "REPOSITORY_WIDE_SPEC_RECONCILIATION_COMPLETE = TRUE. Close REVIEW_REMAINING_RECONCILIATION_RECORDS. NEXT_WORKUNIT = FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE. Keep CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE false until that final gate passes.",
-    "next_ready_workunit": "FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE",
+    "next_action": "REPOSITORY_WIDE_SPEC_RECONCILIATION_COMPLETE = TRUE. CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE = TRUE. NEXT_WORKUNIT = P0_WORKSPACE_AUTHORITY_AND_CONVERGENCE_HARDENING. Individual Spec implementation, acceptance, deployment, and completion remain separately governed.",
+    "next_ready_workunit": "P0_WORKSPACE_AUTHORITY_AND_CONVERGENCE_HARDENING",
     "reactivation_predicate": null,
-    "resume_point": "SPEC-161 disposition C is integrated and post-integration integrity validation passed on origin/main 1023ec47a74262f285bd0d8a03f36c2d758d9542. Inventory 463 records / 306 canonical Specs; 329 review records, 0 unresolved authority, 0 duplicate canonical authorities, 6 aliases, 302 relationship edges with 0 dangling edges. Resume at FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE. Repository-wide reconciliation is complete; canonical Handoff migration remains incomplete.",
+    "resume_point": "Final canonical handoff gate passed against origin/main 07e8ca3ec5f5cacbb81eb0feb15f043c0705a332: 463 discovered/indexed records, 306 canonical Specs, 302 relationship edges, 6 validated aliases, 0 unresolved classifications, 82 handoff tests and 330 skill audit tests passed. Specs 006 and 226 are DORMANT_VALID; their open proposal requirements remain unimplemented and do not block migration closeout.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -81,7 +81,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 39,
+  "generation": 41,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -106,61 +106,22 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542",
+    "canonical_sha": "07e8ca3ec5f5cacbb81eb0feb15f043c0705a332",
     "integrated": true,
-    "integrated_at": "2026-10-06T12:22:55Z"
+    "integrated_at": "2026-10-06T16:06:00Z"
   },
   "lifecycle": {
-    "current_state": "VALIDATION_PENDING",
-    "previous_state": "WORKING",
+    "current_state": "VERIFIED",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [
       {
-        "kind": "FRAMEWORK_CHECKPOINT",
-        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/framework-checkpoint-ad560a5d.md",
-        "sha": "ad560a5d05b498f2f1881cb96daac526c7588827"
-      },
-      {
-        "kind": "FRAMEWORK_FOLLOWUP_AND_CANDIDATE_OBSERVATION",
-        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/pre-recovery-candidate-audit-b0d1a9db.md",
-        "sha": "b0d1a9dbfaa81edfe433ab6ef14239d65615a471"
-      },
-      {
-        "kind": "FRAMEWORK_METADATA_PARSER_FOLLOWUP",
-        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/framework-followup-3e47dab0.md",
-        "sha": "3e47dab0d59acd274d3e5d897813ca0f6d5d8513"
-      },
-      {
-        "kind": "PRE_RECOVERY_DUPLICATE_REVISION_OBSERVATION",
-        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/pre-recovery-identity-observation-f4a9d00c.md",
-        "sha": "f4a9d00c638c04ac74b15ddb8942fc786942524f"
-      },
-      {
-        "kind": "POST_RECOVERY_SPEC_UPLOAD_INTEGRATED",
-        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/post-recovery-reconciliation-resumed-ade174b.md",
-        "sha": "ade174b306e6e4fcc9b078a616fa1a5634686722"
-      },
-      {
-        "kind": "POST_RECOVERY_RECONCILIATION_CHECKPOINT_INTEGRATED",
-        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/post-recovery-reconciliation-integrated-1b608c5.md",
-        "sha": "986dc5761d541ecf3c464ca1996f37bd7166c1dc0f5c051aed58fa62d2474d79"
-      },
-      {
-        "kind": "SPECV9_UPLOAD_INTEGRATED",
-        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/specv9-integrated-6ab8fc6d.md",
-        "sha": "ea79fed36e905410ed8d9567969f333458f6269de448cf59bf1d92a95269a863"
-      },
-      {
-        "kind": "DUPLICATE_ID_RECONCILIATION_POSTINTEGRATION",
-        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-spec-postintegration-20261006.md",
-        "sha": "1295f0a56f674940d09a070faea30b95244616f24a6eb446056f542c298a34b5"
-      },
-      {
-        "kind": "SPEC161_AUTHORITY_RESOLVED_RECONCILIATION",
-        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/spec161-authority-resolution-20261006.md",
-        "sha": "20513622e955bd6b66b4adec1afa7d3b83b5304d0b2aa74b1f5146c256b17da6"
+        "digest": "b26d7c5afbd7a77b0751caafedafa3569fe49b7eb619c2f51bde86b0f2211e90",
+        "kind": "FINAL_CANONICAL_HANDOFF_GATE",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/final-canonical-handoff-gate-2026-10-06.md",
+        "sha": "07e8ca3ec5f5cacbb81eb0feb15f043c0705a332"
       }
     ],
-    "updated_at": "2026-10-06T12:22:55Z"
+    "updated_at": "2026-10-06T16:06:00Z"
   },
   "manual_decisions": {
     "continuation_assessment": {
@@ -188,56 +149,17 @@
       "residual_requirements": []
     },
     "lifecycle": {
-      "current_state": "VALIDATION_PENDING",
-      "previous_state": "WORKING",
+      "current_state": "VERIFIED",
+      "previous_state": "VALIDATION_PENDING",
       "state_evidence": [
         {
-          "kind": "FRAMEWORK_CHECKPOINT",
-          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/framework-checkpoint-ad560a5d.md",
-          "sha": "ad560a5d05b498f2f1881cb96daac526c7588827"
-        },
-        {
-          "kind": "FRAMEWORK_FOLLOWUP_AND_CANDIDATE_OBSERVATION",
-          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/pre-recovery-candidate-audit-b0d1a9db.md",
-          "sha": "b0d1a9dbfaa81edfe433ab6ef14239d65615a471"
-        },
-        {
-          "kind": "FRAMEWORK_METADATA_PARSER_FOLLOWUP",
-          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/framework-followup-3e47dab0.md",
-          "sha": "3e47dab0d59acd274d3e5d897813ca0f6d5d8513"
-        },
-        {
-          "kind": "PRE_RECOVERY_DUPLICATE_REVISION_OBSERVATION",
-          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/pre-recovery-identity-observation-f4a9d00c.md",
-          "sha": "f4a9d00c638c04ac74b15ddb8942fc786942524f"
-        },
-        {
-          "kind": "POST_RECOVERY_SPEC_UPLOAD_INTEGRATED",
-          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/post-recovery-reconciliation-resumed-ade174b.md",
-          "sha": "ade174b306e6e4fcc9b078a616fa1a5634686722"
-        },
-        {
-          "kind": "POST_RECOVERY_RECONCILIATION_CHECKPOINT_INTEGRATED",
-          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/post-recovery-reconciliation-integrated-1b608c5.md",
-          "sha": "986dc5761d541ecf3c464ca1996f37bd7166c1dc0f5c051aed58fa62d2474d79"
-        },
-        {
-          "kind": "SPECV9_UPLOAD_INTEGRATED",
-          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/specv9-integrated-6ab8fc6d.md",
-          "sha": "ea79fed36e905410ed8d9567969f333458f6269de448cf59bf1d92a95269a863"
-        },
-        {
-          "kind": "DUPLICATE_ID_RECONCILIATION_POSTINTEGRATION",
-          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-spec-postintegration-20261006.md",
-          "sha": "1295f0a56f674940d09a070faea30b95244616f24a6eb446056f542c298a34b5"
-        },
-        {
-          "kind": "SPEC161_AUTHORITY_RESOLVED_RECONCILIATION",
-          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/spec161-authority-resolution-20261006.md",
-          "sha": "20513622e955bd6b66b4adec1afa7d3b83b5304d0b2aa74b1f5146c256b17da6"
+          "digest": "b26d7c5afbd7a77b0751caafedafa3569fe49b7eb619c2f51bde86b0f2211e90",
+          "kind": "FINAL_CANONICAL_HANDOFF_GATE",
+          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/final-canonical-handoff-gate-2026-10-06.md",
+          "sha": "07e8ca3ec5f5cacbb81eb0feb15f043c0705a332"
         }
       ],
-      "updated_at": "2026-10-06T12:22:55Z"
+      "updated_at": "2026-10-06T16:06:00Z"
     },
     "reconciliation_confidence": {
       "source_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -274,11 +196,9 @@
     ],
     "stale_fields": [],
     "unproven_fields": [
-      "CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE",
       "acceptance",
       "current relevance",
       "deployment reality",
-      "final migration gate",
       "implementation equivalence"
     ]
   },
@@ -320,31 +240,38 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T12:24:11.547754Z",
+  "updated_at": "2026-10-06T16:08:30.140899Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       {
-        "digest": "f39e8b07b5ceb4914f98fc5f2e52e602dd63810fe5b33d72a5b7be9849398260",
-        "kind": "SPEC161_POSTINTEGRATION_VALIDATION",
-        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/spec161-postintegration-validation-20261006.md"
+        "digest": "b26d7c5afbd7a77b0751caafedafa3569fe49b7eb619c2f51bde86b0f2211e90",
+        "kind": "FINAL_CANONICAL_HANDOFF_GATE",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/final-canonical-handoff-gate-2026-10-06.md",
+        "sha": "07e8ca3ec5f5cacbb81eb0feb15f043c0705a332"
       },
       {
-        "command": "python3 -B -m unittest discover -s tools/spec_handoff/tests -v",
-        "kind": "HANDOFF_UNIT_TESTS",
-        "result": "81 passed",
-        "sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542"
+        "command": "python3 -B -m unittest discover -s tools/spec_handoff/tests -q",
+        "kind": "HANDOFF_TESTS",
+        "result": "82 passed",
+        "sha": "07e8ca3ec5f5cacbb81eb0feb15f043c0705a332"
+      },
+      {
+        "command": "python3 skills/runtime_sync.py verify",
+        "kind": "SKILL_RUNTIME_SYNC",
+        "result": "installed skill sync verified",
+        "sha": "07e8ca3ec5f5cacbb81eb0feb15f043c0705a332"
       },
       {
         "command": "bash skills/audit-skills.sh",
         "kind": "SKILL_AUDIT",
-        "result": "330 passed",
-        "sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542"
+        "result": "330 passed; skill audit passed",
+        "sha": "07e8ca3ec5f5cacbb81eb0feb15f043c0705a332"
       }
     ],
     "freshness": "EXACT_SHA",
     "required_profiles": [],
-    "sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542",
+    "sha": "07e8ca3ec5f5cacbb81eb0feb15f043c0705a332",
     "status": "PASS",
     "task_regressions": []
   }
