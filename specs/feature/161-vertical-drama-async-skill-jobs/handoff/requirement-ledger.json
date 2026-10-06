@@ -1,0 +1,251 @@
+{
+  "generation": 3,
+  "reconciliation_version": 3,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L119"
+      ],
+      "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L119",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "48e771f1f2dd8e777e0f82254a30412983360abfbd60b00b290f34ab24c57851",
+      "requirement_id": "REQ-B67F19FDA439",
+      "requirement_text": "1. Request submit ของทุก LLM flow ตอบกลับได้เร็วโดยไม่รอ provider ที่จำลองให้ค้างนาน",
+      "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L120"
+      ],
+      "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L120",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d7079d1d2b0b6cf9fff2ff1ef8524b66b23e40a03f5c64038b0d138bc80a01f3",
+      "requirement_id": "REQ-28722F9489C8",
+      "requirement_text": "2. Worker เรียก service/skill จริงและ persist ผลสำเร็จ/ล้มเหลวอย่างถูกต้อง",
+      "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L121"
+      ],
+      "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L121",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "026b45995d545f50fe03801b1210a1e6d2a82d9e0361da9fee6c73c8d1516063",
+      "requirement_id": "REQ-F24F12012092",
+      "requirement_text": "3. Browser refresh และ worker restart สามารถ resume หรืออ่านผลเดิมได้",
+      "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L122"
+      ],
+      "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L122",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f7059808f28fd1557ac812348b23ab8a600d00bd7cf30610bafc2acf98d65823",
+      "requirement_id": "REQ-32AD56643D4F",
+      "requirement_text": "4. ไม่มี public router ที่เรียก LLM service โดยตรงใน flow ที่กำหนด",
+      "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L123"
+      ],
+      "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L123",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "509c473458fc3ee5a19d4bba90401c16045104a53226aa468236d154253acb62",
+      "requirement_id": "REQ-34822D26C584",
+      "requirement_text": "5. model ที่ user เลือกถูกส่งถึง worker/provider โดยไม่ถูกแทนด้วย model อื่น",
+      "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L124"
+      ],
+      "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L124",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7f62de0a90de42339068487e0d8b017e169e243ae91f669e039c3821355fcd5b",
+      "requirement_id": "REQ-C523BE96231A",
+      "requirement_text": "6. ทุก LLM run มี ledger transaction ที่มี skill slug, ชื่อ skill, model และ trace/run ID ครบ",
+      "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L125"
+      ],
+      "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L125",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1dc0638a3f42eb5741fcca5b4e95d63140a295abe7750d70e8ae638f4e84050d",
+      "requirement_id": "REQ-98BB34ECF7FB",
+      "requirement_text": "7. retry ไม่ทำให้เกิด double billing; run ใหม่เกิดรายการใหม่ตามจริง",
+      "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L126"
+      ],
+      "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L126",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "08a79440597f54c48ebcc08c035677fcba2d936cdf775364a757f2af4e38d66d",
+      "requirement_id": "REQ-50A4DD25D9C8",
+      "requirement_text": "8. chain plan/draft/QC/full story หยุดต่อเมื่อขั้นก่อนหน้าล้มเหลว และแสดง error จริง",
+      "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L127"
+      ],
+      "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L127",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d0bc239d51766ce4faffcf9467c8e79917f28f369726a71720feedfb98ad1e40",
+      "requirement_id": "REQ-552ADB7044A9",
+      "requirement_text": "9. full story ที่ขาดบทพูดหรือข้อมูลตอนถูกตรวจพบและ repair อัตโนมัติด้วย LLM จริง",
+      "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L128"
+      ],
+      "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L128",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "30835e08e2ea625b2c044eca806622341bc4a469df73b3692f6c25f793b9e66d",
+      "requirement_id": "REQ-D6B6A1ADCC70",
+      "requirement_text": "10. focused tests, typecheck ที่เกี่ยวข้อง และ `git diff --check` ผ่าน; รายการที่ยังต้องพิสูจน์ด้วย deployment/provider/browser จริงต้องระบุชัดเจน",
+      "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L143"
+      ],
+      "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L143",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9ec466d2a6e3a823d323ddaad929b91fd4ec233b42c07b0356a715690ef4a93a",
+      "requirement_id": "REQ-4C379A93119A",
+      "requirement_text": "Tests may mock the provider boundary to prove timeout isolation, but production application paths must not use mock or fallback behavior.",
+      "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+  "spec_id": "161"
+}

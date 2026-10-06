@@ -13,18 +13,17 @@
       "specs/security"
     ],
     "counts": {
-      "CANONICAL_SPEC": 305,
+      "CANONICAL_SPEC": 306,
       "DUPLICATE_SPEC_COPY": 1,
       "HISTORICAL_CANDIDATE": 25,
       "HISTORICAL_SPEC": 2,
-      "MALFORMED_CANDIDATE": 1,
       "PLANNING_ARTIFACT": 112,
       "PROJECT_REQUIREMENTS": 17
     },
     "diagnostics": [],
     "invariants": {
-      "canonical_spec_count": 305,
-      "invalid_candidate_count": 1,
+      "canonical_spec_count": 306,
+      "invalid_candidate_count": 0,
       "record_count": 463,
       "walk_complete": true
     },
@@ -3325,11 +3324,11 @@
       },
       {
         "configured_root": "specs/feature",
-        "digest": null,
+        "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
         "path": "specs/feature/161-vertical-drama-async-skill-jobs",
-        "problem": "MISSING_SPEC_MD",
+        "problem": null,
         "record_key": "canonical:specs/feature/161-vertical-drama-async-skill-jobs",
-        "record_kind": "MALFORMED_CANDIDATE",
+        "record_kind": "CANONICAL_SPEC",
         "relationships": {
           "duplicate_ids": [],
           "duplicate_revisions": []
@@ -3338,8 +3337,8 @@
         "root_kind": "CANONICAL",
         "slug": "161-vertical-drama-async-skill-jobs",
         "spec_id": "161",
-        "spec_path": null,
-        "title": "161-vertical-drama-async-skill-jobs"
+        "spec_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
+        "title": "Vertical Drama Async Skill Jobs and Timeout Resilience"
       },
       {
         "configured_root": "specs/feature",
@@ -8368,10 +8367,11 @@
     "schema_version": 1
   },
   "reconciliation_confidence_counts": {
-    "confidence.LOW": 303,
+    "confidence.HIGH": 2,
+    "confidence.LOW": 302,
     "confidence.MEDIUM": 2,
     "confidence.NOT_APPLICABLE": 130,
-    "confidence.UNRESOLVED": 28
+    "confidence.UNRESOLVED": 27
   },
   "records": [
     {
@@ -68769,38 +68769,211 @@
     },
     {
       "acceptance": "UNKNOWN",
-      "authority": "UNRESOLVED",
-      "confidence": "UNRESOLVED",
+      "authority": "ACTIVE_CANONICAL",
+      "canonical_sha": null,
+      "completion_eligible": false,
+      "completion_reasons": [
+        "lifecycle has not reached implementation completion",
+        "requirement REQ-B67F19FDA439 is OPEN",
+        "requirement REQ-28722F9489C8 is OPEN",
+        "requirement REQ-F24F12012092 is OPEN",
+        "requirement REQ-32AD56643D4F is OPEN",
+        "requirement REQ-34822D26C584 is OPEN",
+        "requirement REQ-C523BE96231A is OPEN",
+        "requirement REQ-98BB34ECF7FB is OPEN",
+        "requirement REQ-50A4DD25D9C8 is OPEN",
+        "requirement REQ-552ADB7044A9 is OPEN",
+        "requirement REQ-D6B6A1ADCC70 is OPEN",
+        "requirement REQ-4C379A93119A is OPEN",
+        "required verification evidence is missing",
+        "canonical integration evidence is missing"
+      ],
+      "confidence": "HIGH",
       "configured_root": "specs/feature",
-      "continuation": "RECONCILIATION_REQUIRED",
+      "continuation": "VALIDATION_ONLY",
+      "current_reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "declared_claims": [],
+      "declared_relationship_claims": [],
+      "declared_status_claims": [],
       "deployment": "UNKNOWN",
-      "digest": null,
-      "disposition": "DORMANT_UNRESOLVED",
+      "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "UNKNOWN",
-      "last_reconciled": null,
-      "lifecycle": "NOT_A_CANONICAL_SPEC",
-      "next_action": "Keep this configured-root candidate visible as malformed; locate its normative spec.md or record why it is intentionally absent before initializing a handoff.",
+      "implementation_last_touched_at": null,
+      "last_reconciled": "2026-10-06T12:01:19.793317Z",
+      "lifecycle": "VALIDATION_PENDING",
+      "next_action": "Review the Spec 161 requirement ledger against implementation and run scoped acceptance evidence before claiming implementation completion.",
       "path": "specs/feature/161-vertical-drama-async-skill-jobs",
-      "primary_blocker": "MISSING_SPEC_MD",
-      "problem": "MISSING_SPEC_MD",
+      "primary_blocker": null,
+      "problem": null,
       "record_key": "canonical:specs/feature/161-vertical-drama-async-skill-jobs",
-      "record_kind": "MALFORMED_CANDIDATE",
+      "record_kind": "CANONICAL_SPEC",
+      "relationship_claims": [
+        "RECONSTRUCT_CANONICAL_FROM_EVIDENCE"
+      ],
       "relationships": {
         "duplicate_ids": [],
         "duplicate_revisions": []
       },
+      "relevance_assessment": {
+        "active_references": [
+          {
+            "lines": [
+              13,
+              14
+            ],
+            "path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
+            "relationship": "RELATED_ARCHITECTURE_BILLING_CONTEXT",
+            "spec_id": "166"
+          },
+          {
+            "lines": [
+              6
+            ],
+            "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md",
+            "relationship": "NORMATIVE_DEPENDENCY",
+            "spec_id": "168"
+          },
+          {
+            "lines": [
+              11,
+              13
+            ],
+            "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md",
+            "relationship": "NORMATIVE_DEPENDENCY",
+            "spec_id": "173"
+          },
+          {
+            "lines": [
+              11
+            ],
+            "path": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md",
+            "relationship": "NORMATIVE_DEPENDENCY",
+            "spec_id": "175"
+          },
+          {
+            "lines": [
+              7,
+              105,
+              130,
+              215
+            ],
+            "path": "specs/feature/176-drama-series-emotion-timeline-web/spec.md",
+            "relationship": "DURABLE_JOB_PATTERN_REUSE",
+            "spec_id": "176"
+          },
+          {
+            "lines": [
+              70
+            ],
+            "path": "specs/feature/185-skill-framework-storyboard-project/spec.md",
+            "relationship": "DURABLE_JOB_BILLING_PATTERN_REUSE",
+            "spec_id": "185"
+          }
+        ],
+        "conflict_duplication_risk": "UNASSESSED",
+        "current_architecture_fit": "UNASSESSED",
+        "current_product_relevance": "UNASSESSED",
+        "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+        "declared_claims": [],
+        "deployment_reality": "UNVERIFIED",
+        "evidence": [
+          {
+            "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+            "kind": "NORMATIVE_SPEC",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md"
+          },
+          {
+            "digest": "e494d0ec1612d4573b5cf3091697507647ea4a85ed9e4f0b6bcaf0b9c6670424",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/claude-plan.md"
+          },
+          {
+            "digest": "11334444419c7a0ebb419dc62d44f9224b9ff9e1a0497cc1b6fb99fd56aaff43",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/claude-spec.md"
+          },
+          {
+            "digest": "c754df44c584bc69ba320a72ac56828c9377a3e78f780556176a7630100cf9e3",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/implementation/deep_implement_config.json"
+          },
+          {
+            "digest": "836b7f5f102134b33e029f9179739b6332f166f8cb733404f41c0e5196b9d6c7",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/reviews/self-review-round-1.md"
+          },
+          {
+            "digest": "2d96e8a60e67d2a18bf0f11253dba1300ae19fbe18fa219f6306a7ca6bf4d767",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/index.md"
+          },
+          {
+            "digest": "cca4cd537a0552e9c0b6f373a558ddd32cb8690f902d7c667526bce55f941737",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-01-runtime.md"
+          },
+          {
+            "digest": "37da2e848c1c0c908bde35d54048cb505734187c0f82e8b0b2e86a6e60290aa1",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-02-story-prompt.md"
+          },
+          {
+            "digest": "c7e8a8894ca62a210bc4b8be458e337ec401ece75f7c60002fd8e16662ecb907",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-03-lineage-preset.md"
+          },
+          {
+            "digest": "150d81e3d3f51b8a13ab2afb65f08e461a1702969250809640f2c3503c8eb3ad",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-04-analysis.md"
+          },
+          {
+            "digest": "11ae908538eb4f048e0ac01999ac88523bcbb334bb0b7fc57c9e9d4ad9665bbe",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-05-shot-prompt.md"
+          },
+          {
+            "digest": "8ec195127def266ce1df96422add1e3f9d67d19ec1e73f42fba3320073aa8c53",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-06-billing-security.md"
+          },
+          {
+            "digest": "7cb84e5dbbac40663d430f3d3b875f0bd85bb1ca91d7bdd57258decadfa676d0",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-07-client-completion.md"
+          },
+          {
+            "digest": "5803ee7107ac19335a1649defd4a039be6089e64c22ba6e75bf5fb525601c213",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-08-verification.md"
+          }
+        ],
+        "implementation_equivalence": "UNASSESSED",
+        "residual_requirements": [],
+        "security_data_compliance_obligations": "REVIEW_REQUIRED",
+        "successor_or_supersession": "UNASSESSED"
+      },
       "requirements": {
-        "open": 0,
+        "open": 11,
         "pass": 0,
-        "total": 0
+        "total": 11
       },
       "revision": null,
       "root_kind": "CANONICAL",
+      "section_status_claims": [],
       "slug": "161-vertical-drama-async-skill-jobs",
+      "spec_created_at": null,
       "spec_id": "161",
-      "spec_path": null,
+      "spec_last_changed_at": null,
+      "spec_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
       "successors": [],
-      "title": "161-vertical-drama-async-skill-jobs",
+      "title": "Vertical Drama Async Skill Jobs and Timeout Resilience",
+      "true_blockers": 0,
       "verification": "UNKNOWN"
     },
     {
@@ -140187,16 +140360,15 @@
       "canonical_sha": "c72b38df94391656b913f2d1635b97e6ac0c1440",
       "completion_eligible": false,
       "completion_reasons": [
-        "reconciliation confidence is LOW or UNRESOLVED",
         "Spec authority is unresolved or conflicting",
         "disposition is not an active continuation target",
         "lifecycle has not reached implementation completion",
         "requirement UNPARSED-SPEC-AACD834B is OPEN",
         "required verification evidence is missing"
       ],
-      "confidence": "LOW",
+      "confidence": "HIGH",
       "configured_root": "specs/project",
-      "continuation": "RECONCILIATION_REQUIRED",
+      "continuation": "VALIDATION_ONLY",
       "current_reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
         "SOURCE": 1,
@@ -140211,8 +140383,8 @@
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:19.043588Z",
-      "lifecycle": "WORKING",
-      "next_action": "Resolve Feature 161 normative authority from an approved source or an authoritative non-Spec disposition. Do not mark repository-wide reconciliation complete while this record remains unresolved.",
+      "lifecycle": "VALIDATION_PENDING",
+      "next_action": "Run FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE on the integrated canonical SHA; do not declare CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE before it passes.",
       "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",
       "primary_blocker": null,
       "problem": null,

@@ -13,17 +13,6 @@
   "reconciliation_review": [
     {
       "authority": "UNRESOLVED",
-      "confidence": "UNRESOLVED",
-      "declared_claim_count": 0,
-      "next_action": "Keep this configured-root candidate visible as malformed; locate its normative spec.md or record why it is intentionally absent before initializing a handoff.",
-      "path": "specs/feature/161-vertical-drama-async-skill-jobs",
-      "priority": "R0_DATA_INTEGRITY",
-      "record_key": "canonical:specs/feature/161-vertical-drama-async-skill-jobs",
-      "reference_counts": {},
-      "spec_id": "161"
-    },
-    {
-      "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 1,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -561,21 +550,6 @@
         "TEST": 0
       },
       "spec_id": "04"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 0,
-      "next_action": "Resolve Feature 161 normative authority from an approved source or an authoritative non-Spec disposition. Do not mark repository-wide reconciliation complete while this record remains unresolved.",
-      "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",
-      "priority": "R1_RUNTIME_REFERENCE",
-      "record_key": "canonical:specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 1,
-        "TEST": 0
-      },
-      "spec_id": "06"
     },
     {
       "authority": "UNRESOLVED",
@@ -4874,6 +4848,15 @@
       "rationale": "Create a separate implementation WorkUnit for the missing writer/reviewer skill frontmatter and CMS output sections; rerun the focused package suite on the exact canonical SHA.",
       "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
       "spec_id": "038"
+    },
+    {
+      "confidence": "HIGH",
+      "decision": "VALIDATION_ONLY",
+      "path": "specs/feature/161-vertical-drama-async-skill-jobs",
+      "priority": "P2",
+      "rationale": "Review the Spec 161 requirement ledger against implementation and run scoped acceptance evidence before claiming implementation completion.",
+      "record_key": "canonical:specs/feature/161-vertical-drama-async-skill-jobs",
+      "spec_id": "161"
     },
     {
       "confidence": "MEDIUM",
