@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartspecpro.local/spec-handoff/requirement-ledger-v1.schema.json",
+  "title": "Canonical Spec Requirement Ledger v1",
+  "type": "object",
+  "required": ["schema_version", "spec_id", "spec_digest", "generation", "requirements"],
+  "properties": {
+    "schema_version": {"const": 1}, "spec_id": {"type": "string"},
+    "spec_digest": {"type": "string"}, "generation": {"type": "integer", "minimum": 0},
+    "requirements": {"type": "array", "items": {"type": "object", "required": ["requirement_id", "authority_source", "requirement_digest", "applicability", "current_relevance", "successor_mapping", "implementation_status", "implementation_evidence", "verification_method", "verification_evidence", "evidence_sha", "evidence_freshness", "blocker", "next_action", "final_state"], "properties": {
+      "requirement_id": {"type": "string"}, "authority_source": {"type": "string"}, "requirement_digest": {"type": "string"},
+      "applicability": {"type": "string"}, "current_relevance": {"type": "string"}, "successor_mapping": {"type": "array"},
+      "implementation_status": {"type": "string"}, "implementation_evidence": {"type": "array"},
+      "verification_method": {"type": "string"}, "verification_evidence": {"type": "array"},
+      "evidence_sha": {"type": ["string", "null"]}, "evidence_freshness": {"type": "string"},
+      "blocker": {"type": ["object", "null"]}, "next_action": {"type": "string", "minLength": 1},
+      "final_state": {"enum": ["PASS", "FAIL", "BLOCKED_TRUE_EXTERNAL", "NOT_APPLICABLE", "OPEN", "PARTIAL", "VALIDATION_PENDING", "STALE_EVIDENCE"]}
+    }}}
+  }
+}

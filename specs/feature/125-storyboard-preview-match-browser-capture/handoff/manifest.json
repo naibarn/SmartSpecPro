@@ -1,0 +1,447 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "be0d15e990e7e3fdac667d9f0d8fef10956387b0bf9e3c5eab93ebf44cda88b8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/spec.md"
+      },
+      {
+        "digest": "2cd809d1e004c3b1876661cc455816944548435f3aa9c9db95ddfb7d20131cbf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/claude-plan.md"
+      },
+      {
+        "digest": "3fb04729c37008853628cbb9ec7365d939ff4e213aef1be1bcb29a9ecc450eb6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/claude-spec.md"
+      },
+      {
+        "digest": "932f2f690af2773d4d5a3876c0eed069c678425aaaaff3e3488fe53009a03faa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3b950bc6e0bb2f684400dce406d67d2aeb8966d660cbd3d6d144fbb12af61790",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "d709322831ef57c3434ce9c4684a07b3f45757a45512ac31b74d3cb736b0db04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "fddd78f153adf8a13fb47cfa591d3c8fe22c516880b39ca1a4be1a48b0c29671",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/index.md"
+      },
+      {
+        "digest": "99c3a0e3cb56da815576040beae1b8d4a15f3ac89bc3215937bc6b1329fb8764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-01-contracts-and-ui-entry-point.md"
+      },
+      {
+        "digest": "bdf182be0decfadfa0fb25b86dd8147d01a27ebdaed89177b9355a1053e2f16c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-02-api-persistence-and-billing.md"
+      },
+      {
+        "digest": "fa31296ac480ecaa80c6c2ad76875b93f817b255f1e999f6152018016f36d790",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-03-server-browser-capture-runtime.md"
+      },
+      {
+        "digest": "be4c1577b204f4c008a66a893a79dbd61268c73b2ba78c8cddf4bd18271988f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-04-quality-audio-verification-library.md"
+      },
+      {
+        "digest": "52cc9aab7ff7b72f8235d4e3d06abbbf6853065bd8ddedce462c65fac286f6d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-05-flags-operations-and-futures.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "be0d15e990e7e3fdac667d9f0d8fef10956387b0bf9e3c5eab93ebf44cda88b8"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "be0d15e990e7e3fdac667d9f0d8fef10956387b0bf9e3c5eab93ebf44cda88b8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/spec.md"
+      },
+      {
+        "digest": "2cd809d1e004c3b1876661cc455816944548435f3aa9c9db95ddfb7d20131cbf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/claude-plan.md"
+      },
+      {
+        "digest": "3fb04729c37008853628cbb9ec7365d939ff4e213aef1be1bcb29a9ecc450eb6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/claude-spec.md"
+      },
+      {
+        "digest": "932f2f690af2773d4d5a3876c0eed069c678425aaaaff3e3488fe53009a03faa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3b950bc6e0bb2f684400dce406d67d2aeb8966d660cbd3d6d144fbb12af61790",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "d709322831ef57c3434ce9c4684a07b3f45757a45512ac31b74d3cb736b0db04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "fddd78f153adf8a13fb47cfa591d3c8fe22c516880b39ca1a4be1a48b0c29671",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/index.md"
+      },
+      {
+        "digest": "99c3a0e3cb56da815576040beae1b8d4a15f3ac89bc3215937bc6b1329fb8764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-01-contracts-and-ui-entry-point.md"
+      },
+      {
+        "digest": "bdf182be0decfadfa0fb25b86dd8147d01a27ebdaed89177b9355a1053e2f16c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-02-api-persistence-and-billing.md"
+      },
+      {
+        "digest": "fa31296ac480ecaa80c6c2ad76875b93f817b255f1e999f6152018016f36d790",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-03-server-browser-capture-runtime.md"
+      },
+      {
+        "digest": "be4c1577b204f4c008a66a893a79dbd61268c73b2ba78c8cddf4bd18271988f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-04-quality-audio-verification-library.md"
+      },
+      {
+        "digest": "52cc9aab7ff7b72f8235d4e3d06abbbf6853065bd8ddedce462c65fac286f6d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-05-flags-operations-and-futures.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "be0d15e990e7e3fdac667d9f0d8fef10956387b0bf9e3c5eab93ebf44cda88b8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/spec.md"
+      },
+      {
+        "digest": "2cd809d1e004c3b1876661cc455816944548435f3aa9c9db95ddfb7d20131cbf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/claude-plan.md"
+      },
+      {
+        "digest": "3fb04729c37008853628cbb9ec7365d939ff4e213aef1be1bcb29a9ecc450eb6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/claude-spec.md"
+      },
+      {
+        "digest": "932f2f690af2773d4d5a3876c0eed069c678425aaaaff3e3488fe53009a03faa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3b950bc6e0bb2f684400dce406d67d2aeb8966d660cbd3d6d144fbb12af61790",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "d709322831ef57c3434ce9c4684a07b3f45757a45512ac31b74d3cb736b0db04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "fddd78f153adf8a13fb47cfa591d3c8fe22c516880b39ca1a4be1a48b0c29671",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/index.md"
+      },
+      {
+        "digest": "99c3a0e3cb56da815576040beae1b8d4a15f3ac89bc3215937bc6b1329fb8764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-01-contracts-and-ui-entry-point.md"
+      },
+      {
+        "digest": "bdf182be0decfadfa0fb25b86dd8147d01a27ebdaed89177b9355a1053e2f16c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-02-api-persistence-and-billing.md"
+      },
+      {
+        "digest": "fa31296ac480ecaa80c6c2ad76875b93f817b255f1e999f6152018016f36d790",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-03-server-browser-capture-runtime.md"
+      },
+      {
+        "digest": "be4c1577b204f4c008a66a893a79dbd61268c73b2ba78c8cddf4bd18271988f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-04-quality-audio-verification-library.md"
+      },
+      {
+        "digest": "52cc9aab7ff7b72f8235d4e3d06abbbf6853065bd8ddedce462c65fac286f6d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-05-flags-operations-and-futures.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/125-storyboard-preview-match-browser-capture/spec.md",
+    "digest": "be0d15e990e7e3fdac667d9f0d8fef10956387b0bf9e3c5eab93ebf44cda88b8",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.164156Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-07-01T06:59:16+07:00",
+      "spec_last_changed_at": "2026-07-01T06:59:16+07:00"
+    },
+    "revision": "0.1.0",
+    "slug": "125-storyboard-preview-match-browser-capture",
+    "spec_id": "125",
+    "title": "Feature 125: Storyboard Preview-Match Browser Capture"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.164156Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.164156Z",
+    "sources": [
+      {
+        "digest": "be0d15e990e7e3fdac667d9f0d8fef10956387b0bf9e3c5eab93ebf44cda88b8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/spec.md"
+      },
+      {
+        "digest": "2cd809d1e004c3b1876661cc455816944548435f3aa9c9db95ddfb7d20131cbf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/claude-plan.md"
+      },
+      {
+        "digest": "3fb04729c37008853628cbb9ec7365d939ff4e213aef1be1bcb29a9ecc450eb6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/claude-spec.md"
+      },
+      {
+        "digest": "932f2f690af2773d4d5a3876c0eed069c678425aaaaff3e3488fe53009a03faa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3b950bc6e0bb2f684400dce406d67d2aeb8966d660cbd3d6d144fbb12af61790",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "d709322831ef57c3434ce9c4684a07b3f45757a45512ac31b74d3cb736b0db04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "fddd78f153adf8a13fb47cfa591d3c8fe22c516880b39ca1a4be1a48b0c29671",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/index.md"
+      },
+      {
+        "digest": "99c3a0e3cb56da815576040beae1b8d4a15f3ac89bc3215937bc6b1329fb8764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-01-contracts-and-ui-entry-point.md"
+      },
+      {
+        "digest": "bdf182be0decfadfa0fb25b86dd8147d01a27ebdaed89177b9355a1053e2f16c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-02-api-persistence-and-billing.md"
+      },
+      {
+        "digest": "fa31296ac480ecaa80c6c2ad76875b93f817b255f1e999f6152018016f36d790",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-03-server-browser-capture-runtime.md"
+      },
+      {
+        "digest": "be4c1577b204f4c008a66a893a79dbd61268c73b2ba78c8cddf4bd18271988f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-04-quality-audio-verification-library.md"
+      },
+      {
+        "digest": "52cc9aab7ff7b72f8235d4e3d06abbbf6853065bd8ddedce462c65fac286f6d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-05-flags-operations-and-futures.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "be0d15e990e7e3fdac667d9f0d8fef10956387b0bf9e3c5eab93ebf44cda88b8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/spec.md"
+      },
+      {
+        "digest": "2cd809d1e004c3b1876661cc455816944548435f3aa9c9db95ddfb7d20131cbf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/claude-plan.md"
+      },
+      {
+        "digest": "3fb04729c37008853628cbb9ec7365d939ff4e213aef1be1bcb29a9ecc450eb6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/claude-spec.md"
+      },
+      {
+        "digest": "932f2f690af2773d4d5a3876c0eed069c678425aaaaff3e3488fe53009a03faa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3b950bc6e0bb2f684400dce406d67d2aeb8966d660cbd3d6d144fbb12af61790",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "d709322831ef57c3434ce9c4684a07b3f45757a45512ac31b74d3cb736b0db04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "fddd78f153adf8a13fb47cfa591d3c8fe22c516880b39ca1a4be1a48b0c29671",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/index.md"
+      },
+      {
+        "digest": "99c3a0e3cb56da815576040beae1b8d4a15f3ac89bc3215937bc6b1329fb8764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-01-contracts-and-ui-entry-point.md"
+      },
+      {
+        "digest": "bdf182be0decfadfa0fb25b86dd8147d01a27ebdaed89177b9355a1053e2f16c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-02-api-persistence-and-billing.md"
+      },
+      {
+        "digest": "fa31296ac480ecaa80c6c2ad76875b93f817b255f1e999f6152018016f36d790",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-03-server-browser-capture-runtime.md"
+      },
+      {
+        "digest": "be4c1577b204f4c008a66a893a79dbd61268c73b2ba78c8cddf4bd18271988f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-04-quality-audio-verification-library.md"
+      },
+      {
+        "digest": "52cc9aab7ff7b72f8235d4e3d06abbbf6853065bd8ddedce462c65fac286f6d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/125-storyboard-preview-match-browser-capture/sections/section-05-flags-operations-and-futures.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 124,
+    "unresolved": 124
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.164156Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

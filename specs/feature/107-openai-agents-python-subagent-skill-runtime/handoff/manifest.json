@@ -1,0 +1,497 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "130c448eac73267e7321c97f42971b6c44a3c6f67db35395a279b6889d452413",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md"
+      },
+      {
+        "digest": "16403ed9727a0f8c4a22b295d64c2c9ac41d0b9ac3ca262e8fd42529fe39a122",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/claude-plan.md"
+      },
+      {
+        "digest": "bcb5c5d0ec7024d14aa9b7c237c22b8ab90d4e99fe9276273f2d4d2785eeefe3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/claude-spec.md"
+      },
+      {
+        "digest": "6c06cca3b4fb9e6b98b626947ab94542e7593154f0bbd06f13fcb9bd3b1aeca9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "55fd1eb13230ce81050cf611fc40edb0b3c0405289c4d173b8d189e74fef6e13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "5ad2ba61e7cc35feabf0ed610a38a5ca717b20a8e5944a2f9f1363a8d98b11fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "a8128dde34221e46f2d3ff793f42184b303f90badf865227add6b20df0781bc7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/index.md"
+      },
+      {
+        "digest": "f4f8195d2850faacf7e128b6c907a8fbc681e74036885959efcf9933c7c33c2a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-01-contract-and-validation.md"
+      },
+      {
+        "digest": "b5208178c21057f3aa0beb9f1c555289d934cba21965bffdb6ad2a18d7a18bf5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-02-isc-create-improve-and-migration.md"
+      },
+      {
+        "digest": "5c2dc46307da1ce1cfe179882a108b798dbba7835d9e929f01522f2dcf5cb912",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-03-python-runtime-and-supervisor.md"
+      },
+      {
+        "digest": "52fdbda45428bff37929bc3b46aed010e22093c816bb65f353861d17fd8a9b59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-04-web-execution-plumbing-and-lineage-capture.md"
+      },
+      {
+        "digest": "2855e2695c85b46fd0b19ab87e4efa302f2153aa9c2beddd07a0d32c90a737ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-05-maintenance-compatibility-and-automatic-repair.md"
+      },
+      {
+        "digest": "c7582f12967ccb5a022815ff00ec9013b8cd4bfe7acada025917c0362ca61590",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-06-admin-ui-and-observability.md"
+      },
+      {
+        "digest": "324b8bc11817f464642c9c8c15e76ef5add4e76a62f270b45e50cb5b6ffdf275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-07-testing-rollout-and-operational-hardening.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "130c448eac73267e7321c97f42971b6c44a3c6f67db35395a279b6889d452413"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "130c448eac73267e7321c97f42971b6c44a3c6f67db35395a279b6889d452413",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md"
+      },
+      {
+        "digest": "16403ed9727a0f8c4a22b295d64c2c9ac41d0b9ac3ca262e8fd42529fe39a122",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/claude-plan.md"
+      },
+      {
+        "digest": "bcb5c5d0ec7024d14aa9b7c237c22b8ab90d4e99fe9276273f2d4d2785eeefe3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/claude-spec.md"
+      },
+      {
+        "digest": "6c06cca3b4fb9e6b98b626947ab94542e7593154f0bbd06f13fcb9bd3b1aeca9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "55fd1eb13230ce81050cf611fc40edb0b3c0405289c4d173b8d189e74fef6e13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "5ad2ba61e7cc35feabf0ed610a38a5ca717b20a8e5944a2f9f1363a8d98b11fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "a8128dde34221e46f2d3ff793f42184b303f90badf865227add6b20df0781bc7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/index.md"
+      },
+      {
+        "digest": "f4f8195d2850faacf7e128b6c907a8fbc681e74036885959efcf9933c7c33c2a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-01-contract-and-validation.md"
+      },
+      {
+        "digest": "b5208178c21057f3aa0beb9f1c555289d934cba21965bffdb6ad2a18d7a18bf5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-02-isc-create-improve-and-migration.md"
+      },
+      {
+        "digest": "5c2dc46307da1ce1cfe179882a108b798dbba7835d9e929f01522f2dcf5cb912",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-03-python-runtime-and-supervisor.md"
+      },
+      {
+        "digest": "52fdbda45428bff37929bc3b46aed010e22093c816bb65f353861d17fd8a9b59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-04-web-execution-plumbing-and-lineage-capture.md"
+      },
+      {
+        "digest": "2855e2695c85b46fd0b19ab87e4efa302f2153aa9c2beddd07a0d32c90a737ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-05-maintenance-compatibility-and-automatic-repair.md"
+      },
+      {
+        "digest": "c7582f12967ccb5a022815ff00ec9013b8cd4bfe7acada025917c0362ca61590",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-06-admin-ui-and-observability.md"
+      },
+      {
+        "digest": "324b8bc11817f464642c9c8c15e76ef5add4e76a62f270b45e50cb5b6ffdf275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-07-testing-rollout-and-operational-hardening.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "130c448eac73267e7321c97f42971b6c44a3c6f67db35395a279b6889d452413",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md"
+      },
+      {
+        "digest": "16403ed9727a0f8c4a22b295d64c2c9ac41d0b9ac3ca262e8fd42529fe39a122",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/claude-plan.md"
+      },
+      {
+        "digest": "bcb5c5d0ec7024d14aa9b7c237c22b8ab90d4e99fe9276273f2d4d2785eeefe3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/claude-spec.md"
+      },
+      {
+        "digest": "6c06cca3b4fb9e6b98b626947ab94542e7593154f0bbd06f13fcb9bd3b1aeca9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "55fd1eb13230ce81050cf611fc40edb0b3c0405289c4d173b8d189e74fef6e13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "5ad2ba61e7cc35feabf0ed610a38a5ca717b20a8e5944a2f9f1363a8d98b11fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "a8128dde34221e46f2d3ff793f42184b303f90badf865227add6b20df0781bc7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/index.md"
+      },
+      {
+        "digest": "f4f8195d2850faacf7e128b6c907a8fbc681e74036885959efcf9933c7c33c2a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-01-contract-and-validation.md"
+      },
+      {
+        "digest": "b5208178c21057f3aa0beb9f1c555289d934cba21965bffdb6ad2a18d7a18bf5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-02-isc-create-improve-and-migration.md"
+      },
+      {
+        "digest": "5c2dc46307da1ce1cfe179882a108b798dbba7835d9e929f01522f2dcf5cb912",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-03-python-runtime-and-supervisor.md"
+      },
+      {
+        "digest": "52fdbda45428bff37929bc3b46aed010e22093c816bb65f353861d17fd8a9b59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-04-web-execution-plumbing-and-lineage-capture.md"
+      },
+      {
+        "digest": "2855e2695c85b46fd0b19ab87e4efa302f2153aa9c2beddd07a0d32c90a737ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-05-maintenance-compatibility-and-automatic-repair.md"
+      },
+      {
+        "digest": "c7582f12967ccb5a022815ff00ec9013b8cd4bfe7acada025917c0362ca61590",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-06-admin-ui-and-observability.md"
+      },
+      {
+        "digest": "324b8bc11817f464642c9c8c15e76ef5add4e76a62f270b45e50cb5b6ffdf275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-07-testing-rollout-and-operational-hardening.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md",
+    "digest": "130c448eac73267e7321c97f42971b6c44a3c6f67db35395a279b6889d452413",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.991341Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-25T10:01:30+07:00",
+      "spec_last_changed_at": "2026-04-25T10:01:30+07:00"
+    },
+    "revision": "0.1",
+    "slug": "107-openai-agents-python-subagent-skill-runtime",
+    "spec_id": "107",
+    "title": "Feature 107: OpenAI Agents Python Subagent Skill Runtime"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.991341Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.991341Z",
+    "sources": [
+      {
+        "digest": "130c448eac73267e7321c97f42971b6c44a3c6f67db35395a279b6889d452413",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md"
+      },
+      {
+        "digest": "16403ed9727a0f8c4a22b295d64c2c9ac41d0b9ac3ca262e8fd42529fe39a122",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/claude-plan.md"
+      },
+      {
+        "digest": "bcb5c5d0ec7024d14aa9b7c237c22b8ab90d4e99fe9276273f2d4d2785eeefe3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/claude-spec.md"
+      },
+      {
+        "digest": "6c06cca3b4fb9e6b98b626947ab94542e7593154f0bbd06f13fcb9bd3b1aeca9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "55fd1eb13230ce81050cf611fc40edb0b3c0405289c4d173b8d189e74fef6e13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "5ad2ba61e7cc35feabf0ed610a38a5ca717b20a8e5944a2f9f1363a8d98b11fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "a8128dde34221e46f2d3ff793f42184b303f90badf865227add6b20df0781bc7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/index.md"
+      },
+      {
+        "digest": "f4f8195d2850faacf7e128b6c907a8fbc681e74036885959efcf9933c7c33c2a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-01-contract-and-validation.md"
+      },
+      {
+        "digest": "b5208178c21057f3aa0beb9f1c555289d934cba21965bffdb6ad2a18d7a18bf5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-02-isc-create-improve-and-migration.md"
+      },
+      {
+        "digest": "5c2dc46307da1ce1cfe179882a108b798dbba7835d9e929f01522f2dcf5cb912",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-03-python-runtime-and-supervisor.md"
+      },
+      {
+        "digest": "52fdbda45428bff37929bc3b46aed010e22093c816bb65f353861d17fd8a9b59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-04-web-execution-plumbing-and-lineage-capture.md"
+      },
+      {
+        "digest": "2855e2695c85b46fd0b19ab87e4efa302f2153aa9c2beddd07a0d32c90a737ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-05-maintenance-compatibility-and-automatic-repair.md"
+      },
+      {
+        "digest": "c7582f12967ccb5a022815ff00ec9013b8cd4bfe7acada025917c0362ca61590",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-06-admin-ui-and-observability.md"
+      },
+      {
+        "digest": "324b8bc11817f464642c9c8c15e76ef5add4e76a62f270b45e50cb5b6ffdf275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-07-testing-rollout-and-operational-hardening.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "130c448eac73267e7321c97f42971b6c44a3c6f67db35395a279b6889d452413",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md"
+      },
+      {
+        "digest": "16403ed9727a0f8c4a22b295d64c2c9ac41d0b9ac3ca262e8fd42529fe39a122",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/claude-plan.md"
+      },
+      {
+        "digest": "bcb5c5d0ec7024d14aa9b7c237c22b8ab90d4e99fe9276273f2d4d2785eeefe3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/claude-spec.md"
+      },
+      {
+        "digest": "6c06cca3b4fb9e6b98b626947ab94542e7593154f0bbd06f13fcb9bd3b1aeca9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "55fd1eb13230ce81050cf611fc40edb0b3c0405289c4d173b8d189e74fef6e13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "5ad2ba61e7cc35feabf0ed610a38a5ca717b20a8e5944a2f9f1363a8d98b11fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "a8128dde34221e46f2d3ff793f42184b303f90badf865227add6b20df0781bc7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/index.md"
+      },
+      {
+        "digest": "f4f8195d2850faacf7e128b6c907a8fbc681e74036885959efcf9933c7c33c2a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-01-contract-and-validation.md"
+      },
+      {
+        "digest": "b5208178c21057f3aa0beb9f1c555289d934cba21965bffdb6ad2a18d7a18bf5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-02-isc-create-improve-and-migration.md"
+      },
+      {
+        "digest": "5c2dc46307da1ce1cfe179882a108b798dbba7835d9e929f01522f2dcf5cb912",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-03-python-runtime-and-supervisor.md"
+      },
+      {
+        "digest": "52fdbda45428bff37929bc3b46aed010e22093c816bb65f353861d17fd8a9b59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-04-web-execution-plumbing-and-lineage-capture.md"
+      },
+      {
+        "digest": "2855e2695c85b46fd0b19ab87e4efa302f2153aa9c2beddd07a0d32c90a737ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-05-maintenance-compatibility-and-automatic-repair.md"
+      },
+      {
+        "digest": "c7582f12967ccb5a022815ff00ec9013b8cd4bfe7acada025917c0362ca61590",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-06-admin-ui-and-observability.md"
+      },
+      {
+        "digest": "324b8bc11817f464642c9c8c15e76ef5add4e76a62f270b45e50cb5b6ffdf275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/sections/section-07-testing-rollout-and-operational-hardening.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 121,
+    "unresolved": 121
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.991341Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

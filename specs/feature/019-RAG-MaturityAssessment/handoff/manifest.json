@@ -1,0 +1,522 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/019-RAG-MaturityAssessment/spec.md"
+      },
+      {
+        "digest": "a22db27c1f6b07059dfec72d519c2da2a6f7faec96f82ba868bb56da8987ba4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/claude-plan.md"
+      },
+      {
+        "digest": "192d8a61e6f7f96590b538dbf79c87da26d02b3cd454cf551881e171b68dd769",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/claude-spec.md"
+      },
+      {
+        "digest": "9cfd535fa233af306dc459415e687733009380295476419f0c3f420182ffa82e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d598a4cd231fa055804df616ba4ae9296cdb8d5b61bbe5b75b91be1d9ef94bd2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/implementation/usage.md"
+      },
+      {
+        "digest": "49e6da67adfcd6624acbf3d79d5509f587cd647e8c42c2c0e7d6ac1bd792aeaa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "5d46e668b0d726e76209e7bd28ee112b5bc578d3c718105d99a236a57b5c71d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/index.md"
+      },
+      {
+        "digest": "99d183b669a4945bbd863128c9bf9cbcb90613291dc4a71b6cf01f49bfaafe0a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-01-acl-schema-and-scopes.md"
+      },
+      {
+        "digest": "b491558476b3ec6f357c12165cf5380991078ba14ec9a17486fa8cc074a190b2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-02-scope-propagation.md"
+      },
+      {
+        "digest": "8cfe4cc6d659d26a1318949dde63b11ad0def17f5fb445639777be8a6c6615b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-03-smart-chunking.md"
+      },
+      {
+        "digest": "3a2ee43a7749991bbc4b8e7e0f485172d6bf5092d1171a8ceaa5168f2e9c6eb0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-04-hybrid-search.md"
+      },
+      {
+        "digest": "410e275ad1f49b03da488ae5615cac6907af7c7c3655d2f2770e335a43b46d55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-05-reranking.md"
+      },
+      {
+        "digest": "82dec6de520435389fe1086af4a5ee2abd56400e5d4710ee2fb659ea24431fa5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-06-guardrails-and-citations.md"
+      },
+      {
+        "digest": "b249848ff177a31366e9408498cd41500527a31a712492bd20ef52c34e3e1952",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-07-rag-executor.md"
+      },
+      {
+        "digest": "9389982fc1689426bfd3d775607e4bbd35776ea81f50ee18fdcdd790023cc1b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-08-evaluation-and-observability.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/019-RAG-MaturityAssessment/spec.md"
+      },
+      {
+        "digest": "a22db27c1f6b07059dfec72d519c2da2a6f7faec96f82ba868bb56da8987ba4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/claude-plan.md"
+      },
+      {
+        "digest": "192d8a61e6f7f96590b538dbf79c87da26d02b3cd454cf551881e171b68dd769",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/claude-spec.md"
+      },
+      {
+        "digest": "9cfd535fa233af306dc459415e687733009380295476419f0c3f420182ffa82e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d598a4cd231fa055804df616ba4ae9296cdb8d5b61bbe5b75b91be1d9ef94bd2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/implementation/usage.md"
+      },
+      {
+        "digest": "49e6da67adfcd6624acbf3d79d5509f587cd647e8c42c2c0e7d6ac1bd792aeaa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "5d46e668b0d726e76209e7bd28ee112b5bc578d3c718105d99a236a57b5c71d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/index.md"
+      },
+      {
+        "digest": "99d183b669a4945bbd863128c9bf9cbcb90613291dc4a71b6cf01f49bfaafe0a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-01-acl-schema-and-scopes.md"
+      },
+      {
+        "digest": "b491558476b3ec6f357c12165cf5380991078ba14ec9a17486fa8cc074a190b2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-02-scope-propagation.md"
+      },
+      {
+        "digest": "8cfe4cc6d659d26a1318949dde63b11ad0def17f5fb445639777be8a6c6615b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-03-smart-chunking.md"
+      },
+      {
+        "digest": "3a2ee43a7749991bbc4b8e7e0f485172d6bf5092d1171a8ceaa5168f2e9c6eb0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-04-hybrid-search.md"
+      },
+      {
+        "digest": "410e275ad1f49b03da488ae5615cac6907af7c7c3655d2f2770e335a43b46d55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-05-reranking.md"
+      },
+      {
+        "digest": "82dec6de520435389fe1086af4a5ee2abd56400e5d4710ee2fb659ea24431fa5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-06-guardrails-and-citations.md"
+      },
+      {
+        "digest": "b249848ff177a31366e9408498cd41500527a31a712492bd20ef52c34e3e1952",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-07-rag-executor.md"
+      },
+      {
+        "digest": "9389982fc1689426bfd3d775607e4bbd35776ea81f50ee18fdcdd790023cc1b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-08-evaluation-and-observability.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/019-RAG-MaturityAssessment/spec.md"
+      },
+      {
+        "digest": "a22db27c1f6b07059dfec72d519c2da2a6f7faec96f82ba868bb56da8987ba4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/claude-plan.md"
+      },
+      {
+        "digest": "192d8a61e6f7f96590b538dbf79c87da26d02b3cd454cf551881e171b68dd769",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/claude-spec.md"
+      },
+      {
+        "digest": "9cfd535fa233af306dc459415e687733009380295476419f0c3f420182ffa82e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d598a4cd231fa055804df616ba4ae9296cdb8d5b61bbe5b75b91be1d9ef94bd2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/implementation/usage.md"
+      },
+      {
+        "digest": "49e6da67adfcd6624acbf3d79d5509f587cd647e8c42c2c0e7d6ac1bd792aeaa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "5d46e668b0d726e76209e7bd28ee112b5bc578d3c718105d99a236a57b5c71d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/index.md"
+      },
+      {
+        "digest": "99d183b669a4945bbd863128c9bf9cbcb90613291dc4a71b6cf01f49bfaafe0a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-01-acl-schema-and-scopes.md"
+      },
+      {
+        "digest": "b491558476b3ec6f357c12165cf5380991078ba14ec9a17486fa8cc074a190b2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-02-scope-propagation.md"
+      },
+      {
+        "digest": "8cfe4cc6d659d26a1318949dde63b11ad0def17f5fb445639777be8a6c6615b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-03-smart-chunking.md"
+      },
+      {
+        "digest": "3a2ee43a7749991bbc4b8e7e0f485172d6bf5092d1171a8ceaa5168f2e9c6eb0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-04-hybrid-search.md"
+      },
+      {
+        "digest": "410e275ad1f49b03da488ae5615cac6907af7c7c3655d2f2770e335a43b46d55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-05-reranking.md"
+      },
+      {
+        "digest": "82dec6de520435389fe1086af4a5ee2abd56400e5d4710ee2fb659ea24431fa5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-06-guardrails-and-citations.md"
+      },
+      {
+        "digest": "b249848ff177a31366e9408498cd41500527a31a712492bd20ef52c34e3e1952",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-07-rag-executor.md"
+      },
+      {
+        "digest": "9389982fc1689426bfd3d775607e4bbd35776ea81f50ee18fdcdd790023cc1b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-08-evaluation-and-observability.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/019-RAG-MaturityAssessment/spec.md",
+    "digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.455677Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-02-22T11:21:00+07:00",
+      "spec_last_changed_at": "2026-02-22T11:21:00+07:00"
+    },
+    "revision": null,
+    "slug": "019-RAG-MaturityAssessment",
+    "spec_id": "019",
+    "title": "019 — RAG Maturity Upgrade: Five Levels to Production"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.455677Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.455677Z",
+    "sources": [
+      {
+        "digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/019-RAG-MaturityAssessment/spec.md"
+      },
+      {
+        "digest": "a22db27c1f6b07059dfec72d519c2da2a6f7faec96f82ba868bb56da8987ba4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/claude-plan.md"
+      },
+      {
+        "digest": "192d8a61e6f7f96590b538dbf79c87da26d02b3cd454cf551881e171b68dd769",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/claude-spec.md"
+      },
+      {
+        "digest": "9cfd535fa233af306dc459415e687733009380295476419f0c3f420182ffa82e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d598a4cd231fa055804df616ba4ae9296cdb8d5b61bbe5b75b91be1d9ef94bd2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/implementation/usage.md"
+      },
+      {
+        "digest": "49e6da67adfcd6624acbf3d79d5509f587cd647e8c42c2c0e7d6ac1bd792aeaa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "5d46e668b0d726e76209e7bd28ee112b5bc578d3c718105d99a236a57b5c71d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/index.md"
+      },
+      {
+        "digest": "99d183b669a4945bbd863128c9bf9cbcb90613291dc4a71b6cf01f49bfaafe0a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-01-acl-schema-and-scopes.md"
+      },
+      {
+        "digest": "b491558476b3ec6f357c12165cf5380991078ba14ec9a17486fa8cc074a190b2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-02-scope-propagation.md"
+      },
+      {
+        "digest": "8cfe4cc6d659d26a1318949dde63b11ad0def17f5fb445639777be8a6c6615b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-03-smart-chunking.md"
+      },
+      {
+        "digest": "3a2ee43a7749991bbc4b8e7e0f485172d6bf5092d1171a8ceaa5168f2e9c6eb0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-04-hybrid-search.md"
+      },
+      {
+        "digest": "410e275ad1f49b03da488ae5615cac6907af7c7c3655d2f2770e335a43b46d55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-05-reranking.md"
+      },
+      {
+        "digest": "82dec6de520435389fe1086af4a5ee2abd56400e5d4710ee2fb659ea24431fa5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-06-guardrails-and-citations.md"
+      },
+      {
+        "digest": "b249848ff177a31366e9408498cd41500527a31a712492bd20ef52c34e3e1952",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-07-rag-executor.md"
+      },
+      {
+        "digest": "9389982fc1689426bfd3d775607e4bbd35776ea81f50ee18fdcdd790023cc1b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-08-evaluation-and-observability.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/019-RAG-MaturityAssessment/spec.md"
+      },
+      {
+        "digest": "a22db27c1f6b07059dfec72d519c2da2a6f7faec96f82ba868bb56da8987ba4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/claude-plan.md"
+      },
+      {
+        "digest": "192d8a61e6f7f96590b538dbf79c87da26d02b3cd454cf551881e171b68dd769",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/claude-spec.md"
+      },
+      {
+        "digest": "9cfd535fa233af306dc459415e687733009380295476419f0c3f420182ffa82e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d598a4cd231fa055804df616ba4ae9296cdb8d5b61bbe5b75b91be1d9ef94bd2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/implementation/usage.md"
+      },
+      {
+        "digest": "49e6da67adfcd6624acbf3d79d5509f587cd647e8c42c2c0e7d6ac1bd792aeaa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "5d46e668b0d726e76209e7bd28ee112b5bc578d3c718105d99a236a57b5c71d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/index.md"
+      },
+      {
+        "digest": "99d183b669a4945bbd863128c9bf9cbcb90613291dc4a71b6cf01f49bfaafe0a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-01-acl-schema-and-scopes.md"
+      },
+      {
+        "digest": "b491558476b3ec6f357c12165cf5380991078ba14ec9a17486fa8cc074a190b2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-02-scope-propagation.md"
+      },
+      {
+        "digest": "8cfe4cc6d659d26a1318949dde63b11ad0def17f5fb445639777be8a6c6615b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-03-smart-chunking.md"
+      },
+      {
+        "digest": "3a2ee43a7749991bbc4b8e7e0f485172d6bf5092d1171a8ceaa5168f2e9c6eb0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-04-hybrid-search.md"
+      },
+      {
+        "digest": "410e275ad1f49b03da488ae5615cac6907af7c7c3655d2f2770e335a43b46d55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-05-reranking.md"
+      },
+      {
+        "digest": "82dec6de520435389fe1086af4a5ee2abd56400e5d4710ee2fb659ea24431fa5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-06-guardrails-and-citations.md"
+      },
+      {
+        "digest": "b249848ff177a31366e9408498cd41500527a31a712492bd20ef52c34e3e1952",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-07-rag-executor.md"
+      },
+      {
+        "digest": "9389982fc1689426bfd3d775607e4bbd35776ea81f50ee18fdcdd790023cc1b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/019-RAG-MaturityAssessment/sections/section-08-evaluation-and-observability.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 6,
+    "unresolved": 6
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.455677Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

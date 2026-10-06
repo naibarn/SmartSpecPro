@@ -1,0 +1,447 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md"
+      },
+      {
+        "digest": "ecd9184a101f130db432e976f4b065d3f84249306a18c739a9da7993ca973d88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
+      },
+      {
+        "digest": "fc92a3950659ab5a39ce30371d8e4fc31753d8aaac901890ad4684045b50f8b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
+      },
+      {
+        "digest": "b7c9fb1cfb2f40ed76d53ef61b1e546287f5c76f52001c514753e19b46cebe98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "59d419e16826dfd14f06f6ccd5893528d5dece65a32c508ce940e162fa1c24e0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
+      },
+      {
+        "digest": "afa399a629d049759b2b24466044abd00ac47c513e04a963c939daa7b78bbc9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
+      },
+      {
+        "digest": "ff3040b8d8e5c56663a492e953bfe519b653ef31892839a0b99f5ec997efb9d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
+      },
+      {
+        "digest": "97a959edf1d904ff248a4bfeb4da4dcb820d5f5b6af4d46215f28a5a5262f58f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
+      },
+      {
+        "digest": "eb2bf72f413993dbe20c8f90cc57e30fe50e0c1edbb10534ec47e401a01c261b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
+      },
+      {
+        "digest": "70d34fe8a8f6a44b8c326a08c8e7d7cb0dfe44a500cc9cd4cd8a54753cb8b53b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
+      },
+      {
+        "digest": "0165fb83126fc36a8d3b3de7c2078ae2dcb0b5665a0945e08456da67847932ca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
+      },
+      {
+        "digest": "78c538e2e324c41e6df21ad394582f61d62b5e4a913de3e72c4d2e1fc96d5fee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md"
+      },
+      {
+        "digest": "ecd9184a101f130db432e976f4b065d3f84249306a18c739a9da7993ca973d88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
+      },
+      {
+        "digest": "fc92a3950659ab5a39ce30371d8e4fc31753d8aaac901890ad4684045b50f8b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
+      },
+      {
+        "digest": "b7c9fb1cfb2f40ed76d53ef61b1e546287f5c76f52001c514753e19b46cebe98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "59d419e16826dfd14f06f6ccd5893528d5dece65a32c508ce940e162fa1c24e0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
+      },
+      {
+        "digest": "afa399a629d049759b2b24466044abd00ac47c513e04a963c939daa7b78bbc9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
+      },
+      {
+        "digest": "ff3040b8d8e5c56663a492e953bfe519b653ef31892839a0b99f5ec997efb9d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
+      },
+      {
+        "digest": "97a959edf1d904ff248a4bfeb4da4dcb820d5f5b6af4d46215f28a5a5262f58f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
+      },
+      {
+        "digest": "eb2bf72f413993dbe20c8f90cc57e30fe50e0c1edbb10534ec47e401a01c261b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
+      },
+      {
+        "digest": "70d34fe8a8f6a44b8c326a08c8e7d7cb0dfe44a500cc9cd4cd8a54753cb8b53b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
+      },
+      {
+        "digest": "0165fb83126fc36a8d3b3de7c2078ae2dcb0b5665a0945e08456da67847932ca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
+      },
+      {
+        "digest": "78c538e2e324c41e6df21ad394582f61d62b5e4a913de3e72c4d2e1fc96d5fee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md"
+      },
+      {
+        "digest": "ecd9184a101f130db432e976f4b065d3f84249306a18c739a9da7993ca973d88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
+      },
+      {
+        "digest": "fc92a3950659ab5a39ce30371d8e4fc31753d8aaac901890ad4684045b50f8b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
+      },
+      {
+        "digest": "b7c9fb1cfb2f40ed76d53ef61b1e546287f5c76f52001c514753e19b46cebe98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "59d419e16826dfd14f06f6ccd5893528d5dece65a32c508ce940e162fa1c24e0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
+      },
+      {
+        "digest": "afa399a629d049759b2b24466044abd00ac47c513e04a963c939daa7b78bbc9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
+      },
+      {
+        "digest": "ff3040b8d8e5c56663a492e953bfe519b653ef31892839a0b99f5ec997efb9d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
+      },
+      {
+        "digest": "97a959edf1d904ff248a4bfeb4da4dcb820d5f5b6af4d46215f28a5a5262f58f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
+      },
+      {
+        "digest": "eb2bf72f413993dbe20c8f90cc57e30fe50e0c1edbb10534ec47e401a01c261b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
+      },
+      {
+        "digest": "70d34fe8a8f6a44b8c326a08c8e7d7cb0dfe44a500cc9cd4cd8a54753cb8b53b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
+      },
+      {
+        "digest": "0165fb83126fc36a8d3b3de7c2078ae2dcb0b5665a0945e08456da67847932ca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
+      },
+      {
+        "digest": "78c538e2e324c41e6df21ad394582f61d62b5e4a913de3e72c4d2e1fc96d5fee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md",
+    "digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.602637Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-15T08:20:57+07:00",
+      "spec_last_changed_at": "2026-09-15T08:20:57+07:00"
+    },
+    "revision": null,
+    "slug": "hard-cutover",
+    "spec_id": "hard-cutover",
+    "title": "Feature 186 Hard Cutover Implementation Specification"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.602637Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.602637Z",
+    "sources": [
+      {
+        "digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md"
+      },
+      {
+        "digest": "ecd9184a101f130db432e976f4b065d3f84249306a18c739a9da7993ca973d88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
+      },
+      {
+        "digest": "fc92a3950659ab5a39ce30371d8e4fc31753d8aaac901890ad4684045b50f8b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
+      },
+      {
+        "digest": "b7c9fb1cfb2f40ed76d53ef61b1e546287f5c76f52001c514753e19b46cebe98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "59d419e16826dfd14f06f6ccd5893528d5dece65a32c508ce940e162fa1c24e0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
+      },
+      {
+        "digest": "afa399a629d049759b2b24466044abd00ac47c513e04a963c939daa7b78bbc9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
+      },
+      {
+        "digest": "ff3040b8d8e5c56663a492e953bfe519b653ef31892839a0b99f5ec997efb9d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
+      },
+      {
+        "digest": "97a959edf1d904ff248a4bfeb4da4dcb820d5f5b6af4d46215f28a5a5262f58f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
+      },
+      {
+        "digest": "eb2bf72f413993dbe20c8f90cc57e30fe50e0c1edbb10534ec47e401a01c261b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
+      },
+      {
+        "digest": "70d34fe8a8f6a44b8c326a08c8e7d7cb0dfe44a500cc9cd4cd8a54753cb8b53b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
+      },
+      {
+        "digest": "0165fb83126fc36a8d3b3de7c2078ae2dcb0b5665a0945e08456da67847932ca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
+      },
+      {
+        "digest": "78c538e2e324c41e6df21ad394582f61d62b5e4a913de3e72c4d2e1fc96d5fee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md"
+      },
+      {
+        "digest": "ecd9184a101f130db432e976f4b065d3f84249306a18c739a9da7993ca973d88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
+      },
+      {
+        "digest": "fc92a3950659ab5a39ce30371d8e4fc31753d8aaac901890ad4684045b50f8b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
+      },
+      {
+        "digest": "b7c9fb1cfb2f40ed76d53ef61b1e546287f5c76f52001c514753e19b46cebe98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "59d419e16826dfd14f06f6ccd5893528d5dece65a32c508ce940e162fa1c24e0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
+      },
+      {
+        "digest": "afa399a629d049759b2b24466044abd00ac47c513e04a963c939daa7b78bbc9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
+      },
+      {
+        "digest": "ff3040b8d8e5c56663a492e953bfe519b653ef31892839a0b99f5ec997efb9d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
+      },
+      {
+        "digest": "97a959edf1d904ff248a4bfeb4da4dcb820d5f5b6af4d46215f28a5a5262f58f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
+      },
+      {
+        "digest": "eb2bf72f413993dbe20c8f90cc57e30fe50e0c1edbb10534ec47e401a01c261b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
+      },
+      {
+        "digest": "70d34fe8a8f6a44b8c326a08c8e7d7cb0dfe44a500cc9cd4cd8a54753cb8b53b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
+      },
+      {
+        "digest": "0165fb83126fc36a8d3b3de7c2078ae2dcb0b5665a0945e08456da67847932ca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
+      },
+      {
+        "digest": "78c538e2e324c41e6df21ad394582f61d62b5e4a913de3e72c4d2e1fc96d5fee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 8,
+    "unresolved": 8
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.602637Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

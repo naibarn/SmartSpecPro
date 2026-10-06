@@ -1,0 +1,172 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md",
+    "digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.094639Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-05-31T09:12:13+07:00",
+      "spec_last_changed_at": "2026-06-04T21:12:13+07:00"
+    },
+    "revision": "1.0.0",
+    "slug": "118-marketplace-auto-review-create-storyboard-video-review-auto",
+    "spec_id": "118",
+    "title": "Feature 118: Marketplace Auto Review Create Storyboard And Video Review Auto"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.094639Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.094639Z",
+    "sources": [
+      {
+        "digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 2,
+    "unresolved": 2
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.094639Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

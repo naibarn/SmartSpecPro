@@ -1,0 +1,547 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "b410f0f33d74f1bebd9023367ed6883f3aada90f71ad624de9b5c17b8200c17f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md"
+      },
+      {
+        "digest": "777596abff054141cea73252b6ba0c05e1618ab4becc45d4569109de2d3ae822",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
+      },
+      {
+        "digest": "a17ec858c61d42e73669efa7853bf97c4617ad404f75c44ed3fde0a8fe8eb301",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
+      },
+      {
+        "digest": "9a7f0bbfabe383b795a64a069401526e411342ded700b60c7136cdd281e2d16d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "dc88e1b46fdeb476de3ba355794ff742e7e4bd2fc97de70552439e0fdef89124",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
+      },
+      {
+        "digest": "d524d27d9e274e787e4d74d1970a3cc1126a3e0443d359f0b3b61b6998dcf2c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
+      },
+      {
+        "digest": "38db284f6c472b439c5bf7bb5bd13fe2419f26811fc37be2d7f4d8debb483138",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "e0610fb2da62c188260678f5e1308a0c4aea81f20f0731dfded8d2134307ce98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
+      },
+      {
+        "digest": "a3d41a200aa7311877b4d1fc01b276b533e3bdf68fd286114327fc7f53ebb15a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
+      },
+      {
+        "digest": "c7fda3dc45673a10b29b957871d1affd757d430cf5dd178084725262527da307",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
+      },
+      {
+        "digest": "549930676b343d9849165b56b19c37d2ca0a9aab4b6d04ee9f02a7259a47a743",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
+      },
+      {
+        "digest": "fe54f507a8a7a87fced04b59473aa4475b619b3aa7e195e9fe1ff11a3d643927",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
+      },
+      {
+        "digest": "a9286cbc6a1f272f56a89477de4c0a5157a553bfa83826d79206eeb5b7448405",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
+      },
+      {
+        "digest": "1fcba8f2569603622376498b48931ca33e7994e8f5799012e72895ecd61bc679",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
+      },
+      {
+        "digest": "cf3654a97908c162f0f2e05fd78042c08dc48e701e1bb64100876dd553d174f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
+      },
+      {
+        "digest": "e57340b9a8b6257dfa17d4d58cdb5b0a898b6c13e15a2a4515cf9a0074a967a9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "b410f0f33d74f1bebd9023367ed6883f3aada90f71ad624de9b5c17b8200c17f"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "b410f0f33d74f1bebd9023367ed6883f3aada90f71ad624de9b5c17b8200c17f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md"
+      },
+      {
+        "digest": "777596abff054141cea73252b6ba0c05e1618ab4becc45d4569109de2d3ae822",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
+      },
+      {
+        "digest": "a17ec858c61d42e73669efa7853bf97c4617ad404f75c44ed3fde0a8fe8eb301",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
+      },
+      {
+        "digest": "9a7f0bbfabe383b795a64a069401526e411342ded700b60c7136cdd281e2d16d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "dc88e1b46fdeb476de3ba355794ff742e7e4bd2fc97de70552439e0fdef89124",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
+      },
+      {
+        "digest": "d524d27d9e274e787e4d74d1970a3cc1126a3e0443d359f0b3b61b6998dcf2c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
+      },
+      {
+        "digest": "38db284f6c472b439c5bf7bb5bd13fe2419f26811fc37be2d7f4d8debb483138",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "e0610fb2da62c188260678f5e1308a0c4aea81f20f0731dfded8d2134307ce98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
+      },
+      {
+        "digest": "a3d41a200aa7311877b4d1fc01b276b533e3bdf68fd286114327fc7f53ebb15a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
+      },
+      {
+        "digest": "c7fda3dc45673a10b29b957871d1affd757d430cf5dd178084725262527da307",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
+      },
+      {
+        "digest": "549930676b343d9849165b56b19c37d2ca0a9aab4b6d04ee9f02a7259a47a743",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
+      },
+      {
+        "digest": "fe54f507a8a7a87fced04b59473aa4475b619b3aa7e195e9fe1ff11a3d643927",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
+      },
+      {
+        "digest": "a9286cbc6a1f272f56a89477de4c0a5157a553bfa83826d79206eeb5b7448405",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
+      },
+      {
+        "digest": "1fcba8f2569603622376498b48931ca33e7994e8f5799012e72895ecd61bc679",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
+      },
+      {
+        "digest": "cf3654a97908c162f0f2e05fd78042c08dc48e701e1bb64100876dd553d174f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
+      },
+      {
+        "digest": "e57340b9a8b6257dfa17d4d58cdb5b0a898b6c13e15a2a4515cf9a0074a967a9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "b410f0f33d74f1bebd9023367ed6883f3aada90f71ad624de9b5c17b8200c17f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md"
+      },
+      {
+        "digest": "777596abff054141cea73252b6ba0c05e1618ab4becc45d4569109de2d3ae822",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
+      },
+      {
+        "digest": "a17ec858c61d42e73669efa7853bf97c4617ad404f75c44ed3fde0a8fe8eb301",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
+      },
+      {
+        "digest": "9a7f0bbfabe383b795a64a069401526e411342ded700b60c7136cdd281e2d16d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "dc88e1b46fdeb476de3ba355794ff742e7e4bd2fc97de70552439e0fdef89124",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
+      },
+      {
+        "digest": "d524d27d9e274e787e4d74d1970a3cc1126a3e0443d359f0b3b61b6998dcf2c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
+      },
+      {
+        "digest": "38db284f6c472b439c5bf7bb5bd13fe2419f26811fc37be2d7f4d8debb483138",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "e0610fb2da62c188260678f5e1308a0c4aea81f20f0731dfded8d2134307ce98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
+      },
+      {
+        "digest": "a3d41a200aa7311877b4d1fc01b276b533e3bdf68fd286114327fc7f53ebb15a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
+      },
+      {
+        "digest": "c7fda3dc45673a10b29b957871d1affd757d430cf5dd178084725262527da307",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
+      },
+      {
+        "digest": "549930676b343d9849165b56b19c37d2ca0a9aab4b6d04ee9f02a7259a47a743",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
+      },
+      {
+        "digest": "fe54f507a8a7a87fced04b59473aa4475b619b3aa7e195e9fe1ff11a3d643927",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
+      },
+      {
+        "digest": "a9286cbc6a1f272f56a89477de4c0a5157a553bfa83826d79206eeb5b7448405",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
+      },
+      {
+        "digest": "1fcba8f2569603622376498b48931ca33e7994e8f5799012e72895ecd61bc679",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
+      },
+      {
+        "digest": "cf3654a97908c162f0f2e05fd78042c08dc48e701e1bb64100876dd553d174f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
+      },
+      {
+        "digest": "e57340b9a8b6257dfa17d4d58cdb5b0a898b6c13e15a2a4515cf9a0074a967a9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md",
+    "digest": "b410f0f33d74f1bebd9023367ed6883f3aada90f71ad624de9b5c17b8200c17f",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.362064Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-08-18T15:58:05+07:00",
+      "spec_last_changed_at": "2026-08-18T16:13:25+07:00"
+    },
+    "revision": null,
+    "slug": "151-unified-agent-output-assurance-orchestra",
+    "spec_id": "151",
+    "title": "Feature 151: Unified Agent Output Assurance Orchestra"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.362064Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.362064Z",
+    "sources": [
+      {
+        "digest": "b410f0f33d74f1bebd9023367ed6883f3aada90f71ad624de9b5c17b8200c17f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md"
+      },
+      {
+        "digest": "777596abff054141cea73252b6ba0c05e1618ab4becc45d4569109de2d3ae822",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
+      },
+      {
+        "digest": "a17ec858c61d42e73669efa7853bf97c4617ad404f75c44ed3fde0a8fe8eb301",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
+      },
+      {
+        "digest": "9a7f0bbfabe383b795a64a069401526e411342ded700b60c7136cdd281e2d16d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "dc88e1b46fdeb476de3ba355794ff742e7e4bd2fc97de70552439e0fdef89124",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
+      },
+      {
+        "digest": "d524d27d9e274e787e4d74d1970a3cc1126a3e0443d359f0b3b61b6998dcf2c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
+      },
+      {
+        "digest": "38db284f6c472b439c5bf7bb5bd13fe2419f26811fc37be2d7f4d8debb483138",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "e0610fb2da62c188260678f5e1308a0c4aea81f20f0731dfded8d2134307ce98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
+      },
+      {
+        "digest": "a3d41a200aa7311877b4d1fc01b276b533e3bdf68fd286114327fc7f53ebb15a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
+      },
+      {
+        "digest": "c7fda3dc45673a10b29b957871d1affd757d430cf5dd178084725262527da307",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
+      },
+      {
+        "digest": "549930676b343d9849165b56b19c37d2ca0a9aab4b6d04ee9f02a7259a47a743",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
+      },
+      {
+        "digest": "fe54f507a8a7a87fced04b59473aa4475b619b3aa7e195e9fe1ff11a3d643927",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
+      },
+      {
+        "digest": "a9286cbc6a1f272f56a89477de4c0a5157a553bfa83826d79206eeb5b7448405",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
+      },
+      {
+        "digest": "1fcba8f2569603622376498b48931ca33e7994e8f5799012e72895ecd61bc679",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
+      },
+      {
+        "digest": "cf3654a97908c162f0f2e05fd78042c08dc48e701e1bb64100876dd553d174f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
+      },
+      {
+        "digest": "e57340b9a8b6257dfa17d4d58cdb5b0a898b6c13e15a2a4515cf9a0074a967a9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "b410f0f33d74f1bebd9023367ed6883f3aada90f71ad624de9b5c17b8200c17f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md"
+      },
+      {
+        "digest": "777596abff054141cea73252b6ba0c05e1618ab4becc45d4569109de2d3ae822",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
+      },
+      {
+        "digest": "a17ec858c61d42e73669efa7853bf97c4617ad404f75c44ed3fde0a8fe8eb301",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
+      },
+      {
+        "digest": "9a7f0bbfabe383b795a64a069401526e411342ded700b60c7136cdd281e2d16d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "dc88e1b46fdeb476de3ba355794ff742e7e4bd2fc97de70552439e0fdef89124",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
+      },
+      {
+        "digest": "d524d27d9e274e787e4d74d1970a3cc1126a3e0443d359f0b3b61b6998dcf2c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
+      },
+      {
+        "digest": "38db284f6c472b439c5bf7bb5bd13fe2419f26811fc37be2d7f4d8debb483138",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "e0610fb2da62c188260678f5e1308a0c4aea81f20f0731dfded8d2134307ce98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
+      },
+      {
+        "digest": "a3d41a200aa7311877b4d1fc01b276b533e3bdf68fd286114327fc7f53ebb15a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
+      },
+      {
+        "digest": "c7fda3dc45673a10b29b957871d1affd757d430cf5dd178084725262527da307",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
+      },
+      {
+        "digest": "549930676b343d9849165b56b19c37d2ca0a9aab4b6d04ee9f02a7259a47a743",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
+      },
+      {
+        "digest": "fe54f507a8a7a87fced04b59473aa4475b619b3aa7e195e9fe1ff11a3d643927",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
+      },
+      {
+        "digest": "a9286cbc6a1f272f56a89477de4c0a5157a553bfa83826d79206eeb5b7448405",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
+      },
+      {
+        "digest": "1fcba8f2569603622376498b48931ca33e7994e8f5799012e72895ecd61bc679",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
+      },
+      {
+        "digest": "cf3654a97908c162f0f2e05fd78042c08dc48e701e1bb64100876dd553d174f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
+      },
+      {
+        "digest": "e57340b9a8b6257dfa17d4d58cdb5b0a898b6c13e15a2a4515cf9a0074a967a9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 103,
+    "unresolved": 103
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.362064Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

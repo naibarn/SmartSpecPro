@@ -1,0 +1,563 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "199",
+        "referenced_spec_id": "199",
+        "referencing_spec_id": "221",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md#L119",
+        "source_digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "successor_spec_id": "221"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "200",
+        "referenced_spec_id": "200",
+        "referencing_spec_id": "221",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md#L120",
+        "source_digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "successor_spec_id": "221"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "206",
+        "referenced_spec_id": "206",
+        "referencing_spec_id": "221",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md#L121",
+        "source_digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "successor_spec_id": "221"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "221",
+        "referenced_spec_id": "221",
+        "referencing_spec_id": "244",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1361",
+        "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
+        "successor_spec_id": "244"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "221",
+        "referenced_spec_id": "221",
+        "referencing_spec_id": "248",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/248-MCP Skills Extension/spec.md#L278",
+        "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+        "successor_spec_id": "248"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "221",
+        "referenced_spec_id": "221",
+        "referencing_spec_id": "248",
+        "relation_text": "merging",
+        "requirement_ids": [
+          "R2"
+        ],
+        "source": "specs/feature/248-MCP Skills Extension/spec.md#L502",
+        "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+        "successor_spec_id": "248"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "221",
+        "referenced_spec_id": "221",
+        "referencing_spec_id": "250",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+        "successor_spec_id": "250"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "221",
+        "referenced_spec_id": "221",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "221",
+        "referenced_spec_id": "221",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "222",
+        "referenced_spec_id": "222",
+        "referencing_spec_id": "221",
+        "relation_text": "superseded",
+        "requirement_ids": [],
+        "source": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md#L4140",
+        "source_digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "successor_spec_id": "221"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "230",
+        "referenced_spec_id": "230",
+        "referencing_spec_id": "221",
+        "relation_text": "supersedes",
+        "requirement_ids": [],
+        "source": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md#L3606",
+        "source_digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "successor_spec_id": "221"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "230",
+        "referenced_spec_id": "230",
+        "referencing_spec_id": "221",
+        "relation_text": "supersedes",
+        "requirement_ids": [],
+        "source": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md#L3730",
+        "source_digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "successor_spec_id": "221"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "230",
+        "referenced_spec_id": "230",
+        "referencing_spec_id": "221",
+        "relation_text": "superseded",
+        "requirement_ids": [],
+        "source": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md#L4140",
+        "source_digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "successor_spec_id": "221"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 16,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 29,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 40,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 120,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 126,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 152,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 180,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 200,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\" as const,",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 17,
+        "path": "apps/web/server/services/__tests__/skillGovernanceContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 221 Skill governance contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 21,
+        "path": "apps/web/server/services/__tests__/skillGovernanceContracts.test.ts"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md",
+    "digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.139573Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-20T12:59:58+07:00",
+      "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
+    },
+    "revision": null,
+    "slug": "221-smartaihub-skill-engineering-framework",
+    "spec_id": "221",
+    "title": "Spec 221 — SmartAIHub Skill Engineering Framework"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.139573Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.139573Z",
+    "sources": [
+      {
+        "digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 16,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 29,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 40,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 120,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 126,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 152,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 180,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 200,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\" as const,",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 17,
+        "path": "apps/web/server/services/__tests__/skillGovernanceContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 221 Skill governance contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 21,
+        "path": "apps/web/server/services/__tests__/skillGovernanceContracts.test.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 16,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 29,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 40,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 120,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 126,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 152,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 180,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 200,
+        "path": "apps/web/server/services/skillGovernanceContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-221-v1\" as const,",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 17,
+        "path": "apps/web/server/services/__tests__/skillGovernanceContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 221 Skill governance contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 21,
+        "path": "apps/web/server/services/__tests__/skillGovernanceContracts.test.ts"
+      }
+    ],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 416,
+    "unresolved": 416
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.139573Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

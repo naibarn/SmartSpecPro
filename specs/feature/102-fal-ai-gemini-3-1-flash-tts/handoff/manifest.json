@@ -1,0 +1,322 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md"
+      },
+      {
+        "digest": "350c3b24dee2cb0ce79b4b6f0055dc4519335a127a0b6d15291322ba7557e086",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
+      },
+      {
+        "digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "0a202f2daa94efcf4e0f70b0e059bb0e70caa95a0b818237bbe2a5ba40f95afa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
+      },
+      {
+        "digest": "ed09a651db3ecc4e6e4c32b864e8403fe5415bca097b36ca047d3b860fc11dc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
+      },
+      {
+        "digest": "ceccfeef49c78c8030b8c23e4eb155e68fa5570f9ffd00be8218cfbbee1d9ab0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
+      },
+      {
+        "digest": "62c7c9c6641f4a397394e0dd772d5c6c95c9db174055b10f9a04681fcafbe45b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md"
+      },
+      {
+        "digest": "350c3b24dee2cb0ce79b4b6f0055dc4519335a127a0b6d15291322ba7557e086",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
+      },
+      {
+        "digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "0a202f2daa94efcf4e0f70b0e059bb0e70caa95a0b818237bbe2a5ba40f95afa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
+      },
+      {
+        "digest": "ed09a651db3ecc4e6e4c32b864e8403fe5415bca097b36ca047d3b860fc11dc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
+      },
+      {
+        "digest": "ceccfeef49c78c8030b8c23e4eb155e68fa5570f9ffd00be8218cfbbee1d9ab0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
+      },
+      {
+        "digest": "62c7c9c6641f4a397394e0dd772d5c6c95c9db174055b10f9a04681fcafbe45b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md"
+      },
+      {
+        "digest": "350c3b24dee2cb0ce79b4b6f0055dc4519335a127a0b6d15291322ba7557e086",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
+      },
+      {
+        "digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "0a202f2daa94efcf4e0f70b0e059bb0e70caa95a0b818237bbe2a5ba40f95afa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
+      },
+      {
+        "digest": "ed09a651db3ecc4e6e4c32b864e8403fe5415bca097b36ca047d3b860fc11dc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
+      },
+      {
+        "digest": "ceccfeef49c78c8030b8c23e4eb155e68fa5570f9ffd00be8218cfbbee1d9ab0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
+      },
+      {
+        "digest": "62c7c9c6641f4a397394e0dd772d5c6c95c9db174055b10f9a04681fcafbe45b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md",
+    "digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.961984Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-21T14:05:30+07:00",
+      "spec_last_changed_at": "2026-04-23T09:32:16+07:00"
+    },
+    "revision": "1.0",
+    "slug": "102-fal-ai-gemini-3-1-flash-tts",
+    "spec_id": "102",
+    "title": "Feature 102: fal.ai Gemini 3.1 Flash TTS And Multi-Speaker Media Studio"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.961984Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.961984Z",
+    "sources": [
+      {
+        "digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md"
+      },
+      {
+        "digest": "350c3b24dee2cb0ce79b4b6f0055dc4519335a127a0b6d15291322ba7557e086",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
+      },
+      {
+        "digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "0a202f2daa94efcf4e0f70b0e059bb0e70caa95a0b818237bbe2a5ba40f95afa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
+      },
+      {
+        "digest": "ed09a651db3ecc4e6e4c32b864e8403fe5415bca097b36ca047d3b860fc11dc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
+      },
+      {
+        "digest": "ceccfeef49c78c8030b8c23e4eb155e68fa5570f9ffd00be8218cfbbee1d9ab0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
+      },
+      {
+        "digest": "62c7c9c6641f4a397394e0dd772d5c6c95c9db174055b10f9a04681fcafbe45b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md"
+      },
+      {
+        "digest": "350c3b24dee2cb0ce79b4b6f0055dc4519335a127a0b6d15291322ba7557e086",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/claude-plan.md"
+      },
+      {
+        "digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "0a202f2daa94efcf4e0f70b0e059bb0e70caa95a0b818237bbe2a5ba40f95afa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/index.md"
+      },
+      {
+        "digest": "ed09a651db3ecc4e6e4c32b864e8403fe5415bca097b36ca047d3b860fc11dc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-01-catalog-and-seed.md"
+      },
+      {
+        "digest": "ceccfeef49c78c8030b8c23e4eb155e68fa5570f9ffd00be8218cfbbee1d9ab0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-02-shared-input-schema-and-ui.md"
+      },
+      {
+        "digest": "62c7c9c6641f4a397394e0dd772d5c6c95c9db174055b10f9a04681fcafbe45b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 76,
+    "unresolved": 76
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.961984Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

@@ -1,0 +1,9 @@
+<!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
+# 096 — Feature 096 - Goal-Driven Auto Team Automation
+
+- Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
+- Lifecycle: `DISCOVERING`
+- Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
+- Requirements: 0 pass / 94 unresolved of 94
+- Next action: Review consolidated ambiguity evidence and assess current relevance.
+- Manifest generation: 2

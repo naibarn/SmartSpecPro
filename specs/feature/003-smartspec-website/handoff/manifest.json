@@ -1,0 +1,197 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "4c86898746dc72c74b85604a292b125f0397fb38229b7c7eb35f6ee341de67de",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/003-smartspec-website/spec.md"
+      },
+      {
+        "digest": "40530b58aa0e38cb866d13ac5c7535ac6d750b19270479f544f87b8b2b774ccc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/003-smartspec-website/plan.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "4c86898746dc72c74b85604a292b125f0397fb38229b7c7eb35f6ee341de67de"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "4c86898746dc72c74b85604a292b125f0397fb38229b7c7eb35f6ee341de67de",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/003-smartspec-website/spec.md"
+      },
+      {
+        "digest": "40530b58aa0e38cb866d13ac5c7535ac6d750b19270479f544f87b8b2b774ccc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/003-smartspec-website/plan.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "4c86898746dc72c74b85604a292b125f0397fb38229b7c7eb35f6ee341de67de",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/003-smartspec-website/spec.md"
+      },
+      {
+        "digest": "40530b58aa0e38cb866d13ac5c7535ac6d750b19270479f544f87b8b2b774ccc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/003-smartspec-website/plan.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/003-smartspec-website/spec.md",
+    "digest": "4c86898746dc72c74b85604a292b125f0397fb38229b7c7eb35f6ee341de67de",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.376274Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-01-05T10:47:02+07:00",
+      "spec_last_changed_at": "2026-01-07T01:06:08+07:00"
+    },
+    "revision": null,
+    "slug": "003-smartspec-website",
+    "spec_id": "003",
+    "title": "spec.md — 003-smartspec-website (SmartSpecWeb)"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.376274Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.376274Z",
+    "sources": [
+      {
+        "digest": "4c86898746dc72c74b85604a292b125f0397fb38229b7c7eb35f6ee341de67de",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/003-smartspec-website/spec.md"
+      },
+      {
+        "digest": "40530b58aa0e38cb866d13ac5c7535ac6d750b19270479f544f87b8b2b774ccc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/003-smartspec-website/plan.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "4c86898746dc72c74b85604a292b125f0397fb38229b7c7eb35f6ee341de67de",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/003-smartspec-website/spec.md"
+      },
+      {
+        "digest": "40530b58aa0e38cb866d13ac5c7535ac6d750b19270479f544f87b8b2b774ccc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/003-smartspec-website/plan.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 1,
+    "unresolved": 1
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.376274Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

@@ -1,0 +1,243 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "209",
+        "referenced_spec_id": "209",
+        "referencing_spec_id": "216",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
+        "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "successor_spec_id": "216"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "209",
+        "referenced_spec_id": "209",
+        "referencing_spec_id": "216",
+        "relation_text": "replacing",
+        "requirement_ids": [],
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L54",
+        "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "successor_spec_id": "216"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "216",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
+        "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "successor_spec_id": "216"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "214",
+        "referenced_spec_id": "214",
+        "referencing_spec_id": "216",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L75",
+        "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "successor_spec_id": "216"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md"
+      },
+      {
+        "excerpt": "describe(\"Spec 216 canonical Studio adapter\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 56,
+        "path": "apps/web/server/services/__tests__/workflowStudioCanonicalAdapter.test.ts"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md",
+    "digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.103280Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-20T12:59:58+07:00",
+      "spec_last_changed_at": "2026-09-28T00:04:37+07:00"
+    },
+    "revision": "20",
+    "slug": "216-workflow-studio-node-runtime-miniapp-upgrade",
+    "spec_id": "216",
+    "title": "Spec 216 — SmartAIHub Workflow Studio Upgrade Program"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.103280Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.103280Z",
+    "sources": [
+      {
+        "digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md"
+      },
+      {
+        "excerpt": "describe(\"Spec 216 canonical Studio adapter\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 56,
+        "path": "apps/web/server/services/__tests__/workflowStudioCanonicalAdapter.test.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "describe(\"Spec 216 canonical Studio adapter\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 56,
+        "path": "apps/web/server/services/__tests__/workflowStudioCanonicalAdapter.test.ts"
+      }
+    ],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 147,
+    "unresolved": 147
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.103280Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

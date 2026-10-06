@@ -1,0 +1,472 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "b840e4ae6657968513d69b1c77a90c0e397f835ea4e08f4066b4fb9794784c7a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/spec.md"
+      },
+      {
+        "digest": "aebf7d6cccb2b19f529dab18951fd205d409d45049e2da69c7ba93c0b0a4ef95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/claude-plan.md"
+      },
+      {
+        "digest": "f0a6613960d37f3184e6666baf65e523bb6fe8e5a0ab9efd729ca1fd240a24cf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/claude-spec.md"
+      },
+      {
+        "digest": "768c762702828fcb31875d3ded0d91a096ecbc17626bfc0b0a1b4d9596da84f3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "cf4608cc428e36580e4a3b3bf235efdbc1213a462342eda77c6545f19142fa52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "bd90f1f3cedcf3495089d83e8313910ea4164068cbc4e5f6680f1ce695fd1a1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/index.md"
+      },
+      {
+        "digest": "cab7b77f04cd717b495cb2271fdab3fd7e395efa62d9706571b6c6de190cca2a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-01-runtime-state-and-evidence-model.md"
+      },
+      {
+        "digest": "1b76c5b18bbfefb9822f76af7525687f6987396baaf514a57ecea8afb676953c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-02-goal-driven-orchestration-loop.md"
+      },
+      {
+        "digest": "15f6fa46a8d39c60f76471da2fe3c4405aae25dfe4eb2ed17825a25a61f582cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-03-async-worker-polling.md"
+      },
+      {
+        "digest": "628cdf3ccac1b8712b06c7eb0edd0128e74206f559cd3342a79a722b9fad276f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-04-verification-review-risk-escalation.md"
+      },
+      {
+        "digest": "99a38ea982f9d53d7b742967955e48747bbe5354eff3e66387c18e45f4ad7b8b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-05-runtime-status-projection-ui.md"
+      },
+      {
+        "digest": "69fdd4ee4e53c6f01c2b8bafb66b904af8c13716c2ccbb9e4f46605a86ec14dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-06-teams-ui-plan-visibility.md"
+      },
+      {
+        "digest": "c1dbb52caa060cf2b827999fa981301a826f3071fe01fb1f9408c4c736b3ccfc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-07-tests-compatibility-rollout.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "b840e4ae6657968513d69b1c77a90c0e397f835ea4e08f4066b4fb9794784c7a"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "b840e4ae6657968513d69b1c77a90c0e397f835ea4e08f4066b4fb9794784c7a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/spec.md"
+      },
+      {
+        "digest": "aebf7d6cccb2b19f529dab18951fd205d409d45049e2da69c7ba93c0b0a4ef95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/claude-plan.md"
+      },
+      {
+        "digest": "f0a6613960d37f3184e6666baf65e523bb6fe8e5a0ab9efd729ca1fd240a24cf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/claude-spec.md"
+      },
+      {
+        "digest": "768c762702828fcb31875d3ded0d91a096ecbc17626bfc0b0a1b4d9596da84f3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "cf4608cc428e36580e4a3b3bf235efdbc1213a462342eda77c6545f19142fa52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "bd90f1f3cedcf3495089d83e8313910ea4164068cbc4e5f6680f1ce695fd1a1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/index.md"
+      },
+      {
+        "digest": "cab7b77f04cd717b495cb2271fdab3fd7e395efa62d9706571b6c6de190cca2a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-01-runtime-state-and-evidence-model.md"
+      },
+      {
+        "digest": "1b76c5b18bbfefb9822f76af7525687f6987396baaf514a57ecea8afb676953c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-02-goal-driven-orchestration-loop.md"
+      },
+      {
+        "digest": "15f6fa46a8d39c60f76471da2fe3c4405aae25dfe4eb2ed17825a25a61f582cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-03-async-worker-polling.md"
+      },
+      {
+        "digest": "628cdf3ccac1b8712b06c7eb0edd0128e74206f559cd3342a79a722b9fad276f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-04-verification-review-risk-escalation.md"
+      },
+      {
+        "digest": "99a38ea982f9d53d7b742967955e48747bbe5354eff3e66387c18e45f4ad7b8b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-05-runtime-status-projection-ui.md"
+      },
+      {
+        "digest": "69fdd4ee4e53c6f01c2b8bafb66b904af8c13716c2ccbb9e4f46605a86ec14dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-06-teams-ui-plan-visibility.md"
+      },
+      {
+        "digest": "c1dbb52caa060cf2b827999fa981301a826f3071fe01fb1f9408c4c736b3ccfc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-07-tests-compatibility-rollout.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "b840e4ae6657968513d69b1c77a90c0e397f835ea4e08f4066b4fb9794784c7a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/spec.md"
+      },
+      {
+        "digest": "aebf7d6cccb2b19f529dab18951fd205d409d45049e2da69c7ba93c0b0a4ef95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/claude-plan.md"
+      },
+      {
+        "digest": "f0a6613960d37f3184e6666baf65e523bb6fe8e5a0ab9efd729ca1fd240a24cf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/claude-spec.md"
+      },
+      {
+        "digest": "768c762702828fcb31875d3ded0d91a096ecbc17626bfc0b0a1b4d9596da84f3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "cf4608cc428e36580e4a3b3bf235efdbc1213a462342eda77c6545f19142fa52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "bd90f1f3cedcf3495089d83e8313910ea4164068cbc4e5f6680f1ce695fd1a1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/index.md"
+      },
+      {
+        "digest": "cab7b77f04cd717b495cb2271fdab3fd7e395efa62d9706571b6c6de190cca2a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-01-runtime-state-and-evidence-model.md"
+      },
+      {
+        "digest": "1b76c5b18bbfefb9822f76af7525687f6987396baaf514a57ecea8afb676953c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-02-goal-driven-orchestration-loop.md"
+      },
+      {
+        "digest": "15f6fa46a8d39c60f76471da2fe3c4405aae25dfe4eb2ed17825a25a61f582cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-03-async-worker-polling.md"
+      },
+      {
+        "digest": "628cdf3ccac1b8712b06c7eb0edd0128e74206f559cd3342a79a722b9fad276f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-04-verification-review-risk-escalation.md"
+      },
+      {
+        "digest": "99a38ea982f9d53d7b742967955e48747bbe5354eff3e66387c18e45f4ad7b8b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-05-runtime-status-projection-ui.md"
+      },
+      {
+        "digest": "69fdd4ee4e53c6f01c2b8bafb66b904af8c13716c2ccbb9e4f46605a86ec14dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-06-teams-ui-plan-visibility.md"
+      },
+      {
+        "digest": "c1dbb52caa060cf2b827999fa981301a826f3071fe01fb1f9408c4c736b3ccfc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-07-tests-compatibility-rollout.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/096-goal-driven-auto-team-automation/spec.md",
+    "digest": "b840e4ae6657968513d69b1c77a90c0e397f835ea4e08f4066b4fb9794784c7a",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.905963Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-15T20:27:12+07:00",
+      "spec_last_changed_at": "2026-04-16T10:30:45+07:00"
+    },
+    "revision": null,
+    "slug": "096-goal-driven-auto-team-automation",
+    "spec_id": "096",
+    "title": "Feature 096 - Goal-Driven Auto Team Automation"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.905963Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.905963Z",
+    "sources": [
+      {
+        "digest": "b840e4ae6657968513d69b1c77a90c0e397f835ea4e08f4066b4fb9794784c7a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/spec.md"
+      },
+      {
+        "digest": "aebf7d6cccb2b19f529dab18951fd205d409d45049e2da69c7ba93c0b0a4ef95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/claude-plan.md"
+      },
+      {
+        "digest": "f0a6613960d37f3184e6666baf65e523bb6fe8e5a0ab9efd729ca1fd240a24cf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/claude-spec.md"
+      },
+      {
+        "digest": "768c762702828fcb31875d3ded0d91a096ecbc17626bfc0b0a1b4d9596da84f3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "cf4608cc428e36580e4a3b3bf235efdbc1213a462342eda77c6545f19142fa52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "bd90f1f3cedcf3495089d83e8313910ea4164068cbc4e5f6680f1ce695fd1a1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/index.md"
+      },
+      {
+        "digest": "cab7b77f04cd717b495cb2271fdab3fd7e395efa62d9706571b6c6de190cca2a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-01-runtime-state-and-evidence-model.md"
+      },
+      {
+        "digest": "1b76c5b18bbfefb9822f76af7525687f6987396baaf514a57ecea8afb676953c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-02-goal-driven-orchestration-loop.md"
+      },
+      {
+        "digest": "15f6fa46a8d39c60f76471da2fe3c4405aae25dfe4eb2ed17825a25a61f582cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-03-async-worker-polling.md"
+      },
+      {
+        "digest": "628cdf3ccac1b8712b06c7eb0edd0128e74206f559cd3342a79a722b9fad276f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-04-verification-review-risk-escalation.md"
+      },
+      {
+        "digest": "99a38ea982f9d53d7b742967955e48747bbe5354eff3e66387c18e45f4ad7b8b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-05-runtime-status-projection-ui.md"
+      },
+      {
+        "digest": "69fdd4ee4e53c6f01c2b8bafb66b904af8c13716c2ccbb9e4f46605a86ec14dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-06-teams-ui-plan-visibility.md"
+      },
+      {
+        "digest": "c1dbb52caa060cf2b827999fa981301a826f3071fe01fb1f9408c4c736b3ccfc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-07-tests-compatibility-rollout.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "b840e4ae6657968513d69b1c77a90c0e397f835ea4e08f4066b4fb9794784c7a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/spec.md"
+      },
+      {
+        "digest": "aebf7d6cccb2b19f529dab18951fd205d409d45049e2da69c7ba93c0b0a4ef95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/claude-plan.md"
+      },
+      {
+        "digest": "f0a6613960d37f3184e6666baf65e523bb6fe8e5a0ab9efd729ca1fd240a24cf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/claude-spec.md"
+      },
+      {
+        "digest": "768c762702828fcb31875d3ded0d91a096ecbc17626bfc0b0a1b4d9596da84f3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "cf4608cc428e36580e4a3b3bf235efdbc1213a462342eda77c6545f19142fa52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "bd90f1f3cedcf3495089d83e8313910ea4164068cbc4e5f6680f1ce695fd1a1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/index.md"
+      },
+      {
+        "digest": "cab7b77f04cd717b495cb2271fdab3fd7e395efa62d9706571b6c6de190cca2a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-01-runtime-state-and-evidence-model.md"
+      },
+      {
+        "digest": "1b76c5b18bbfefb9822f76af7525687f6987396baaf514a57ecea8afb676953c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-02-goal-driven-orchestration-loop.md"
+      },
+      {
+        "digest": "15f6fa46a8d39c60f76471da2fe3c4405aae25dfe4eb2ed17825a25a61f582cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-03-async-worker-polling.md"
+      },
+      {
+        "digest": "628cdf3ccac1b8712b06c7eb0edd0128e74206f559cd3342a79a722b9fad276f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-04-verification-review-risk-escalation.md"
+      },
+      {
+        "digest": "99a38ea982f9d53d7b742967955e48747bbe5354eff3e66387c18e45f4ad7b8b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-05-runtime-status-projection-ui.md"
+      },
+      {
+        "digest": "69fdd4ee4e53c6f01c2b8bafb66b904af8c13716c2ccbb9e4f46605a86ec14dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-06-teams-ui-plan-visibility.md"
+      },
+      {
+        "digest": "c1dbb52caa060cf2b827999fa981301a826f3071fe01fb1f9408c4c736b3ccfc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/096-goal-driven-auto-team-automation/sections/section-07-tests-compatibility-rollout.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 94,
+    "unresolved": 94
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.905963Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

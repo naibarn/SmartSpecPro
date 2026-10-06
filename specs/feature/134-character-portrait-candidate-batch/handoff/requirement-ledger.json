@@ -1,0 +1,30 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/134-character-portrait-candidate-batch/spec.md#L9"
+      ],
+      "authority_source": "specs/feature/134-character-portrait-candidate-batch/spec.md#L9",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e67d343fb09ab5e91b391839eb78854e3cf53c553ea3c726f9a4e7e28df4b5b7",
+      "requirement_id": "REQ-9EABA1138491",
+      "requirement_text": "request 1-5 equally strong portrait candidates in one flow. The Visual Bible Skill must",
+      "source_spec_digest": "4a4bc05770e07c854afec122d26a644f2cdee71d0b85ba9ed3658c4130c2bc03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "4a4bc05770e07c854afec122d26a644f2cdee71d0b85ba9ed3658c4130c2bc03",
+  "spec_id": "134"
+}

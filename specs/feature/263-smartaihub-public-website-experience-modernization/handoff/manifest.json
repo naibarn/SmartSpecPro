@@ -1,0 +1,679 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md"
+      },
+      {
+        "digest": "6233a30158149dad0711ef2b94aab4ff416511a17c9a45ebde2e11cf1255c761",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/claude-plan.md"
+      },
+      {
+        "digest": "4f7465c4e4b589ec52881a348849ba137d1f50c16f6635259e9a6077f25b883f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/claude-spec.md"
+      },
+      {
+        "digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d2f4a47d68d895054e64f6a3e6b34f43de55cc740eeac017a2c355027a87f30b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-claims-registry.json"
+      },
+      {
+        "digest": "644b5f9a02a8703dc2b2e3d65aa37cd552771e609a1f75b6802aca4966da13dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-film-demo-manifest.json"
+      },
+      {
+        "digest": "73af1bea7fe0d578b2c149d44c3377cbced0600d53c0b41afba1def18a9a3bbc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-locale-route-map.json"
+      },
+      {
+        "digest": "9ffa5a3aa9309a88b54e4ae9e630f73a42d59f070d590a9352dd5e11501534af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-media-governance-inventory.json"
+      },
+      {
+        "digest": "ec364f89b3ec9e11c0bd71928938f70d5b3944b9aefda2f18b729a4b42f1616b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-redirect-map.json"
+      },
+      {
+        "digest": "ba8b63ce2431d3b257f51c87db6c860c1219352cd482ce2f10de7831c9d3863f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-required-artifacts.json"
+      },
+      {
+        "digest": "7ddb41e422f39618f2644fa61159484397ed4d85d77cbb20e1219fd7c9265c14",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-route-inventory.json"
+      },
+      {
+        "digest": "a5e127e864f800a02e3ec434db743ff856c893ce1d62963d9995048d02e9b921",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-social-proof-registry.json"
+      },
+      {
+        "digest": "25660c81138475237f910a97fba64b1620c35c39be0d5f723c6d400069eedce5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-truth-map.md"
+      },
+      {
+        "digest": "588c7f3bf49de0177333bda9a429c8019ef0da312062e843808cd9ae13ff92b9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/section-status.md"
+      },
+      {
+        "digest": "f190cbd8eb92fed2b97b1ef0236e0e3744cc927edb5da8efadc99162a1fd3f6f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "fd5d3eb668e057bf50b7cb98e2cac9be2c5a6bef7a3e69ef7c17262e722185b0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/index.md"
+      },
+      {
+        "digest": "d5acf8ebda84772acc2f4f681d2abb9e2cb101d44c164f7a9839b6136d0a16cb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-01-public-inventory-and-truth.md"
+      },
+      {
+        "digest": "50cd0349258a4fd8ca9f184cbee784770fc9ef75cf43c9e24785d1661673ec3a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-02-shell-content-and-retired-claims.md"
+      },
+      {
+        "digest": "d438f628ff922d3c27ecf3bc3bacc67b56acbbf49e721b44588cde2f18021b3b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-03-homepage-experience.md"
+      },
+      {
+        "digest": "0f12355e1f22f748b28cd278fc6da16e56944ff6093b4b3b5ca9876b8651645f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-04-film-flagship-and-handoff.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md"
+      },
+      {
+        "digest": "6233a30158149dad0711ef2b94aab4ff416511a17c9a45ebde2e11cf1255c761",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/claude-plan.md"
+      },
+      {
+        "digest": "4f7465c4e4b589ec52881a348849ba137d1f50c16f6635259e9a6077f25b883f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/claude-spec.md"
+      },
+      {
+        "digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d2f4a47d68d895054e64f6a3e6b34f43de55cc740eeac017a2c355027a87f30b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-claims-registry.json"
+      },
+      {
+        "digest": "644b5f9a02a8703dc2b2e3d65aa37cd552771e609a1f75b6802aca4966da13dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-film-demo-manifest.json"
+      },
+      {
+        "digest": "73af1bea7fe0d578b2c149d44c3377cbced0600d53c0b41afba1def18a9a3bbc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-locale-route-map.json"
+      },
+      {
+        "digest": "9ffa5a3aa9309a88b54e4ae9e630f73a42d59f070d590a9352dd5e11501534af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-media-governance-inventory.json"
+      },
+      {
+        "digest": "ec364f89b3ec9e11c0bd71928938f70d5b3944b9aefda2f18b729a4b42f1616b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-redirect-map.json"
+      },
+      {
+        "digest": "ba8b63ce2431d3b257f51c87db6c860c1219352cd482ce2f10de7831c9d3863f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-required-artifacts.json"
+      },
+      {
+        "digest": "7ddb41e422f39618f2644fa61159484397ed4d85d77cbb20e1219fd7c9265c14",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-route-inventory.json"
+      },
+      {
+        "digest": "a5e127e864f800a02e3ec434db743ff856c893ce1d62963d9995048d02e9b921",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-social-proof-registry.json"
+      },
+      {
+        "digest": "25660c81138475237f910a97fba64b1620c35c39be0d5f723c6d400069eedce5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-truth-map.md"
+      },
+      {
+        "digest": "588c7f3bf49de0177333bda9a429c8019ef0da312062e843808cd9ae13ff92b9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/section-status.md"
+      },
+      {
+        "digest": "f190cbd8eb92fed2b97b1ef0236e0e3744cc927edb5da8efadc99162a1fd3f6f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "fd5d3eb668e057bf50b7cb98e2cac9be2c5a6bef7a3e69ef7c17262e722185b0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/index.md"
+      },
+      {
+        "digest": "d5acf8ebda84772acc2f4f681d2abb9e2cb101d44c164f7a9839b6136d0a16cb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-01-public-inventory-and-truth.md"
+      },
+      {
+        "digest": "50cd0349258a4fd8ca9f184cbee784770fc9ef75cf43c9e24785d1661673ec3a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-02-shell-content-and-retired-claims.md"
+      },
+      {
+        "digest": "d438f628ff922d3c27ecf3bc3bacc67b56acbbf49e721b44588cde2f18021b3b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-03-homepage-experience.md"
+      },
+      {
+        "digest": "0f12355e1f22f748b28cd278fc6da16e56944ff6093b4b3b5ca9876b8651645f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-04-film-flagship-and-handoff.md"
+      },
+      {
+        "excerpt": "it(\"keeps the Spec 263 platform homepage when a legacy CMS home is published\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 213,
+        "path": "apps/web/client/src/pages/Home.test.tsx"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md"
+      },
+      {
+        "digest": "6233a30158149dad0711ef2b94aab4ff416511a17c9a45ebde2e11cf1255c761",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/claude-plan.md"
+      },
+      {
+        "digest": "4f7465c4e4b589ec52881a348849ba137d1f50c16f6635259e9a6077f25b883f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/claude-spec.md"
+      },
+      {
+        "digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d2f4a47d68d895054e64f6a3e6b34f43de55cc740eeac017a2c355027a87f30b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-claims-registry.json"
+      },
+      {
+        "digest": "644b5f9a02a8703dc2b2e3d65aa37cd552771e609a1f75b6802aca4966da13dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-film-demo-manifest.json"
+      },
+      {
+        "digest": "73af1bea7fe0d578b2c149d44c3377cbced0600d53c0b41afba1def18a9a3bbc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-locale-route-map.json"
+      },
+      {
+        "digest": "9ffa5a3aa9309a88b54e4ae9e630f73a42d59f070d590a9352dd5e11501534af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-media-governance-inventory.json"
+      },
+      {
+        "digest": "ec364f89b3ec9e11c0bd71928938f70d5b3944b9aefda2f18b729a4b42f1616b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-redirect-map.json"
+      },
+      {
+        "digest": "ba8b63ce2431d3b257f51c87db6c860c1219352cd482ce2f10de7831c9d3863f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-required-artifacts.json"
+      },
+      {
+        "digest": "7ddb41e422f39618f2644fa61159484397ed4d85d77cbb20e1219fd7c9265c14",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-route-inventory.json"
+      },
+      {
+        "digest": "a5e127e864f800a02e3ec434db743ff856c893ce1d62963d9995048d02e9b921",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-social-proof-registry.json"
+      },
+      {
+        "digest": "25660c81138475237f910a97fba64b1620c35c39be0d5f723c6d400069eedce5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-truth-map.md"
+      },
+      {
+        "digest": "588c7f3bf49de0177333bda9a429c8019ef0da312062e843808cd9ae13ff92b9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/section-status.md"
+      },
+      {
+        "digest": "f190cbd8eb92fed2b97b1ef0236e0e3744cc927edb5da8efadc99162a1fd3f6f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "fd5d3eb668e057bf50b7cb98e2cac9be2c5a6bef7a3e69ef7c17262e722185b0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/index.md"
+      },
+      {
+        "digest": "d5acf8ebda84772acc2f4f681d2abb9e2cb101d44c164f7a9839b6136d0a16cb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-01-public-inventory-and-truth.md"
+      },
+      {
+        "digest": "50cd0349258a4fd8ca9f184cbee784770fc9ef75cf43c9e24785d1661673ec3a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-02-shell-content-and-retired-claims.md"
+      },
+      {
+        "digest": "d438f628ff922d3c27ecf3bc3bacc67b56acbbf49e721b44588cde2f18021b3b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-03-homepage-experience.md"
+      },
+      {
+        "digest": "0f12355e1f22f748b28cd278fc6da16e56944ff6093b4b3b5ca9876b8651645f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-04-film-flagship-and-handoff.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
+    "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.697750Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-10-02T19:30:27+07:00",
+      "spec_last_changed_at": "2026-10-06T05:05:14+07:00"
+    },
+    "revision": "263.8",
+    "slug": "263-smartaihub-public-website-experience-modernization",
+    "spec_id": "263",
+    "title": "Spec 263 — SmartAIHub Public Website Experience Modernization"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.697750Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.697750Z",
+    "sources": [
+      {
+        "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md"
+      },
+      {
+        "digest": "6233a30158149dad0711ef2b94aab4ff416511a17c9a45ebde2e11cf1255c761",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/claude-plan.md"
+      },
+      {
+        "digest": "4f7465c4e4b589ec52881a348849ba137d1f50c16f6635259e9a6077f25b883f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/claude-spec.md"
+      },
+      {
+        "digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d2f4a47d68d895054e64f6a3e6b34f43de55cc740eeac017a2c355027a87f30b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-claims-registry.json"
+      },
+      {
+        "digest": "644b5f9a02a8703dc2b2e3d65aa37cd552771e609a1f75b6802aca4966da13dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-film-demo-manifest.json"
+      },
+      {
+        "digest": "73af1bea7fe0d578b2c149d44c3377cbced0600d53c0b41afba1def18a9a3bbc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-locale-route-map.json"
+      },
+      {
+        "digest": "9ffa5a3aa9309a88b54e4ae9e630f73a42d59f070d590a9352dd5e11501534af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-media-governance-inventory.json"
+      },
+      {
+        "digest": "ec364f89b3ec9e11c0bd71928938f70d5b3944b9aefda2f18b729a4b42f1616b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-redirect-map.json"
+      },
+      {
+        "digest": "ba8b63ce2431d3b257f51c87db6c860c1219352cd482ce2f10de7831c9d3863f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-required-artifacts.json"
+      },
+      {
+        "digest": "7ddb41e422f39618f2644fa61159484397ed4d85d77cbb20e1219fd7c9265c14",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-route-inventory.json"
+      },
+      {
+        "digest": "a5e127e864f800a02e3ec434db743ff856c893ce1d62963d9995048d02e9b921",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-social-proof-registry.json"
+      },
+      {
+        "digest": "25660c81138475237f910a97fba64b1620c35c39be0d5f723c6d400069eedce5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-truth-map.md"
+      },
+      {
+        "digest": "588c7f3bf49de0177333bda9a429c8019ef0da312062e843808cd9ae13ff92b9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/section-status.md"
+      },
+      {
+        "digest": "f190cbd8eb92fed2b97b1ef0236e0e3744cc927edb5da8efadc99162a1fd3f6f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "fd5d3eb668e057bf50b7cb98e2cac9be2c5a6bef7a3e69ef7c17262e722185b0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/index.md"
+      },
+      {
+        "digest": "d5acf8ebda84772acc2f4f681d2abb9e2cb101d44c164f7a9839b6136d0a16cb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-01-public-inventory-and-truth.md"
+      },
+      {
+        "digest": "50cd0349258a4fd8ca9f184cbee784770fc9ef75cf43c9e24785d1661673ec3a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-02-shell-content-and-retired-claims.md"
+      },
+      {
+        "digest": "d438f628ff922d3c27ecf3bc3bacc67b56acbbf49e721b44588cde2f18021b3b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-03-homepage-experience.md"
+      },
+      {
+        "digest": "0f12355e1f22f748b28cd278fc6da16e56944ff6093b4b3b5ca9876b8651645f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-04-film-flagship-and-handoff.md"
+      },
+      {
+        "digest": "363dca51ff43355467d4e3c5956fe0bdda6c04575d8149181dbda3f3804a5d13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-05-seo-accessibility-and-proof.md"
+      },
+      {
+        "excerpt": "it(\"keeps the Spec 263 platform homepage when a legacy CMS home is published\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 213,
+        "path": "apps/web/client/src/pages/Home.test.tsx"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "it(\"keeps the Spec 263 platform homepage when a legacy CMS home is published\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 213,
+        "path": "apps/web/client/src/pages/Home.test.tsx"
+      }
+    ],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md"
+      },
+      {
+        "digest": "6233a30158149dad0711ef2b94aab4ff416511a17c9a45ebde2e11cf1255c761",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/claude-plan.md"
+      },
+      {
+        "digest": "4f7465c4e4b589ec52881a348849ba137d1f50c16f6635259e9a6077f25b883f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/claude-spec.md"
+      },
+      {
+        "digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d2f4a47d68d895054e64f6a3e6b34f43de55cc740eeac017a2c355027a87f30b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-claims-registry.json"
+      },
+      {
+        "digest": "644b5f9a02a8703dc2b2e3d65aa37cd552771e609a1f75b6802aca4966da13dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-film-demo-manifest.json"
+      },
+      {
+        "digest": "73af1bea7fe0d578b2c149d44c3377cbced0600d53c0b41afba1def18a9a3bbc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-locale-route-map.json"
+      },
+      {
+        "digest": "9ffa5a3aa9309a88b54e4ae9e630f73a42d59f070d590a9352dd5e11501534af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-media-governance-inventory.json"
+      },
+      {
+        "digest": "ec364f89b3ec9e11c0bd71928938f70d5b3944b9aefda2f18b729a4b42f1616b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-redirect-map.json"
+      },
+      {
+        "digest": "ba8b63ce2431d3b257f51c87db6c860c1219352cd482ce2f10de7831c9d3863f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-required-artifacts.json"
+      },
+      {
+        "digest": "7ddb41e422f39618f2644fa61159484397ed4d85d77cbb20e1219fd7c9265c14",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-route-inventory.json"
+      },
+      {
+        "digest": "a5e127e864f800a02e3ec434db743ff856c893ce1d62963d9995048d02e9b921",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-social-proof-registry.json"
+      },
+      {
+        "digest": "25660c81138475237f910a97fba64b1620c35c39be0d5f723c6d400069eedce5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-truth-map.md"
+      },
+      {
+        "digest": "588c7f3bf49de0177333bda9a429c8019ef0da312062e843808cd9ae13ff92b9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/section-status.md"
+      },
+      {
+        "digest": "f190cbd8eb92fed2b97b1ef0236e0e3744cc927edb5da8efadc99162a1fd3f6f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "fd5d3eb668e057bf50b7cb98e2cac9be2c5a6bef7a3e69ef7c17262e722185b0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/index.md"
+      },
+      {
+        "digest": "d5acf8ebda84772acc2f4f681d2abb9e2cb101d44c164f7a9839b6136d0a16cb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-01-public-inventory-and-truth.md"
+      },
+      {
+        "digest": "50cd0349258a4fd8ca9f184cbee784770fc9ef75cf43c9e24785d1661673ec3a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-02-shell-content-and-retired-claims.md"
+      },
+      {
+        "digest": "d438f628ff922d3c27ecf3bc3bacc67b56acbbf49e721b44588cde2f18021b3b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-03-homepage-experience.md"
+      },
+      {
+        "digest": "0f12355e1f22f748b28cd278fc6da16e56944ff6093b4b3b5ca9876b8651645f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-04-film-flagship-and-handoff.md"
+      },
+      {
+        "digest": "363dca51ff43355467d4e3c5956fe0bdda6c04575d8149181dbda3f3804a5d13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/263-smartaihub-public-website-experience-modernization/sections/section-05-seo-accessibility-and-proof.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 437,
+    "unresolved": 437
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.697750Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

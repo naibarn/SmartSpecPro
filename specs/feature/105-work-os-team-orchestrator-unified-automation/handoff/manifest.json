@@ -1,0 +1,687 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "23e867cdd3e3d7d374cbcd71ee3163676711e4cb84a736f20a83375c22521940",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/spec.md"
+      },
+      {
+        "digest": "a8dfa88d2e6896a0c29b3d93c55d81ff8ae6381b2d0607e1ea5d3025b82688bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/claude-plan.md"
+      },
+      {
+        "digest": "56ba8d0afef07d26b7ee9cc665dee45a6d09f123e8100b89b276c446e9b3793f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/claude-spec.md"
+      },
+      {
+        "digest": "82df2cbccb30a6f95a90951a3d7ed509b8d90a44790c63670b5e4797340e2093",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "cee53477024c00778d148c53c72e96171b78df47c213dcfdfb718a5aaf7dba61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "405cc2f557ead628d3155470ad08876bb094d620941fbba1d37441e5ff17c739",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "2c6e2967cf70cdba5e4edc9438ea32ceced9f02878cf651b4c2a3cbb4481ff81",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-10.md"
+      },
+      {
+        "digest": "22e55380b9a4665ae78b4fa87c43df1e14a4f6ed103bd49a5132e1dc44ddd9d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-11.md"
+      },
+      {
+        "digest": "3fde1b0f3e5a8ef950940f2b362dfce9647e46bddacf1f3ba7910e379ebf721b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "77c0bdc817c258138f10d7810d3be1cb0d260f47a26c8386f7161f41df161042",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "0a16305db0279bb4968fab55906c8ed70b91b68ae5aed4f0e170433c360773fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "4cbc21f8b0368f2719f201544e772107c4760c56027b4f17e75f49b371ead677",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "fc321cf3e4fef58ad624191faac516e876f66555f798ef14f64e67bb03bcea4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-6.md"
+      },
+      {
+        "digest": "0aa85e869216645fff63e67d34e78729162b134c8ca54f0dc81096b081ddda6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-7.md"
+      },
+      {
+        "digest": "e4e92a09e9c7a4a1846a67b1d5e51260bdef54869c9eade48c87d500a88a39f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-8.md"
+      },
+      {
+        "digest": "69998684812f1d3fcb610141b02c26e10829cb00f78c546ac71502de9bde68d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-9.md"
+      },
+      {
+        "digest": "0b29431201d707b49f73e0eee2cb984dc31fea9f8417c56c13b50c71588e7d59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/index.md"
+      },
+      {
+        "digest": "fa298a920f7a06aec94025868e9fb5e31517044d31c7ba48086e87ce36e42ec9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-01-intake-review-and-compiled-brief.md"
+      },
+      {
+        "digest": "e354e9d822e214eb966b53b08ee8ea2eb6ec64b547aea0412459eae06a6c72ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-02-governed-context-and-capability-catalog.md"
+      },
+      {
+        "digest": "e821024f8e11432f2533774194884da8459bede64f57e36cc83e725c810350dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-03-preflight-plan-and-launch-bridge.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "23e867cdd3e3d7d374cbcd71ee3163676711e4cb84a736f20a83375c22521940"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "23e867cdd3e3d7d374cbcd71ee3163676711e4cb84a736f20a83375c22521940",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/spec.md"
+      },
+      {
+        "digest": "a8dfa88d2e6896a0c29b3d93c55d81ff8ae6381b2d0607e1ea5d3025b82688bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/claude-plan.md"
+      },
+      {
+        "digest": "56ba8d0afef07d26b7ee9cc665dee45a6d09f123e8100b89b276c446e9b3793f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/claude-spec.md"
+      },
+      {
+        "digest": "82df2cbccb30a6f95a90951a3d7ed509b8d90a44790c63670b5e4797340e2093",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "cee53477024c00778d148c53c72e96171b78df47c213dcfdfb718a5aaf7dba61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "405cc2f557ead628d3155470ad08876bb094d620941fbba1d37441e5ff17c739",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "2c6e2967cf70cdba5e4edc9438ea32ceced9f02878cf651b4c2a3cbb4481ff81",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-10.md"
+      },
+      {
+        "digest": "22e55380b9a4665ae78b4fa87c43df1e14a4f6ed103bd49a5132e1dc44ddd9d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-11.md"
+      },
+      {
+        "digest": "3fde1b0f3e5a8ef950940f2b362dfce9647e46bddacf1f3ba7910e379ebf721b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "77c0bdc817c258138f10d7810d3be1cb0d260f47a26c8386f7161f41df161042",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "0a16305db0279bb4968fab55906c8ed70b91b68ae5aed4f0e170433c360773fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "4cbc21f8b0368f2719f201544e772107c4760c56027b4f17e75f49b371ead677",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "fc321cf3e4fef58ad624191faac516e876f66555f798ef14f64e67bb03bcea4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-6.md"
+      },
+      {
+        "digest": "0aa85e869216645fff63e67d34e78729162b134c8ca54f0dc81096b081ddda6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-7.md"
+      },
+      {
+        "digest": "e4e92a09e9c7a4a1846a67b1d5e51260bdef54869c9eade48c87d500a88a39f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-8.md"
+      },
+      {
+        "digest": "69998684812f1d3fcb610141b02c26e10829cb00f78c546ac71502de9bde68d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-9.md"
+      },
+      {
+        "digest": "0b29431201d707b49f73e0eee2cb984dc31fea9f8417c56c13b50c71588e7d59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/index.md"
+      },
+      {
+        "digest": "fa298a920f7a06aec94025868e9fb5e31517044d31c7ba48086e87ce36e42ec9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-01-intake-review-and-compiled-brief.md"
+      },
+      {
+        "digest": "e354e9d822e214eb966b53b08ee8ea2eb6ec64b547aea0412459eae06a6c72ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-02-governed-context-and-capability-catalog.md"
+      },
+      {
+        "digest": "e821024f8e11432f2533774194884da8459bede64f57e36cc83e725c810350dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-03-preflight-plan-and-launch-bridge.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "23e867cdd3e3d7d374cbcd71ee3163676711e4cb84a736f20a83375c22521940",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/spec.md"
+      },
+      {
+        "digest": "a8dfa88d2e6896a0c29b3d93c55d81ff8ae6381b2d0607e1ea5d3025b82688bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/claude-plan.md"
+      },
+      {
+        "digest": "56ba8d0afef07d26b7ee9cc665dee45a6d09f123e8100b89b276c446e9b3793f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/claude-spec.md"
+      },
+      {
+        "digest": "82df2cbccb30a6f95a90951a3d7ed509b8d90a44790c63670b5e4797340e2093",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "cee53477024c00778d148c53c72e96171b78df47c213dcfdfb718a5aaf7dba61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "405cc2f557ead628d3155470ad08876bb094d620941fbba1d37441e5ff17c739",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "2c6e2967cf70cdba5e4edc9438ea32ceced9f02878cf651b4c2a3cbb4481ff81",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-10.md"
+      },
+      {
+        "digest": "22e55380b9a4665ae78b4fa87c43df1e14a4f6ed103bd49a5132e1dc44ddd9d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-11.md"
+      },
+      {
+        "digest": "3fde1b0f3e5a8ef950940f2b362dfce9647e46bddacf1f3ba7910e379ebf721b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "77c0bdc817c258138f10d7810d3be1cb0d260f47a26c8386f7161f41df161042",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "0a16305db0279bb4968fab55906c8ed70b91b68ae5aed4f0e170433c360773fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "4cbc21f8b0368f2719f201544e772107c4760c56027b4f17e75f49b371ead677",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "fc321cf3e4fef58ad624191faac516e876f66555f798ef14f64e67bb03bcea4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-6.md"
+      },
+      {
+        "digest": "0aa85e869216645fff63e67d34e78729162b134c8ca54f0dc81096b081ddda6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-7.md"
+      },
+      {
+        "digest": "e4e92a09e9c7a4a1846a67b1d5e51260bdef54869c9eade48c87d500a88a39f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-8.md"
+      },
+      {
+        "digest": "69998684812f1d3fcb610141b02c26e10829cb00f78c546ac71502de9bde68d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-9.md"
+      },
+      {
+        "digest": "0b29431201d707b49f73e0eee2cb984dc31fea9f8417c56c13b50c71588e7d59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/index.md"
+      },
+      {
+        "digest": "fa298a920f7a06aec94025868e9fb5e31517044d31c7ba48086e87ce36e42ec9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-01-intake-review-and-compiled-brief.md"
+      },
+      {
+        "digest": "e354e9d822e214eb966b53b08ee8ea2eb6ec64b547aea0412459eae06a6c72ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-02-governed-context-and-capability-catalog.md"
+      },
+      {
+        "digest": "e821024f8e11432f2533774194884da8459bede64f57e36cc83e725c810350dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-03-preflight-plan-and-launch-bridge.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/105-work-os-team-orchestrator-unified-automation/spec.md",
+    "digest": "23e867cdd3e3d7d374cbcd71ee3163676711e4cb84a736f20a83375c22521940",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.978881Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-21T20:43:54+07:00",
+      "spec_last_changed_at": "2026-04-22T23:52:10+07:00"
+    },
+    "revision": "1.3",
+    "slug": "105-work-os-team-orchestrator-unified-automation",
+    "spec_id": "105",
+    "title": "Feature 105 - Work OS + Team Orchestrator Unified Automation"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.978881Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.978881Z",
+    "sources": [
+      {
+        "digest": "23e867cdd3e3d7d374cbcd71ee3163676711e4cb84a736f20a83375c22521940",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/spec.md"
+      },
+      {
+        "digest": "a8dfa88d2e6896a0c29b3d93c55d81ff8ae6381b2d0607e1ea5d3025b82688bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/claude-plan.md"
+      },
+      {
+        "digest": "56ba8d0afef07d26b7ee9cc665dee45a6d09f123e8100b89b276c446e9b3793f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/claude-spec.md"
+      },
+      {
+        "digest": "82df2cbccb30a6f95a90951a3d7ed509b8d90a44790c63670b5e4797340e2093",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "cee53477024c00778d148c53c72e96171b78df47c213dcfdfb718a5aaf7dba61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "405cc2f557ead628d3155470ad08876bb094d620941fbba1d37441e5ff17c739",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "2c6e2967cf70cdba5e4edc9438ea32ceced9f02878cf651b4c2a3cbb4481ff81",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-10.md"
+      },
+      {
+        "digest": "22e55380b9a4665ae78b4fa87c43df1e14a4f6ed103bd49a5132e1dc44ddd9d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-11.md"
+      },
+      {
+        "digest": "3fde1b0f3e5a8ef950940f2b362dfce9647e46bddacf1f3ba7910e379ebf721b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "77c0bdc817c258138f10d7810d3be1cb0d260f47a26c8386f7161f41df161042",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "0a16305db0279bb4968fab55906c8ed70b91b68ae5aed4f0e170433c360773fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "4cbc21f8b0368f2719f201544e772107c4760c56027b4f17e75f49b371ead677",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "fc321cf3e4fef58ad624191faac516e876f66555f798ef14f64e67bb03bcea4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-6.md"
+      },
+      {
+        "digest": "0aa85e869216645fff63e67d34e78729162b134c8ca54f0dc81096b081ddda6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-7.md"
+      },
+      {
+        "digest": "e4e92a09e9c7a4a1846a67b1d5e51260bdef54869c9eade48c87d500a88a39f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-8.md"
+      },
+      {
+        "digest": "69998684812f1d3fcb610141b02c26e10829cb00f78c546ac71502de9bde68d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-9.md"
+      },
+      {
+        "digest": "0b29431201d707b49f73e0eee2cb984dc31fea9f8417c56c13b50c71588e7d59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/index.md"
+      },
+      {
+        "digest": "fa298a920f7a06aec94025868e9fb5e31517044d31c7ba48086e87ce36e42ec9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-01-intake-review-and-compiled-brief.md"
+      },
+      {
+        "digest": "e354e9d822e214eb966b53b08ee8ea2eb6ec64b547aea0412459eae06a6c72ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-02-governed-context-and-capability-catalog.md"
+      },
+      {
+        "digest": "e821024f8e11432f2533774194884da8459bede64f57e36cc83e725c810350dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-03-preflight-plan-and-launch-bridge.md"
+      },
+      {
+        "digest": "f92a27d35c495080fa1a66fd2b72395866aa2721c70d768c606431ea94193be7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-04-team-execution-graph-and-surface-adapters.md"
+      },
+      {
+        "digest": "e5296027f35b7be1879d05911b09c0e1022b1a343661d4340b379bd45790e6d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-05-learning-loop-workpacks-and-skill-maintenance.md"
+      },
+      {
+        "digest": "3c44ffa6cbc6aaeea73ab06ffa46d57079f54f6b5428c9548e36530c1b117fe2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-06-security-surface-governance-and-release-gates.md"
+      },
+      {
+        "digest": "d6f72fd16a1233f111d55ddcc5b9d39dea9d9783fbb9538bfdb6dfd425a9eaac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-07-ui-observability-and-rollout-controls.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "23e867cdd3e3d7d374cbcd71ee3163676711e4cb84a736f20a83375c22521940",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/spec.md"
+      },
+      {
+        "digest": "a8dfa88d2e6896a0c29b3d93c55d81ff8ae6381b2d0607e1ea5d3025b82688bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/claude-plan.md"
+      },
+      {
+        "digest": "56ba8d0afef07d26b7ee9cc665dee45a6d09f123e8100b89b276c446e9b3793f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/claude-spec.md"
+      },
+      {
+        "digest": "82df2cbccb30a6f95a90951a3d7ed509b8d90a44790c63670b5e4797340e2093",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "cee53477024c00778d148c53c72e96171b78df47c213dcfdfb718a5aaf7dba61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "405cc2f557ead628d3155470ad08876bb094d620941fbba1d37441e5ff17c739",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "2c6e2967cf70cdba5e4edc9438ea32ceced9f02878cf651b4c2a3cbb4481ff81",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-10.md"
+      },
+      {
+        "digest": "22e55380b9a4665ae78b4fa87c43df1e14a4f6ed103bd49a5132e1dc44ddd9d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-11.md"
+      },
+      {
+        "digest": "3fde1b0f3e5a8ef950940f2b362dfce9647e46bddacf1f3ba7910e379ebf721b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "77c0bdc817c258138f10d7810d3be1cb0d260f47a26c8386f7161f41df161042",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "0a16305db0279bb4968fab55906c8ed70b91b68ae5aed4f0e170433c360773fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "4cbc21f8b0368f2719f201544e772107c4760c56027b4f17e75f49b371ead677",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "fc321cf3e4fef58ad624191faac516e876f66555f798ef14f64e67bb03bcea4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-6.md"
+      },
+      {
+        "digest": "0aa85e869216645fff63e67d34e78729162b134c8ca54f0dc81096b081ddda6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-7.md"
+      },
+      {
+        "digest": "e4e92a09e9c7a4a1846a67b1d5e51260bdef54869c9eade48c87d500a88a39f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-8.md"
+      },
+      {
+        "digest": "69998684812f1d3fcb610141b02c26e10829cb00f78c546ac71502de9bde68d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/reviews/self-review-round-9.md"
+      },
+      {
+        "digest": "0b29431201d707b49f73e0eee2cb984dc31fea9f8417c56c13b50c71588e7d59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/index.md"
+      },
+      {
+        "digest": "fa298a920f7a06aec94025868e9fb5e31517044d31c7ba48086e87ce36e42ec9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-01-intake-review-and-compiled-brief.md"
+      },
+      {
+        "digest": "e354e9d822e214eb966b53b08ee8ea2eb6ec64b547aea0412459eae06a6c72ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-02-governed-context-and-capability-catalog.md"
+      },
+      {
+        "digest": "e821024f8e11432f2533774194884da8459bede64f57e36cc83e725c810350dc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-03-preflight-plan-and-launch-bridge.md"
+      },
+      {
+        "digest": "f92a27d35c495080fa1a66fd2b72395866aa2721c70d768c606431ea94193be7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-04-team-execution-graph-and-surface-adapters.md"
+      },
+      {
+        "digest": "e5296027f35b7be1879d05911b09c0e1022b1a343661d4340b379bd45790e6d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-05-learning-loop-workpacks-and-skill-maintenance.md"
+      },
+      {
+        "digest": "3c44ffa6cbc6aaeea73ab06ffa46d57079f54f6b5428c9548e36530c1b117fe2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-06-security-surface-governance-and-release-gates.md"
+      },
+      {
+        "digest": "d6f72fd16a1233f111d55ddcc5b9d39dea9d9783fbb9538bfdb6dfd425a9eaac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/105-work-os-team-orchestrator-unified-automation/sections/section-07-ui-observability-and-rollout-controls.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 117,
+    "unresolved": 117
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.978881Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

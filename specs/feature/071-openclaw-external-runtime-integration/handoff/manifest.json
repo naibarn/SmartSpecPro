@@ -1,0 +1,572 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/spec.md"
+      },
+      {
+        "digest": "8d56331922654a2e29d5abfa63b9363b6bf541c573b9abccb586726a9fe7a696",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/claude-plan.md"
+      },
+      {
+        "digest": "072e87c933599257cf85f896c1a581ce8d6594bfe0024697981acc3ff8a9ebfb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/claude-spec.md"
+      },
+      {
+        "digest": "3f6b7683f501ad4f79481f7a25e4c679afb6648e9a5132247f0dc29709f9ffa3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "e5b8a5ab3b72d679ed0a448e427504682fbccd3e24aab70b991517927c51fe4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "ae8e18c85235fa8859f0ab51a5cc8da206a5689d058a7a60c387100cd14a455d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "dc5f2363259af990ee3decc574c83101253bd9b77143860e97ac21ec975744bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "6d91365cc9653e59f264c788d357583302d18507a79e7891c0ebcbda3002d86a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "e81c22390ef7ec1b6c22722e85af22ec0e91781188648de5b25bfafcc9a03370",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/index.md"
+      },
+      {
+        "digest": "c7cf03c2b7dc92ef2120c798b2016a7d6f4ec43a94012126a342718cd3b0050c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-01-contracts-and-schema-foundation.md"
+      },
+      {
+        "digest": "3eb1d4b899d6d2630324e0d4640cbb44814966d845cbd08ae405bc09058cba11",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-02-worker-rest-control-plane.md"
+      },
+      {
+        "digest": "b7f0713c13775f51ddee39308be2771a93bf5f004474cbc18dac888b26dfe44a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-03-http-gateway-compatibility-and-docs.md"
+      },
+      {
+        "digest": "f8dd4465ac08150e572ddbf7bc1c20dce4649be7e40733d846c23836d0882891",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-04-mcp-llm-parity-and-auth-normalization.md"
+      },
+      {
+        "digest": "2217ff30658f87046c3164e4ea0bbcae0c10d7723e8133bc9aa16db429217667",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-05-scheduler-billing-and-artifact-publication.md"
+      },
+      {
+        "digest": "40b46013bca624ed1d979abb47a6ca9d9ca659beb615878095f3f604529d7c02",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-06-team-admin-and-workflow-integration.md"
+      },
+      {
+        "digest": "61e94e8849d94346394c825c2bd1d007d323091032d1afc9c7010f5eb8e33062",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-07-security-observability-and-fleet-operations.md"
+      },
+      {
+        "digest": "94f4117b1fe86391eb344321f1887c691cba296b389960c33fc8bd3a9f20fb00",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-08-rollout-migration-and-regression-matrix.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/spec.md"
+      },
+      {
+        "digest": "8d56331922654a2e29d5abfa63b9363b6bf541c573b9abccb586726a9fe7a696",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/claude-plan.md"
+      },
+      {
+        "digest": "072e87c933599257cf85f896c1a581ce8d6594bfe0024697981acc3ff8a9ebfb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/claude-spec.md"
+      },
+      {
+        "digest": "3f6b7683f501ad4f79481f7a25e4c679afb6648e9a5132247f0dc29709f9ffa3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "e5b8a5ab3b72d679ed0a448e427504682fbccd3e24aab70b991517927c51fe4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "ae8e18c85235fa8859f0ab51a5cc8da206a5689d058a7a60c387100cd14a455d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "dc5f2363259af990ee3decc574c83101253bd9b77143860e97ac21ec975744bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "6d91365cc9653e59f264c788d357583302d18507a79e7891c0ebcbda3002d86a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "e81c22390ef7ec1b6c22722e85af22ec0e91781188648de5b25bfafcc9a03370",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/index.md"
+      },
+      {
+        "digest": "c7cf03c2b7dc92ef2120c798b2016a7d6f4ec43a94012126a342718cd3b0050c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-01-contracts-and-schema-foundation.md"
+      },
+      {
+        "digest": "3eb1d4b899d6d2630324e0d4640cbb44814966d845cbd08ae405bc09058cba11",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-02-worker-rest-control-plane.md"
+      },
+      {
+        "digest": "b7f0713c13775f51ddee39308be2771a93bf5f004474cbc18dac888b26dfe44a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-03-http-gateway-compatibility-and-docs.md"
+      },
+      {
+        "digest": "f8dd4465ac08150e572ddbf7bc1c20dce4649be7e40733d846c23836d0882891",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-04-mcp-llm-parity-and-auth-normalization.md"
+      },
+      {
+        "digest": "2217ff30658f87046c3164e4ea0bbcae0c10d7723e8133bc9aa16db429217667",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-05-scheduler-billing-and-artifact-publication.md"
+      },
+      {
+        "digest": "40b46013bca624ed1d979abb47a6ca9d9ca659beb615878095f3f604529d7c02",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-06-team-admin-and-workflow-integration.md"
+      },
+      {
+        "digest": "61e94e8849d94346394c825c2bd1d007d323091032d1afc9c7010f5eb8e33062",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-07-security-observability-and-fleet-operations.md"
+      },
+      {
+        "digest": "94f4117b1fe86391eb344321f1887c691cba296b389960c33fc8bd3a9f20fb00",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-08-rollout-migration-and-regression-matrix.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/spec.md"
+      },
+      {
+        "digest": "8d56331922654a2e29d5abfa63b9363b6bf541c573b9abccb586726a9fe7a696",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/claude-plan.md"
+      },
+      {
+        "digest": "072e87c933599257cf85f896c1a581ce8d6594bfe0024697981acc3ff8a9ebfb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/claude-spec.md"
+      },
+      {
+        "digest": "3f6b7683f501ad4f79481f7a25e4c679afb6648e9a5132247f0dc29709f9ffa3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "e5b8a5ab3b72d679ed0a448e427504682fbccd3e24aab70b991517927c51fe4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "ae8e18c85235fa8859f0ab51a5cc8da206a5689d058a7a60c387100cd14a455d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "dc5f2363259af990ee3decc574c83101253bd9b77143860e97ac21ec975744bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "6d91365cc9653e59f264c788d357583302d18507a79e7891c0ebcbda3002d86a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "e81c22390ef7ec1b6c22722e85af22ec0e91781188648de5b25bfafcc9a03370",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/index.md"
+      },
+      {
+        "digest": "c7cf03c2b7dc92ef2120c798b2016a7d6f4ec43a94012126a342718cd3b0050c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-01-contracts-and-schema-foundation.md"
+      },
+      {
+        "digest": "3eb1d4b899d6d2630324e0d4640cbb44814966d845cbd08ae405bc09058cba11",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-02-worker-rest-control-plane.md"
+      },
+      {
+        "digest": "b7f0713c13775f51ddee39308be2771a93bf5f004474cbc18dac888b26dfe44a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-03-http-gateway-compatibility-and-docs.md"
+      },
+      {
+        "digest": "f8dd4465ac08150e572ddbf7bc1c20dce4649be7e40733d846c23836d0882891",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-04-mcp-llm-parity-and-auth-normalization.md"
+      },
+      {
+        "digest": "2217ff30658f87046c3164e4ea0bbcae0c10d7723e8133bc9aa16db429217667",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-05-scheduler-billing-and-artifact-publication.md"
+      },
+      {
+        "digest": "40b46013bca624ed1d979abb47a6ca9d9ca659beb615878095f3f604529d7c02",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-06-team-admin-and-workflow-integration.md"
+      },
+      {
+        "digest": "61e94e8849d94346394c825c2bd1d007d323091032d1afc9c7010f5eb8e33062",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-07-security-observability-and-fleet-operations.md"
+      },
+      {
+        "digest": "94f4117b1fe86391eb344321f1887c691cba296b389960c33fc8bd3a9f20fb00",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-08-rollout-migration-and-regression-matrix.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/071-openclaw-external-runtime-integration/spec.md",
+    "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.786161Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-08T19:28:50+07:00",
+      "spec_last_changed_at": "2026-04-08T19:28:50+07:00"
+    },
+    "revision": "1.0",
+    "slug": "071-openclaw-external-runtime-integration",
+    "spec_id": "071",
+    "title": "071 - OpenClaw External Runtime Integration"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.786161Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.786161Z",
+    "sources": [
+      {
+        "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/spec.md"
+      },
+      {
+        "digest": "8d56331922654a2e29d5abfa63b9363b6bf541c573b9abccb586726a9fe7a696",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/claude-plan.md"
+      },
+      {
+        "digest": "072e87c933599257cf85f896c1a581ce8d6594bfe0024697981acc3ff8a9ebfb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/claude-spec.md"
+      },
+      {
+        "digest": "3f6b7683f501ad4f79481f7a25e4c679afb6648e9a5132247f0dc29709f9ffa3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "e5b8a5ab3b72d679ed0a448e427504682fbccd3e24aab70b991517927c51fe4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "ae8e18c85235fa8859f0ab51a5cc8da206a5689d058a7a60c387100cd14a455d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "dc5f2363259af990ee3decc574c83101253bd9b77143860e97ac21ec975744bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "6d91365cc9653e59f264c788d357583302d18507a79e7891c0ebcbda3002d86a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "e81c22390ef7ec1b6c22722e85af22ec0e91781188648de5b25bfafcc9a03370",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/index.md"
+      },
+      {
+        "digest": "c7cf03c2b7dc92ef2120c798b2016a7d6f4ec43a94012126a342718cd3b0050c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-01-contracts-and-schema-foundation.md"
+      },
+      {
+        "digest": "3eb1d4b899d6d2630324e0d4640cbb44814966d845cbd08ae405bc09058cba11",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-02-worker-rest-control-plane.md"
+      },
+      {
+        "digest": "b7f0713c13775f51ddee39308be2771a93bf5f004474cbc18dac888b26dfe44a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-03-http-gateway-compatibility-and-docs.md"
+      },
+      {
+        "digest": "f8dd4465ac08150e572ddbf7bc1c20dce4649be7e40733d846c23836d0882891",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-04-mcp-llm-parity-and-auth-normalization.md"
+      },
+      {
+        "digest": "2217ff30658f87046c3164e4ea0bbcae0c10d7723e8133bc9aa16db429217667",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-05-scheduler-billing-and-artifact-publication.md"
+      },
+      {
+        "digest": "40b46013bca624ed1d979abb47a6ca9d9ca659beb615878095f3f604529d7c02",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-06-team-admin-and-workflow-integration.md"
+      },
+      {
+        "digest": "61e94e8849d94346394c825c2bd1d007d323091032d1afc9c7010f5eb8e33062",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-07-security-observability-and-fleet-operations.md"
+      },
+      {
+        "digest": "94f4117b1fe86391eb344321f1887c691cba296b389960c33fc8bd3a9f20fb00",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-08-rollout-migration-and-regression-matrix.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/spec.md"
+      },
+      {
+        "digest": "8d56331922654a2e29d5abfa63b9363b6bf541c573b9abccb586726a9fe7a696",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/claude-plan.md"
+      },
+      {
+        "digest": "072e87c933599257cf85f896c1a581ce8d6594bfe0024697981acc3ff8a9ebfb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/claude-spec.md"
+      },
+      {
+        "digest": "3f6b7683f501ad4f79481f7a25e4c679afb6648e9a5132247f0dc29709f9ffa3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "e5b8a5ab3b72d679ed0a448e427504682fbccd3e24aab70b991517927c51fe4a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "ae8e18c85235fa8859f0ab51a5cc8da206a5689d058a7a60c387100cd14a455d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "dc5f2363259af990ee3decc574c83101253bd9b77143860e97ac21ec975744bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "6d91365cc9653e59f264c788d357583302d18507a79e7891c0ebcbda3002d86a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "e81c22390ef7ec1b6c22722e85af22ec0e91781188648de5b25bfafcc9a03370",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/index.md"
+      },
+      {
+        "digest": "c7cf03c2b7dc92ef2120c798b2016a7d6f4ec43a94012126a342718cd3b0050c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-01-contracts-and-schema-foundation.md"
+      },
+      {
+        "digest": "3eb1d4b899d6d2630324e0d4640cbb44814966d845cbd08ae405bc09058cba11",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-02-worker-rest-control-plane.md"
+      },
+      {
+        "digest": "b7f0713c13775f51ddee39308be2771a93bf5f004474cbc18dac888b26dfe44a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-03-http-gateway-compatibility-and-docs.md"
+      },
+      {
+        "digest": "f8dd4465ac08150e572ddbf7bc1c20dce4649be7e40733d846c23836d0882891",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-04-mcp-llm-parity-and-auth-normalization.md"
+      },
+      {
+        "digest": "2217ff30658f87046c3164e4ea0bbcae0c10d7723e8133bc9aa16db429217667",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-05-scheduler-billing-and-artifact-publication.md"
+      },
+      {
+        "digest": "40b46013bca624ed1d979abb47a6ca9d9ca659beb615878095f3f604529d7c02",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-06-team-admin-and-workflow-integration.md"
+      },
+      {
+        "digest": "61e94e8849d94346394c825c2bd1d007d323091032d1afc9c7010f5eb8e33062",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-07-security-observability-and-fleet-operations.md"
+      },
+      {
+        "digest": "94f4117b1fe86391eb344321f1887c691cba296b389960c33fc8bd3a9f20fb00",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-08-rollout-migration-and-regression-matrix.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 71,
+    "unresolved": 71
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.786161Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

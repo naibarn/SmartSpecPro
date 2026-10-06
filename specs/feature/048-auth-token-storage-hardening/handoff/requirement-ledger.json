@@ -1,0 +1,27 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_source": "specs/feature/048-auth-token-storage-hardening/spec.md",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Review normative Spec and extract requirement-level ledger entries.",
+      "requirement_digest": "1a518d571e893ee8b3b74807723341a77ec3243ea10014225d451f565bad9672",
+      "requirement_id": "UNPARSED-SPEC-A585004E",
+      "requirement_text": "Normative requirement extraction needs review; no safe structured requirement set was detected.",
+      "source_spec_digest": "1a518d571e893ee8b3b74807723341a77ec3243ea10014225d451f565bad9672",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Manual requirement extraction and mapping review."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "1a518d571e893ee8b3b74807723341a77ec3243ea10014225d451f565bad9672",
+  "spec_id": "048"
+}

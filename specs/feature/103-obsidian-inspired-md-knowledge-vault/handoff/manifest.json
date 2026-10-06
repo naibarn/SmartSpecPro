@@ -1,0 +1,572 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md"
+      },
+      {
+        "digest": "c53dec2a97b1fcdf3c747cac43e0519f0ea5717032c8880df301ef1623deae88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/claude-plan.md"
+      },
+      {
+        "digest": "1122d662a13653754fde38c204cce8b03d9416214bbc5ea68e205456c20a57cb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/claude-spec.md"
+      },
+      {
+        "digest": "331d38d09c52e7d3a99cb732a049ac46e680e47fed9d1c67a11b268b5954dfdc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ba786b95248ee32732a08289cd00c12d563e53f4f11db8fa4042a50e8bb772c3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "ac2e8c494597e79692f46d8de0943604a2b70c7a3d61f33970226ee8d0d6f6b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/section-cross-consistency-round-2.md"
+      },
+      {
+        "digest": "d556118cf7b2df6fc637a94643ab0a3a46d5ab853fd7b274efa9472caa46809e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "57ac327e76df92d682be249eadeae57e1beda3fba0d721df5ef0f5f637245ab7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "734ccd65123237b874e0d143894745dc79de1026ce1d939cf511dd4554282455",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/index.md"
+      },
+      {
+        "digest": "7f8d2a8f6ced9aec23fa03584e5c0d7d89c5efce6e8de01e39c3b9b205351f07",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-01-vault-and-knowledge-cache.md"
+      },
+      {
+        "digest": "23cc6531edb53bb86503c4247b89c7a8b177813daf15ae0397fd56a8db3d2cb1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-02-note-navigation-and-relationship-panels.md"
+      },
+      {
+        "digest": "8147570cd10c4d5ebeab21ced1586a3a867d0bf49688efd0902802ddb194c4ef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-03-properties-bases-and-search-facets.md"
+      },
+      {
+        "digest": "3e20ec1ee97f5a56955a1683316464b28277f695a4ec4c69d0fff831f00ee0e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-04-canvas-rollout-and-compatibility.md"
+      },
+      {
+        "digest": "a7f01cffffe9d3ec4031e3a44f20594a25615b451896d9aeb269f9fb60c2df2c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-05-agent-skill-context-packs-and-business-memory.md"
+      },
+      {
+        "digest": "49c0ba8a77e70638c724fb6239e78ea55161f852dc49e97bf6ff489178e5336c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-06-runtime-and-mcp-integration.md"
+      },
+      {
+        "digest": "2838cd70d122198b442c320a1238baa42e621d6415a37532439ac24107b84581",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-07-schema-and-router-contracts.md"
+      },
+      {
+        "digest": "6d0db8a7084f4645ccdf7484c281d4efc15a5eb92d5a5eceef9bcdba206c1fb7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-08-end-to-end-sequence-flows.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md"
+      },
+      {
+        "digest": "c53dec2a97b1fcdf3c747cac43e0519f0ea5717032c8880df301ef1623deae88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/claude-plan.md"
+      },
+      {
+        "digest": "1122d662a13653754fde38c204cce8b03d9416214bbc5ea68e205456c20a57cb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/claude-spec.md"
+      },
+      {
+        "digest": "331d38d09c52e7d3a99cb732a049ac46e680e47fed9d1c67a11b268b5954dfdc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ba786b95248ee32732a08289cd00c12d563e53f4f11db8fa4042a50e8bb772c3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "ac2e8c494597e79692f46d8de0943604a2b70c7a3d61f33970226ee8d0d6f6b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/section-cross-consistency-round-2.md"
+      },
+      {
+        "digest": "d556118cf7b2df6fc637a94643ab0a3a46d5ab853fd7b274efa9472caa46809e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "57ac327e76df92d682be249eadeae57e1beda3fba0d721df5ef0f5f637245ab7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "734ccd65123237b874e0d143894745dc79de1026ce1d939cf511dd4554282455",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/index.md"
+      },
+      {
+        "digest": "7f8d2a8f6ced9aec23fa03584e5c0d7d89c5efce6e8de01e39c3b9b205351f07",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-01-vault-and-knowledge-cache.md"
+      },
+      {
+        "digest": "23cc6531edb53bb86503c4247b89c7a8b177813daf15ae0397fd56a8db3d2cb1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-02-note-navigation-and-relationship-panels.md"
+      },
+      {
+        "digest": "8147570cd10c4d5ebeab21ced1586a3a867d0bf49688efd0902802ddb194c4ef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-03-properties-bases-and-search-facets.md"
+      },
+      {
+        "digest": "3e20ec1ee97f5a56955a1683316464b28277f695a4ec4c69d0fff831f00ee0e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-04-canvas-rollout-and-compatibility.md"
+      },
+      {
+        "digest": "a7f01cffffe9d3ec4031e3a44f20594a25615b451896d9aeb269f9fb60c2df2c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-05-agent-skill-context-packs-and-business-memory.md"
+      },
+      {
+        "digest": "49c0ba8a77e70638c724fb6239e78ea55161f852dc49e97bf6ff489178e5336c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-06-runtime-and-mcp-integration.md"
+      },
+      {
+        "digest": "2838cd70d122198b442c320a1238baa42e621d6415a37532439ac24107b84581",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-07-schema-and-router-contracts.md"
+      },
+      {
+        "digest": "6d0db8a7084f4645ccdf7484c281d4efc15a5eb92d5a5eceef9bcdba206c1fb7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-08-end-to-end-sequence-flows.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md"
+      },
+      {
+        "digest": "c53dec2a97b1fcdf3c747cac43e0519f0ea5717032c8880df301ef1623deae88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/claude-plan.md"
+      },
+      {
+        "digest": "1122d662a13653754fde38c204cce8b03d9416214bbc5ea68e205456c20a57cb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/claude-spec.md"
+      },
+      {
+        "digest": "331d38d09c52e7d3a99cb732a049ac46e680e47fed9d1c67a11b268b5954dfdc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ba786b95248ee32732a08289cd00c12d563e53f4f11db8fa4042a50e8bb772c3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "ac2e8c494597e79692f46d8de0943604a2b70c7a3d61f33970226ee8d0d6f6b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/section-cross-consistency-round-2.md"
+      },
+      {
+        "digest": "d556118cf7b2df6fc637a94643ab0a3a46d5ab853fd7b274efa9472caa46809e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "57ac327e76df92d682be249eadeae57e1beda3fba0d721df5ef0f5f637245ab7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "734ccd65123237b874e0d143894745dc79de1026ce1d939cf511dd4554282455",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/index.md"
+      },
+      {
+        "digest": "7f8d2a8f6ced9aec23fa03584e5c0d7d89c5efce6e8de01e39c3b9b205351f07",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-01-vault-and-knowledge-cache.md"
+      },
+      {
+        "digest": "23cc6531edb53bb86503c4247b89c7a8b177813daf15ae0397fd56a8db3d2cb1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-02-note-navigation-and-relationship-panels.md"
+      },
+      {
+        "digest": "8147570cd10c4d5ebeab21ced1586a3a867d0bf49688efd0902802ddb194c4ef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-03-properties-bases-and-search-facets.md"
+      },
+      {
+        "digest": "3e20ec1ee97f5a56955a1683316464b28277f695a4ec4c69d0fff831f00ee0e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-04-canvas-rollout-and-compatibility.md"
+      },
+      {
+        "digest": "a7f01cffffe9d3ec4031e3a44f20594a25615b451896d9aeb269f9fb60c2df2c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-05-agent-skill-context-packs-and-business-memory.md"
+      },
+      {
+        "digest": "49c0ba8a77e70638c724fb6239e78ea55161f852dc49e97bf6ff489178e5336c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-06-runtime-and-mcp-integration.md"
+      },
+      {
+        "digest": "2838cd70d122198b442c320a1238baa42e621d6415a37532439ac24107b84581",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-07-schema-and-router-contracts.md"
+      },
+      {
+        "digest": "6d0db8a7084f4645ccdf7484c281d4efc15a5eb92d5a5eceef9bcdba206c1fb7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-08-end-to-end-sequence-flows.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md",
+    "digest": "cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.967646Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-23T09:32:16+07:00",
+      "spec_last_changed_at": "2026-04-23T09:32:16+07:00"
+    },
+    "revision": "1.3",
+    "slug": "103-obsidian-inspired-md-knowledge-vault",
+    "spec_id": "103",
+    "title": "Feature 103 - Obsidian-Inspired Markdown Knowledge Vault"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.967646Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.967646Z",
+    "sources": [
+      {
+        "digest": "cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md"
+      },
+      {
+        "digest": "c53dec2a97b1fcdf3c747cac43e0519f0ea5717032c8880df301ef1623deae88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/claude-plan.md"
+      },
+      {
+        "digest": "1122d662a13653754fde38c204cce8b03d9416214bbc5ea68e205456c20a57cb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/claude-spec.md"
+      },
+      {
+        "digest": "331d38d09c52e7d3a99cb732a049ac46e680e47fed9d1c67a11b268b5954dfdc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ba786b95248ee32732a08289cd00c12d563e53f4f11db8fa4042a50e8bb772c3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "ac2e8c494597e79692f46d8de0943604a2b70c7a3d61f33970226ee8d0d6f6b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/section-cross-consistency-round-2.md"
+      },
+      {
+        "digest": "d556118cf7b2df6fc637a94643ab0a3a46d5ab853fd7b274efa9472caa46809e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "57ac327e76df92d682be249eadeae57e1beda3fba0d721df5ef0f5f637245ab7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "734ccd65123237b874e0d143894745dc79de1026ce1d939cf511dd4554282455",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/index.md"
+      },
+      {
+        "digest": "7f8d2a8f6ced9aec23fa03584e5c0d7d89c5efce6e8de01e39c3b9b205351f07",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-01-vault-and-knowledge-cache.md"
+      },
+      {
+        "digest": "23cc6531edb53bb86503c4247b89c7a8b177813daf15ae0397fd56a8db3d2cb1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-02-note-navigation-and-relationship-panels.md"
+      },
+      {
+        "digest": "8147570cd10c4d5ebeab21ced1586a3a867d0bf49688efd0902802ddb194c4ef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-03-properties-bases-and-search-facets.md"
+      },
+      {
+        "digest": "3e20ec1ee97f5a56955a1683316464b28277f695a4ec4c69d0fff831f00ee0e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-04-canvas-rollout-and-compatibility.md"
+      },
+      {
+        "digest": "a7f01cffffe9d3ec4031e3a44f20594a25615b451896d9aeb269f9fb60c2df2c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-05-agent-skill-context-packs-and-business-memory.md"
+      },
+      {
+        "digest": "49c0ba8a77e70638c724fb6239e78ea55161f852dc49e97bf6ff489178e5336c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-06-runtime-and-mcp-integration.md"
+      },
+      {
+        "digest": "2838cd70d122198b442c320a1238baa42e621d6415a37532439ac24107b84581",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-07-schema-and-router-contracts.md"
+      },
+      {
+        "digest": "6d0db8a7084f4645ccdf7484c281d4efc15a5eb92d5a5eceef9bcdba206c1fb7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-08-end-to-end-sequence-flows.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md"
+      },
+      {
+        "digest": "c53dec2a97b1fcdf3c747cac43e0519f0ea5717032c8880df301ef1623deae88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/claude-plan.md"
+      },
+      {
+        "digest": "1122d662a13653754fde38c204cce8b03d9416214bbc5ea68e205456c20a57cb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/claude-spec.md"
+      },
+      {
+        "digest": "331d38d09c52e7d3a99cb732a049ac46e680e47fed9d1c67a11b268b5954dfdc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ba786b95248ee32732a08289cd00c12d563e53f4f11db8fa4042a50e8bb772c3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "ac2e8c494597e79692f46d8de0943604a2b70c7a3d61f33970226ee8d0d6f6b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/section-cross-consistency-round-2.md"
+      },
+      {
+        "digest": "d556118cf7b2df6fc637a94643ab0a3a46d5ab853fd7b274efa9472caa46809e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "57ac327e76df92d682be249eadeae57e1beda3fba0d721df5ef0f5f637245ab7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "734ccd65123237b874e0d143894745dc79de1026ce1d939cf511dd4554282455",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/index.md"
+      },
+      {
+        "digest": "7f8d2a8f6ced9aec23fa03584e5c0d7d89c5efce6e8de01e39c3b9b205351f07",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-01-vault-and-knowledge-cache.md"
+      },
+      {
+        "digest": "23cc6531edb53bb86503c4247b89c7a8b177813daf15ae0397fd56a8db3d2cb1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-02-note-navigation-and-relationship-panels.md"
+      },
+      {
+        "digest": "8147570cd10c4d5ebeab21ced1586a3a867d0bf49688efd0902802ddb194c4ef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-03-properties-bases-and-search-facets.md"
+      },
+      {
+        "digest": "3e20ec1ee97f5a56955a1683316464b28277f695a4ec4c69d0fff831f00ee0e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-04-canvas-rollout-and-compatibility.md"
+      },
+      {
+        "digest": "a7f01cffffe9d3ec4031e3a44f20594a25615b451896d9aeb269f9fb60c2df2c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-05-agent-skill-context-packs-and-business-memory.md"
+      },
+      {
+        "digest": "49c0ba8a77e70638c724fb6239e78ea55161f852dc49e97bf6ff489178e5336c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-06-runtime-and-mcp-integration.md"
+      },
+      {
+        "digest": "2838cd70d122198b442c320a1238baa42e621d6415a37532439ac24107b84581",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-07-schema-and-router-contracts.md"
+      },
+      {
+        "digest": "6d0db8a7084f4645ccdf7484c281d4efc15a5eb92d5a5eceef9bcdba206c1fb7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-08-end-to-end-sequence-flows.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 26,
+    "unresolved": 26
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.967646Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

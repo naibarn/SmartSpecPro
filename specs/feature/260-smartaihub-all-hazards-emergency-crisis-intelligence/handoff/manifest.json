@@ -1,0 +1,2360 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "260",
+        "referenced_spec_id": "260",
+        "referencing_spec_id": "262",
+        "relation_text": "superseded",
+        "requirement_ids": [
+          "R1.7",
+          "R1.8"
+        ],
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10150",
+        "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
+        "successor_spec_id": "262"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "260",
+        "referenced_spec_id": "260",
+        "referencing_spec_id": "262",
+        "relation_text": "supersedes",
+        "requirement_ids": [
+          "R1.38",
+          "R1.7",
+          "R1.8"
+        ],
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L5",
+        "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
+        "successor_spec_id": "262"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "260",
+        "referenced_spec_id": "260",
+        "referencing_spec_id": "262",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L72",
+        "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
+        "successor_spec_id": "262"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "260",
+        "referenced_spec_id": "260",
+        "referencing_spec_id": "266",
+        "relation_text": "absorbed",
+        "requirement_ids": [],
+        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2105",
+        "source_digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
+        "successor_spec_id": "266"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "262",
+        "referenced_spec_id": "262",
+        "referencing_spec_id": "260",
+        "relation_text": "replace",
+        "requirement_ids": [
+          "R1.0",
+          "R1.37"
+        ],
+        "source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L22144",
+        "source_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
+        "successor_spec_id": "260"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md"
+      },
+      {
+        "digest": "fec73647ed4588d3402f71b6878e419f8fb0a8651f193d09999a5d96ad0c5274",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
+      },
+      {
+        "digest": "f71b88ee51df6982f6cea36eab9221dcdbdb466701c4d877a701d456b46c28cd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
+      },
+      {
+        "digest": "20fcbfc5281ee4a6f090fd4e384290da2f0c1d561d533e99914810dec0eb6c50",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "63a27f32390ab78588d55b071cef802e3d2be87f31309103e681f618687caa3f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
+      },
+      {
+        "digest": "150dfe52a04b5ac47f3f3fdfe0dcf27a536cdde9426c37a45c743bc6d4992830",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
+      },
+      {
+        "digest": "bf6018f6b81384198ed679f07c28f4154886eab22a00a91a6c41ccd692ddbbc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
+      },
+      {
+        "digest": "ce57fa7efbb5f5d8ecd7a9f68bebf866f71b7d705223dedd9623f27c4f436ee0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
+      },
+      {
+        "digest": "eb59074714d3bc5bf18c9cd043f8a0425b35f882cbaf20833882753ce54069d4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
+      },
+      {
+        "digest": "b729396b3e6a7801d3719ab4927509051baeff0cfe502ea1b63fdcec28496af1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
+      },
+      {
+        "digest": "c0d51c5910fdd239a5513c439895bf6cf8c5ad2708ec3b08271c55b4159d984b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
+      },
+      {
+        "digest": "98790c2e56d55aa56f868a3b7d7d1fec7bff968a892ad8604a58da37ef1c4578",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
+      },
+      {
+        "digest": "9c46b9878defbcdf6e30ad2a8cf64a65a676a3b3f91ef63987ab782b9289c149",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
+      },
+      {
+        "digest": "c02d11d335c6cf0b27a9d3c429a405bd1898408abf493f26a8985fc3ae6b8e66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
+      },
+      {
+        "digest": "59995ecf66e685b5f9c1addeb4d1ba276a40a4bf8910d11191067ffacf41a64a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
+      },
+      {
+        "digest": "596900aa5e69018f3a765eaf4e3ebdc7a66d40ddce5d7dd48d427cab00ec3b76",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
+      },
+      {
+        "digest": "c52fe9bba2f0162b98852fc25aca21394cdc7fdc7303c84eb260cb2592cce135",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
+      },
+      {
+        "digest": "83255895b1eeb81265ddee7699ba7e0889072f44f52f78bcf0a38b6818150bf8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
+      },
+      {
+        "digest": "e1222c808bb45003a3569535e830761802e87abb72f48988c66bb866c6628465",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md"
+      },
+      {
+        "digest": "fec73647ed4588d3402f71b6878e419f8fb0a8651f193d09999a5d96ad0c5274",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
+      },
+      {
+        "digest": "f71b88ee51df6982f6cea36eab9221dcdbdb466701c4d877a701d456b46c28cd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
+      },
+      {
+        "digest": "20fcbfc5281ee4a6f090fd4e384290da2f0c1d561d533e99914810dec0eb6c50",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "63a27f32390ab78588d55b071cef802e3d2be87f31309103e681f618687caa3f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
+      },
+      {
+        "digest": "150dfe52a04b5ac47f3f3fdfe0dcf27a536cdde9426c37a45c743bc6d4992830",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
+      },
+      {
+        "digest": "bf6018f6b81384198ed679f07c28f4154886eab22a00a91a6c41ccd692ddbbc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
+      },
+      {
+        "digest": "ce57fa7efbb5f5d8ecd7a9f68bebf866f71b7d705223dedd9623f27c4f436ee0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
+      },
+      {
+        "digest": "eb59074714d3bc5bf18c9cd043f8a0425b35f882cbaf20833882753ce54069d4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
+      },
+      {
+        "digest": "b729396b3e6a7801d3719ab4927509051baeff0cfe502ea1b63fdcec28496af1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
+      },
+      {
+        "digest": "c0d51c5910fdd239a5513c439895bf6cf8c5ad2708ec3b08271c55b4159d984b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
+      },
+      {
+        "digest": "98790c2e56d55aa56f868a3b7d7d1fec7bff968a892ad8604a58da37ef1c4578",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
+      },
+      {
+        "digest": "9c46b9878defbcdf6e30ad2a8cf64a65a676a3b3f91ef63987ab782b9289c149",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
+      },
+      {
+        "digest": "c02d11d335c6cf0b27a9d3c429a405bd1898408abf493f26a8985fc3ae6b8e66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
+      },
+      {
+        "digest": "59995ecf66e685b5f9c1addeb4d1ba276a40a4bf8910d11191067ffacf41a64a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
+      },
+      {
+        "digest": "596900aa5e69018f3a765eaf4e3ebdc7a66d40ddce5d7dd48d427cab00ec3b76",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
+      },
+      {
+        "digest": "c52fe9bba2f0162b98852fc25aca21394cdc7fdc7303c84eb260cb2592cce135",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
+      },
+      {
+        "digest": "83255895b1eeb81265ddee7699ba7e0889072f44f52f78bcf0a38b6818150bf8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
+      },
+      {
+        "digest": "e1222c808bb45003a3569535e830761802e87abb72f48988c66bb866c6628465",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
+      },
+      {
+        "excerpt": "The Spec260 production template names the canonical queue and its dead-letter",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 29,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "## Spec 260 edge API",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 45,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "Spec 260 API routes in `wrangler.production.jsonc` are attached to the known",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 47,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "tenants enable Spec 260.",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 51,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "Spec 260 basemap configuration is owned by the existing encrypted platform",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 85,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "Spec 260 projections.",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 94,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "Spec 260 evidence uploads use the private R2 staging prefix",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 96,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "const RETENTION_ENDPOINT = \"/api/internal/spec260/schedules/evidence-retention\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 3,
+        "path": "apps/cloudflare/src/spec260BackgroundWork.ts"
+      },
+      {
+        "excerpt": "\"x-spec260-schedule\": \"evidence-retention-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 41,
+        "path": "apps/cloudflare/src/spec260BackgroundWork.ts"
+      },
+      {
+        "excerpt": "headers.delete(\"x-spec260-original-host\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 94,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.delete(\"x-spec260-original-protocol\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 95,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.set(\"x-spec260-original-host\", incoming.host);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 97,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.set(\"x-spec260-original-protocol\", incoming.protocol.slice(0, -1));",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 98,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "if (clientIp && /^[0-9a-fA-F:.]{3,64}$/.test(clientIp)) headers.set(\"x-spec260-client-ip\", clientIp);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 100,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.set(\"x-spec260-route-id\", route.id);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 101,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.set(\"x-spec260-edge-request-id\", request.headers.get(\"cf-ray\")?.slice(0, 128) ?? crypto.randomUUID());",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 102,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "await send(\"operations.federation.partner.create\", \"POST\", { partnerRef, displayName, contractVersion: \"spec260-federation-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 54,
+        "path": "apps/web/client/src/components/emergency/EmergencyFederationPanel.tsx"
+      },
+      {
+        "excerpt": "\"รายการจาก Spec 260 ที่อยู่ในวงจรตรวจสอบจริง การอนุมัติเปิดให้บันทึกหลักฐานจากแหล่งนี้ แต่ไม่ได้เปิดการดึงข้อมูลอัตโนมัติ\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 137,
+        "path": "apps/web/client/src/pages/Admin/AdminIntelligenceRegistry.tsx"
+      },
+      {
+        "excerpt": "\"Spec 260 records in the real review lifecycle. Approval allows evidence capture from a source; it does not enable automatic data retrieval.\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 228,
+        "path": "apps/web/client/src/pages/Admin/AdminIntelligenceRegistry.tsx"
+      },
+      {
+        "excerpt": "method: \"POST\", credentials: \"omit\", headers: { \"content-type\": \"application/json\", \"idempotency-key\": `spec260-evidence:${reportRef}:${index}:${metadata.sha256}`,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 160,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md"
+      },
+      {
+        "digest": "fec73647ed4588d3402f71b6878e419f8fb0a8651f193d09999a5d96ad0c5274",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
+      },
+      {
+        "digest": "f71b88ee51df6982f6cea36eab9221dcdbdb466701c4d877a701d456b46c28cd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
+      },
+      {
+        "digest": "20fcbfc5281ee4a6f090fd4e384290da2f0c1d561d533e99914810dec0eb6c50",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "63a27f32390ab78588d55b071cef802e3d2be87f31309103e681f618687caa3f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
+      },
+      {
+        "digest": "150dfe52a04b5ac47f3f3fdfe0dcf27a536cdde9426c37a45c743bc6d4992830",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
+      },
+      {
+        "digest": "bf6018f6b81384198ed679f07c28f4154886eab22a00a91a6c41ccd692ddbbc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
+      },
+      {
+        "digest": "ce57fa7efbb5f5d8ecd7a9f68bebf866f71b7d705223dedd9623f27c4f436ee0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
+      },
+      {
+        "digest": "eb59074714d3bc5bf18c9cd043f8a0425b35f882cbaf20833882753ce54069d4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
+      },
+      {
+        "digest": "b729396b3e6a7801d3719ab4927509051baeff0cfe502ea1b63fdcec28496af1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
+      },
+      {
+        "digest": "c0d51c5910fdd239a5513c439895bf6cf8c5ad2708ec3b08271c55b4159d984b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
+      },
+      {
+        "digest": "98790c2e56d55aa56f868a3b7d7d1fec7bff968a892ad8604a58da37ef1c4578",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
+      },
+      {
+        "digest": "9c46b9878defbcdf6e30ad2a8cf64a65a676a3b3f91ef63987ab782b9289c149",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
+      },
+      {
+        "digest": "c02d11d335c6cf0b27a9d3c429a405bd1898408abf493f26a8985fc3ae6b8e66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
+      },
+      {
+        "digest": "59995ecf66e685b5f9c1addeb4d1ba276a40a4bf8910d11191067ffacf41a64a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
+      },
+      {
+        "digest": "596900aa5e69018f3a765eaf4e3ebdc7a66d40ddce5d7dd48d427cab00ec3b76",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
+      },
+      {
+        "digest": "c52fe9bba2f0162b98852fc25aca21394cdc7fdc7303c84eb260cb2592cce135",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
+      },
+      {
+        "digest": "83255895b1eeb81265ddee7699ba7e0889072f44f52f78bcf0a38b6818150bf8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
+      },
+      {
+        "digest": "e1222c808bb45003a3569535e830761802e87abb72f48988c66bb866c6628465",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md",
+    "digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.585111Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-10-02T19:34:42+07:00",
+      "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
+    },
+    "revision": null,
+    "slug": "260-smartaihub-all-hazards-emergency-crisis-intelligence",
+    "spec_id": "260",
+    "title": "Spec 260 --- SmartAIHub All-Hazards Emergency, Crisis Intelligence & Coordinated Response Platform"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.585111Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.585111Z",
+    "sources": [
+      {
+        "digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md"
+      },
+      {
+        "digest": "fec73647ed4588d3402f71b6878e419f8fb0a8651f193d09999a5d96ad0c5274",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
+      },
+      {
+        "digest": "f71b88ee51df6982f6cea36eab9221dcdbdb466701c4d877a701d456b46c28cd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
+      },
+      {
+        "digest": "20fcbfc5281ee4a6f090fd4e384290da2f0c1d561d533e99914810dec0eb6c50",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "63a27f32390ab78588d55b071cef802e3d2be87f31309103e681f618687caa3f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
+      },
+      {
+        "digest": "150dfe52a04b5ac47f3f3fdfe0dcf27a536cdde9426c37a45c743bc6d4992830",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
+      },
+      {
+        "digest": "bf6018f6b81384198ed679f07c28f4154886eab22a00a91a6c41ccd692ddbbc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
+      },
+      {
+        "digest": "ce57fa7efbb5f5d8ecd7a9f68bebf866f71b7d705223dedd9623f27c4f436ee0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
+      },
+      {
+        "digest": "eb59074714d3bc5bf18c9cd043f8a0425b35f882cbaf20833882753ce54069d4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
+      },
+      {
+        "digest": "b729396b3e6a7801d3719ab4927509051baeff0cfe502ea1b63fdcec28496af1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
+      },
+      {
+        "digest": "c0d51c5910fdd239a5513c439895bf6cf8c5ad2708ec3b08271c55b4159d984b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
+      },
+      {
+        "digest": "98790c2e56d55aa56f868a3b7d7d1fec7bff968a892ad8604a58da37ef1c4578",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
+      },
+      {
+        "digest": "9c46b9878defbcdf6e30ad2a8cf64a65a676a3b3f91ef63987ab782b9289c149",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
+      },
+      {
+        "digest": "c02d11d335c6cf0b27a9d3c429a405bd1898408abf493f26a8985fc3ae6b8e66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
+      },
+      {
+        "digest": "59995ecf66e685b5f9c1addeb4d1ba276a40a4bf8910d11191067ffacf41a64a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
+      },
+      {
+        "digest": "596900aa5e69018f3a765eaf4e3ebdc7a66d40ddce5d7dd48d427cab00ec3b76",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
+      },
+      {
+        "digest": "c52fe9bba2f0162b98852fc25aca21394cdc7fdc7303c84eb260cb2592cce135",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
+      },
+      {
+        "digest": "83255895b1eeb81265ddee7699ba7e0889072f44f52f78bcf0a38b6818150bf8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
+      },
+      {
+        "digest": "e1222c808bb45003a3569535e830761802e87abb72f48988c66bb866c6628465",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
+      },
+      {
+        "excerpt": "The Spec260 production template names the canonical queue and its dead-letter",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 29,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "## Spec 260 edge API",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 45,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "Spec 260 API routes in `wrangler.production.jsonc` are attached to the known",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 47,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "tenants enable Spec 260.",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 51,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "Spec 260 basemap configuration is owned by the existing encrypted platform",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 85,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "Spec 260 projections.",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 94,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "Spec 260 evidence uploads use the private R2 staging prefix",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 96,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "const RETENTION_ENDPOINT = \"/api/internal/spec260/schedules/evidence-retention\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 3,
+        "path": "apps/cloudflare/src/spec260BackgroundWork.ts"
+      },
+      {
+        "excerpt": "\"x-spec260-schedule\": \"evidence-retention-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 41,
+        "path": "apps/cloudflare/src/spec260BackgroundWork.ts"
+      },
+      {
+        "excerpt": "headers.delete(\"x-spec260-original-host\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 94,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.delete(\"x-spec260-original-protocol\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 95,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.set(\"x-spec260-original-host\", incoming.host);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 97,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.set(\"x-spec260-original-protocol\", incoming.protocol.slice(0, -1));",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 98,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "if (clientIp && /^[0-9a-fA-F:.]{3,64}$/.test(clientIp)) headers.set(\"x-spec260-client-ip\", clientIp);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 100,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.set(\"x-spec260-route-id\", route.id);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 101,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.set(\"x-spec260-edge-request-id\", request.headers.get(\"cf-ray\")?.slice(0, 128) ?? crypto.randomUUID());",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 102,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "await send(\"operations.federation.partner.create\", \"POST\", { partnerRef, displayName, contractVersion: \"spec260-federation-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 54,
+        "path": "apps/web/client/src/components/emergency/EmergencyFederationPanel.tsx"
+      },
+      {
+        "excerpt": "\"รายการจาก Spec 260 ที่อยู่ในวงจรตรวจสอบจริง การอนุมัติเปิดให้บันทึกหลักฐานจากแหล่งนี้ แต่ไม่ได้เปิดการดึงข้อมูลอัตโนมัติ\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 137,
+        "path": "apps/web/client/src/pages/Admin/AdminIntelligenceRegistry.tsx"
+      },
+      {
+        "excerpt": "\"Spec 260 records in the real review lifecycle. Approval allows evidence capture from a source; it does not enable automatic data retrieval.\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 228,
+        "path": "apps/web/client/src/pages/Admin/AdminIntelligenceRegistry.tsx"
+      },
+      {
+        "excerpt": "method: \"POST\", credentials: \"omit\", headers: { \"content-type\": \"application/json\", \"idempotency-key\": `spec260-evidence:${reportRef}:${index}:${metadata.sha256}`,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 160,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "method: \"POST\", credentials: \"omit\", headers: { \"idempotency-key\": `spec260-evidence-complete:${upload.evidenceId}`, \"x-emergency-case-token\": token },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 171,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "const token = sessionStorage.getItem(`spec260:report:${reportRef}`);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 315,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "method: \"POST\", credentials: \"include\", headers: { \"content-type\": \"application/json\", \"idempotency-key\": `spec260-case-evidence:${caseId}:${index}:${metadata.sha256}` }, body: JSON.stringify(metadata),",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 880,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "method: \"POST\", credentials: \"include\", headers: { \"idempotency-key\": `spec260-case-evidence-complete:${target.evidenceId}` },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 890,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "sessionStorage.setItem(`spec260:report:${body.reportRef}`, body.continuationToken);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 929,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "sessionStorage.removeItem(`spec260:report:${reportCase.reportRef}`);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1006,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "-- Spec 260 requires PostGIS as the geospatial authority. Deployment preflight",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 5,
+        "path": "apps/web/drizzle/0368_spec260_emergency_core.sql"
+      },
+      {
+        "excerpt": "/** Spec 260 report intake records; acceptance is committed with worker_job_outbox. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 30725,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "/** Idempotent transition receipts only; notification intent/outbox remains canonical Spec 260. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 31435,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "// Spec 260 routes arrive through the Cloudflare edge Worker and validate its",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 609,
+        "path": "apps/web/server/_core/index.ts"
+      },
+      {
+        "excerpt": "actorRef: \"spec260.emergency-report-intake\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 34,
+        "path": "apps/web/server/jobs/spec260EmergencyReportJob.ts"
+      },
+      {
+        "excerpt": "actorRef: \"spec260.emergency-report-intake\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 51,
+        "path": "apps/web/server/jobs/spec260EmergencyReportJob.ts"
+      },
+      {
+        "excerpt": "\"spec260.evidence.retention\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1128,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "contractVersion: z.literal(\"spec260-federation-v1\"),",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1256,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "const host = normalizedHost(req.header(\"x-spec260-original-host\"));",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1397,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "const incomingHost = req.header(\"x-spec260-original-host\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1651,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "const incomingProtocol = req.header(\"x-spec260-original-protocol\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1652,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "const ip = req.header(\"x-spec260-client-ip\") || \"unknown\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1686,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "requestedBySystemComponent: \"spec260.emergency-report-intake\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1890,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "console.error(\"[Spec260] report admission failed\", {",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1967,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "policyVersion: \"spec260-financial-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2268,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "\"[Spec260] paid contribution awaiting financial reconciliation\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2272,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "console.error(\"[Spec260] contribution checkout failed\", {",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2319,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 4357,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 4443,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 4803,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 4829,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 4871,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 4930,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 5154,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 5526,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 5611,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "taxonomyVersion: \"spec260-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 10294,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "taxonomyVersion: \"spec260-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 10335,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "if (path === \"/api/internal/spec260/schedules/evidence-retention\") {",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11027,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-schedule\") !== \"evidence-retention-v1\" ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11030,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "const scheduleId = \"spec260-emergency-evidence-retention\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11062,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "\"[Spec260] evidence retention schedule admission failed\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11120,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "const attestedId = req.header(\"x-spec260-route-id\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11139,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.headers[\"x-spec260-original-host\"] = host;",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11149,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.headers[\"x-spec260-original-protocol\"] = req.protocol;",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11150,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.headers[\"x-spec260-route-id\"] = matched.route.id;",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11151,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "console.error(\"[Spec260] edge request failed\", {",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11157,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "/** Spec 260 accepts traffic only from its dedicated Cloudflare Worker secret. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 211,
+        "path": "apps/web/server/services/appRuntimeConfig.ts"
+      },
+      {
+        "excerpt": "* Auto-select the Spec 260 ingress boundary. Linux deployments without the",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 223,
+        "path": "apps/web/server/services/appRuntimeConfig.ts"
+      },
+      {
+        "excerpt": "await settleEmergencyContributionsForPayment(db, { paymentId: payment.id, policyVersion: \"spec260-financial-v1\" });",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 314,
+        "path": "apps/web/server/services/billing/paymentProcessing.ts"
+      },
+      {
+        "excerpt": "await settleEmergencyContributionsForPayment(db, { paymentId: payment.id, policyVersion: \"spec260-financial-v1\" });",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 148,
+        "path": "apps/web/server/services/billing/reconciliation.ts"
+      },
+      {
+        "excerpt": "policyVersion: \"spec260-restricted-funds-v1\", payloadJson: { allocationId: id, poolId: pool.id,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 355,
+        "path": "apps/web/server/services/emergencyFinancialService.ts"
+      },
+      {
+        "excerpt": "description: `Spec 260 map provider configuration (${write.key})`, updatedBy: input.userId, updatedAt: now })",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 180,
+        "path": "apps/web/server/services/geoMapSettings.ts"
+      },
+      {
+        "excerpt": "valueJson: write.valueJson, isSensitive: write.isSensitive, description: `Spec 260 map provider configuration (${write.key})`, updatedBy: input.userId });",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 184,
+        "path": "apps/web/server/services/geoMapSettings.ts"
+      },
+      {
+        "excerpt": "return createHmac(\"sha256\", signingKey).update(`spec260-google-map-key-reference:v1:${serverApiKey}`).digest(\"hex\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 7,
+        "path": "apps/web/server/services/googleMapsSessionToken.ts"
+      },
+      {
+        "excerpt": "return createHmac(\"sha256\", signingKey).update(`spec260-google-map-session:v1:${payload}`).digest(\"base64url\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 12,
+        "path": "apps/web/server/services/googleMapsSessionToken.ts"
+      },
+      {
+        "excerpt": "return createHmac(\"sha256\", signingKey).update(\"spec260-google-map-session-encryption:v1\").digest();",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 17,
+        "path": "apps/web/server/services/googleMapsSessionToken.ts"
+      },
+      {
+        "excerpt": "cipher.setAAD(Buffer.from(\"spec260-google-map-session:v2\"));",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 29,
+        "path": "apps/web/server/services/googleMapsSessionToken.ts"
+      },
+      {
+        "excerpt": "decipher.setAAD(Buffer.from(\"spec260-google-map-session:v2\"));",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 57,
+        "path": "apps/web/server/services/googleMapsSessionToken.ts"
+      },
+      {
+        "excerpt": "/** Runtime-neutral Spec 260 domain contracts. Platform identities and ledgers remain externally owned. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1,
+        "path": "packages/shared/src/emergency/contracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec260-federation-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 23,
+        "path": "packages/shared/src/emergency/federation.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec260-federation-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 35,
+        "path": "packages/shared/src/emergency/federation.ts"
+      },
+      {
+        "excerpt": "natural: { version: \"spec260-protocol-v1\", hazardCategory: \"natural\", minimumSafetyClass: \"verified_only\", humanReviewRequired: false, actions: [\"verify-location\", \"check-updates\", \"record-needs\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 14,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "structural: { version: \"spec260-protocol-v1\", hazardCategory: \"structural\", minimumSafetyClass: \"professional_only\", humanReviewRequired: true, actions: [\"keep-clear\", \"request-professional-assessment\", \"record-access-route\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 15,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "infrastructure: { version: \"spec260-protocol-v1\", hazardCategory: \"infrastructure\", minimumSafetyClass: \"verified_only\", humanReviewRequired: true, actions: [\"verify-service-impact\", \"avoid-hazard-zone\", \"record-access-route\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 16,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "fire: { version: \"spec260-protocol-v1\", hazardCategory: \"fire\", minimumSafetyClass: \"professional_only\", humanReviewRequired: true, actions: [\"evacuate-hazard-zone\", \"do-not-enter\", \"request-fire-service\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 17,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "hazardous_material: { version: \"spec260-protocol-v1\", hazardCategory: \"hazardous_material\", minimumSafetyClass: \"restricted\", humanReviewRequired: true, actions: [\"isolate-area\", \"do-not-approach\", \"request-hazmat-authority\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 18,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "medical: { version: \"spec260-protocol-v1\", hazardCategory: \"medical\", minimumSafetyClass: \"professional_only\", humanReviewRequired: true, actions: [\"confirm-safe-access\", \"request-qualified-care\", \"preserve-reporter-contact\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 19,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "accident: { version: \"spec260-protocol-v1\", hazardCategory: \"accident\", minimumSafetyClass: \"verified_only\", humanReviewRequired: true, actions: [\"confirm-scene-safety\", \"avoid-traffic\", \"request-qualified-response\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 20,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "security: { version: \"spec260-protocol-v1\", hazardCategory: \"security\", minimumSafetyClass: \"restricted\", humanReviewRequired: true, actions: [\"protect-reporter-identity\", \"do-not-confront\", \"request-authority-review\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 21,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "civil_crowd: { version: \"spec260-protocol-v1\", hazardCategory: \"civil_crowd\", minimumSafetyClass: \"professional_only\", humanReviewRequired: true, actions: [\"avoid-crowd-compression\", \"keep-egress-clear\", \"request-trained-marshals\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 22,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "unknown: { version: \"spec260-protocol-v1\", hazardCategory: \"unknown\", minimumSafetyClass: \"professional_only\", humanReviewRequired: true, actions: [\"verify-hazard-before-entry\", \"keep-clear\", \"human-review\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 23,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "multi_hazard: { version: \"spec260-protocol-v1\", hazardCategory: \"multi_hazard\", minimumSafetyClass: \"restricted\", humanReviewRequired: true, actions: [\"separate-hazards\", \"human-coordination\", \"no-unverified-entry\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 24,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "const version = `spec260-protocol-v1:${input.hazardCategory}:${input.severity}`;",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 39,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "/** Canonical page and API route contract for Spec 260. Keep this module runtime-neutral. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1,
+        "path": "packages/shared/src/emergencyRouteManifest.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec260 Cloudflare evidence-retention schedule\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "apps/cloudflare/src/spec260BackgroundWork.test.ts"
+      },
+      {
+        "excerpt": "expect(String(url)).toBe(\"https://internal.example/api/internal/spec260/schedules/evidence-retention\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 25,
+        "path": "apps/cloudflare/src/spec260BackgroundWork.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 shared safety contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 24,
+        "path": "apps/cloudflare/src/spec260EmergencyContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 public basemap configuration forwarding\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "apps/cloudflare/src/spec260MapConfiguration.test.ts"
+      },
+      {
+        "excerpt": "expect(request.headers.get(\"x-spec260-route-id\")).toBe(\"public.map.config\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 10,
+        "path": "apps/cloudflare/src/spec260MapConfiguration.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 route manifest\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 11,
+        "path": "apps/cloudflare/src/spec260RouteManifest.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 Cloudflare route registration\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 8,
+        "path": "apps/cloudflare/src/spec260RouteRegistration.test.ts"
+      },
+      {
+        "excerpt": "it(\"delegates operational source approval to the Spec 260 review route with checklist evidence\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 141,
+        "path": "apps/web/client/src/pages/Admin/__tests__/AdminIntelligenceRegistry.test.tsx"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 browser navigation contract\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 10,
+        "path": "apps/web/client/src/pages/__tests__/EmergencyRouting.test.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "The Spec260 production template names the canonical queue and its dead-letter",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 29,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "## Spec 260 edge API",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 45,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "Spec 260 API routes in `wrangler.production.jsonc` are attached to the known",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 47,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "tenants enable Spec 260.",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 51,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "Spec 260 basemap configuration is owned by the existing encrypted platform",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 85,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "Spec 260 projections.",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 94,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "Spec 260 evidence uploads use the private R2 staging prefix",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 96,
+        "path": "apps/cloudflare/README.md"
+      },
+      {
+        "excerpt": "const RETENTION_ENDPOINT = \"/api/internal/spec260/schedules/evidence-retention\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 3,
+        "path": "apps/cloudflare/src/spec260BackgroundWork.ts"
+      },
+      {
+        "excerpt": "\"x-spec260-schedule\": \"evidence-retention-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 41,
+        "path": "apps/cloudflare/src/spec260BackgroundWork.ts"
+      },
+      {
+        "excerpt": "headers.delete(\"x-spec260-original-host\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 94,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.delete(\"x-spec260-original-protocol\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 95,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.set(\"x-spec260-original-host\", incoming.host);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 97,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.set(\"x-spec260-original-protocol\", incoming.protocol.slice(0, -1));",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 98,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "if (clientIp && /^[0-9a-fA-F:.]{3,64}$/.test(clientIp)) headers.set(\"x-spec260-client-ip\", clientIp);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 100,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.set(\"x-spec260-route-id\", route.id);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 101,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "headers.set(\"x-spec260-edge-request-id\", request.headers.get(\"cf-ray\")?.slice(0, 128) ?? crypto.randomUUID());",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 102,
+        "path": "apps/cloudflare/src/spec260PlatformProxy.ts"
+      },
+      {
+        "excerpt": "await send(\"operations.federation.partner.create\", \"POST\", { partnerRef, displayName, contractVersion: \"spec260-federation-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 54,
+        "path": "apps/web/client/src/components/emergency/EmergencyFederationPanel.tsx"
+      },
+      {
+        "excerpt": "\"รายการจาก Spec 260 ที่อยู่ในวงจรตรวจสอบจริง การอนุมัติเปิดให้บันทึกหลักฐานจากแหล่งนี้ แต่ไม่ได้เปิดการดึงข้อมูลอัตโนมัติ\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 137,
+        "path": "apps/web/client/src/pages/Admin/AdminIntelligenceRegistry.tsx"
+      },
+      {
+        "excerpt": "\"Spec 260 records in the real review lifecycle. Approval allows evidence capture from a source; it does not enable automatic data retrieval.\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 228,
+        "path": "apps/web/client/src/pages/Admin/AdminIntelligenceRegistry.tsx"
+      },
+      {
+        "excerpt": "method: \"POST\", credentials: \"omit\", headers: { \"content-type\": \"application/json\", \"idempotency-key\": `spec260-evidence:${reportRef}:${index}:${metadata.sha256}`,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 160,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "method: \"POST\", credentials: \"omit\", headers: { \"idempotency-key\": `spec260-evidence-complete:${upload.evidenceId}`, \"x-emergency-case-token\": token },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 171,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "const token = sessionStorage.getItem(`spec260:report:${reportRef}`);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 315,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "method: \"POST\", credentials: \"include\", headers: { \"content-type\": \"application/json\", \"idempotency-key\": `spec260-case-evidence:${caseId}:${index}:${metadata.sha256}` }, body: JSON.stringify(metadata),",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 880,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "method: \"POST\", credentials: \"include\", headers: { \"idempotency-key\": `spec260-case-evidence-complete:${target.evidenceId}` },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 890,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "sessionStorage.setItem(`spec260:report:${body.reportRef}`, body.continuationToken);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 929,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "sessionStorage.removeItem(`spec260:report:${reportCase.reportRef}`);",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1006,
+        "path": "apps/web/client/src/pages/EmergencyRoutePage.tsx"
+      },
+      {
+        "excerpt": "-- Spec 260 requires PostGIS as the geospatial authority. Deployment preflight",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 5,
+        "path": "apps/web/drizzle/0368_spec260_emergency_core.sql"
+      },
+      {
+        "excerpt": "/** Spec 260 report intake records; acceptance is committed with worker_job_outbox. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 30725,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "/** Idempotent transition receipts only; notification intent/outbox remains canonical Spec 260. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 31435,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "// Spec 260 routes arrive through the Cloudflare edge Worker and validate its",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 609,
+        "path": "apps/web/server/_core/index.ts"
+      },
+      {
+        "excerpt": "actorRef: \"spec260.emergency-report-intake\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 34,
+        "path": "apps/web/server/jobs/spec260EmergencyReportJob.ts"
+      },
+      {
+        "excerpt": "actorRef: \"spec260.emergency-report-intake\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 51,
+        "path": "apps/web/server/jobs/spec260EmergencyReportJob.ts"
+      },
+      {
+        "excerpt": "\"spec260.evidence.retention\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1128,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "contractVersion: z.literal(\"spec260-federation-v1\"),",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1256,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "const host = normalizedHost(req.header(\"x-spec260-original-host\"));",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1397,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "const incomingHost = req.header(\"x-spec260-original-host\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1651,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "const incomingProtocol = req.header(\"x-spec260-original-protocol\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1652,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "const ip = req.header(\"x-spec260-client-ip\") || \"unknown\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1686,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "requestedBySystemComponent: \"spec260.emergency-report-intake\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1890,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "console.error(\"[Spec260] report admission failed\", {",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1967,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "policyVersion: \"spec260-financial-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2268,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "\"[Spec260] paid contribution awaiting financial reconciliation\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2272,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "console.error(\"[Spec260] contribution checkout failed\", {",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2319,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 4357,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 4443,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 4803,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 4829,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 4871,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 4930,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 5154,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 5526,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-client-ip\") ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 5611,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "taxonomyVersion: \"spec260-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 10294,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "taxonomyVersion: \"spec260-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 10335,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "if (path === \"/api/internal/spec260/schedules/evidence-retention\") {",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11027,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.header(\"x-spec260-schedule\") !== \"evidence-retention-v1\" ||",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11030,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "const scheduleId = \"spec260-emergency-evidence-retention\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11062,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "\"[Spec260] evidence retention schedule admission failed\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11120,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "const attestedId = req.header(\"x-spec260-route-id\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11139,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.headers[\"x-spec260-original-host\"] = host;",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11149,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.headers[\"x-spec260-original-protocol\"] = req.protocol;",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11150,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "req.headers[\"x-spec260-route-id\"] = matched.route.id;",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11151,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "console.error(\"[Spec260] edge request failed\", {",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11157,
+        "path": "apps/web/server/routes/spec260EmergencyEdge.ts"
+      },
+      {
+        "excerpt": "/** Spec 260 accepts traffic only from its dedicated Cloudflare Worker secret. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 211,
+        "path": "apps/web/server/services/appRuntimeConfig.ts"
+      },
+      {
+        "excerpt": "* Auto-select the Spec 260 ingress boundary. Linux deployments without the",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 223,
+        "path": "apps/web/server/services/appRuntimeConfig.ts"
+      },
+      {
+        "excerpt": "await settleEmergencyContributionsForPayment(db, { paymentId: payment.id, policyVersion: \"spec260-financial-v1\" });",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 314,
+        "path": "apps/web/server/services/billing/paymentProcessing.ts"
+      },
+      {
+        "excerpt": "await settleEmergencyContributionsForPayment(db, { paymentId: payment.id, policyVersion: \"spec260-financial-v1\" });",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 148,
+        "path": "apps/web/server/services/billing/reconciliation.ts"
+      },
+      {
+        "excerpt": "policyVersion: \"spec260-restricted-funds-v1\", payloadJson: { allocationId: id, poolId: pool.id,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 355,
+        "path": "apps/web/server/services/emergencyFinancialService.ts"
+      },
+      {
+        "excerpt": "description: `Spec 260 map provider configuration (${write.key})`, updatedBy: input.userId, updatedAt: now })",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 180,
+        "path": "apps/web/server/services/geoMapSettings.ts"
+      },
+      {
+        "excerpt": "valueJson: write.valueJson, isSensitive: write.isSensitive, description: `Spec 260 map provider configuration (${write.key})`, updatedBy: input.userId });",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 184,
+        "path": "apps/web/server/services/geoMapSettings.ts"
+      },
+      {
+        "excerpt": "return createHmac(\"sha256\", signingKey).update(`spec260-google-map-key-reference:v1:${serverApiKey}`).digest(\"hex\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 7,
+        "path": "apps/web/server/services/googleMapsSessionToken.ts"
+      },
+      {
+        "excerpt": "return createHmac(\"sha256\", signingKey).update(`spec260-google-map-session:v1:${payload}`).digest(\"base64url\");",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 12,
+        "path": "apps/web/server/services/googleMapsSessionToken.ts"
+      },
+      {
+        "excerpt": "return createHmac(\"sha256\", signingKey).update(\"spec260-google-map-session-encryption:v1\").digest();",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 17,
+        "path": "apps/web/server/services/googleMapsSessionToken.ts"
+      },
+      {
+        "excerpt": "cipher.setAAD(Buffer.from(\"spec260-google-map-session:v2\"));",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 29,
+        "path": "apps/web/server/services/googleMapsSessionToken.ts"
+      },
+      {
+        "excerpt": "decipher.setAAD(Buffer.from(\"spec260-google-map-session:v2\"));",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 57,
+        "path": "apps/web/server/services/googleMapsSessionToken.ts"
+      },
+      {
+        "excerpt": "/** Runtime-neutral Spec 260 domain contracts. Platform identities and ledgers remain externally owned. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1,
+        "path": "packages/shared/src/emergency/contracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec260-federation-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 23,
+        "path": "packages/shared/src/emergency/federation.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec260-federation-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 35,
+        "path": "packages/shared/src/emergency/federation.ts"
+      },
+      {
+        "excerpt": "natural: { version: \"spec260-protocol-v1\", hazardCategory: \"natural\", minimumSafetyClass: \"verified_only\", humanReviewRequired: false, actions: [\"verify-location\", \"check-updates\", \"record-needs\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 14,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "structural: { version: \"spec260-protocol-v1\", hazardCategory: \"structural\", minimumSafetyClass: \"professional_only\", humanReviewRequired: true, actions: [\"keep-clear\", \"request-professional-assessment\", \"record-access-route\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 15,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "infrastructure: { version: \"spec260-protocol-v1\", hazardCategory: \"infrastructure\", minimumSafetyClass: \"verified_only\", humanReviewRequired: true, actions: [\"verify-service-impact\", \"avoid-hazard-zone\", \"record-access-route\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 16,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "fire: { version: \"spec260-protocol-v1\", hazardCategory: \"fire\", minimumSafetyClass: \"professional_only\", humanReviewRequired: true, actions: [\"evacuate-hazard-zone\", \"do-not-enter\", \"request-fire-service\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 17,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "hazardous_material: { version: \"spec260-protocol-v1\", hazardCategory: \"hazardous_material\", minimumSafetyClass: \"restricted\", humanReviewRequired: true, actions: [\"isolate-area\", \"do-not-approach\", \"request-hazmat-authority\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 18,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "medical: { version: \"spec260-protocol-v1\", hazardCategory: \"medical\", minimumSafetyClass: \"professional_only\", humanReviewRequired: true, actions: [\"confirm-safe-access\", \"request-qualified-care\", \"preserve-reporter-contact\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 19,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "accident: { version: \"spec260-protocol-v1\", hazardCategory: \"accident\", minimumSafetyClass: \"verified_only\", humanReviewRequired: true, actions: [\"confirm-scene-safety\", \"avoid-traffic\", \"request-qualified-response\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 20,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "security: { version: \"spec260-protocol-v1\", hazardCategory: \"security\", minimumSafetyClass: \"restricted\", humanReviewRequired: true, actions: [\"protect-reporter-identity\", \"do-not-confront\", \"request-authority-review\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 21,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "civil_crowd: { version: \"spec260-protocol-v1\", hazardCategory: \"civil_crowd\", minimumSafetyClass: \"professional_only\", humanReviewRequired: true, actions: [\"avoid-crowd-compression\", \"keep-egress-clear\", \"request-trained-marshals\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 22,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "unknown: { version: \"spec260-protocol-v1\", hazardCategory: \"unknown\", minimumSafetyClass: \"professional_only\", humanReviewRequired: true, actions: [\"verify-hazard-before-entry\", \"keep-clear\", \"human-review\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 23,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "multi_hazard: { version: \"spec260-protocol-v1\", hazardCategory: \"multi_hazard\", minimumSafetyClass: \"restricted\", humanReviewRequired: true, actions: [\"separate-hazards\", \"human-coordination\", \"no-unverified-entry\"] },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 24,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "const version = `spec260-protocol-v1:${input.hazardCategory}:${input.severity}`;",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 39,
+        "path": "packages/shared/src/emergency/protocolPacks.ts"
+      },
+      {
+        "excerpt": "/** Canonical page and API route contract for Spec 260. Keep this module runtime-neutral. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1,
+        "path": "packages/shared/src/emergencyRouteManifest.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec260 Cloudflare evidence-retention schedule\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "apps/cloudflare/src/spec260BackgroundWork.test.ts"
+      },
+      {
+        "excerpt": "expect(String(url)).toBe(\"https://internal.example/api/internal/spec260/schedules/evidence-retention\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 25,
+        "path": "apps/cloudflare/src/spec260BackgroundWork.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 shared safety contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 24,
+        "path": "apps/cloudflare/src/spec260EmergencyContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 public basemap configuration forwarding\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "apps/cloudflare/src/spec260MapConfiguration.test.ts"
+      },
+      {
+        "excerpt": "expect(request.headers.get(\"x-spec260-route-id\")).toBe(\"public.map.config\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 10,
+        "path": "apps/cloudflare/src/spec260MapConfiguration.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 route manifest\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 11,
+        "path": "apps/cloudflare/src/spec260RouteManifest.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 Cloudflare route registration\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 8,
+        "path": "apps/cloudflare/src/spec260RouteRegistration.test.ts"
+      },
+      {
+        "excerpt": "it(\"delegates operational source approval to the Spec 260 review route with checklist evidence\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 141,
+        "path": "apps/web/client/src/pages/Admin/__tests__/AdminIntelligenceRegistry.test.tsx"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 browser navigation contract\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 10,
+        "path": "apps/web/client/src/pages/__tests__/EmergencyRouting.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec260 public alert area persistence\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 11,
+        "path": "apps/web/drizzle/__tests__/spec260AlertGeometryMigration.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 assignment re-offer migration\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "apps/web/drizzle/__tests__/spec260AssignmentReofferMigration.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec260 legal hold persistence contract\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 11,
+        "path": "apps/web/drizzle/__tests__/spec260LegalHoldsMigration.test.ts"
+      },
+      {
+        "excerpt": "it(\"journals the additive migration after the current Spec260 baseline\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 12,
+        "path": "apps/web/drizzle/__tests__/spec260LegalHoldsMigration.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 retryable webhook inbox migration\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "apps/web/drizzle/__tests__/spec260WebhookInboxMigration.test.ts"
+      },
+      {
+        "excerpt": "it(\"registers an additive migration after the Spec260 source and capture authority\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 9,
+        "path": "apps/web/drizzle/hydrologyObservationsMigration.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 evidence staging expiry\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "apps/web/server/jobs/spec260EvidenceRetentionJob.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec260 public emergency spatial projection\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 7,
+        "path": "apps/web/server/routes/__tests__/spec260EmergencyEdge.publicProjection.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 emergency message cursor\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "apps/web/server/routes/__tests__/spec260EmergencyMessageCursor.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 map settings\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "apps/web/server/services/geoMapSettings.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec260 federation contract\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "packages/shared/src/emergency/federation.test.ts"
+      },
+      {
+        "excerpt": "expect(projection).toEqual({ contractVersion: \"spec260-federation-v1\", resourceType: \"case\", publicRef: \"CASE-1\",",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 8,
+        "path": "packages/shared/src/emergency/federation.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 bounded map viewports\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "packages/shared/src/emergency/mapBounds.test.ts"
+      },
+      {
+        "excerpt": "version: \"spec260-protocol-v1:hazardous_material:moderate\", minimumSafetyClass: \"restricted\", humanReviewRequired: true,",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 7,
+        "path": "packages/shared/src/emergency/protocolPacks.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 case review obligations\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 5,
+        "path": "packages/shared/src/emergency/reviewQueue.test.ts"
+      },
+      {
+        "excerpt": "describe(\"deterministic Spec 260 triage advisory\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "packages/shared/src/emergency/triage.test.ts"
+      },
+      {
+        "excerpt": "describe(\"stored Spec 260 workflow transitions\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "packages/shared/src/emergency/workflowTransitions.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 260 Google map route contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "packages/shared/src/emergencyRouteManifest.test.ts"
+      }
+    ],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md"
+      },
+      {
+        "digest": "fec73647ed4588d3402f71b6878e419f8fb0a8651f193d09999a5d96ad0c5274",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/development-plan.md"
+      },
+      {
+        "digest": "f71b88ee51df6982f6cea36eab9221dcdbdb466701c4d877a701d456b46c28cd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/gap-review-10-rounds-2026-09-30.md"
+      },
+      {
+        "digest": "20fcbfc5281ee4a6f090fd4e384290da2f0c1d561d533e99914810dec0eb6c50",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "63a27f32390ab78588d55b071cef802e3d2be87f31309103e681f618687caa3f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/progress.md"
+      },
+      {
+        "digest": "150dfe52a04b5ac47f3f3fdfe0dcf27a536cdde9426c37a45c743bc6d4992830",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/index.md"
+      },
+      {
+        "digest": "bf6018f6b81384198ed679f07c28f4154886eab22a00a91a6c41ccd692ddbbc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-01-spec-cloudflare-no-legacy.md"
+      },
+      {
+        "digest": "ce57fa7efbb5f5d8ecd7a9f68bebf866f71b7d705223dedd9623f27c4f436ee0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-02-shared-route-contract.md"
+      },
+      {
+        "digest": "eb59074714d3bc5bf18c9cd043f8a0425b35f882cbaf20833882753ce54069d4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-03-emergency-domain-safety-contracts.md"
+      },
+      {
+        "digest": "b729396b3e6a7801d3719ab4927509051baeff0cfe502ea1b63fdcec28496af1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-04-citizen-intake-and-payment-reliability.md"
+      },
+      {
+        "digest": "c0d51c5910fdd239a5513c439895bf6cf8c5ad2708ec3b08271c55b4159d984b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-05-case-needs-tasks-facilities-and-messages.md"
+      },
+      {
+        "digest": "98790c2e56d55aa56f868a3b7d7d1fec7bff968a892ad8604a58da37ef1c4578",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-06-geospatial-map-and-public-projections.md"
+      },
+      {
+        "digest": "9c46b9878defbcdf6e30ad2a8cf64a65a676a3b3f91ef63987ab782b9289c149",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-07-deterministic-triage-and-safety-protocols.md"
+      },
+      {
+        "digest": "c02d11d335c6cf0b27a9d3c429a405bd1898408abf493f26a8985fc3ae6b8e66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-08-mutual-aid-and-federation.md"
+      },
+      {
+        "digest": "59995ecf66e685b5f9c1addeb4d1ba276a40a4bf8910d11191067ffacf41a64a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-09-evidence-intelligence-and-forecasting.md"
+      },
+      {
+        "digest": "596900aa5e69018f3a765eaf4e3ebdc7a66d40ddce5d7dd48d427cab00ec3b76",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-10-sponsorship-marketplace-and-thai-finance.md"
+      },
+      {
+        "digest": "c52fe9bba2f0162b98852fc25aca21394cdc7fdc7303c84eb260cb2592cce135",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-11-privacy-resilience-and-operations.md"
+      },
+      {
+        "digest": "83255895b1eeb81265ddee7699ba7e0889072f44f52f78bcf0a38b6818150bf8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-12-integrated-local-release-candidate.md"
+      },
+      {
+        "digest": "e1222c808bb45003a3569535e830761802e87abb72f48988c66bb866c6628465",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/implementation/sections/section-13-final-cloudflare-staging-verification.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 919,
+    "unresolved": 919
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.585111Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

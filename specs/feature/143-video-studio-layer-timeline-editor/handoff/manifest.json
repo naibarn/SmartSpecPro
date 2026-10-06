@@ -1,0 +1,705 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/143-video-studio-layer-timeline-editor/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/143-video-studio-layer-timeline-editor/spec.md"
+      },
+      {
+        "excerpt": "// Spec 143 §5 R1: job-type filter options, sourced from the same Thai label",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 108,
+        "path": "apps/web/client/src/pages/RenderJobsPage.tsx"
+      },
+      {
+        "excerpt": "*  `compiledTotal` below (spec 143 §4.6: this field alone is \"wrong by",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 161,
+        "path": "apps/web/server/services/videoProjectQualityMetrics.ts"
+      },
+      {
+        "excerpt": "/* Layer budget breakdown by source (§4.6, spec 143)                         */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 266,
+        "path": "apps/web/server/services/videoProjectQualityMetrics.ts"
+      },
+      {
+        "excerpt": "* every round forever without ever converging. As of spec 143 §4.9.1, gap-2",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 13,
+        "path": "apps/web/server/services/videoProjectRepairApplier.ts"
+      },
+      {
+        "excerpt": "* Gap-2 (layer-count/segmentation is unrepairable) — REDEFINED by spec 143",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 422,
+        "path": "apps/web/server/services/videoProjectRepairApplier.ts"
+      },
+      {
+        "excerpt": "*  the first place (the metric itself exempts them — spec 143 §4.9.1) so",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 530,
+        "path": "apps/web/server/services/videoProjectRepairApplier.ts"
+      },
+      {
+        "excerpt": "// Step 3 — layerBudget.used. Before spec 143 §4.9.3, \"plannable\" and",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 253,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "/** D2 / spec 143 §4.9.3 (P0, was silently destructive): \"empty\" for",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 551,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "/* §4.9.2 — re-home layers across a scene-timing change (spec 143)           */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 739,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "* validation failure (spec 143 §4.9.2, §3.2's \"fragile in one direction\").",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 769,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "/* §4.9.4 — pre-spend layer-budget forecast (spec 143)                       */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 835,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "* Also covers spec 143 §5 R1 — the job-type filter added next to the",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 10,
+        "path": "apps/web/client/src/pages/__tests__/RenderJobsPage.test.tsx"
+      },
+      {
+        "excerpt": "describe(\"RenderJobsPage — job-type filter (spec 143 §5 R1)\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 339,
+        "path": "apps/web/client/src/pages/__tests__/RenderJobsPage.test.tsx"
+      },
+      {
+        "excerpt": "// Default narration is `null` (spec 143 §4.9.3 / decision D2): a scene is",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 274,
+        "path": "apps/web/server/routers/__tests__/videoProjects.jobExecutor.test.ts"
+      },
+      {
+        "excerpt": "// Default narration is `null` (spec 143 §4.9.3 / decision D2): a scene is",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 324,
+        "path": "apps/web/server/routers/__tests__/videoProjects.stages.test.ts"
+      },
+      {
+        "excerpt": "// Spec 143 §4.9.3 / decision D2: \"empty\" for `fill_empty` means NO",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 1627,
+        "path": "apps/web/server/routers/__tests__/videoProjects.stages.test.ts"
+      },
+      {
+        "excerpt": "* workerJobs.list — `jobType` filter coverage (spec 143 §5 R1).",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 2,
+        "path": "apps/web/server/routers/__tests__/workerJobs.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.8/§4.13 — excludes `hidden` layers from perScene/total (a hidden layer never reaches the compiler)\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 172,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.6 — compiledTotal matches EXACTLY what compileVideoProject emits (scene + template + caption + audio, excluding hidden)\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 187,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      },
+      {
+        "excerpt": "// NOT full-bleed (spec 143 §4.9.1 exempts x0/y0/w100/h100) — a",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 237,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/143-video-studio-layer-timeline-editor/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/143-video-studio-layer-timeline-editor/spec.md",
+    "digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.302096Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-08-09T21:59:09+07:00",
+      "spec_last_changed_at": "2026-08-09T21:59:09+07:00"
+    },
+    "revision": null,
+    "slug": "143-video-studio-layer-timeline-editor",
+    "spec_id": "143",
+    "title": "Feature 143: Video Studio — Layer & Timeline Editor"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.302096Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.302096Z",
+    "sources": [
+      {
+        "digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/143-video-studio-layer-timeline-editor/spec.md"
+      },
+      {
+        "excerpt": "// Spec 143 §5 R1: job-type filter options, sourced from the same Thai label",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 108,
+        "path": "apps/web/client/src/pages/RenderJobsPage.tsx"
+      },
+      {
+        "excerpt": "*  `compiledTotal` below (spec 143 §4.6: this field alone is \"wrong by",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 161,
+        "path": "apps/web/server/services/videoProjectQualityMetrics.ts"
+      },
+      {
+        "excerpt": "/* Layer budget breakdown by source (§4.6, spec 143)                         */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 266,
+        "path": "apps/web/server/services/videoProjectQualityMetrics.ts"
+      },
+      {
+        "excerpt": "* every round forever without ever converging. As of spec 143 §4.9.1, gap-2",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 13,
+        "path": "apps/web/server/services/videoProjectRepairApplier.ts"
+      },
+      {
+        "excerpt": "* Gap-2 (layer-count/segmentation is unrepairable) — REDEFINED by spec 143",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 422,
+        "path": "apps/web/server/services/videoProjectRepairApplier.ts"
+      },
+      {
+        "excerpt": "*  the first place (the metric itself exempts them — spec 143 §4.9.1) so",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 530,
+        "path": "apps/web/server/services/videoProjectRepairApplier.ts"
+      },
+      {
+        "excerpt": "// Step 3 — layerBudget.used. Before spec 143 §4.9.3, \"plannable\" and",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 253,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "/** D2 / spec 143 §4.9.3 (P0, was silently destructive): \"empty\" for",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 551,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "/* §4.9.2 — re-home layers across a scene-timing change (spec 143)           */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 739,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "* validation failure (spec 143 §4.9.2, §3.2's \"fragile in one direction\").",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 769,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "/* §4.9.4 — pre-spend layer-budget forecast (spec 143)                       */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 835,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "* Also covers spec 143 §5 R1 — the job-type filter added next to the",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 10,
+        "path": "apps/web/client/src/pages/__tests__/RenderJobsPage.test.tsx"
+      },
+      {
+        "excerpt": "describe(\"RenderJobsPage — job-type filter (spec 143 §5 R1)\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 339,
+        "path": "apps/web/client/src/pages/__tests__/RenderJobsPage.test.tsx"
+      },
+      {
+        "excerpt": "// Default narration is `null` (spec 143 §4.9.3 / decision D2): a scene is",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 274,
+        "path": "apps/web/server/routers/__tests__/videoProjects.jobExecutor.test.ts"
+      },
+      {
+        "excerpt": "// Default narration is `null` (spec 143 §4.9.3 / decision D2): a scene is",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 324,
+        "path": "apps/web/server/routers/__tests__/videoProjects.stages.test.ts"
+      },
+      {
+        "excerpt": "// Spec 143 §4.9.3 / decision D2: \"empty\" for `fill_empty` means NO",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 1627,
+        "path": "apps/web/server/routers/__tests__/videoProjects.stages.test.ts"
+      },
+      {
+        "excerpt": "* workerJobs.list — `jobType` filter coverage (spec 143 §5 R1).",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 2,
+        "path": "apps/web/server/routers/__tests__/workerJobs.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.8/§4.13 — excludes `hidden` layers from perScene/total (a hidden layer never reaches the compiler)\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 172,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.6 — compiledTotal matches EXACTLY what compileVideoProject emits (scene + template + caption + audio, excluding hidden)\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 187,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      },
+      {
+        "excerpt": "// NOT full-bleed (spec 143 §4.9.1 exempts x0/y0/w100/h100) — a",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 237,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.9.1 — a full-bleed layer (x0 y0 w100 h100) is EXEMPT, even without `role: 'background'`\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 251,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.9.1 — a `role: 'background'` layer is EXEMPT even when its geometry is NOT full-bleed\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 264,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.9.2 (AC9) — retiming a scene boundary preserves every layer's ABSOLUTE start time\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 328,
+        "path": "apps/web/server/services/__tests__/videoProjectRepairApplier.test.ts"
+      },
+      {
+        "excerpt": "/* motion — layer-budget report (gap-2: spec 143 §4.9.1 — NEVER deletes a    */",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 417,
+        "path": "apps/web/server/services/__tests__/videoProjectRepairApplier.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.9.1 — a full-bleed background survives a layout repair round completely unchanged\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 535,
+        "path": "apps/web/server/services/__tests__/videoProjectRepairApplier.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.9.1 — a full-bleed layer is exempt even WITHOUT `role: 'background'` set\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 564,
+        "path": "apps/web/server/services/__tests__/videoProjectRepairApplier.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.9.1 — a locked layer is skipped by the layout handler even though it stays flagged\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 571,
+        "path": "apps/web/server/services/__tests__/videoProjectRepairApplier.test.ts"
+      },
+      {
+        "excerpt": "it(\"layer-count (spec 143 §4.9.1): computeLayerCounts flags the document over budget, and applyRepairs(motion) reports it WITHOUT deleting any layer or falsely converging the count\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 740,
+        "path": "apps/web/server/services/__tests__/videoProjectRepairApplier.test.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "// Spec 143 §5 R1: job-type filter options, sourced from the same Thai label",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 108,
+        "path": "apps/web/client/src/pages/RenderJobsPage.tsx"
+      },
+      {
+        "excerpt": "*  `compiledTotal` below (spec 143 §4.6: this field alone is \"wrong by",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 161,
+        "path": "apps/web/server/services/videoProjectQualityMetrics.ts"
+      },
+      {
+        "excerpt": "/* Layer budget breakdown by source (§4.6, spec 143)                         */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 266,
+        "path": "apps/web/server/services/videoProjectQualityMetrics.ts"
+      },
+      {
+        "excerpt": "* every round forever without ever converging. As of spec 143 §4.9.1, gap-2",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 13,
+        "path": "apps/web/server/services/videoProjectRepairApplier.ts"
+      },
+      {
+        "excerpt": "* Gap-2 (layer-count/segmentation is unrepairable) — REDEFINED by spec 143",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 422,
+        "path": "apps/web/server/services/videoProjectRepairApplier.ts"
+      },
+      {
+        "excerpt": "*  the first place (the metric itself exempts them — spec 143 §4.9.1) so",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 530,
+        "path": "apps/web/server/services/videoProjectRepairApplier.ts"
+      },
+      {
+        "excerpt": "// Step 3 — layerBudget.used. Before spec 143 §4.9.3, \"plannable\" and",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 253,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "/** D2 / spec 143 §4.9.3 (P0, was silently destructive): \"empty\" for",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 551,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "/* §4.9.2 — re-home layers across a scene-timing change (spec 143)           */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 739,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "* validation failure (spec 143 §4.9.2, §3.2's \"fragile in one direction\").",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 769,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "/* §4.9.4 — pre-spend layer-budget forecast (spec 143)                       */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 835,
+        "path": "apps/web/server/services/videoProjectScenePlanner.ts"
+      },
+      {
+        "excerpt": "* Also covers spec 143 §5 R1 — the job-type filter added next to the",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 10,
+        "path": "apps/web/client/src/pages/__tests__/RenderJobsPage.test.tsx"
+      },
+      {
+        "excerpt": "describe(\"RenderJobsPage — job-type filter (spec 143 §5 R1)\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 339,
+        "path": "apps/web/client/src/pages/__tests__/RenderJobsPage.test.tsx"
+      },
+      {
+        "excerpt": "// Default narration is `null` (spec 143 §4.9.3 / decision D2): a scene is",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 274,
+        "path": "apps/web/server/routers/__tests__/videoProjects.jobExecutor.test.ts"
+      },
+      {
+        "excerpt": "// Default narration is `null` (spec 143 §4.9.3 / decision D2): a scene is",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 324,
+        "path": "apps/web/server/routers/__tests__/videoProjects.stages.test.ts"
+      },
+      {
+        "excerpt": "// Spec 143 §4.9.3 / decision D2: \"empty\" for `fill_empty` means NO",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 1627,
+        "path": "apps/web/server/routers/__tests__/videoProjects.stages.test.ts"
+      },
+      {
+        "excerpt": "* workerJobs.list — `jobType` filter coverage (spec 143 §5 R1).",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 2,
+        "path": "apps/web/server/routers/__tests__/workerJobs.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.8/§4.13 — excludes `hidden` layers from perScene/total (a hidden layer never reaches the compiler)\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 172,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.6 — compiledTotal matches EXACTLY what compileVideoProject emits (scene + template + caption + audio, excluding hidden)\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 187,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      },
+      {
+        "excerpt": "// NOT full-bleed (spec 143 §4.9.1 exempts x0/y0/w100/h100) — a",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 237,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.9.1 — a full-bleed layer (x0 y0 w100 h100) is EXEMPT, even without `role: 'background'`\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 251,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.9.1 — a `role: 'background'` layer is EXEMPT even when its geometry is NOT full-bleed\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 264,
+        "path": "apps/web/server/services/__tests__/videoProjectQualityMetrics.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.9.2 (AC9) — retiming a scene boundary preserves every layer's ABSOLUTE start time\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 328,
+        "path": "apps/web/server/services/__tests__/videoProjectRepairApplier.test.ts"
+      },
+      {
+        "excerpt": "/* motion — layer-budget report (gap-2: spec 143 §4.9.1 — NEVER deletes a    */",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 417,
+        "path": "apps/web/server/services/__tests__/videoProjectRepairApplier.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.9.1 — a full-bleed background survives a layout repair round completely unchanged\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 535,
+        "path": "apps/web/server/services/__tests__/videoProjectRepairApplier.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.9.1 — a full-bleed layer is exempt even WITHOUT `role: 'background'` set\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 564,
+        "path": "apps/web/server/services/__tests__/videoProjectRepairApplier.test.ts"
+      },
+      {
+        "excerpt": "it(\"spec 143 §4.9.1 — a locked layer is skipped by the layout handler even though it stays flagged\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 571,
+        "path": "apps/web/server/services/__tests__/videoProjectRepairApplier.test.ts"
+      },
+      {
+        "excerpt": "it(\"layer-count (spec 143 §4.9.1): computeLayerCounts flags the document over budget, and applyRepairs(motion) reports it WITHOUT deleting any layer or falsely converging the count\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 740,
+        "path": "apps/web/server/services/__tests__/videoProjectRepairApplier.test.ts"
+      }
+    ],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/143-video-studio-layer-timeline-editor/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 58,
+    "unresolved": 58
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.302096Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

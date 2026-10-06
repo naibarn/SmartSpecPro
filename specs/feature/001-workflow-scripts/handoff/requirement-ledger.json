@@ -1,0 +1,228 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/001-workflow-scripts/spec.md#L80"
+      ],
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L80",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2ccfc7dea3e1ee80fafd6124069ccfb66ec03104b85d0cd4809568d3c63a30d1",
+      "requirement_id": "REQ-54B1C3939A3E",
+      "requirement_text": "- ชื่อไฟล์ลงท้าย `_REQUIREMENTS.md`, `_REQUIREMENT.md`, `_DOCS.md`, `_GUIDE.md`, `_SUMMARY.md`",
+      "source_spec_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/001-workflow-scripts/spec.md#L81"
+      ],
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L81",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "79d83d5919e7a8493f355f58ef74306fd78e03a01edbc7476e5edff17b8bbccc",
+      "requirement_id": "REQ-429CF8A2BF92",
+      "requirement_text": "- หรือเป็น `README.md` ภายใต้โฟลเดอร์ workflows",
+      "source_spec_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/001-workflow-scripts/spec.md#L82"
+      ],
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L82",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "81e98b7d1c6c9c7f9b94e2392de0733905ef0bffc723a18227555feeac39e294",
+      "requirement_id": "REQ-21F80FE4CC85",
+      "requirement_text": "- หรืออยู่ในโฟลเดอร์ย่อยที่ตั้งใจเป็น docs (ถ้ามี)",
+      "source_spec_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/001-workflow-scripts/spec.md#L208"
+      ],
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L208",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c61f6c452836b3d9550377845c42626bf7233816ac70367fc495830d2428c828",
+      "requirement_id": "REQ-89B75A88538C",
+      "requirement_text": "- อธิบายชัดเจนและ “ไม่ขัดกัน” ว่า:",
+      "source_spec_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/001-workflow-scripts/spec.md#L209"
+      ],
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L209",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8d5c9af9ccc4250a6ac5e20fb62dd74fb943a82739e91c4f7043fa5817dca478",
+      "requirement_id": "REQ-BD2F4CF47D99",
+      "requirement_text": "- ผู้ใช้พิมพ์คำสั่งใน Kilo เป็น `/{workflow_key}.md`",
+      "source_spec_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/001-workflow-scripts/spec.md#L210"
+      ],
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L210",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "303f83dbe129db68e3c7c0bc06600dcbf0baf541d5670294d52aefdfd87546fe",
+      "requirement_id": "REQ-5E75E59E928A",
+      "requirement_text": "- `frontmatter.workflow` เป็น canonical slug เพื่อ metadata/index ไม่ใช่รูปแบบคำสั่งของทุก platform",
+      "source_spec_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/001-workflow-scripts/spec.md#L211"
+      ],
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L211",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "cf5cbd9d17fb4a7d923f758de69e6b0e92b803543b92bf7e59b2cc91a69ef060",
+      "requirement_id": "REQ-69A25956D1BB",
+      "requirement_text": "- Validator ไม่ fail เพราะไฟล์ legacy/doc-only ใน `.smartspec/workflows/`",
+      "source_spec_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/001-workflow-scripts/spec.md#L212"
+      ],
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L212",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5e3cf9acf13c447f51618aed72b754914ee3957b357eed66b256a81402b26d47",
+      "requirement_id": "REQ-C7B55E806D93",
+      "requirement_text": "- Production workflow ใหม่ 1 ไฟล์ สร้างจาก template แล้วผ่าน Strict ruleset",
+      "source_spec_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/001-workflow-scripts/spec.md#L213"
+      ],
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L213",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6833ea54acd9f00811e3957c574b29bf977f3b10c219a6f86b3b585a6e044f0f",
+      "requirement_id": "REQ-1D8E467E8202",
+      "requirement_text": "- สร้าง WORKFLOWS_INDEX.md ได้แบบ deterministic และไม่รวม artifacts (`*:Zone.Identifier`)",
+      "source_spec_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/001-workflow-scripts/spec.md#L214"
+      ],
+      "authority_source": "specs/feature/001-workflow-scripts/spec.md#L214",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "62e23b8d5eefa72c8e2a2c00c8cc67154ae5c80e65606030c7ceebaab168107b",
+      "requirement_id": "REQ-AEDC2729EB25",
+      "requirement_text": "- สร้าง SCRIPTS_INDEX.md ได้จากการ scan scripts folder",
+      "source_spec_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+  "spec_id": "001"
+}

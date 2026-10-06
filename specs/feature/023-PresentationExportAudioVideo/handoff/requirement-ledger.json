@@ -1,0 +1,30 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/023-PresentationExportAudioVideo/spec.md#L238"
+      ],
+      "authority_source": "specs/feature/023-PresentationExportAudioVideo/spec.md#L238",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d83cfbf75dcfc2b38e45f21f64da54b982c2420fa2d601b80b604e2d5acb8ff8",
+      "requirement_id": "REQ-1668C6CA1C39",
+      "requirement_text": "- **Audio files must be from media library** — no direct URL input.",
+      "source_spec_digest": "ab6da55f585804ff43092390a68d44d3101bf1c367a23184c3fae8d7f9d6e208",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "ab6da55f585804ff43092390a68d44d3101bf1c367a23184c3fae8d7f9d6e208",
+  "spec_id": "023"
+}

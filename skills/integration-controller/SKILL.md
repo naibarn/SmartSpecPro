@@ -66,3 +66,7 @@ Controller completion requires that every discovered valuable delta is either in
 
 After canonicalizing partial progress, return to the open requirement ledger and
 the next ready WorkUnit. Integration is not task closure.
+
+## Canonical Spec integration evidence
+
+For Spec-backed work, after promotion update the canonical Handoff with configured canonical ref, exact integrated SHA/time, affected requirements, and evidence freshness using the shared writer contract in `skills/development-lifecycle/spec-handoff-contract.md`. Integration is distinct from verification, deployment, acceptance, and completion. On stale generation/SHA, reload and reconcile before retry.

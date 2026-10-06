@@ -1,0 +1,1037 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/184-web-video-editor-headless-worker/spec.md"
+      },
+      {
+        "digest": "b2d93c5ed3a87ec8ffd0c5118e8ee06cb35b241573dc07ecf5718136734c1a29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/claude-plan.md"
+      },
+      {
+        "digest": "e36487260f68ffdf2f020dd4f76e73192928cbff2d140a314e308bca215ffe48",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/claude-spec.md"
+      },
+      {
+        "digest": "1e72f820ab55b9ec56c05bcc232491df0a55a1ed93eb5d09656b0c5c513ab769",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7d488831a387a52008f0ea3a485253a5b28cec89c08950883fc0d8c2e8109c7e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/evidence/feature-184-manifest.md"
+      },
+      {
+        "digest": "08f1adde463c9a43a2ee5f52feeaaf6dbec341da84a165fd3296ce8305c2ec63",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/evidence/local-proof-20260909.md"
+      },
+      {
+        "digest": "a7e36079d184742bde5e0e16910ef6d7868a584a9782753fac886736baa5ac70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/implementation-gap-review-20-rounds.md"
+      },
+      {
+        "digest": "c5dd6cba86eca4aa6dd69d9c519337cd7244d6390bfa332769d1a57f955c271a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/implementation-vs-spec-review-10-rounds-20260909.md"
+      },
+      {
+        "digest": "4900873350b7b84a38abbd6a483f3887bc9f0bbf28e1610222659a65ca1c0f75",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/web-editor-function-parity-review-10-rounds-20260909.md"
+      },
+      {
+        "digest": "f5c9588f60d2f227ecb3a81c7abb4826fec978040e35d7656554766381ed71cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/section-status.md"
+      },
+      {
+        "digest": "8b18e90f2f4f6ede5c287236a8fa12eb05d11e4edf529aa3a6e770ae518d4042",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
+      },
+      {
+        "digest": "c227fefa9141c54435d98d7334e18c977bfa1f35bf0df2ecf74485395d05b4db",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
+      },
+      {
+        "digest": "05a34c52bfbacfab5b8d56e73f4b9c360d73119bca18a06d59d6248d9d6a616f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "696f77f294a0ff35e7f822021296f5dc7e5bc6db7fb6116c6c775b81eed16af1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
+      },
+      {
+        "digest": "780dffae152e7469e21fa8bf549a21cd5fc5db5b87c7971ac14571c388e9efce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
+      },
+      {
+        "digest": "fd08f8f015b99f079e0a1e3cdcfc34c72f5197b256011c5833f608af8963d687",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
+      },
+      {
+        "digest": "5d80ad72cc187da49e0163bc23c51edc3139011b63995a332cee51917ea75939",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
+      },
+      {
+        "digest": "17c374a84b954171b85757884a34baf87767463821a9890c4f97a0c7773eeaf5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
+      },
+      {
+        "digest": "74423e4790085dce851c0d7deee5fcd23ef3a29389eda27878dc4ff02b2a7287",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
+      },
+      {
+        "digest": "e9695d2e5a56b45d88b545d6e87414cdb9e56ffd1e0fedab01137c3976eaf2c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/184-web-video-editor-headless-worker/spec.md"
+      },
+      {
+        "digest": "b2d93c5ed3a87ec8ffd0c5118e8ee06cb35b241573dc07ecf5718136734c1a29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/claude-plan.md"
+      },
+      {
+        "digest": "e36487260f68ffdf2f020dd4f76e73192928cbff2d140a314e308bca215ffe48",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/claude-spec.md"
+      },
+      {
+        "digest": "1e72f820ab55b9ec56c05bcc232491df0a55a1ed93eb5d09656b0c5c513ab769",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7d488831a387a52008f0ea3a485253a5b28cec89c08950883fc0d8c2e8109c7e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/evidence/feature-184-manifest.md"
+      },
+      {
+        "digest": "08f1adde463c9a43a2ee5f52feeaaf6dbec341da84a165fd3296ce8305c2ec63",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/evidence/local-proof-20260909.md"
+      },
+      {
+        "digest": "a7e36079d184742bde5e0e16910ef6d7868a584a9782753fac886736baa5ac70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/implementation-gap-review-20-rounds.md"
+      },
+      {
+        "digest": "c5dd6cba86eca4aa6dd69d9c519337cd7244d6390bfa332769d1a57f955c271a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/implementation-vs-spec-review-10-rounds-20260909.md"
+      },
+      {
+        "digest": "4900873350b7b84a38abbd6a483f3887bc9f0bbf28e1610222659a65ca1c0f75",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/web-editor-function-parity-review-10-rounds-20260909.md"
+      },
+      {
+        "digest": "f5c9588f60d2f227ecb3a81c7abb4826fec978040e35d7656554766381ed71cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/section-status.md"
+      },
+      {
+        "digest": "8b18e90f2f4f6ede5c287236a8fa12eb05d11e4edf529aa3a6e770ae518d4042",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
+      },
+      {
+        "digest": "c227fefa9141c54435d98d7334e18c977bfa1f35bf0df2ecf74485395d05b4db",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
+      },
+      {
+        "digest": "05a34c52bfbacfab5b8d56e73f4b9c360d73119bca18a06d59d6248d9d6a616f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "696f77f294a0ff35e7f822021296f5dc7e5bc6db7fb6116c6c775b81eed16af1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
+      },
+      {
+        "digest": "780dffae152e7469e21fa8bf549a21cd5fc5db5b87c7971ac14571c388e9efce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
+      },
+      {
+        "digest": "fd08f8f015b99f079e0a1e3cdcfc34c72f5197b256011c5833f608af8963d687",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
+      },
+      {
+        "digest": "5d80ad72cc187da49e0163bc23c51edc3139011b63995a332cee51917ea75939",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
+      },
+      {
+        "digest": "17c374a84b954171b85757884a34baf87767463821a9890c4f97a0c7773eeaf5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
+      },
+      {
+        "digest": "74423e4790085dce851c0d7deee5fcd23ef3a29389eda27878dc4ff02b2a7287",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
+      },
+      {
+        "digest": "e9695d2e5a56b45d88b545d6e87414cdb9e56ffd1e0fedab01137c3976eaf2c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/184-web-video-editor-headless-worker/spec.md"
+      },
+      {
+        "digest": "b2d93c5ed3a87ec8ffd0c5118e8ee06cb35b241573dc07ecf5718136734c1a29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/claude-plan.md"
+      },
+      {
+        "digest": "e36487260f68ffdf2f020dd4f76e73192928cbff2d140a314e308bca215ffe48",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/claude-spec.md"
+      },
+      {
+        "digest": "1e72f820ab55b9ec56c05bcc232491df0a55a1ed93eb5d09656b0c5c513ab769",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7d488831a387a52008f0ea3a485253a5b28cec89c08950883fc0d8c2e8109c7e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/evidence/feature-184-manifest.md"
+      },
+      {
+        "digest": "08f1adde463c9a43a2ee5f52feeaaf6dbec341da84a165fd3296ce8305c2ec63",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/evidence/local-proof-20260909.md"
+      },
+      {
+        "digest": "a7e36079d184742bde5e0e16910ef6d7868a584a9782753fac886736baa5ac70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/implementation-gap-review-20-rounds.md"
+      },
+      {
+        "digest": "c5dd6cba86eca4aa6dd69d9c519337cd7244d6390bfa332769d1a57f955c271a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/implementation-vs-spec-review-10-rounds-20260909.md"
+      },
+      {
+        "digest": "4900873350b7b84a38abbd6a483f3887bc9f0bbf28e1610222659a65ca1c0f75",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/web-editor-function-parity-review-10-rounds-20260909.md"
+      },
+      {
+        "digest": "f5c9588f60d2f227ecb3a81c7abb4826fec978040e35d7656554766381ed71cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/section-status.md"
+      },
+      {
+        "digest": "8b18e90f2f4f6ede5c287236a8fa12eb05d11e4edf529aa3a6e770ae518d4042",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
+      },
+      {
+        "digest": "c227fefa9141c54435d98d7334e18c977bfa1f35bf0df2ecf74485395d05b4db",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
+      },
+      {
+        "digest": "05a34c52bfbacfab5b8d56e73f4b9c360d73119bca18a06d59d6248d9d6a616f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "696f77f294a0ff35e7f822021296f5dc7e5bc6db7fb6116c6c775b81eed16af1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
+      },
+      {
+        "digest": "780dffae152e7469e21fa8bf549a21cd5fc5db5b87c7971ac14571c388e9efce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
+      },
+      {
+        "digest": "fd08f8f015b99f079e0a1e3cdcfc34c72f5197b256011c5833f608af8963d687",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
+      },
+      {
+        "digest": "5d80ad72cc187da49e0163bc23c51edc3139011b63995a332cee51917ea75939",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
+      },
+      {
+        "digest": "17c374a84b954171b85757884a34baf87767463821a9890c4f97a0c7773eeaf5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
+      },
+      {
+        "digest": "74423e4790085dce851c0d7deee5fcd23ef3a29389eda27878dc4ff02b2a7287",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
+      },
+      {
+        "digest": "e9695d2e5a56b45d88b545d6e87414cdb9e56ffd1e0fedab01137c3976eaf2c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/184-web-video-editor-headless-worker/spec.md",
+    "digest": "cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.572384Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-13T07:28:45+07:00",
+      "spec_last_changed_at": "2026-09-13T07:28:45+07:00"
+    },
+    "revision": null,
+    "slug": "184-web-video-editor-headless-worker",
+    "spec_id": "184",
+    "title": "Feature 184 — Web Video Editor Migration & Headless Worker Architecture"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.572384Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.572384Z",
+    "sources": [
+      {
+        "digest": "cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/184-web-video-editor-headless-worker/spec.md"
+      },
+      {
+        "digest": "b2d93c5ed3a87ec8ffd0c5118e8ee06cb35b241573dc07ecf5718136734c1a29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/claude-plan.md"
+      },
+      {
+        "digest": "e36487260f68ffdf2f020dd4f76e73192928cbff2d140a314e308bca215ffe48",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/claude-spec.md"
+      },
+      {
+        "digest": "1e72f820ab55b9ec56c05bcc232491df0a55a1ed93eb5d09656b0c5c513ab769",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7d488831a387a52008f0ea3a485253a5b28cec89c08950883fc0d8c2e8109c7e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/evidence/feature-184-manifest.md"
+      },
+      {
+        "digest": "08f1adde463c9a43a2ee5f52feeaaf6dbec341da84a165fd3296ce8305c2ec63",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/evidence/local-proof-20260909.md"
+      },
+      {
+        "digest": "a7e36079d184742bde5e0e16910ef6d7868a584a9782753fac886736baa5ac70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/implementation-gap-review-20-rounds.md"
+      },
+      {
+        "digest": "c5dd6cba86eca4aa6dd69d9c519337cd7244d6390bfa332769d1a57f955c271a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/implementation-vs-spec-review-10-rounds-20260909.md"
+      },
+      {
+        "digest": "4900873350b7b84a38abbd6a483f3887bc9f0bbf28e1610222659a65ca1c0f75",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/web-editor-function-parity-review-10-rounds-20260909.md"
+      },
+      {
+        "digest": "f5c9588f60d2f227ecb3a81c7abb4826fec978040e35d7656554766381ed71cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/section-status.md"
+      },
+      {
+        "digest": "8b18e90f2f4f6ede5c287236a8fa12eb05d11e4edf529aa3a6e770ae518d4042",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
+      },
+      {
+        "digest": "c227fefa9141c54435d98d7334e18c977bfa1f35bf0df2ecf74485395d05b4db",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
+      },
+      {
+        "digest": "05a34c52bfbacfab5b8d56e73f4b9c360d73119bca18a06d59d6248d9d6a616f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "696f77f294a0ff35e7f822021296f5dc7e5bc6db7fb6116c6c775b81eed16af1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
+      },
+      {
+        "digest": "780dffae152e7469e21fa8bf549a21cd5fc5db5b87c7971ac14571c388e9efce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
+      },
+      {
+        "digest": "fd08f8f015b99f079e0a1e3cdcfc34c72f5197b256011c5833f608af8963d687",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
+      },
+      {
+        "digest": "5d80ad72cc187da49e0163bc23c51edc3139011b63995a332cee51917ea75939",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
+      },
+      {
+        "digest": "17c374a84b954171b85757884a34baf87767463821a9890c4f97a0c7773eeaf5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
+      },
+      {
+        "digest": "74423e4790085dce851c0d7deee5fcd23ef3a29389eda27878dc4ff02b2a7287",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
+      },
+      {
+        "digest": "e9695d2e5a56b45d88b545d6e87414cdb9e56ffd1e0fedab01137c3976eaf2c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
+      },
+      {
+        "digest": "d764f26ba54b6b3923fcc7ee35acdbbdb74fcf9f02f5b249f0715528c4659fe1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-3.md"
+      },
+      {
+        "digest": "845fb17d7c2a2c116f7b7e979baa1fdece7a420ba8b96518ab436cb7b83d688f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "06c06e318e14fb76f00cb1948cf42b027d5f69328fb4be267909a6a824b55ad9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "45888dbfe40a0e0f02a6e0fb48eb693026a97c10826ab8021626c7a870699c7d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "2a8dcde399e7ee9f75a5fbb8208080b18591345d8e2aeb948ba7c95b2c18d619",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "87f8d076614ff8c12cfe1678a8774fcff0dcd396a91ccfac2376bbdf745f6c0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/index.md"
+      },
+      {
+        "digest": "8267e296dc8d05f8c993c9e5b7bf2d037583230a9d955215bd4d3963737bcd55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-01-shared-contracts.md"
+      },
+      {
+        "digest": "c566e4a51867f9fe722acd04a9acbba6f84d06bf6d0e0a2e68ceecee48477f41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-02-bin-r2-ingest.md"
+      },
+      {
+        "digest": "f65bbf3a912be310283bf75dd15f84ebe2535835464fa1d3a15a0d038ebbd6ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-03-transform-keyframes-camera.md"
+      },
+      {
+        "digest": "35b2637b8436e8ed61f5c98d8e0ebad6224af9246445169b59465f343a515a7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-04-silence-audio-ducking.md"
+      },
+      {
+        "digest": "cb3d22604ca3b773da0e04fecb55446b45243e9269c9a59ee818b9cc8b164c30",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-05-ai-music-recording-speakers-subtitles.md"
+      },
+      {
+        "digest": "d8035bc27fd47dcae50549489525f802db0464e41a85e3eab17c1727ca8e7f71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-06-blur-object-tracking.md"
+      },
+      {
+        "digest": "26dfef6a01b288198007aee9998f5d08cd9927831432d47f88be308360f153f2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-07-render-modes-exports.md"
+      },
+      {
+        "digest": "5f485c9595c68289085838d586d7abebaeb7393ea62cc14e2c2f54368f8ef6c4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-08-preview-ruler-timeline.md"
+      },
+      {
+        "digest": "0f705d7fdac36560e26f07ea55d634dafdeb70630faed90e7d26e749bcc7c848",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-09-symbols-ai-code-overlays.md"
+      },
+      {
+        "digest": "9a0c36e361905f06e3e300b8f43101ffe4a7f594f2e040bf9d1f9907fe5b59af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-10-persistence-results-rollout-proof.md"
+      },
+      {
+        "digest": "3faf0c16f5ea2e0c20a26a0dacf3d1a2fef1f6153bb36f467437242f061fd910",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/claude-plan.md"
+      },
+      {
+        "digest": "f2567a283a285dc502fce3eb8cca1d29a9a2231fb47e7b2d5e9fe01066419287",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/index.md"
+      },
+      {
+        "digest": "6b424d191a5cb9865449cc9a665f4b2a350ce63544f6e483deca4c618f4fe6c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-01-redis-reliability.md"
+      },
+      {
+        "digest": "2871f64d777bca23bcd3876d945c34b44ad6c08aeb8ac5119ce05aade5d04dd2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-02-worker-capability-adapters.md"
+      },
+      {
+        "digest": "2fa9f776c46716e436f7b6916a81ff8dad29ed8c647b326f7b17f3d09dfee8fd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-03-r2-resumable-ingest.md"
+      },
+      {
+        "digest": "c0a90f75ac02f882a39d256f6cb6ff584f7c0bb7636ee1134d4507a8e7f13d13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-04-tenant-revision-durability.md"
+      },
+      {
+        "digest": "d37af8d87f82c4b7f6e18b2bd45b2b05bfe9ee34a26be32574caa40f112d27e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-05-timeline-transform.md"
+      },
+      {
+        "digest": "09fb062149ede6033e7b462da85cb1ab6e7eded38c10432890dc729cc176b29d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-06-heavy-adapters.md"
+      },
+      {
+        "digest": "a5c3bc54c524be7f885267c801c66d7cc02bf1537adde85ed99c12abf9d006d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-07-render-export.md"
+      },
+      {
+        "digest": "c58bfe7a3fb35f3d831853e91fd1a1b0398f0a258213d0cc071772866bb20155",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-08-browser-ux.md"
+      },
+      {
+        "digest": "1a0fc02631f64f89861477cd476ccff7c00f09be16c6e9e8f15f7f681641ef7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-09-security-observability.md"
+      },
+      {
+        "digest": "0c04fab34f441f0d31eb396831fbad7b6d0a7e4b2943132c5ace0f915a80675e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-10-rollout-proof.md"
+      },
+      {
+        "digest": "23d45b8eb1d4155dedb22d88d38d204d676c8d47c23d6f3917d9d8cd2219aebc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/index.md"
+      },
+      {
+        "digest": "dc9fe5a79d23b515d1c1215fbbd73e8814f9287a1e76945eb86a9ee2462f3a7a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-01-shared-contracts.md"
+      },
+      {
+        "digest": "24268ca66a6a21d0fbb75d9b9b3b5e735645d20ecbcafcd94137f442c435c25b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-02-project-persistence.md"
+      },
+      {
+        "digest": "fe95a4a0750ddb7d44eead0c17cb059b7b3faa38793d2861c244b722535f2147",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-03-asset-ingest.md"
+      },
+      {
+        "digest": "37eb3ca8b784667820f7d95de86921056057eaea41c82ae68ec204ccd3641e99",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-04-worker-job-lifecycle.md"
+      },
+      {
+        "digest": "1b8368f466d4fa43af15209fdc7edfee824130f6c9973c02d9596e2ad515238c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-05-headless-worker-executor.md"
+      },
+      {
+        "digest": "d7047477fa6d0baa8523f3538c9dd0183575ca2be3f078a7800c51608e2ee0da",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-06-browser-editor.md"
+      },
+      {
+        "digest": "ec9c280ec84ed25670098321bdf00e2193b76347683dd0b6657f25ae0e882e78",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-07-worker-jobs-ux.md"
+      },
+      {
+        "digest": "6a6185550f961b9d2340bc6ed88bed8fbc78c5fed312fe1884b92215a484ebde",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-08-render-results.md"
+      },
+      {
+        "digest": "bb8c6795915470647d8f9af73ab8054372ec5a761d0a23bfce628aa154b10ac2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-09-rollout-operations.md"
+      },
+      {
+        "digest": "602e68badfa0106c0ce0fe18733e4f6bcdcf17a1ae8ace95aa3091c6c1f26731",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-10-integration-proof.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/184-web-video-editor-headless-worker/spec.md"
+      },
+      {
+        "digest": "b2d93c5ed3a87ec8ffd0c5118e8ee06cb35b241573dc07ecf5718136734c1a29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/claude-plan.md"
+      },
+      {
+        "digest": "e36487260f68ffdf2f020dd4f76e73192928cbff2d140a314e308bca215ffe48",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/claude-spec.md"
+      },
+      {
+        "digest": "1e72f820ab55b9ec56c05bcc232491df0a55a1ed93eb5d09656b0c5c513ab769",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7d488831a387a52008f0ea3a485253a5b28cec89c08950883fc0d8c2e8109c7e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/evidence/feature-184-manifest.md"
+      },
+      {
+        "digest": "08f1adde463c9a43a2ee5f52feeaaf6dbec341da84a165fd3296ce8305c2ec63",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/evidence/local-proof-20260909.md"
+      },
+      {
+        "digest": "a7e36079d184742bde5e0e16910ef6d7868a584a9782753fac886736baa5ac70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/implementation-gap-review-20-rounds.md"
+      },
+      {
+        "digest": "c5dd6cba86eca4aa6dd69d9c519337cd7244d6390bfa332769d1a57f955c271a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/implementation-vs-spec-review-10-rounds-20260909.md"
+      },
+      {
+        "digest": "4900873350b7b84a38abbd6a483f3887bc9f0bbf28e1610222659a65ca1c0f75",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/reviews/web-editor-function-parity-review-10-rounds-20260909.md"
+      },
+      {
+        "digest": "f5c9588f60d2f227ecb3a81c7abb4826fec978040e35d7656554766381ed71cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/implementation/section-status.md"
+      },
+      {
+        "digest": "8b18e90f2f4f6ede5c287236a8fa12eb05d11e4edf529aa3a6e770ae518d4042",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-plan.md"
+      },
+      {
+        "digest": "c227fefa9141c54435d98d7334e18c977bfa1f35bf0df2ecf74485395d05b4db",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/claude-spec.md"
+      },
+      {
+        "digest": "05a34c52bfbacfab5b8d56e73f4b9c360d73119bca18a06d59d6248d9d6a616f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "696f77f294a0ff35e7f822021296f5dc7e5bc6db7fb6116c6c775b81eed16af1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/evidence/local-proof-20260910.md"
+      },
+      {
+        "digest": "780dffae152e7469e21fa8bf549a21cd5fc5db5b87c7971ac14571c388e9efce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-10-20260910.md"
+      },
+      {
+        "digest": "fd08f8f015b99f079e0a1e3cdcfc34c72f5197b256011c5833f608af8963d687",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/implementation-audit-rounds-1-20-20260910.md"
+      },
+      {
+        "digest": "5d80ad72cc187da49e0163bc23c51edc3139011b63995a332cee51917ea75939",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/reviews/video-editor-function-audit-rounds-1-20-20260910.md"
+      },
+      {
+        "digest": "17c374a84b954171b85757884a34baf87767463821a9890c4f97a0c7773eeaf5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation/section-status.md"
+      },
+      {
+        "digest": "74423e4790085dce851c0d7deee5fcd23ef3a29389eda27878dc4ff02b2a7287",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-1.md"
+      },
+      {
+        "digest": "e9695d2e5a56b45d88b545d6e87414cdb9e56ffd1e0fedab01137c3976eaf2c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-2.md"
+      },
+      {
+        "digest": "d764f26ba54b6b3923fcc7ee35acdbbdb74fcf9f02f5b249f0715528c4659fe1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/cross-consistency-round-3.md"
+      },
+      {
+        "digest": "845fb17d7c2a2c116f7b7e979baa1fdece7a420ba8b96518ab436cb7b83d688f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "06c06e318e14fb76f00cb1948cf42b027d5f69328fb4be267909a6a824b55ad9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "45888dbfe40a0e0f02a6e0fb48eb693026a97c10826ab8021626c7a870699c7d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "2a8dcde399e7ee9f75a5fbb8208080b18591345d8e2aeb948ba7c95b2c18d619",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "87f8d076614ff8c12cfe1678a8774fcff0dcd396a91ccfac2376bbdf745f6c0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/index.md"
+      },
+      {
+        "digest": "8267e296dc8d05f8c993c9e5b7bf2d037583230a9d955215bd4d3963737bcd55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-01-shared-contracts.md"
+      },
+      {
+        "digest": "c566e4a51867f9fe722acd04a9acbba6f84d06bf6d0e0a2e68ceecee48477f41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-02-bin-r2-ingest.md"
+      },
+      {
+        "digest": "f65bbf3a912be310283bf75dd15f84ebe2535835464fa1d3a15a0d038ebbd6ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-03-transform-keyframes-camera.md"
+      },
+      {
+        "digest": "35b2637b8436e8ed61f5c98d8e0ebad6224af9246445169b59465f343a515a7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-04-silence-audio-ducking.md"
+      },
+      {
+        "digest": "cb3d22604ca3b773da0e04fecb55446b45243e9269c9a59ee818b9cc8b164c30",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-05-ai-music-recording-speakers-subtitles.md"
+      },
+      {
+        "digest": "d8035bc27fd47dcae50549489525f802db0464e41a85e3eab17c1727ca8e7f71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-06-blur-object-tracking.md"
+      },
+      {
+        "digest": "26dfef6a01b288198007aee9998f5d08cd9927831432d47f88be308360f153f2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-07-render-modes-exports.md"
+      },
+      {
+        "digest": "5f485c9595c68289085838d586d7abebaeb7393ea62cc14e2c2f54368f8ef6c4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-08-preview-ruler-timeline.md"
+      },
+      {
+        "digest": "0f705d7fdac36560e26f07ea55d634dafdeb70630faed90e7d26e749bcc7c848",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-09-symbols-ai-code-overlays.md"
+      },
+      {
+        "digest": "9a0c36e361905f06e3e300b8f43101ffe4a7f594f2e040bf9d1f9907fe5b59af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections/section-10-persistence-results-rollout-proof.md"
+      },
+      {
+        "digest": "3faf0c16f5ea2e0c20a26a0dacf3d1a2fef1f6153bb36f467437242f061fd910",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/claude-plan.md"
+      },
+      {
+        "digest": "f2567a283a285dc502fce3eb8cca1d29a9a2231fb47e7b2d5e9fe01066419287",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/index.md"
+      },
+      {
+        "digest": "6b424d191a5cb9865449cc9a665f4b2a350ce63544f6e483deca4c618f4fe6c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-01-redis-reliability.md"
+      },
+      {
+        "digest": "2871f64d777bca23bcd3876d945c34b44ad6c08aeb8ac5119ce05aade5d04dd2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-02-worker-capability-adapters.md"
+      },
+      {
+        "digest": "2fa9f776c46716e436f7b6916a81ff8dad29ed8c647b326f7b17f3d09dfee8fd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-03-r2-resumable-ingest.md"
+      },
+      {
+        "digest": "c0a90f75ac02f882a39d256f6cb6ff584f7c0bb7636ee1134d4507a8e7f13d13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-04-tenant-revision-durability.md"
+      },
+      {
+        "digest": "d37af8d87f82c4b7f6e18b2bd45b2b05bfe9ee34a26be32574caa40f112d27e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-05-timeline-transform.md"
+      },
+      {
+        "digest": "09fb062149ede6033e7b462da85cb1ab6e7eded38c10432890dc729cc176b29d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-06-heavy-adapters.md"
+      },
+      {
+        "digest": "a5c3bc54c524be7f885267c801c66d7cc02bf1537adde85ed99c12abf9d006d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-07-render-export.md"
+      },
+      {
+        "digest": "c58bfe7a3fb35f3d831853e91fd1a1b0398f0a258213d0cc071772866bb20155",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-08-browser-ux.md"
+      },
+      {
+        "digest": "1a0fc02631f64f89861477cd476ccff7c00f09be16c6e9e8f15f7f681641ef7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-09-security-observability.md"
+      },
+      {
+        "digest": "0c04fab34f441f0d31eb396831fbad7b6d0a7e4b2943132c5ace0f915a80675e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/sections/section-10-rollout-proof.md"
+      },
+      {
+        "digest": "23d45b8eb1d4155dedb22d88d38d204d676c8d47c23d6f3917d9d8cd2219aebc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/index.md"
+      },
+      {
+        "digest": "dc9fe5a79d23b515d1c1215fbbd73e8814f9287a1e76945eb86a9ee2462f3a7a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-01-shared-contracts.md"
+      },
+      {
+        "digest": "24268ca66a6a21d0fbb75d9b9b3b5e735645d20ecbcafcd94137f442c435c25b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-02-project-persistence.md"
+      },
+      {
+        "digest": "fe95a4a0750ddb7d44eead0c17cb059b7b3faa38793d2861c244b722535f2147",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-03-asset-ingest.md"
+      },
+      {
+        "digest": "37eb3ca8b784667820f7d95de86921056057eaea41c82ae68ec204ccd3641e99",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-04-worker-job-lifecycle.md"
+      },
+      {
+        "digest": "1b8368f466d4fa43af15209fdc7edfee824130f6c9973c02d9596e2ad515238c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-05-headless-worker-executor.md"
+      },
+      {
+        "digest": "d7047477fa6d0baa8523f3538c9dd0183575ca2be3f078a7800c51608e2ee0da",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-06-browser-editor.md"
+      },
+      {
+        "digest": "ec9c280ec84ed25670098321bdf00e2193b76347683dd0b6657f25ae0e882e78",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-07-worker-jobs-ux.md"
+      },
+      {
+        "digest": "6a6185550f961b9d2340bc6ed88bed8fbc78c5fed312fe1884b92215a484ebde",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-08-render-results.md"
+      },
+      {
+        "digest": "bb8c6795915470647d8f9af73ab8054372ec5a761d0a23bfce628aa154b10ac2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-09-rollout-operations.md"
+      },
+      {
+        "digest": "602e68badfa0106c0ce0fe18733e4f6bcdcf17a1ae8ace95aa3091c6c1f26731",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-10-integration-proof.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 21,
+    "unresolved": 21
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.572384Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

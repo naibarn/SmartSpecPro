@@ -1,0 +1,30 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/project/canonical-spec-handoff-reconciliation/04-global-views-and-migration/spec.md#L16"
+      ],
+      "authority_source": "specs/project/canonical-spec-handoff-reconciliation/04-global-views-and-migration/spec.md#L16",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e9620d460d42a820278e65129ca7cb0c045fcd036d86b63e45d410a03d04c464",
+      "requirement_id": "REQ-CAB8F9048793",
+      "requirement_text": "Splits 01, 02, and 03. Migration must preserve explicit manual decisions and use dry-run by default.",
+      "source_spec_digest": "5958bff72d8d179e634e286715d9725f18bf48f51fc4c325fdc241c6263b5843",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "5958bff72d8d179e634e286715d9725f18bf48f51fc4c325fdc241c6263b5843",
+  "spec_id": "04"
+}

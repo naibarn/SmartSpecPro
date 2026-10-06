@@ -1,0 +1,597 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/036-LiveBrowserExperience/spec.md"
+      },
+      {
+        "digest": "65fc8ebe0ad9bb3a3b299298b1a083321ec480cf633511927009139fc815ca33",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "a74b46ec13ad43422c600f717bca3caf6dc1941176c68c47fe6080748e0a8505",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "494a2d1b56742c04e2c350bdb0543e106c68265fe2d57690bb2f573c99e19a6f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-01-review.md"
+      },
+      {
+        "digest": "16cfa0aaf15199920e74bbb9858b4b989fe53e61b61ba3eb5588e79e566e3309",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-02-review.md"
+      },
+      {
+        "digest": "297335d21cc4950ad37555d80257939bad2b02ceeaeeb12b1a7128db8f8e6947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-03-review.md"
+      },
+      {
+        "digest": "5a1ac0a80886fdd6f5c3308e89500385a670694d6645b0c79d6980b4b56e5ada",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-04-review.md"
+      },
+      {
+        "digest": "a7aff92e44d0d41dfa03a8f491dc0dc5b5284272a2437f122239768331219c32",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-05-review.md"
+      },
+      {
+        "digest": "df8ae8b2f40df331956894518929855a5251953b51955c033006c263de455b8a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-06-review.md"
+      },
+      {
+        "digest": "a21d2916ecc66942c57288137f320027b42ca8207845ae7067142b47ea4793c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-07-review.md"
+      },
+      {
+        "digest": "c9403bfa6b73d94142a9658204149c526e9c253e410a787bc8e5c38cd22daf82",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/index.md"
+      },
+      {
+        "digest": "d8456be59f21732f06853497efc4fb586d3cd4119f09f7fb6fee5ebdf89aa810",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-01-live-session-contracts-and-schema.md"
+      },
+      {
+        "digest": "2334a41dc53f030e97f9368ddbfab79b1a7d411c6d4387337c02dac9bde75057",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-02-dedicated-python-live-runtime.md"
+      },
+      {
+        "digest": "1bb4bc992f9e658908e558fd19268e701b28374d28990b0ac8dabe5c9e60aa3f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-03-managed-browser-adapter-and-streaming.md"
+      },
+      {
+        "digest": "72fdbe15acf10f99bf1e517e2e0021370a6a5789dce96cf1461aa0de0cb77eb9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-04-node-gateway-and-policy-integration.md"
+      },
+      {
+        "digest": "b96318c2ebc12db8e5b2f62eb7e0c6b504dc11ad0487130a999f9f2dba10a40d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-05-command-approval-assist-orchestration.md"
+      },
+      {
+        "digest": "c0d0ea604af170dcb7452e242987f6e4b1572a319fcf746dce418c2cb96c317e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-06-frontend-live-workspace.md"
+      },
+      {
+        "digest": "80927f54c7f9a6dc519ad367b78208dec4e092c9680b8858125dac1f891728fd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-07-observability-rollout-and-data-safety.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/036-LiveBrowserExperience/spec.md"
+      },
+      {
+        "digest": "65fc8ebe0ad9bb3a3b299298b1a083321ec480cf633511927009139fc815ca33",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "a74b46ec13ad43422c600f717bca3caf6dc1941176c68c47fe6080748e0a8505",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "494a2d1b56742c04e2c350bdb0543e106c68265fe2d57690bb2f573c99e19a6f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-01-review.md"
+      },
+      {
+        "digest": "16cfa0aaf15199920e74bbb9858b4b989fe53e61b61ba3eb5588e79e566e3309",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-02-review.md"
+      },
+      {
+        "digest": "297335d21cc4950ad37555d80257939bad2b02ceeaeeb12b1a7128db8f8e6947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-03-review.md"
+      },
+      {
+        "digest": "5a1ac0a80886fdd6f5c3308e89500385a670694d6645b0c79d6980b4b56e5ada",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-04-review.md"
+      },
+      {
+        "digest": "a7aff92e44d0d41dfa03a8f491dc0dc5b5284272a2437f122239768331219c32",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-05-review.md"
+      },
+      {
+        "digest": "df8ae8b2f40df331956894518929855a5251953b51955c033006c263de455b8a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-06-review.md"
+      },
+      {
+        "digest": "a21d2916ecc66942c57288137f320027b42ca8207845ae7067142b47ea4793c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-07-review.md"
+      },
+      {
+        "digest": "c9403bfa6b73d94142a9658204149c526e9c253e410a787bc8e5c38cd22daf82",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/index.md"
+      },
+      {
+        "digest": "d8456be59f21732f06853497efc4fb586d3cd4119f09f7fb6fee5ebdf89aa810",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-01-live-session-contracts-and-schema.md"
+      },
+      {
+        "digest": "2334a41dc53f030e97f9368ddbfab79b1a7d411c6d4387337c02dac9bde75057",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-02-dedicated-python-live-runtime.md"
+      },
+      {
+        "digest": "1bb4bc992f9e658908e558fd19268e701b28374d28990b0ac8dabe5c9e60aa3f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-03-managed-browser-adapter-and-streaming.md"
+      },
+      {
+        "digest": "72fdbe15acf10f99bf1e517e2e0021370a6a5789dce96cf1461aa0de0cb77eb9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-04-node-gateway-and-policy-integration.md"
+      },
+      {
+        "digest": "b96318c2ebc12db8e5b2f62eb7e0c6b504dc11ad0487130a999f9f2dba10a40d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-05-command-approval-assist-orchestration.md"
+      },
+      {
+        "digest": "c0d0ea604af170dcb7452e242987f6e4b1572a319fcf746dce418c2cb96c317e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-06-frontend-live-workspace.md"
+      },
+      {
+        "digest": "80927f54c7f9a6dc519ad367b78208dec4e092c9680b8858125dac1f891728fd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-07-observability-rollout-and-data-safety.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/036-LiveBrowserExperience/spec.md"
+      },
+      {
+        "digest": "65fc8ebe0ad9bb3a3b299298b1a083321ec480cf633511927009139fc815ca33",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "a74b46ec13ad43422c600f717bca3caf6dc1941176c68c47fe6080748e0a8505",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "494a2d1b56742c04e2c350bdb0543e106c68265fe2d57690bb2f573c99e19a6f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-01-review.md"
+      },
+      {
+        "digest": "16cfa0aaf15199920e74bbb9858b4b989fe53e61b61ba3eb5588e79e566e3309",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-02-review.md"
+      },
+      {
+        "digest": "297335d21cc4950ad37555d80257939bad2b02ceeaeeb12b1a7128db8f8e6947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-03-review.md"
+      },
+      {
+        "digest": "5a1ac0a80886fdd6f5c3308e89500385a670694d6645b0c79d6980b4b56e5ada",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-04-review.md"
+      },
+      {
+        "digest": "a7aff92e44d0d41dfa03a8f491dc0dc5b5284272a2437f122239768331219c32",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-05-review.md"
+      },
+      {
+        "digest": "df8ae8b2f40df331956894518929855a5251953b51955c033006c263de455b8a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-06-review.md"
+      },
+      {
+        "digest": "a21d2916ecc66942c57288137f320027b42ca8207845ae7067142b47ea4793c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-07-review.md"
+      },
+      {
+        "digest": "c9403bfa6b73d94142a9658204149c526e9c253e410a787bc8e5c38cd22daf82",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/index.md"
+      },
+      {
+        "digest": "d8456be59f21732f06853497efc4fb586d3cd4119f09f7fb6fee5ebdf89aa810",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-01-live-session-contracts-and-schema.md"
+      },
+      {
+        "digest": "2334a41dc53f030e97f9368ddbfab79b1a7d411c6d4387337c02dac9bde75057",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-02-dedicated-python-live-runtime.md"
+      },
+      {
+        "digest": "1bb4bc992f9e658908e558fd19268e701b28374d28990b0ac8dabe5c9e60aa3f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-03-managed-browser-adapter-and-streaming.md"
+      },
+      {
+        "digest": "72fdbe15acf10f99bf1e517e2e0021370a6a5789dce96cf1461aa0de0cb77eb9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-04-node-gateway-and-policy-integration.md"
+      },
+      {
+        "digest": "b96318c2ebc12db8e5b2f62eb7e0c6b504dc11ad0487130a999f9f2dba10a40d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-05-command-approval-assist-orchestration.md"
+      },
+      {
+        "digest": "c0d0ea604af170dcb7452e242987f6e4b1572a319fcf746dce418c2cb96c317e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-06-frontend-live-workspace.md"
+      },
+      {
+        "digest": "80927f54c7f9a6dc519ad367b78208dec4e092c9680b8858125dac1f891728fd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-07-observability-rollout-and-data-safety.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/036-LiveBrowserExperience/spec.md",
+    "digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.561532Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-03-12T07:39:50+07:00",
+      "spec_last_changed_at": "2026-03-12T07:39:50+07:00"
+    },
+    "revision": "1.0",
+    "slug": "036-LiveBrowserExperience",
+    "spec_id": "036",
+    "title": "035 — Live Browser Experience"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.561532Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.561532Z",
+    "sources": [
+      {
+        "digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/036-LiveBrowserExperience/spec.md"
+      },
+      {
+        "digest": "65fc8ebe0ad9bb3a3b299298b1a083321ec480cf633511927009139fc815ca33",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "a74b46ec13ad43422c600f717bca3caf6dc1941176c68c47fe6080748e0a8505",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "494a2d1b56742c04e2c350bdb0543e106c68265fe2d57690bb2f573c99e19a6f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-01-review.md"
+      },
+      {
+        "digest": "16cfa0aaf15199920e74bbb9858b4b989fe53e61b61ba3eb5588e79e566e3309",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-02-review.md"
+      },
+      {
+        "digest": "297335d21cc4950ad37555d80257939bad2b02ceeaeeb12b1a7128db8f8e6947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-03-review.md"
+      },
+      {
+        "digest": "5a1ac0a80886fdd6f5c3308e89500385a670694d6645b0c79d6980b4b56e5ada",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-04-review.md"
+      },
+      {
+        "digest": "a7aff92e44d0d41dfa03a8f491dc0dc5b5284272a2437f122239768331219c32",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-05-review.md"
+      },
+      {
+        "digest": "df8ae8b2f40df331956894518929855a5251953b51955c033006c263de455b8a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-06-review.md"
+      },
+      {
+        "digest": "a21d2916ecc66942c57288137f320027b42ca8207845ae7067142b47ea4793c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-07-review.md"
+      },
+      {
+        "digest": "c9403bfa6b73d94142a9658204149c526e9c253e410a787bc8e5c38cd22daf82",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/index.md"
+      },
+      {
+        "digest": "d8456be59f21732f06853497efc4fb586d3cd4119f09f7fb6fee5ebdf89aa810",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-01-live-session-contracts-and-schema.md"
+      },
+      {
+        "digest": "2334a41dc53f030e97f9368ddbfab79b1a7d411c6d4387337c02dac9bde75057",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-02-dedicated-python-live-runtime.md"
+      },
+      {
+        "digest": "1bb4bc992f9e658908e558fd19268e701b28374d28990b0ac8dabe5c9e60aa3f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-03-managed-browser-adapter-and-streaming.md"
+      },
+      {
+        "digest": "72fdbe15acf10f99bf1e517e2e0021370a6a5789dce96cf1461aa0de0cb77eb9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-04-node-gateway-and-policy-integration.md"
+      },
+      {
+        "digest": "b96318c2ebc12db8e5b2f62eb7e0c6b504dc11ad0487130a999f9f2dba10a40d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-05-command-approval-assist-orchestration.md"
+      },
+      {
+        "digest": "c0d0ea604af170dcb7452e242987f6e4b1572a319fcf746dce418c2cb96c317e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-06-frontend-live-workspace.md"
+      },
+      {
+        "digest": "80927f54c7f9a6dc519ad367b78208dec4e092c9680b8858125dac1f891728fd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-07-observability-rollout-and-data-safety.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/036-LiveBrowserExperience/spec.md"
+      },
+      {
+        "digest": "65fc8ebe0ad9bb3a3b299298b1a083321ec480cf633511927009139fc815ca33",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "a74b46ec13ad43422c600f717bca3caf6dc1941176c68c47fe6080748e0a8505",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "494a2d1b56742c04e2c350bdb0543e106c68265fe2d57690bb2f573c99e19a6f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-01-review.md"
+      },
+      {
+        "digest": "16cfa0aaf15199920e74bbb9858b4b989fe53e61b61ba3eb5588e79e566e3309",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-02-review.md"
+      },
+      {
+        "digest": "297335d21cc4950ad37555d80257939bad2b02ceeaeeb12b1a7128db8f8e6947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-03-review.md"
+      },
+      {
+        "digest": "5a1ac0a80886fdd6f5c3308e89500385a670694d6645b0c79d6980b4b56e5ada",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-04-review.md"
+      },
+      {
+        "digest": "a7aff92e44d0d41dfa03a8f491dc0dc5b5284272a2437f122239768331219c32",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-05-review.md"
+      },
+      {
+        "digest": "df8ae8b2f40df331956894518929855a5251953b51955c033006c263de455b8a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-06-review.md"
+      },
+      {
+        "digest": "a21d2916ecc66942c57288137f320027b42ca8207845ae7067142b47ea4793c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/reviews/section-07-review.md"
+      },
+      {
+        "digest": "c9403bfa6b73d94142a9658204149c526e9c253e410a787bc8e5c38cd22daf82",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/index.md"
+      },
+      {
+        "digest": "d8456be59f21732f06853497efc4fb586d3cd4119f09f7fb6fee5ebdf89aa810",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-01-live-session-contracts-and-schema.md"
+      },
+      {
+        "digest": "2334a41dc53f030e97f9368ddbfab79b1a7d411c6d4387337c02dac9bde75057",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-02-dedicated-python-live-runtime.md"
+      },
+      {
+        "digest": "1bb4bc992f9e658908e558fd19268e701b28374d28990b0ac8dabe5c9e60aa3f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-03-managed-browser-adapter-and-streaming.md"
+      },
+      {
+        "digest": "72fdbe15acf10f99bf1e517e2e0021370a6a5789dce96cf1461aa0de0cb77eb9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-04-node-gateway-and-policy-integration.md"
+      },
+      {
+        "digest": "b96318c2ebc12db8e5b2f62eb7e0c6b504dc11ad0487130a999f9f2dba10a40d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-05-command-approval-assist-orchestration.md"
+      },
+      {
+        "digest": "c0d0ea604af170dcb7452e242987f6e4b1572a319fcf746dce418c2cb96c317e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-06-frontend-live-workspace.md"
+      },
+      {
+        "digest": "80927f54c7f9a6dc519ad367b78208dec4e092c9680b8858125dac1f891728fd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/036-LiveBrowserExperience/sections/section-07-observability-rollout-and-data-safety.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 152,
+    "unresolved": 152
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.561532Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

@@ -1201,6 +1201,59 @@
         "claim-main-is-release-ready"
       ],
       "why": "A stop/quota boundary triggers canonicalization of the largest safe partial delta and a durable handoff; main records development state, not release readiness."
+    },
+    {
+      "id": "SPEC-HANDOFF-RESUME-001",
+      "user_message": "ดำเนิน Spec เดิมต่อจาก handoff โดยไม่อ่าน chat เก่า และห้ามถือว่า sections ครบแปลว่าเสร็จ",
+      "expected_owner": "orchestra",
+      "expected_route": "resume-canonical-handoff",
+      "expected_agents": [],
+      "expected_gates": [
+        "Canonical Handoff Validation",
+        "Requirement Ledger Closure",
+        "Verification Before Completion"
+      ],
+      "forbidden_execution": [
+        "reconstruct-from-chat-before-handoff",
+        "sections-processed-means-complete",
+        "create-independent-spec-status"
+      ],
+      "why": "Orchestra loads canonical manifest and requirement ledger first, then resumes the exact next WorkUnit with local task files as supporting evidence."
+    },
+    {
+      "id": "SPEC-HANDOFF-STALE-WRITE-001",
+      "user_message": "อัปเดตสถานะ Spec หลัง main เปลี่ยนไปแล้ว",
+      "expected_owner": "spec-handoff-writer",
+      "expected_route": "refresh-reconcile-recompute",
+      "expected_agents": [],
+      "expected_gates": [
+        "Optimistic Concurrency",
+        "Exact SHA Evidence"
+      ],
+      "forbidden_execution": [
+        "overwrite-newer-generation",
+        "retry-stale-payload-unchanged",
+        "claim-current-verification-from-old-sha"
+      ],
+      "why": "The shared writer rejects stale manifest/ledger generations, Spec digests, and canonical SHAs; the caller refreshes authority and recomputes its update."
+    },
+    {
+      "id": "SPEC-HANDOFF-NO-FALSE-COMPLETE-001",
+      "user_message": "มี completion.md และทุก section เป็น done แต่ deployment ที่ต้องทำยังไม่มี",
+      "expected_owner": "spec-handoff-policy",
+      "expected_route": "remain-validation-pending",
+      "expected_agents": [],
+      "expected_gates": [
+        "Completion Kernel",
+        "Requirement Ledger Closure",
+        "Deployment Evidence"
+      ],
+      "forbidden_execution": [
+        "completion-file-means-complete",
+        "all-sections-means-complete",
+        "missing-required-deployment-marked-complete"
+      ],
+      "why": "Overall completion remains ineligible until every applicable requirement and required exact-SHA deployment and acceptance predicate has fresh evidence."
     }
   ]
 }

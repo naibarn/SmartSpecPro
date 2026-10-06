@@ -99,3 +99,7 @@ resource contention do not by themselves block the WorkUnit.
 The fast integration gate checks changed-scope syntax/compile, conflicts, patch integrity, and accidental secrets. Full builds, repository-wide typechecks, heavy tests, UAT, provider checks, and production/deployment checks are post-integration obligations and must cite the exact revision. Resource blocks are pending/queued resource outcomes, not code failures.
 
 Report each milestone separately. Use `UNIVERSAL_DEVELOPMENT_LIFECYCLE_PARTIAL_INTEGRATED` while required runtime/caller integration remains. `IMPLEMENTATION_COMPLETE` means the requested source scope is implemented and canonicalized; `VERIFIED` requires fresh required verification evidence; `DEPLOYED` requires runtime evidence for the exact artifact; acceptance requires its own evidence. Overall `COMPLETE` is allowed only when every criterion in the outcome's Definition of Done is met, including acceptance/deployment when required.
+
+## Spec-backed work
+
+For repository Specs, use [`spec-handoff-contract.md`](spec-handoff-contract.md) as the single Spec authority and writer contract. Initialize or reconcile the canonical manifest and requirement ledger before planning/resume. Local lifecycle artifacts remain supporting evidence. Persist meaningful transitions and exact-SHA proof through the canonical writer.

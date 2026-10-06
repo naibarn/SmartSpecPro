@@ -86,3 +86,7 @@ Concurrent operations for distinct repository/revision/purpose tuples use indepe
 - Bind all verification results to `source_revision`; a later revision can stale earlier evidence.
 - Heavy verification and long-running execution still use the repository's canonical `worker_jobs` plus outbox control plane where required. This source lease is not a job queue.
 - The older `canonical-sync-preflight.sh`, dirty-rescue, and local-branch realignment helpers are not part of this path. Do not use them to prepare build input.
+
+## Canonical Spec identity
+
+For Spec-backed work, consume the canonical Handoff identity and expected canonical SHA before preparing a source workspace. Bind source verification to the manifest digest and configured canonical revision; do not create a separate status or authority record in the checkout lease. The integration controller updates canonical integration state after promotion.

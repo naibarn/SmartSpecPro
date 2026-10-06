@@ -978,3 +978,7 @@ This is the R4 algorithm from `references/session-resume.md`. On resume, read th
 - `orchestra/plan.md` — current phase/wave sections first
 - `orchestra/decisions.md` — most recent relevant decisions first
 - Files listed in `checkpoint.key_files` — line/section hints first, full file only when needed
+
+## Canonical Spec handoff before reconstruction
+
+For Spec-backed work, read `skills/development-lifecycle/spec-handoff-contract.md` and load/reconcile the canonical manifest and requirement ledger before restoring state from task artifacts or chat context. Resume from the canonical continuation capsule, then use Orchestra files as supporting evidence. Update lifecycle transitions through the shared writer; do not create a competing Spec-level status.

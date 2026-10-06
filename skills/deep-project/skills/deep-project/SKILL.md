@@ -431,3 +431,7 @@ For work that does not change a Git repository, this lifecycle does not add a co
 Use [`skills/development-lifecycle/SKILL.md`](skills/development-lifecycle/SKILL.md) as the authoritative project-neutral completion contract. Keep a requirement ledger from source/spec through implementation, with applicability, current state, completion predicate, verification method, evidence freshness, blocker challenge, and acceptance/deployment obligations. Inspect current code and tests first; plan only the unresolved delta. Every planned section maps to requirement IDs, ownership, prerequisites, completion predicate, verification/evidence, fallback routes, and wait/reactivation predicates where applicable.
 
 A section commit is a checkpoint, never completion. Close the outcome only when all applicable requirements have fresh predicate-backed evidence, required regressions are clear, and canonical integration/acceptance/deployment obligations are satisfied. A failed attempt escalates strategy; it never skips a requirement.
+
+## Canonical Spec handoff
+
+For SmartSpecPro Specs, follow `skills/development-lifecycle/spec-handoff-contract.md`. Initialize the canonical manifest and requirement ledger after writing each normative split Spec and before planning. Map project WorkUnits to requirement IDs. Project manifests, interview notes, and section files are supporting evidence, not overall Spec status.

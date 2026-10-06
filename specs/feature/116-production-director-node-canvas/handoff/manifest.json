@@ -1,0 +1,837 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "7a7fcc818d963dbd66b842255262c8b2f9ba7218f9c1e90f765df4c8956dbc3d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/116-production-director-node-canvas/spec.md"
+      },
+      {
+        "digest": "e09aaa0c919d9c614aa1719a6cbfbe24cf3c07132c7c8f1941303fb584960917",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/claude-plan.md"
+      },
+      {
+        "digest": "ed0e5787ca9758a34add5b734020a114e5dd846f218c91cf0f61da956ce1e332",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/claude-spec.md"
+      },
+      {
+        "digest": "7971e151c43a83918b9305b9f86353075dd4a82561e7bf5ef02ee9e9dc5322b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "5bef7732b5d3a68a7d9754c6dd508a370c491c2f2eb6cc5dab4bd1a794d399da",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/ui-browser-evidence.md"
+      },
+      {
+        "digest": "2e62c44afb6479b8ae0bcaab0b425d0bd74d9f93da78795e591f5287e8bd759b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/usage.md"
+      },
+      {
+        "digest": "1aff59bd87b15419c9fd9df59e222fc4abef6fbcb7a5eae0ed3bc7922e4cfc65",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-2026-05-22.md"
+      },
+      {
+        "digest": "57ae380bc4f1b7e1b4ef6425b91aaeb4b8ed88279fc91e46ded2d6829f42e42c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-10-2026-05-22.md"
+      },
+      {
+        "digest": "4182cf968cf1ebb5c3ac4f96472a4a9cf99e57773f2ce2803db812e519a389a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-11-ui-ux-2026-05-22.md"
+      },
+      {
+        "digest": "58b96fdd7975bfc44397a594243b2e7cea147612c7411c867205a7b456d68e12",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-2-2026-05-22.md"
+      },
+      {
+        "digest": "173f033ddb8ae3839a70a33eb27d0c28c79cf7db9d7722272df638cec6d85348",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-3-2026-05-22.md"
+      },
+      {
+        "digest": "71bc3497fb826ceedf2c757878ebc29d375acbf69b57d61d90f9058804a7fc33",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-4-2026-05-22.md"
+      },
+      {
+        "digest": "2c55a68675c24075739d1c9b88a048ca95dc487bf3217a86bc9d7b7971f99a1b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-5-2026-05-22.md"
+      },
+      {
+        "digest": "803ddeac910895f00fbd8c1623d3e062e43ca04c166c8effc8a432fca5bb1a91",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-6-2026-05-22.md"
+      },
+      {
+        "digest": "c6a8b7ffdba3c198df08a9acb91226a267962c6fbcd88dd83673a195fdf6b4a0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-7-2026-05-22.md"
+      },
+      {
+        "digest": "4de0e56f3dfec9912f057c0ee1b52aa827357a47c8ae7ea263d94fd3b5529c13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-8-2026-05-22.md"
+      },
+      {
+        "digest": "87df8db5ded1acd07d853451bc936d53da918750b46f217b52d7f7bbb8e48187",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-9-2026-05-22.md"
+      },
+      {
+        "digest": "e809d8e5d77a7686c05aa974a047ffde6aa0e2b5f1b1a7ac45e93e3516c4b00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/implementation-plan-completeness-review.md"
+      },
+      {
+        "digest": "6794d2ec4d29bee4975d8c5a6b9d70bb15e0056c979ec5b58e07270caf582167",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/initial-completeness-review.md"
+      },
+      {
+        "digest": "02a43ab8c42497484c1c3a1ba4af1e15d9dc7875e5ebf01f4b572f586b02d510",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/post-completion-review-2026-05-22.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "7a7fcc818d963dbd66b842255262c8b2f9ba7218f9c1e90f765df4c8956dbc3d"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "7a7fcc818d963dbd66b842255262c8b2f9ba7218f9c1e90f765df4c8956dbc3d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/116-production-director-node-canvas/spec.md"
+      },
+      {
+        "digest": "e09aaa0c919d9c614aa1719a6cbfbe24cf3c07132c7c8f1941303fb584960917",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/claude-plan.md"
+      },
+      {
+        "digest": "ed0e5787ca9758a34add5b734020a114e5dd846f218c91cf0f61da956ce1e332",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/claude-spec.md"
+      },
+      {
+        "digest": "7971e151c43a83918b9305b9f86353075dd4a82561e7bf5ef02ee9e9dc5322b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "5bef7732b5d3a68a7d9754c6dd508a370c491c2f2eb6cc5dab4bd1a794d399da",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/ui-browser-evidence.md"
+      },
+      {
+        "digest": "2e62c44afb6479b8ae0bcaab0b425d0bd74d9f93da78795e591f5287e8bd759b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/usage.md"
+      },
+      {
+        "digest": "1aff59bd87b15419c9fd9df59e222fc4abef6fbcb7a5eae0ed3bc7922e4cfc65",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-2026-05-22.md"
+      },
+      {
+        "digest": "57ae380bc4f1b7e1b4ef6425b91aaeb4b8ed88279fc91e46ded2d6829f42e42c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-10-2026-05-22.md"
+      },
+      {
+        "digest": "4182cf968cf1ebb5c3ac4f96472a4a9cf99e57773f2ce2803db812e519a389a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-11-ui-ux-2026-05-22.md"
+      },
+      {
+        "digest": "58b96fdd7975bfc44397a594243b2e7cea147612c7411c867205a7b456d68e12",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-2-2026-05-22.md"
+      },
+      {
+        "digest": "173f033ddb8ae3839a70a33eb27d0c28c79cf7db9d7722272df638cec6d85348",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-3-2026-05-22.md"
+      },
+      {
+        "digest": "71bc3497fb826ceedf2c757878ebc29d375acbf69b57d61d90f9058804a7fc33",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-4-2026-05-22.md"
+      },
+      {
+        "digest": "2c55a68675c24075739d1c9b88a048ca95dc487bf3217a86bc9d7b7971f99a1b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-5-2026-05-22.md"
+      },
+      {
+        "digest": "803ddeac910895f00fbd8c1623d3e062e43ca04c166c8effc8a432fca5bb1a91",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-6-2026-05-22.md"
+      },
+      {
+        "digest": "c6a8b7ffdba3c198df08a9acb91226a267962c6fbcd88dd83673a195fdf6b4a0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-7-2026-05-22.md"
+      },
+      {
+        "digest": "4de0e56f3dfec9912f057c0ee1b52aa827357a47c8ae7ea263d94fd3b5529c13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-8-2026-05-22.md"
+      },
+      {
+        "digest": "87df8db5ded1acd07d853451bc936d53da918750b46f217b52d7f7bbb8e48187",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-9-2026-05-22.md"
+      },
+      {
+        "digest": "e809d8e5d77a7686c05aa974a047ffde6aa0e2b5f1b1a7ac45e93e3516c4b00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/implementation-plan-completeness-review.md"
+      },
+      {
+        "digest": "6794d2ec4d29bee4975d8c5a6b9d70bb15e0056c979ec5b58e07270caf582167",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/initial-completeness-review.md"
+      },
+      {
+        "digest": "02a43ab8c42497484c1c3a1ba4af1e15d9dc7875e5ebf01f4b572f586b02d510",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/post-completion-review-2026-05-22.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "7a7fcc818d963dbd66b842255262c8b2f9ba7218f9c1e90f765df4c8956dbc3d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/116-production-director-node-canvas/spec.md"
+      },
+      {
+        "digest": "e09aaa0c919d9c614aa1719a6cbfbe24cf3c07132c7c8f1941303fb584960917",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/claude-plan.md"
+      },
+      {
+        "digest": "ed0e5787ca9758a34add5b734020a114e5dd846f218c91cf0f61da956ce1e332",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/claude-spec.md"
+      },
+      {
+        "digest": "7971e151c43a83918b9305b9f86353075dd4a82561e7bf5ef02ee9e9dc5322b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "5bef7732b5d3a68a7d9754c6dd508a370c491c2f2eb6cc5dab4bd1a794d399da",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/ui-browser-evidence.md"
+      },
+      {
+        "digest": "2e62c44afb6479b8ae0bcaab0b425d0bd74d9f93da78795e591f5287e8bd759b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/usage.md"
+      },
+      {
+        "digest": "1aff59bd87b15419c9fd9df59e222fc4abef6fbcb7a5eae0ed3bc7922e4cfc65",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-2026-05-22.md"
+      },
+      {
+        "digest": "57ae380bc4f1b7e1b4ef6425b91aaeb4b8ed88279fc91e46ded2d6829f42e42c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-10-2026-05-22.md"
+      },
+      {
+        "digest": "4182cf968cf1ebb5c3ac4f96472a4a9cf99e57773f2ce2803db812e519a389a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-11-ui-ux-2026-05-22.md"
+      },
+      {
+        "digest": "58b96fdd7975bfc44397a594243b2e7cea147612c7411c867205a7b456d68e12",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-2-2026-05-22.md"
+      },
+      {
+        "digest": "173f033ddb8ae3839a70a33eb27d0c28c79cf7db9d7722272df638cec6d85348",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-3-2026-05-22.md"
+      },
+      {
+        "digest": "71bc3497fb826ceedf2c757878ebc29d375acbf69b57d61d90f9058804a7fc33",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-4-2026-05-22.md"
+      },
+      {
+        "digest": "2c55a68675c24075739d1c9b88a048ca95dc487bf3217a86bc9d7b7971f99a1b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-5-2026-05-22.md"
+      },
+      {
+        "digest": "803ddeac910895f00fbd8c1623d3e062e43ca04c166c8effc8a432fca5bb1a91",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-6-2026-05-22.md"
+      },
+      {
+        "digest": "c6a8b7ffdba3c198df08a9acb91226a267962c6fbcd88dd83673a195fdf6b4a0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-7-2026-05-22.md"
+      },
+      {
+        "digest": "4de0e56f3dfec9912f057c0ee1b52aa827357a47c8ae7ea263d94fd3b5529c13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-8-2026-05-22.md"
+      },
+      {
+        "digest": "87df8db5ded1acd07d853451bc936d53da918750b46f217b52d7f7bbb8e48187",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-9-2026-05-22.md"
+      },
+      {
+        "digest": "e809d8e5d77a7686c05aa974a047ffde6aa0e2b5f1b1a7ac45e93e3516c4b00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/implementation-plan-completeness-review.md"
+      },
+      {
+        "digest": "6794d2ec4d29bee4975d8c5a6b9d70bb15e0056c979ec5b58e07270caf582167",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/initial-completeness-review.md"
+      },
+      {
+        "digest": "02a43ab8c42497484c1c3a1ba4af1e15d9dc7875e5ebf01f4b572f586b02d510",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/post-completion-review-2026-05-22.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/116-production-director-node-canvas/spec.md",
+    "digest": "7a7fcc818d963dbd66b842255262c8b2f9ba7218f9c1e90f765df4c8956dbc3d",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.062009Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-05-22T16:57:11+07:00",
+      "spec_last_changed_at": "2026-05-23T10:45:30+07:00"
+    },
+    "revision": null,
+    "slug": "116-production-director-node-canvas",
+    "spec_id": "116",
+    "title": "Production Director Node Canvas"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.062009Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.062009Z",
+    "sources": [
+      {
+        "digest": "7a7fcc818d963dbd66b842255262c8b2f9ba7218f9c1e90f765df4c8956dbc3d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/116-production-director-node-canvas/spec.md"
+      },
+      {
+        "digest": "e09aaa0c919d9c614aa1719a6cbfbe24cf3c07132c7c8f1941303fb584960917",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/claude-plan.md"
+      },
+      {
+        "digest": "ed0e5787ca9758a34add5b734020a114e5dd846f218c91cf0f61da956ce1e332",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/claude-spec.md"
+      },
+      {
+        "digest": "7971e151c43a83918b9305b9f86353075dd4a82561e7bf5ef02ee9e9dc5322b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "5bef7732b5d3a68a7d9754c6dd508a370c491c2f2eb6cc5dab4bd1a794d399da",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/ui-browser-evidence.md"
+      },
+      {
+        "digest": "2e62c44afb6479b8ae0bcaab0b425d0bd74d9f93da78795e591f5287e8bd759b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/usage.md"
+      },
+      {
+        "digest": "1aff59bd87b15419c9fd9df59e222fc4abef6fbcb7a5eae0ed3bc7922e4cfc65",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-2026-05-22.md"
+      },
+      {
+        "digest": "57ae380bc4f1b7e1b4ef6425b91aaeb4b8ed88279fc91e46ded2d6829f42e42c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-10-2026-05-22.md"
+      },
+      {
+        "digest": "4182cf968cf1ebb5c3ac4f96472a4a9cf99e57773f2ce2803db812e519a389a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-11-ui-ux-2026-05-22.md"
+      },
+      {
+        "digest": "58b96fdd7975bfc44397a594243b2e7cea147612c7411c867205a7b456d68e12",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-2-2026-05-22.md"
+      },
+      {
+        "digest": "173f033ddb8ae3839a70a33eb27d0c28c79cf7db9d7722272df638cec6d85348",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-3-2026-05-22.md"
+      },
+      {
+        "digest": "71bc3497fb826ceedf2c757878ebc29d375acbf69b57d61d90f9058804a7fc33",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-4-2026-05-22.md"
+      },
+      {
+        "digest": "2c55a68675c24075739d1c9b88a048ca95dc487bf3217a86bc9d7b7971f99a1b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-5-2026-05-22.md"
+      },
+      {
+        "digest": "803ddeac910895f00fbd8c1623d3e062e43ca04c166c8effc8a432fca5bb1a91",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-6-2026-05-22.md"
+      },
+      {
+        "digest": "c6a8b7ffdba3c198df08a9acb91226a267962c6fbcd88dd83673a195fdf6b4a0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-7-2026-05-22.md"
+      },
+      {
+        "digest": "4de0e56f3dfec9912f057c0ee1b52aa827357a47c8ae7ea263d94fd3b5529c13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-8-2026-05-22.md"
+      },
+      {
+        "digest": "87df8db5ded1acd07d853451bc936d53da918750b46f217b52d7f7bbb8e48187",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-9-2026-05-22.md"
+      },
+      {
+        "digest": "e809d8e5d77a7686c05aa974a047ffde6aa0e2b5f1b1a7ac45e93e3516c4b00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/implementation-plan-completeness-review.md"
+      },
+      {
+        "digest": "6794d2ec4d29bee4975d8c5a6b9d70bb15e0056c979ec5b58e07270caf582167",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/initial-completeness-review.md"
+      },
+      {
+        "digest": "02a43ab8c42497484c1c3a1ba4af1e15d9dc7875e5ebf01f4b572f586b02d510",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/post-completion-review-2026-05-22.md"
+      },
+      {
+        "digest": "28fa516481bf7f9c051dab0c5fcfb9d0df67109267097add892619640b3e7348",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/section-cross-consistency-review-2026-05-22.md"
+      },
+      {
+        "digest": "b4300aed372f5d8fd22334920f9be4152eea825fb0a5b39b311904d62017216b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "398dcccbbca936176f3058932fe4577376a8f883879d29cbd32223a985bbee42",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/index.md"
+      },
+      {
+        "digest": "23ae675edf78c05e1803f47874440cc0c0374152eaba16b22ac23b5d9060ea71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-01-production-workspace-ux.md"
+      },
+      {
+        "digest": "dc63a67c15dd69d3a300741a559a0b2c20997414988545dac50373de25641415",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-02-context-assets-library-dnd.md"
+      },
+      {
+        "digest": "38d7b82c4072e24cda1b2f0cec92290f6d5d380afac79a873e94e0c36625c6ee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-03-planning-skill-context-pack.md"
+      },
+      {
+        "digest": "d6d870403eaec48abdc9b2a08ed7457e0ed9d0a23c9a61a7a093b2295642a9de",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-04-react-flow-canvas.md"
+      },
+      {
+        "digest": "0bceb226440924d891d055a4800b6000594edfa1b972838a2f5af3304585877c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-05-run-persistence-handoff.md"
+      },
+      {
+        "digest": "7238efb18371d5f9d59a77992f3d9cbf16155cd6eafbce6a5796929d80ae03b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-06-node-catalog-and-tool-config.md"
+      },
+      {
+        "digest": "8b31ce4041aa8bf29b457194a4c4368987ab6644953d5d8eaa93a3a70a75304f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-07-video-shot-workspace.md"
+      },
+      {
+        "digest": "0b750a069c5b4d1c5b9339ac08803824dbb0a5d849ee83a9dc4b1b517959e57a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-08-operational-safeguards.md"
+      },
+      {
+        "digest": "6905387b03c50c55e5e452ffda2455b6b734d995f27f349767449893743f235f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-09-migration-and-backward-compatibility.md"
+      },
+      {
+        "digest": "4526d09722e0be43ea814b04149fa63bf0ac1c1339f02b71b4fec57d1a0afd9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-10-execution-scheduler-and-delivery.md"
+      },
+      {
+        "digest": "df5a94fc8e1d74799ac78f57605e29337743f966952e904cd6be5f83bcfe6a42",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-11-timeline-continuity-and-cue-sheet.md"
+      },
+      {
+        "digest": "02a88157b714df24a69076af654bc2cb9232e778d8fda0296474723d80c1d201",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-12-mvp-scope-and-acceptance-traceability.md"
+      },
+      {
+        "digest": "fb37586a93575e312053e39987a62dba3050e5c7fa8ef851724923f71642c4bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-13-node-tool-binding-and-config-integrity.md"
+      },
+      {
+        "digest": "d5bff814e17e0b36f4ccc3b1031e1e6e29a983535eb4e98cd367f07874f02133",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-14-data-lifecycle-observability-release.md"
+      },
+      {
+        "digest": "f5cc16a9334409cea04a1259156f039a4d75647886c030309f0d48e43eb70a87",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-15-product-image-storyboard-evidence-bridge.md"
+      },
+      {
+        "digest": "b3330afbcf4a3f5ac24bd16005790bafe713a4268866bc7872725b0fe4fde786",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-16-deep-implement-work-packets.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "7a7fcc818d963dbd66b842255262c8b2f9ba7218f9c1e90f765df4c8956dbc3d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/116-production-director-node-canvas/spec.md"
+      },
+      {
+        "digest": "e09aaa0c919d9c614aa1719a6cbfbe24cf3c07132c7c8f1941303fb584960917",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/claude-plan.md"
+      },
+      {
+        "digest": "ed0e5787ca9758a34add5b734020a114e5dd846f218c91cf0f61da956ce1e332",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/claude-spec.md"
+      },
+      {
+        "digest": "7971e151c43a83918b9305b9f86353075dd4a82561e7bf5ef02ee9e9dc5322b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "5bef7732b5d3a68a7d9754c6dd508a370c491c2f2eb6cc5dab4bd1a794d399da",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/ui-browser-evidence.md"
+      },
+      {
+        "digest": "2e62c44afb6479b8ae0bcaab0b425d0bd74d9f93da78795e591f5287e8bd759b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/implementation/usage.md"
+      },
+      {
+        "digest": "1aff59bd87b15419c9fd9df59e222fc4abef6fbcb7a5eae0ed3bc7922e4cfc65",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-2026-05-22.md"
+      },
+      {
+        "digest": "57ae380bc4f1b7e1b4ef6425b91aaeb4b8ed88279fc91e46ded2d6829f42e42c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-10-2026-05-22.md"
+      },
+      {
+        "digest": "4182cf968cf1ebb5c3ac4f96472a4a9cf99e57773f2ce2803db812e519a389a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-11-ui-ux-2026-05-22.md"
+      },
+      {
+        "digest": "58b96fdd7975bfc44397a594243b2e7cea147612c7411c867205a7b456d68e12",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-2-2026-05-22.md"
+      },
+      {
+        "digest": "173f033ddb8ae3839a70a33eb27d0c28c79cf7db9d7722272df638cec6d85348",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-3-2026-05-22.md"
+      },
+      {
+        "digest": "71bc3497fb826ceedf2c757878ebc29d375acbf69b57d61d90f9058804a7fc33",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-4-2026-05-22.md"
+      },
+      {
+        "digest": "2c55a68675c24075739d1c9b88a048ca95dc487bf3217a86bc9d7b7971f99a1b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-5-2026-05-22.md"
+      },
+      {
+        "digest": "803ddeac910895f00fbd8c1623d3e062e43ca04c166c8effc8a432fca5bb1a91",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-6-2026-05-22.md"
+      },
+      {
+        "digest": "c6a8b7ffdba3c198df08a9acb91226a267962c6fbcd88dd83673a195fdf6b4a0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-7-2026-05-22.md"
+      },
+      {
+        "digest": "4de0e56f3dfec9912f057c0ee1b52aa827357a47c8ae7ea263d94fd3b5529c13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-8-2026-05-22.md"
+      },
+      {
+        "digest": "87df8db5ded1acd07d853451bc936d53da918750b46f217b52d7f7bbb8e48187",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-9-2026-05-22.md"
+      },
+      {
+        "digest": "e809d8e5d77a7686c05aa974a047ffde6aa0e2b5f1b1a7ac45e93e3516c4b00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/implementation-plan-completeness-review.md"
+      },
+      {
+        "digest": "6794d2ec4d29bee4975d8c5a6b9d70bb15e0056c979ec5b58e07270caf582167",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/initial-completeness-review.md"
+      },
+      {
+        "digest": "02a43ab8c42497484c1c3a1ba4af1e15d9dc7875e5ebf01f4b572f586b02d510",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/post-completion-review-2026-05-22.md"
+      },
+      {
+        "digest": "28fa516481bf7f9c051dab0c5fcfb9d0df67109267097add892619640b3e7348",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/section-cross-consistency-review-2026-05-22.md"
+      },
+      {
+        "digest": "b4300aed372f5d8fd22334920f9be4152eea825fb0a5b39b311904d62017216b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "398dcccbbca936176f3058932fe4577376a8f883879d29cbd32223a985bbee42",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/index.md"
+      },
+      {
+        "digest": "23ae675edf78c05e1803f47874440cc0c0374152eaba16b22ac23b5d9060ea71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-01-production-workspace-ux.md"
+      },
+      {
+        "digest": "dc63a67c15dd69d3a300741a559a0b2c20997414988545dac50373de25641415",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-02-context-assets-library-dnd.md"
+      },
+      {
+        "digest": "38d7b82c4072e24cda1b2f0cec92290f6d5d380afac79a873e94e0c36625c6ee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-03-planning-skill-context-pack.md"
+      },
+      {
+        "digest": "d6d870403eaec48abdc9b2a08ed7457e0ed9d0a23c9a61a7a093b2295642a9de",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-04-react-flow-canvas.md"
+      },
+      {
+        "digest": "0bceb226440924d891d055a4800b6000594edfa1b972838a2f5af3304585877c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-05-run-persistence-handoff.md"
+      },
+      {
+        "digest": "7238efb18371d5f9d59a77992f3d9cbf16155cd6eafbce6a5796929d80ae03b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-06-node-catalog-and-tool-config.md"
+      },
+      {
+        "digest": "8b31ce4041aa8bf29b457194a4c4368987ab6644953d5d8eaa93a3a70a75304f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-07-video-shot-workspace.md"
+      },
+      {
+        "digest": "0b750a069c5b4d1c5b9339ac08803824dbb0a5d849ee83a9dc4b1b517959e57a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-08-operational-safeguards.md"
+      },
+      {
+        "digest": "6905387b03c50c55e5e452ffda2455b6b734d995f27f349767449893743f235f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-09-migration-and-backward-compatibility.md"
+      },
+      {
+        "digest": "4526d09722e0be43ea814b04149fa63bf0ac1c1339f02b71b4fec57d1a0afd9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-10-execution-scheduler-and-delivery.md"
+      },
+      {
+        "digest": "df5a94fc8e1d74799ac78f57605e29337743f966952e904cd6be5f83bcfe6a42",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-11-timeline-continuity-and-cue-sheet.md"
+      },
+      {
+        "digest": "02a88157b714df24a69076af654bc2cb9232e778d8fda0296474723d80c1d201",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-12-mvp-scope-and-acceptance-traceability.md"
+      },
+      {
+        "digest": "fb37586a93575e312053e39987a62dba3050e5c7fa8ef851724923f71642c4bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-13-node-tool-binding-and-config-integrity.md"
+      },
+      {
+        "digest": "d5bff814e17e0b36f4ccc3b1031e1e6e29a983535eb4e98cd367f07874f02133",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-14-data-lifecycle-observability-release.md"
+      },
+      {
+        "digest": "f5cc16a9334409cea04a1259156f039a4d75647886c030309f0d48e43eb70a87",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-15-product-image-storyboard-evidence-bridge.md"
+      },
+      {
+        "digest": "b3330afbcf4a3f5ac24bd16005790bafe713a4268866bc7872725b0fe4fde786",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/116-production-director-node-canvas/sections/section-16-deep-implement-work-packets.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 128,
+    "unresolved": 128
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.062009Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

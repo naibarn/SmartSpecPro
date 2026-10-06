@@ -1,0 +1,827 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md"
+      },
+      {
+        "digest": "070a89df5872e6a44f194c5e8e65300bd76b51cb2495ad8769be0dd68d7f2e85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/claude-plan.md"
+      },
+      {
+        "digest": "62e79c0411c2674c3da31e9d37661c080fced8c84973ec13ba2914baeb5479bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/claude-spec.md"
+      },
+      {
+        "digest": "3f5eb49834531ead1edc4e411e6a38cb67487a543e0c17c7fd531e7728316674",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "f48db8dc73ae8e71f2abc632cc6eb008ec781bd631fead20025d9bb8140c8a66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-10.md"
+      },
+      {
+        "digest": "b440efcd58813eded3ca750075dab5a86c0c06c49d01a56f7c927e7c1e27fb84",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-11.md"
+      },
+      {
+        "digest": "c4b97bf4ec49864662d9d1258dc01c2d035abcc98c7a89baa7ccae5325cf0fbb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-12.md"
+      },
+      {
+        "digest": "0666037b6d6ab43a426925f4dcfe67dd45d6164a99a68a5fa11318a56e85b5f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-13.md"
+      },
+      {
+        "digest": "cc27f6852adb1d5630f500847145ebbfe00166dff1a4da71e0efc22c50a2f7c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-14.md"
+      },
+      {
+        "digest": "a1b599eee08d4443bd1a81d895a2eee2e57357a94febb53cec06d0b4f1333fd2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-15.md"
+      },
+      {
+        "digest": "2b8b895f2caacf0c9254cfa9c22672589f5eb6a837e8b942139d9b8be39b2309",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-16.md"
+      },
+      {
+        "digest": "baa8d3f659aae58235d50424f6c51c8b300ea6a10b47bddd033968f3eb7e6bc9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-17.md"
+      },
+      {
+        "digest": "7c502d47cca3dc74b369446a4cb6960713864d91a2a36c1f17ac6ab06131a4eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-18.md"
+      },
+      {
+        "digest": "9e2d7014377f27ed05ff8177c0d4d0802bf050ec97953a813a14bc99a21c6656",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-19.md"
+      },
+      {
+        "digest": "ec61d91992d1b736e8eafab7e0930c7ababf7bc0bfe4fcbd25a67e74d94b55a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-2.md"
+      },
+      {
+        "digest": "9d24707101fa1c4a52b60ac5fe5f2b92c7e3c2f60c6ba3777417dd596b53a71a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-20.md"
+      },
+      {
+        "digest": "9372a5dc0265f8d525edc33c9c2b612f446d10471d5b75e3babdfba6e6f33771",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-21.md"
+      },
+      {
+        "digest": "1edf3f75e9cf958f9288d92025dc712aa4afe1e4d485ca0b77e8e2f566319f7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-3.md"
+      },
+      {
+        "digest": "1bf5815d877c210857138a7502a0e2695619273b9f501da4ce7e979f507e65db",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-4.md"
+      },
+      {
+        "digest": "2a72cf32affc61d90bf33f922f6c237ee24aa498c37a039fc785399b5bd0c4bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-5.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md"
+      },
+      {
+        "digest": "070a89df5872e6a44f194c5e8e65300bd76b51cb2495ad8769be0dd68d7f2e85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/claude-plan.md"
+      },
+      {
+        "digest": "62e79c0411c2674c3da31e9d37661c080fced8c84973ec13ba2914baeb5479bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/claude-spec.md"
+      },
+      {
+        "digest": "3f5eb49834531ead1edc4e411e6a38cb67487a543e0c17c7fd531e7728316674",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "f48db8dc73ae8e71f2abc632cc6eb008ec781bd631fead20025d9bb8140c8a66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-10.md"
+      },
+      {
+        "digest": "b440efcd58813eded3ca750075dab5a86c0c06c49d01a56f7c927e7c1e27fb84",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-11.md"
+      },
+      {
+        "digest": "c4b97bf4ec49864662d9d1258dc01c2d035abcc98c7a89baa7ccae5325cf0fbb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-12.md"
+      },
+      {
+        "digest": "0666037b6d6ab43a426925f4dcfe67dd45d6164a99a68a5fa11318a56e85b5f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-13.md"
+      },
+      {
+        "digest": "cc27f6852adb1d5630f500847145ebbfe00166dff1a4da71e0efc22c50a2f7c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-14.md"
+      },
+      {
+        "digest": "a1b599eee08d4443bd1a81d895a2eee2e57357a94febb53cec06d0b4f1333fd2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-15.md"
+      },
+      {
+        "digest": "2b8b895f2caacf0c9254cfa9c22672589f5eb6a837e8b942139d9b8be39b2309",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-16.md"
+      },
+      {
+        "digest": "baa8d3f659aae58235d50424f6c51c8b300ea6a10b47bddd033968f3eb7e6bc9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-17.md"
+      },
+      {
+        "digest": "7c502d47cca3dc74b369446a4cb6960713864d91a2a36c1f17ac6ab06131a4eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-18.md"
+      },
+      {
+        "digest": "9e2d7014377f27ed05ff8177c0d4d0802bf050ec97953a813a14bc99a21c6656",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-19.md"
+      },
+      {
+        "digest": "ec61d91992d1b736e8eafab7e0930c7ababf7bc0bfe4fcbd25a67e74d94b55a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-2.md"
+      },
+      {
+        "digest": "9d24707101fa1c4a52b60ac5fe5f2b92c7e3c2f60c6ba3777417dd596b53a71a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-20.md"
+      },
+      {
+        "digest": "9372a5dc0265f8d525edc33c9c2b612f446d10471d5b75e3babdfba6e6f33771",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-21.md"
+      },
+      {
+        "digest": "1edf3f75e9cf958f9288d92025dc712aa4afe1e4d485ca0b77e8e2f566319f7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-3.md"
+      },
+      {
+        "digest": "1bf5815d877c210857138a7502a0e2695619273b9f501da4ce7e979f507e65db",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-4.md"
+      },
+      {
+        "digest": "2a72cf32affc61d90bf33f922f6c237ee24aa498c37a039fc785399b5bd0c4bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-5.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md"
+      },
+      {
+        "digest": "070a89df5872e6a44f194c5e8e65300bd76b51cb2495ad8769be0dd68d7f2e85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/claude-plan.md"
+      },
+      {
+        "digest": "62e79c0411c2674c3da31e9d37661c080fced8c84973ec13ba2914baeb5479bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/claude-spec.md"
+      },
+      {
+        "digest": "3f5eb49834531ead1edc4e411e6a38cb67487a543e0c17c7fd531e7728316674",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "f48db8dc73ae8e71f2abc632cc6eb008ec781bd631fead20025d9bb8140c8a66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-10.md"
+      },
+      {
+        "digest": "b440efcd58813eded3ca750075dab5a86c0c06c49d01a56f7c927e7c1e27fb84",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-11.md"
+      },
+      {
+        "digest": "c4b97bf4ec49864662d9d1258dc01c2d035abcc98c7a89baa7ccae5325cf0fbb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-12.md"
+      },
+      {
+        "digest": "0666037b6d6ab43a426925f4dcfe67dd45d6164a99a68a5fa11318a56e85b5f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-13.md"
+      },
+      {
+        "digest": "cc27f6852adb1d5630f500847145ebbfe00166dff1a4da71e0efc22c50a2f7c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-14.md"
+      },
+      {
+        "digest": "a1b599eee08d4443bd1a81d895a2eee2e57357a94febb53cec06d0b4f1333fd2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-15.md"
+      },
+      {
+        "digest": "2b8b895f2caacf0c9254cfa9c22672589f5eb6a837e8b942139d9b8be39b2309",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-16.md"
+      },
+      {
+        "digest": "baa8d3f659aae58235d50424f6c51c8b300ea6a10b47bddd033968f3eb7e6bc9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-17.md"
+      },
+      {
+        "digest": "7c502d47cca3dc74b369446a4cb6960713864d91a2a36c1f17ac6ab06131a4eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-18.md"
+      },
+      {
+        "digest": "9e2d7014377f27ed05ff8177c0d4d0802bf050ec97953a813a14bc99a21c6656",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-19.md"
+      },
+      {
+        "digest": "ec61d91992d1b736e8eafab7e0930c7ababf7bc0bfe4fcbd25a67e74d94b55a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-2.md"
+      },
+      {
+        "digest": "9d24707101fa1c4a52b60ac5fe5f2b92c7e3c2f60c6ba3777417dd596b53a71a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-20.md"
+      },
+      {
+        "digest": "9372a5dc0265f8d525edc33c9c2b612f446d10471d5b75e3babdfba6e6f33771",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-21.md"
+      },
+      {
+        "digest": "1edf3f75e9cf958f9288d92025dc712aa4afe1e4d485ca0b77e8e2f566319f7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-3.md"
+      },
+      {
+        "digest": "1bf5815d877c210857138a7502a0e2695619273b9f501da4ce7e979f507e65db",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-4.md"
+      },
+      {
+        "digest": "2a72cf32affc61d90bf33f922f6c237ee24aa498c37a039fc785399b5bd0c4bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-5.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md",
+    "digest": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.070483Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-05-31T09:12:13+07:00",
+      "spec_last_changed_at": "2026-06-04T21:12:13+07:00"
+    },
+    "revision": "1.22.0",
+    "slug": "117-production-director-agents-sdk-auto-storyboard-video",
+    "spec_id": "117",
+    "title": "Feature 117: Production Director Agents SDK Auto Storyboard And Video"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.070483Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.070483Z",
+    "sources": [
+      {
+        "digest": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md"
+      },
+      {
+        "digest": "070a89df5872e6a44f194c5e8e65300bd76b51cb2495ad8769be0dd68d7f2e85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/claude-plan.md"
+      },
+      {
+        "digest": "62e79c0411c2674c3da31e9d37661c080fced8c84973ec13ba2914baeb5479bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/claude-spec.md"
+      },
+      {
+        "digest": "3f5eb49834531ead1edc4e411e6a38cb67487a543e0c17c7fd531e7728316674",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "f48db8dc73ae8e71f2abc632cc6eb008ec781bd631fead20025d9bb8140c8a66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-10.md"
+      },
+      {
+        "digest": "b440efcd58813eded3ca750075dab5a86c0c06c49d01a56f7c927e7c1e27fb84",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-11.md"
+      },
+      {
+        "digest": "c4b97bf4ec49864662d9d1258dc01c2d035abcc98c7a89baa7ccae5325cf0fbb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-12.md"
+      },
+      {
+        "digest": "0666037b6d6ab43a426925f4dcfe67dd45d6164a99a68a5fa11318a56e85b5f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-13.md"
+      },
+      {
+        "digest": "cc27f6852adb1d5630f500847145ebbfe00166dff1a4da71e0efc22c50a2f7c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-14.md"
+      },
+      {
+        "digest": "a1b599eee08d4443bd1a81d895a2eee2e57357a94febb53cec06d0b4f1333fd2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-15.md"
+      },
+      {
+        "digest": "2b8b895f2caacf0c9254cfa9c22672589f5eb6a837e8b942139d9b8be39b2309",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-16.md"
+      },
+      {
+        "digest": "baa8d3f659aae58235d50424f6c51c8b300ea6a10b47bddd033968f3eb7e6bc9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-17.md"
+      },
+      {
+        "digest": "7c502d47cca3dc74b369446a4cb6960713864d91a2a36c1f17ac6ab06131a4eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-18.md"
+      },
+      {
+        "digest": "9e2d7014377f27ed05ff8177c0d4d0802bf050ec97953a813a14bc99a21c6656",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-19.md"
+      },
+      {
+        "digest": "ec61d91992d1b736e8eafab7e0930c7ababf7bc0bfe4fcbd25a67e74d94b55a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-2.md"
+      },
+      {
+        "digest": "9d24707101fa1c4a52b60ac5fe5f2b92c7e3c2f60c6ba3777417dd596b53a71a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-20.md"
+      },
+      {
+        "digest": "9372a5dc0265f8d525edc33c9c2b612f446d10471d5b75e3babdfba6e6f33771",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-21.md"
+      },
+      {
+        "digest": "1edf3f75e9cf958f9288d92025dc712aa4afe1e4d485ca0b77e8e2f566319f7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-3.md"
+      },
+      {
+        "digest": "1bf5815d877c210857138a7502a0e2695619273b9f501da4ce7e979f507e65db",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-4.md"
+      },
+      {
+        "digest": "2a72cf32affc61d90bf33f922f6c237ee24aa498c37a039fc785399b5bd0c4bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-5.md"
+      },
+      {
+        "digest": "33935609d570d68f17acfc364d510fad7a6eb7665eb7956e92b516277f5e156d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-6.md"
+      },
+      {
+        "digest": "d0f4b716a735b424e3f7ceaf075c11cd336092d4553acb1ba516566bd68200ca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-7.md"
+      },
+      {
+        "digest": "1c32c3ef739cd600161f1836b5f5bed35389df3fbf9bb9457a1dd9b81ee45d14",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-8.md"
+      },
+      {
+        "digest": "920e045764d0f895d2cd2ef84dc44311cdb59b0f37679056fcaa4f5c3d88235f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-9.md"
+      },
+      {
+        "digest": "7b13ed6725f283ee06ee673cbc04ed6b4f34eaab8488c82a1f3795a8e15c5b2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "b92c32e6fd356090be50a1372dd306a07b787d08c8fee79375ec547de1925d96",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/index.md"
+      },
+      {
+        "digest": "8620bbdd02554186ee315ff81a1890856d9da2356748b172afb5e479ff6f04ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-01-contracts-and-schema.md"
+      },
+      {
+        "digest": "11fe4622c1116f16fa5747f5ed6a976cdd0dd4c15bb47a23c9adffbca1a1b8bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-02-python-agents-gateway-runtime.md"
+      },
+      {
+        "digest": "a0b4b5cfbf3a350a8bf4c3f0c29b8789d5e17762e45af908c5849ce70ea3c968",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-03-node-runtime-client-and-preflight.md"
+      },
+      {
+        "digest": "3a2e1f14aa8c0e4d0ab9f129110451bd067baffbae39b342254d61f75f7c1a9e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-04-creative-planning-contracts.md"
+      },
+      {
+        "digest": "79b92483bda5ede8b668859fa116357fcb986b6a5fb87d087bab2e25ef5c9c00",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-05-ad-compliance-warning-overlays.md"
+      },
+      {
+        "digest": "5553032aa282dd415826cda992bac0b3cdb876d79e489e7b4d1635fc150cfa90",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-06-direct-media-execution.md"
+      },
+      {
+        "digest": "07f725ec653739336c8210d0c285614636c14007db044f366687f1afaa575b39",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-07-visual-audio-continuity-qa.md"
+      },
+      {
+        "digest": "852c643ed32804eae536540d88e2712bd2dc402fe70523f44e3bed57a445bc2c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-08-credit-billing-idempotency.md"
+      },
+      {
+        "digest": "92c3737a49a6296d1c72c90465ee3368873ef7257d7023cc125ab65d5ea937a6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-09-ui-progress-and-output-links.md"
+      },
+      {
+        "digest": "96d482d571770aa2748e625f9c10f4aec34684acd3139dec004871016cf36743",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-10-render-library-finalize.md"
+      },
+      {
+        "digest": "7276dfbb48393a8a5f4390bb77bea3cc97eca9a237725a1ea719c3fe7117f868",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-11-rollout-migration-resume.md"
+      },
+      {
+        "digest": "49a45ff1e62f62c15e534d886add7af703d1ea8e68d67099b5b986ef9f898947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-12-test-implementation-gates.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md"
+      },
+      {
+        "digest": "070a89df5872e6a44f194c5e8e65300bd76b51cb2495ad8769be0dd68d7f2e85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/claude-plan.md"
+      },
+      {
+        "digest": "62e79c0411c2674c3da31e9d37661c080fced8c84973ec13ba2914baeb5479bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/claude-spec.md"
+      },
+      {
+        "digest": "3f5eb49834531ead1edc4e411e6a38cb67487a543e0c17c7fd531e7728316674",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "f48db8dc73ae8e71f2abc632cc6eb008ec781bd631fead20025d9bb8140c8a66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-10.md"
+      },
+      {
+        "digest": "b440efcd58813eded3ca750075dab5a86c0c06c49d01a56f7c927e7c1e27fb84",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-11.md"
+      },
+      {
+        "digest": "c4b97bf4ec49864662d9d1258dc01c2d035abcc98c7a89baa7ccae5325cf0fbb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-12.md"
+      },
+      {
+        "digest": "0666037b6d6ab43a426925f4dcfe67dd45d6164a99a68a5fa11318a56e85b5f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-13.md"
+      },
+      {
+        "digest": "cc27f6852adb1d5630f500847145ebbfe00166dff1a4da71e0efc22c50a2f7c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-14.md"
+      },
+      {
+        "digest": "a1b599eee08d4443bd1a81d895a2eee2e57357a94febb53cec06d0b4f1333fd2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-15.md"
+      },
+      {
+        "digest": "2b8b895f2caacf0c9254cfa9c22672589f5eb6a837e8b942139d9b8be39b2309",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-16.md"
+      },
+      {
+        "digest": "baa8d3f659aae58235d50424f6c51c8b300ea6a10b47bddd033968f3eb7e6bc9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-17.md"
+      },
+      {
+        "digest": "7c502d47cca3dc74b369446a4cb6960713864d91a2a36c1f17ac6ab06131a4eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-18.md"
+      },
+      {
+        "digest": "9e2d7014377f27ed05ff8177c0d4d0802bf050ec97953a813a14bc99a21c6656",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-19.md"
+      },
+      {
+        "digest": "ec61d91992d1b736e8eafab7e0930c7ababf7bc0bfe4fcbd25a67e74d94b55a3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-2.md"
+      },
+      {
+        "digest": "9d24707101fa1c4a52b60ac5fe5f2b92c7e3c2f60c6ba3777417dd596b53a71a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-20.md"
+      },
+      {
+        "digest": "9372a5dc0265f8d525edc33c9c2b612f446d10471d5b75e3babdfba6e6f33771",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-21.md"
+      },
+      {
+        "digest": "1edf3f75e9cf958f9288d92025dc712aa4afe1e4d485ca0b77e8e2f566319f7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-3.md"
+      },
+      {
+        "digest": "1bf5815d877c210857138a7502a0e2695619273b9f501da4ce7e979f507e65db",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-4.md"
+      },
+      {
+        "digest": "2a72cf32affc61d90bf33f922f6c237ee24aa498c37a039fc785399b5bd0c4bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-5.md"
+      },
+      {
+        "digest": "33935609d570d68f17acfc364d510fad7a6eb7665eb7956e92b516277f5e156d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-6.md"
+      },
+      {
+        "digest": "d0f4b716a735b424e3f7ceaf075c11cd336092d4553acb1ba516566bd68200ca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-7.md"
+      },
+      {
+        "digest": "1c32c3ef739cd600161f1836b5f5bed35389df3fbf9bb9457a1dd9b81ee45d14",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-8.md"
+      },
+      {
+        "digest": "920e045764d0f895d2cd2ef84dc44311cdb59b0f37679056fcaa4f5c3d88235f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/completeness-review-round-9.md"
+      },
+      {
+        "digest": "7b13ed6725f283ee06ee673cbc04ed6b4f34eaab8488c82a1f3795a8e15c5b2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "b92c32e6fd356090be50a1372dd306a07b787d08c8fee79375ec547de1925d96",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/index.md"
+      },
+      {
+        "digest": "8620bbdd02554186ee315ff81a1890856d9da2356748b172afb5e479ff6f04ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-01-contracts-and-schema.md"
+      },
+      {
+        "digest": "11fe4622c1116f16fa5747f5ed6a976cdd0dd4c15bb47a23c9adffbca1a1b8bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-02-python-agents-gateway-runtime.md"
+      },
+      {
+        "digest": "a0b4b5cfbf3a350a8bf4c3f0c29b8789d5e17762e45af908c5849ce70ea3c968",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-03-node-runtime-client-and-preflight.md"
+      },
+      {
+        "digest": "3a2e1f14aa8c0e4d0ab9f129110451bd067baffbae39b342254d61f75f7c1a9e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-04-creative-planning-contracts.md"
+      },
+      {
+        "digest": "79b92483bda5ede8b668859fa116357fcb986b6a5fb87d087bab2e25ef5c9c00",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-05-ad-compliance-warning-overlays.md"
+      },
+      {
+        "digest": "5553032aa282dd415826cda992bac0b3cdb876d79e489e7b4d1635fc150cfa90",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-06-direct-media-execution.md"
+      },
+      {
+        "digest": "07f725ec653739336c8210d0c285614636c14007db044f366687f1afaa575b39",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-07-visual-audio-continuity-qa.md"
+      },
+      {
+        "digest": "852c643ed32804eae536540d88e2712bd2dc402fe70523f44e3bed57a445bc2c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-08-credit-billing-idempotency.md"
+      },
+      {
+        "digest": "92c3737a49a6296d1c72c90465ee3368873ef7257d7023cc125ab65d5ea937a6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-09-ui-progress-and-output-links.md"
+      },
+      {
+        "digest": "96d482d571770aa2748e625f9c10f4aec34684acd3139dec004871016cf36743",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-10-render-library-finalize.md"
+      },
+      {
+        "digest": "7276dfbb48393a8a5f4390bb77bea3cc97eca9a237725a1ea719c3fe7117f868",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-11-rollout-migration-resume.md"
+      },
+      {
+        "digest": "49a45ff1e62f62c15e534d886add7af703d1ea8e68d67099b5b986ef9f898947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-12-test-implementation-gates.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 860,
+    "unresolved": 860
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.070483Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

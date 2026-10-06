@@ -1,0 +1,372 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "dd29476cbd74d1d456f4470def4c17f3a7a9adc14274105bdc313d66f3664a16",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md"
+      },
+      {
+        "digest": "82e4615ff096859be3f19b376b7be7c9b9bf50ee67c87881dcfeb7fbd7ebf217",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "607289c7bd865dd1d11b6ee03d2d7a00e4e8ab45e6b617de60ef25bb080fe947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "44e9f6e4965fa0b50cd0681bbdbf3a89904497013857e7fe4ff4b6e7d265850d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
+      },
+      {
+        "digest": "b55811b2173cf8e44a41bdad7fda5eea085c88f717a8ad48284afd506e0489ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
+      },
+      {
+        "digest": "a4445231fdaff5312a37d258b11498815569391a7492298f22d1c6c500f432ca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
+      },
+      {
+        "digest": "b6b80d3128b607a0836a7ddd939fd294c9aed053897995c7f1df902cb86a66f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
+      },
+      {
+        "digest": "d083adf750bf8546621336a8303f01d60c27783853b611b5c32eb1805c4bbca8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
+      },
+      {
+        "digest": "0128b88b605c7585237b2a2c69f95f05299af6cda3798f065a6b1e7b61877ffd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "dd29476cbd74d1d456f4470def4c17f3a7a9adc14274105bdc313d66f3664a16"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "dd29476cbd74d1d456f4470def4c17f3a7a9adc14274105bdc313d66f3664a16",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md"
+      },
+      {
+        "digest": "82e4615ff096859be3f19b376b7be7c9b9bf50ee67c87881dcfeb7fbd7ebf217",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "607289c7bd865dd1d11b6ee03d2d7a00e4e8ab45e6b617de60ef25bb080fe947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "44e9f6e4965fa0b50cd0681bbdbf3a89904497013857e7fe4ff4b6e7d265850d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
+      },
+      {
+        "digest": "b55811b2173cf8e44a41bdad7fda5eea085c88f717a8ad48284afd506e0489ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
+      },
+      {
+        "digest": "a4445231fdaff5312a37d258b11498815569391a7492298f22d1c6c500f432ca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
+      },
+      {
+        "digest": "b6b80d3128b607a0836a7ddd939fd294c9aed053897995c7f1df902cb86a66f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
+      },
+      {
+        "digest": "d083adf750bf8546621336a8303f01d60c27783853b611b5c32eb1805c4bbca8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
+      },
+      {
+        "digest": "0128b88b605c7585237b2a2c69f95f05299af6cda3798f065a6b1e7b61877ffd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "dd29476cbd74d1d456f4470def4c17f3a7a9adc14274105bdc313d66f3664a16",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md"
+      },
+      {
+        "digest": "82e4615ff096859be3f19b376b7be7c9b9bf50ee67c87881dcfeb7fbd7ebf217",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "607289c7bd865dd1d11b6ee03d2d7a00e4e8ab45e6b617de60ef25bb080fe947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "44e9f6e4965fa0b50cd0681bbdbf3a89904497013857e7fe4ff4b6e7d265850d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
+      },
+      {
+        "digest": "b55811b2173cf8e44a41bdad7fda5eea085c88f717a8ad48284afd506e0489ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
+      },
+      {
+        "digest": "a4445231fdaff5312a37d258b11498815569391a7492298f22d1c6c500f432ca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
+      },
+      {
+        "digest": "b6b80d3128b607a0836a7ddd939fd294c9aed053897995c7f1df902cb86a66f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
+      },
+      {
+        "digest": "d083adf750bf8546621336a8303f01d60c27783853b611b5c32eb1805c4bbca8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
+      },
+      {
+        "digest": "0128b88b605c7585237b2a2c69f95f05299af6cda3798f065a6b1e7b61877ffd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md",
+    "digest": "dd29476cbd74d1d456f4470def4c17f3a7a9adc14274105bdc313d66f3664a16",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.753703Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-08T19:58:29+07:00",
+      "spec_last_changed_at": "2026-04-08T19:58:29+07:00"
+    },
+    "revision": "1.0",
+    "slug": "065-kie-ai-llm-provider-chat-expansion",
+    "spec_id": "065",
+    "title": "065 - Kie.ai LLM Provider Chat Expansion"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.753703Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.753703Z",
+    "sources": [
+      {
+        "digest": "dd29476cbd74d1d456f4470def4c17f3a7a9adc14274105bdc313d66f3664a16",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md"
+      },
+      {
+        "digest": "82e4615ff096859be3f19b376b7be7c9b9bf50ee67c87881dcfeb7fbd7ebf217",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "607289c7bd865dd1d11b6ee03d2d7a00e4e8ab45e6b617de60ef25bb080fe947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "44e9f6e4965fa0b50cd0681bbdbf3a89904497013857e7fe4ff4b6e7d265850d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
+      },
+      {
+        "digest": "b55811b2173cf8e44a41bdad7fda5eea085c88f717a8ad48284afd506e0489ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
+      },
+      {
+        "digest": "a4445231fdaff5312a37d258b11498815569391a7492298f22d1c6c500f432ca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
+      },
+      {
+        "digest": "b6b80d3128b607a0836a7ddd939fd294c9aed053897995c7f1df902cb86a66f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
+      },
+      {
+        "digest": "d083adf750bf8546621336a8303f01d60c27783853b611b5c32eb1805c4bbca8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
+      },
+      {
+        "digest": "0128b88b605c7585237b2a2c69f95f05299af6cda3798f065a6b1e7b61877ffd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "dd29476cbd74d1d456f4470def4c17f3a7a9adc14274105bdc313d66f3664a16",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md"
+      },
+      {
+        "digest": "82e4615ff096859be3f19b376b7be7c9b9bf50ee67c87881dcfeb7fbd7ebf217",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "607289c7bd865dd1d11b6ee03d2d7a00e4e8ab45e6b617de60ef25bb080fe947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "44e9f6e4965fa0b50cd0681bbdbf3a89904497013857e7fe4ff4b6e7d265850d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
+      },
+      {
+        "digest": "b55811b2173cf8e44a41bdad7fda5eea085c88f717a8ad48284afd506e0489ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
+      },
+      {
+        "digest": "a4445231fdaff5312a37d258b11498815569391a7492298f22d1c6c500f432ca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
+      },
+      {
+        "digest": "b6b80d3128b607a0836a7ddd939fd294c9aed053897995c7f1df902cb86a66f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
+      },
+      {
+        "digest": "d083adf750bf8546621336a8303f01d60c27783853b611b5c32eb1805c4bbca8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
+      },
+      {
+        "digest": "0128b88b605c7585237b2a2c69f95f05299af6cda3798f065a6b1e7b61877ffd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 27,
+    "unresolved": 27
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.753703Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

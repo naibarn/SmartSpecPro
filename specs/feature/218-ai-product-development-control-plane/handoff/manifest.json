@@ -1,0 +1,444 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "218",
+        "referenced_spec_id": "218",
+        "referencing_spec_id": "223",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/223-zcode-external-harness-adapter/spec.md#L191",
+        "source_digest": "e64e0a641a1396c934bd6bb03e6557969c423001de897ee9deed1984b06f5e61",
+        "successor_spec_id": "223"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "218",
+        "referenced_spec_id": "218",
+        "referencing_spec_id": "224",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10797",
+        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "successor_spec_id": "224"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "218",
+        "referenced_spec_id": "218",
+        "referencing_spec_id": "224",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2895",
+        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "successor_spec_id": "224"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "218",
+        "referenced_spec_id": "218",
+        "referencing_spec_id": "250",
+        "relation_text": "merge",
+        "requirement_ids": [],
+        "source": "specs/feature/250-Development-Reliability/spec.md#L1092",
+        "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+        "successor_spec_id": "250"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "230",
+        "referenced_spec_id": "230",
+        "referencing_spec_id": "218",
+        "relation_text": "supersedes",
+        "requirement_ids": [],
+        "source": "specs/feature/218-ai-product-development-control-plane/spec.md#L1295",
+        "source_digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+        "successor_spec_id": "218"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/218-ai-product-development-control-plane/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/218-ai-product-development-control-plane/spec.md"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 27,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 45,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 58,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 73,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 189,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 226,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 251,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\" as const,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 284,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 218 development control-plane contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 28,
+        "path": "apps/web/server/services/__tests__/developmentControlPlaneContracts.test.ts"
+      },
+      {
+        "excerpt": "\"The Runner shall apply Spec 218 isolation levels.\"",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 53,
+        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/218-ai-product-development-control-plane/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/218-ai-product-development-control-plane/spec.md",
+    "digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.117645Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-20T12:59:58+07:00",
+      "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
+    },
+    "revision": null,
+    "slug": "218-ai-product-development-control-plane",
+    "spec_id": "218",
+    "title": "Spec 218 — SmartAIHub AI Product Development Control Plane"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.117645Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.117645Z",
+    "sources": [
+      {
+        "digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/218-ai-product-development-control-plane/spec.md"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 27,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 45,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 58,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 73,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 189,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 226,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 251,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\" as const,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 284,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 218 development control-plane contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 28,
+        "path": "apps/web/server/services/__tests__/developmentControlPlaneContracts.test.ts"
+      },
+      {
+        "excerpt": "\"The Runner shall apply Spec 218 isolation levels.\"",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 53,
+        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 27,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 45,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 58,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 73,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 189,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 226,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 251,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-218-v3\" as const,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 284,
+        "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 218 development control-plane contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 28,
+        "path": "apps/web/server/services/__tests__/developmentControlPlaneContracts.test.ts"
+      },
+      {
+        "excerpt": "\"The Runner shall apply Spec 218 isolation levels.\"",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 53,
+        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
+      }
+    ],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/218-ai-product-development-control-plane/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 163,
+    "unresolved": 163
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.117645Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

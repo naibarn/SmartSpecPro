@@ -1,0 +1,510 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "195",
+        "referenced_spec_id": "195",
+        "referencing_spec_id": "224",
+        "relation_text": "supersedes",
+        "requirement_ids": [],
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12267",
+        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "successor_spec_id": "224"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "b8f818885d5be9d624e5a1155021fd818475937fee3627bf9f9871802ae250fc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/195-unified-async-job-control-plane/spec.md"
+      },
+      {
+        "digest": "d0f3065f7d11da0e87b46d751c4ed77da590e6bcf5cb3c5316045e4e52b1548b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/claude-plan.md"
+      },
+      {
+        "digest": "d1c93afd1b034a3b27854adbfbfa436fa48be7fb906044a27fa4bde64ed87171",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/claude-spec.md"
+      },
+      {
+        "digest": "ae78f4bbfcfded0ca22155d6c66130eabd6c4cf3a65f0b8886adc15ec721586b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/completion.md"
+      },
+      {
+        "digest": "8e254164138a8e2d08757db1e72fa6a764f65d12da0bda2e8d6ca8e3a27dd3d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "5f8fc50d1af6f9a014645a2c2fd113f1c7e6962d229e43f1b54171cde57c1532",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/review.md"
+      },
+      {
+        "digest": "633e91d3da1c5e82fac07a703c87a6a01db7e927e8e9e33064bc57b12d7a0a16",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "083dfe6a4a99941342390b29d5b7bc218ee5552a2e1a04ed09057b46c67d0cf3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/index.md"
+      },
+      {
+        "digest": "5e430dcacb1c30611e2f7ffa0279a68f2e3bd5fecf030ab57873cd42f9b7dab0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-01-contracts.md"
+      },
+      {
+        "digest": "06ed606ee5532f25016a2c7b9c71ff9f466708bad4c8e8dd7434ff44d76ef527",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-02-persistence.md"
+      },
+      {
+        "digest": "082f0177622e4b74e9b7da03ec056a63c1332d91d55024e4bff2d4faab4b6e9a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-03-publication-and-capacity.md"
+      },
+      {
+        "digest": "98b042cfc2febfd808cf0f1854a89d649b77eaa3e0a35e4799078037fae9fe86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-04-lifecycle-and-control.md"
+      },
+      {
+        "digest": "2d6d77ca6a40c949caaf7e6e7b3af6f0491ac55ce9057bc57a96ae3dff79accf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-05-monitoring-and-integrations.md"
+      },
+      {
+        "digest": "f4e544469c943ab485476ec5d3c65714368c3454acdfea596652e11ead6acbba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-06-migration-and-release-gates.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "b8f818885d5be9d624e5a1155021fd818475937fee3627bf9f9871802ae250fc"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "b8f818885d5be9d624e5a1155021fd818475937fee3627bf9f9871802ae250fc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/195-unified-async-job-control-plane/spec.md"
+      },
+      {
+        "digest": "d0f3065f7d11da0e87b46d751c4ed77da590e6bcf5cb3c5316045e4e52b1548b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/claude-plan.md"
+      },
+      {
+        "digest": "d1c93afd1b034a3b27854adbfbfa436fa48be7fb906044a27fa4bde64ed87171",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/claude-spec.md"
+      },
+      {
+        "digest": "ae78f4bbfcfded0ca22155d6c66130eabd6c4cf3a65f0b8886adc15ec721586b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/completion.md"
+      },
+      {
+        "digest": "8e254164138a8e2d08757db1e72fa6a764f65d12da0bda2e8d6ca8e3a27dd3d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "5f8fc50d1af6f9a014645a2c2fd113f1c7e6962d229e43f1b54171cde57c1532",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/review.md"
+      },
+      {
+        "digest": "633e91d3da1c5e82fac07a703c87a6a01db7e927e8e9e33064bc57b12d7a0a16",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "083dfe6a4a99941342390b29d5b7bc218ee5552a2e1a04ed09057b46c67d0cf3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/index.md"
+      },
+      {
+        "digest": "5e430dcacb1c30611e2f7ffa0279a68f2e3bd5fecf030ab57873cd42f9b7dab0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-01-contracts.md"
+      },
+      {
+        "digest": "06ed606ee5532f25016a2c7b9c71ff9f466708bad4c8e8dd7434ff44d76ef527",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-02-persistence.md"
+      },
+      {
+        "digest": "082f0177622e4b74e9b7da03ec056a63c1332d91d55024e4bff2d4faab4b6e9a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-03-publication-and-capacity.md"
+      },
+      {
+        "digest": "98b042cfc2febfd808cf0f1854a89d649b77eaa3e0a35e4799078037fae9fe86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-04-lifecycle-and-control.md"
+      },
+      {
+        "digest": "2d6d77ca6a40c949caaf7e6e7b3af6f0491ac55ce9057bc57a96ae3dff79accf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-05-monitoring-and-integrations.md"
+      },
+      {
+        "digest": "f4e544469c943ab485476ec5d3c65714368c3454acdfea596652e11ead6acbba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-06-migration-and-release-gates.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "b8f818885d5be9d624e5a1155021fd818475937fee3627bf9f9871802ae250fc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/195-unified-async-job-control-plane/spec.md"
+      },
+      {
+        "digest": "d0f3065f7d11da0e87b46d751c4ed77da590e6bcf5cb3c5316045e4e52b1548b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/claude-plan.md"
+      },
+      {
+        "digest": "d1c93afd1b034a3b27854adbfbfa436fa48be7fb906044a27fa4bde64ed87171",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/claude-spec.md"
+      },
+      {
+        "digest": "ae78f4bbfcfded0ca22155d6c66130eabd6c4cf3a65f0b8886adc15ec721586b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/completion.md"
+      },
+      {
+        "digest": "8e254164138a8e2d08757db1e72fa6a764f65d12da0bda2e8d6ca8e3a27dd3d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "5f8fc50d1af6f9a014645a2c2fd113f1c7e6962d229e43f1b54171cde57c1532",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/review.md"
+      },
+      {
+        "digest": "633e91d3da1c5e82fac07a703c87a6a01db7e927e8e9e33064bc57b12d7a0a16",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "083dfe6a4a99941342390b29d5b7bc218ee5552a2e1a04ed09057b46c67d0cf3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/index.md"
+      },
+      {
+        "digest": "5e430dcacb1c30611e2f7ffa0279a68f2e3bd5fecf030ab57873cd42f9b7dab0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-01-contracts.md"
+      },
+      {
+        "digest": "06ed606ee5532f25016a2c7b9c71ff9f466708bad4c8e8dd7434ff44d76ef527",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-02-persistence.md"
+      },
+      {
+        "digest": "082f0177622e4b74e9b7da03ec056a63c1332d91d55024e4bff2d4faab4b6e9a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-03-publication-and-capacity.md"
+      },
+      {
+        "digest": "98b042cfc2febfd808cf0f1854a89d649b77eaa3e0a35e4799078037fae9fe86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-04-lifecycle-and-control.md"
+      },
+      {
+        "digest": "2d6d77ca6a40c949caaf7e6e7b3af6f0491ac55ce9057bc57a96ae3dff79accf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-05-monitoring-and-integrations.md"
+      },
+      {
+        "digest": "f4e544469c943ab485476ec5d3c65714368c3454acdfea596652e11ead6acbba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-06-migration-and-release-gates.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/195-unified-async-job-control-plane/spec.md",
+    "digest": "b8f818885d5be9d624e5a1155021fd818475937fee3627bf9f9871802ae250fc",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.650241Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-26T09:26:48+07:00",
+      "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
+    },
+    "revision": null,
+    "slug": "195-unified-async-job-control-plane",
+    "spec_id": "195",
+    "title": "Feature 195 — SmartAIHub Unified Async Job Control Plane"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.650241Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.650241Z",
+    "sources": [
+      {
+        "digest": "b8f818885d5be9d624e5a1155021fd818475937fee3627bf9f9871802ae250fc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/195-unified-async-job-control-plane/spec.md"
+      },
+      {
+        "digest": "d0f3065f7d11da0e87b46d751c4ed77da590e6bcf5cb3c5316045e4e52b1548b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/claude-plan.md"
+      },
+      {
+        "digest": "d1c93afd1b034a3b27854adbfbfa436fa48be7fb906044a27fa4bde64ed87171",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/claude-spec.md"
+      },
+      {
+        "digest": "ae78f4bbfcfded0ca22155d6c66130eabd6c4cf3a65f0b8886adc15ec721586b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/completion.md"
+      },
+      {
+        "digest": "8e254164138a8e2d08757db1e72fa6a764f65d12da0bda2e8d6ca8e3a27dd3d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "5f8fc50d1af6f9a014645a2c2fd113f1c7e6962d229e43f1b54171cde57c1532",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/review.md"
+      },
+      {
+        "digest": "633e91d3da1c5e82fac07a703c87a6a01db7e927e8e9e33064bc57b12d7a0a16",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "083dfe6a4a99941342390b29d5b7bc218ee5552a2e1a04ed09057b46c67d0cf3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/index.md"
+      },
+      {
+        "digest": "5e430dcacb1c30611e2f7ffa0279a68f2e3bd5fecf030ab57873cd42f9b7dab0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-01-contracts.md"
+      },
+      {
+        "digest": "06ed606ee5532f25016a2c7b9c71ff9f466708bad4c8e8dd7434ff44d76ef527",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-02-persistence.md"
+      },
+      {
+        "digest": "082f0177622e4b74e9b7da03ec056a63c1332d91d55024e4bff2d4faab4b6e9a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-03-publication-and-capacity.md"
+      },
+      {
+        "digest": "98b042cfc2febfd808cf0f1854a89d649b77eaa3e0a35e4799078037fae9fe86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-04-lifecycle-and-control.md"
+      },
+      {
+        "digest": "2d6d77ca6a40c949caaf7e6e7b3af6f0491ac55ce9057bc57a96ae3dff79accf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-05-monitoring-and-integrations.md"
+      },
+      {
+        "digest": "f4e544469c943ab485476ec5d3c65714368c3454acdfea596652e11ead6acbba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-06-migration-and-release-gates.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "b8f818885d5be9d624e5a1155021fd818475937fee3627bf9f9871802ae250fc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/195-unified-async-job-control-plane/spec.md"
+      },
+      {
+        "digest": "d0f3065f7d11da0e87b46d751c4ed77da590e6bcf5cb3c5316045e4e52b1548b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/claude-plan.md"
+      },
+      {
+        "digest": "d1c93afd1b034a3b27854adbfbfa436fa48be7fb906044a27fa4bde64ed87171",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/claude-spec.md"
+      },
+      {
+        "digest": "ae78f4bbfcfded0ca22155d6c66130eabd6c4cf3a65f0b8886adc15ec721586b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/completion.md"
+      },
+      {
+        "digest": "8e254164138a8e2d08757db1e72fa6a764f65d12da0bda2e8d6ca8e3a27dd3d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "5f8fc50d1af6f9a014645a2c2fd113f1c7e6962d229e43f1b54171cde57c1532",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/implementation/review.md"
+      },
+      {
+        "digest": "633e91d3da1c5e82fac07a703c87a6a01db7e927e8e9e33064bc57b12d7a0a16",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "083dfe6a4a99941342390b29d5b7bc218ee5552a2e1a04ed09057b46c67d0cf3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/index.md"
+      },
+      {
+        "digest": "5e430dcacb1c30611e2f7ffa0279a68f2e3bd5fecf030ab57873cd42f9b7dab0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-01-contracts.md"
+      },
+      {
+        "digest": "06ed606ee5532f25016a2c7b9c71ff9f466708bad4c8e8dd7434ff44d76ef527",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-02-persistence.md"
+      },
+      {
+        "digest": "082f0177622e4b74e9b7da03ec056a63c1332d91d55024e4bff2d4faab4b6e9a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-03-publication-and-capacity.md"
+      },
+      {
+        "digest": "98b042cfc2febfd808cf0f1854a89d649b77eaa3e0a35e4799078037fae9fe86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-04-lifecycle-and-control.md"
+      },
+      {
+        "digest": "2d6d77ca6a40c949caaf7e6e7b3af6f0491ac55ce9057bc57a96ae3dff79accf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-05-monitoring-and-integrations.md"
+      },
+      {
+        "digest": "f4e544469c943ab485476ec5d3c65714368c3454acdfea596652e11ead6acbba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/195-unified-async-job-control-plane/sections/section-06-migration-and-release-gates.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 311,
+    "unresolved": 311
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.650241Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

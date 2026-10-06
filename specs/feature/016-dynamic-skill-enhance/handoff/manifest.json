@@ -1,0 +1,522 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/016-dynamic-skill-enhance/spec.md"
+      },
+      {
+        "digest": "e264a7a52424fff59a8f90d66ea0409f15825c400c2a62a7d49ad77587067df3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "7af8bd38d2cf9b149a96a10fa657c141362475623f6811ced30e572a49ddec2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "9fcf5f215a0d03a8a6a794c68894c3b21f5dd699d092945ae19505b9bf888702",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/index.md"
+      },
+      {
+        "digest": "1a101b6d6c32be07e67c0fbdc2addc2312599440b45b2ec45864cb6938493f95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-01-skill-selector.md"
+      },
+      {
+        "digest": "558df0312bf168277cbc0f582f17eb96143f234a2d790d407f8c73991b8c4097",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-02-form-refactor.md"
+      },
+      {
+        "digest": "4ef5ab72380923b6498bdb6671e35a1a0ff0c0e1c834f6458d0d4837cb19b41f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-03-chat-form.md"
+      },
+      {
+        "digest": "54c383e616ea81d7c73a768227b4f3577c7f6714ea01cdc2e31b6111893fe9fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-04-option-groups.md"
+      },
+      {
+        "digest": "81476ddd34573dfffcf48d3b409518dc50192014011b872e92a45ced6eea0826",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-05-hooks.md"
+      },
+      {
+        "digest": "1fe202bc8a924053d553af146da307ad90b99368093a7b47a1f239fa829eda2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-06-chat-state.md"
+      },
+      {
+        "digest": "b45b1c92906845d7846e166a91a0fe60fab88732d0fd26a1ca8e6c2685e21e45",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-07-api-extension.md"
+      },
+      {
+        "digest": "fd8b50f5e5a2ef1cddaded46f12b84873a44cdf47a9d643cc64dffa6a318c0c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-08-submission-flow.md"
+      },
+      {
+        "digest": "2c718f272539902bdade757c5979da4a456e0267049a0d1baada225a2341f9dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-09-slash-commands.md"
+      },
+      {
+        "digest": "b25825b673251de86690721299fd11eb88dd20cc5b1e9a618a532e4c59aec525",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-10-mobile-sheet.md"
+      },
+      {
+        "digest": "10d5f2211091b294db4dba0d71730d608c65fd8c72bfc0a0b5406893df43a93c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-11-testing.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/016-dynamic-skill-enhance/spec.md"
+      },
+      {
+        "digest": "e264a7a52424fff59a8f90d66ea0409f15825c400c2a62a7d49ad77587067df3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "7af8bd38d2cf9b149a96a10fa657c141362475623f6811ced30e572a49ddec2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "9fcf5f215a0d03a8a6a794c68894c3b21f5dd699d092945ae19505b9bf888702",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/index.md"
+      },
+      {
+        "digest": "1a101b6d6c32be07e67c0fbdc2addc2312599440b45b2ec45864cb6938493f95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-01-skill-selector.md"
+      },
+      {
+        "digest": "558df0312bf168277cbc0f582f17eb96143f234a2d790d407f8c73991b8c4097",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-02-form-refactor.md"
+      },
+      {
+        "digest": "4ef5ab72380923b6498bdb6671e35a1a0ff0c0e1c834f6458d0d4837cb19b41f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-03-chat-form.md"
+      },
+      {
+        "digest": "54c383e616ea81d7c73a768227b4f3577c7f6714ea01cdc2e31b6111893fe9fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-04-option-groups.md"
+      },
+      {
+        "digest": "81476ddd34573dfffcf48d3b409518dc50192014011b872e92a45ced6eea0826",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-05-hooks.md"
+      },
+      {
+        "digest": "1fe202bc8a924053d553af146da307ad90b99368093a7b47a1f239fa829eda2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-06-chat-state.md"
+      },
+      {
+        "digest": "b45b1c92906845d7846e166a91a0fe60fab88732d0fd26a1ca8e6c2685e21e45",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-07-api-extension.md"
+      },
+      {
+        "digest": "fd8b50f5e5a2ef1cddaded46f12b84873a44cdf47a9d643cc64dffa6a318c0c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-08-submission-flow.md"
+      },
+      {
+        "digest": "2c718f272539902bdade757c5979da4a456e0267049a0d1baada225a2341f9dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-09-slash-commands.md"
+      },
+      {
+        "digest": "b25825b673251de86690721299fd11eb88dd20cc5b1e9a618a532e4c59aec525",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-10-mobile-sheet.md"
+      },
+      {
+        "digest": "10d5f2211091b294db4dba0d71730d608c65fd8c72bfc0a0b5406893df43a93c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-11-testing.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/016-dynamic-skill-enhance/spec.md"
+      },
+      {
+        "digest": "e264a7a52424fff59a8f90d66ea0409f15825c400c2a62a7d49ad77587067df3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "7af8bd38d2cf9b149a96a10fa657c141362475623f6811ced30e572a49ddec2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "9fcf5f215a0d03a8a6a794c68894c3b21f5dd699d092945ae19505b9bf888702",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/index.md"
+      },
+      {
+        "digest": "1a101b6d6c32be07e67c0fbdc2addc2312599440b45b2ec45864cb6938493f95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-01-skill-selector.md"
+      },
+      {
+        "digest": "558df0312bf168277cbc0f582f17eb96143f234a2d790d407f8c73991b8c4097",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-02-form-refactor.md"
+      },
+      {
+        "digest": "4ef5ab72380923b6498bdb6671e35a1a0ff0c0e1c834f6458d0d4837cb19b41f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-03-chat-form.md"
+      },
+      {
+        "digest": "54c383e616ea81d7c73a768227b4f3577c7f6714ea01cdc2e31b6111893fe9fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-04-option-groups.md"
+      },
+      {
+        "digest": "81476ddd34573dfffcf48d3b409518dc50192014011b872e92a45ced6eea0826",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-05-hooks.md"
+      },
+      {
+        "digest": "1fe202bc8a924053d553af146da307ad90b99368093a7b47a1f239fa829eda2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-06-chat-state.md"
+      },
+      {
+        "digest": "b45b1c92906845d7846e166a91a0fe60fab88732d0fd26a1ca8e6c2685e21e45",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-07-api-extension.md"
+      },
+      {
+        "digest": "fd8b50f5e5a2ef1cddaded46f12b84873a44cdf47a9d643cc64dffa6a318c0c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-08-submission-flow.md"
+      },
+      {
+        "digest": "2c718f272539902bdade757c5979da4a456e0267049a0d1baada225a2341f9dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-09-slash-commands.md"
+      },
+      {
+        "digest": "b25825b673251de86690721299fd11eb88dd20cc5b1e9a618a532e4c59aec525",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-10-mobile-sheet.md"
+      },
+      {
+        "digest": "10d5f2211091b294db4dba0d71730d608c65fd8c72bfc0a0b5406893df43a93c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-11-testing.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/016-dynamic-skill-enhance/spec.md",
+    "digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.436979Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-02-18T10:50:50+07:00",
+      "spec_last_changed_at": "2026-02-18T10:50:50+07:00"
+    },
+    "revision": null,
+    "slug": "016-dynamic-skill-enhance",
+    "spec_id": "016",
+    "title": "Feature: Dynamic Skill Input Enhancement for Chat"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.436979Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.436979Z",
+    "sources": [
+      {
+        "digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/016-dynamic-skill-enhance/spec.md"
+      },
+      {
+        "digest": "e264a7a52424fff59a8f90d66ea0409f15825c400c2a62a7d49ad77587067df3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "7af8bd38d2cf9b149a96a10fa657c141362475623f6811ced30e572a49ddec2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "9fcf5f215a0d03a8a6a794c68894c3b21f5dd699d092945ae19505b9bf888702",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/index.md"
+      },
+      {
+        "digest": "1a101b6d6c32be07e67c0fbdc2addc2312599440b45b2ec45864cb6938493f95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-01-skill-selector.md"
+      },
+      {
+        "digest": "558df0312bf168277cbc0f582f17eb96143f234a2d790d407f8c73991b8c4097",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-02-form-refactor.md"
+      },
+      {
+        "digest": "4ef5ab72380923b6498bdb6671e35a1a0ff0c0e1c834f6458d0d4837cb19b41f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-03-chat-form.md"
+      },
+      {
+        "digest": "54c383e616ea81d7c73a768227b4f3577c7f6714ea01cdc2e31b6111893fe9fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-04-option-groups.md"
+      },
+      {
+        "digest": "81476ddd34573dfffcf48d3b409518dc50192014011b872e92a45ced6eea0826",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-05-hooks.md"
+      },
+      {
+        "digest": "1fe202bc8a924053d553af146da307ad90b99368093a7b47a1f239fa829eda2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-06-chat-state.md"
+      },
+      {
+        "digest": "b45b1c92906845d7846e166a91a0fe60fab88732d0fd26a1ca8e6c2685e21e45",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-07-api-extension.md"
+      },
+      {
+        "digest": "fd8b50f5e5a2ef1cddaded46f12b84873a44cdf47a9d643cc64dffa6a318c0c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-08-submission-flow.md"
+      },
+      {
+        "digest": "2c718f272539902bdade757c5979da4a456e0267049a0d1baada225a2341f9dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-09-slash-commands.md"
+      },
+      {
+        "digest": "b25825b673251de86690721299fd11eb88dd20cc5b1e9a618a532e4c59aec525",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-10-mobile-sheet.md"
+      },
+      {
+        "digest": "10d5f2211091b294db4dba0d71730d608c65fd8c72bfc0a0b5406893df43a93c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-11-testing.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/016-dynamic-skill-enhance/spec.md"
+      },
+      {
+        "digest": "e264a7a52424fff59a8f90d66ea0409f15825c400c2a62a7d49ad77587067df3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "7af8bd38d2cf9b149a96a10fa657c141362475623f6811ced30e572a49ddec2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "9fcf5f215a0d03a8a6a794c68894c3b21f5dd699d092945ae19505b9bf888702",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/index.md"
+      },
+      {
+        "digest": "1a101b6d6c32be07e67c0fbdc2addc2312599440b45b2ec45864cb6938493f95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-01-skill-selector.md"
+      },
+      {
+        "digest": "558df0312bf168277cbc0f582f17eb96143f234a2d790d407f8c73991b8c4097",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-02-form-refactor.md"
+      },
+      {
+        "digest": "4ef5ab72380923b6498bdb6671e35a1a0ff0c0e1c834f6458d0d4837cb19b41f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-03-chat-form.md"
+      },
+      {
+        "digest": "54c383e616ea81d7c73a768227b4f3577c7f6714ea01cdc2e31b6111893fe9fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-04-option-groups.md"
+      },
+      {
+        "digest": "81476ddd34573dfffcf48d3b409518dc50192014011b872e92a45ced6eea0826",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-05-hooks.md"
+      },
+      {
+        "digest": "1fe202bc8a924053d553af146da307ad90b99368093a7b47a1f239fa829eda2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-06-chat-state.md"
+      },
+      {
+        "digest": "b45b1c92906845d7846e166a91a0fe60fab88732d0fd26a1ca8e6c2685e21e45",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-07-api-extension.md"
+      },
+      {
+        "digest": "fd8b50f5e5a2ef1cddaded46f12b84873a44cdf47a9d643cc64dffa6a318c0c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-08-submission-flow.md"
+      },
+      {
+        "digest": "2c718f272539902bdade757c5979da4a456e0267049a0d1baada225a2341f9dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-09-slash-commands.md"
+      },
+      {
+        "digest": "b25825b673251de86690721299fd11eb88dd20cc5b1e9a618a532e4c59aec525",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-10-mobile-sheet.md"
+      },
+      {
+        "digest": "10d5f2211091b294db4dba0d71730d608c65fd8c72bfc0a0b5406893df43a93c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/016-dynamic-skill-enhance/sections/section-11-testing.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 1,
+    "unresolved": 1
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.436979Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

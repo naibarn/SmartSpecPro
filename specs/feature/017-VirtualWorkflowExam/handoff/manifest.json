@@ -1,0 +1,497 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "c808fd31f67c8663ad46b104b7cbde297d8fa4719384d32a4c07af93cbc9740a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/017-VirtualWorkflowExam/spec.md"
+      },
+      {
+        "digest": "8e0246712e54342cd12a173ef9503265dd3a277f4b5cbe4bcdafe6d8bbe19228",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/claude-plan.md"
+      },
+      {
+        "digest": "74198892b3fd2982e9705e99422700fb69452e20ff6be1a6a6467073f2444076",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/claude-spec.md"
+      },
+      {
+        "digest": "2716e12a1d4805b84ff29727b6dc74c977945127e999172ae0bf74f020840f26",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3649e766cc61c7f8bafc6bbde35e34253d71133c8d66db60f0f37f606ba60c59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
+      },
+      {
+        "digest": "7c72a1c4d9fd48ecaebaea5794000cbf8664b887409bf3bcd979668c4bf14263",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/index.md"
+      },
+      {
+        "digest": "0768b2d9a26d369edfc9514355f089e6b5672d806605d1b00730161d857eda0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
+      },
+      {
+        "digest": "bf103b09ddd2ffa77c82c36b2ca22ff6a41547d7062609e53bbad941c75758fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
+      },
+      {
+        "digest": "f064e010df0e50c250bb59b82d6e3cd788645e09ab52f0bc1b0f14443f7e3230",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
+      },
+      {
+        "digest": "bb9a485c337e25a598d867d27c9ff7a7667aafc58cdadc0dd7c0cac5d218d2a7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
+      },
+      {
+        "digest": "7ce7b18e708cc69d13148ab4ce517ffeaabc0570f23a076c6eaf6d90fbd106c4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
+      },
+      {
+        "digest": "b785206cc6a0ec0161587521eb383eb5301bc326cc9d62ce4622a7ac6ab3fd78",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
+      },
+      {
+        "digest": "e9956c2c694988788252b52905b64b793989d5d3960e412d3333729a28499264",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
+      },
+      {
+        "digest": "bccf0ea7e50707ac04f16ff482b3d6464582f73d559e33138348024aa57a86c6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "c808fd31f67c8663ad46b104b7cbde297d8fa4719384d32a4c07af93cbc9740a"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "c808fd31f67c8663ad46b104b7cbde297d8fa4719384d32a4c07af93cbc9740a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/017-VirtualWorkflowExam/spec.md"
+      },
+      {
+        "digest": "8e0246712e54342cd12a173ef9503265dd3a277f4b5cbe4bcdafe6d8bbe19228",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/claude-plan.md"
+      },
+      {
+        "digest": "74198892b3fd2982e9705e99422700fb69452e20ff6be1a6a6467073f2444076",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/claude-spec.md"
+      },
+      {
+        "digest": "2716e12a1d4805b84ff29727b6dc74c977945127e999172ae0bf74f020840f26",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3649e766cc61c7f8bafc6bbde35e34253d71133c8d66db60f0f37f606ba60c59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
+      },
+      {
+        "digest": "7c72a1c4d9fd48ecaebaea5794000cbf8664b887409bf3bcd979668c4bf14263",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/index.md"
+      },
+      {
+        "digest": "0768b2d9a26d369edfc9514355f089e6b5672d806605d1b00730161d857eda0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
+      },
+      {
+        "digest": "bf103b09ddd2ffa77c82c36b2ca22ff6a41547d7062609e53bbad941c75758fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
+      },
+      {
+        "digest": "f064e010df0e50c250bb59b82d6e3cd788645e09ab52f0bc1b0f14443f7e3230",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
+      },
+      {
+        "digest": "bb9a485c337e25a598d867d27c9ff7a7667aafc58cdadc0dd7c0cac5d218d2a7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
+      },
+      {
+        "digest": "7ce7b18e708cc69d13148ab4ce517ffeaabc0570f23a076c6eaf6d90fbd106c4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
+      },
+      {
+        "digest": "b785206cc6a0ec0161587521eb383eb5301bc326cc9d62ce4622a7ac6ab3fd78",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
+      },
+      {
+        "digest": "e9956c2c694988788252b52905b64b793989d5d3960e412d3333729a28499264",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
+      },
+      {
+        "digest": "bccf0ea7e50707ac04f16ff482b3d6464582f73d559e33138348024aa57a86c6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "c808fd31f67c8663ad46b104b7cbde297d8fa4719384d32a4c07af93cbc9740a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/017-VirtualWorkflowExam/spec.md"
+      },
+      {
+        "digest": "8e0246712e54342cd12a173ef9503265dd3a277f4b5cbe4bcdafe6d8bbe19228",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/claude-plan.md"
+      },
+      {
+        "digest": "74198892b3fd2982e9705e99422700fb69452e20ff6be1a6a6467073f2444076",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/claude-spec.md"
+      },
+      {
+        "digest": "2716e12a1d4805b84ff29727b6dc74c977945127e999172ae0bf74f020840f26",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3649e766cc61c7f8bafc6bbde35e34253d71133c8d66db60f0f37f606ba60c59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
+      },
+      {
+        "digest": "7c72a1c4d9fd48ecaebaea5794000cbf8664b887409bf3bcd979668c4bf14263",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/index.md"
+      },
+      {
+        "digest": "0768b2d9a26d369edfc9514355f089e6b5672d806605d1b00730161d857eda0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
+      },
+      {
+        "digest": "bf103b09ddd2ffa77c82c36b2ca22ff6a41547d7062609e53bbad941c75758fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
+      },
+      {
+        "digest": "f064e010df0e50c250bb59b82d6e3cd788645e09ab52f0bc1b0f14443f7e3230",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
+      },
+      {
+        "digest": "bb9a485c337e25a598d867d27c9ff7a7667aafc58cdadc0dd7c0cac5d218d2a7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
+      },
+      {
+        "digest": "7ce7b18e708cc69d13148ab4ce517ffeaabc0570f23a076c6eaf6d90fbd106c4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
+      },
+      {
+        "digest": "b785206cc6a0ec0161587521eb383eb5301bc326cc9d62ce4622a7ac6ab3fd78",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
+      },
+      {
+        "digest": "e9956c2c694988788252b52905b64b793989d5d3960e412d3333729a28499264",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
+      },
+      {
+        "digest": "bccf0ea7e50707ac04f16ff482b3d6464582f73d559e33138348024aa57a86c6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/017-VirtualWorkflowExam/spec.md",
+    "digest": "c808fd31f67c8663ad46b104b7cbde297d8fa4719384d32a4c07af93cbc9740a",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.441904Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-02-21T11:18:36+07:00",
+      "spec_last_changed_at": "2026-02-21T11:18:36+07:00"
+    },
+    "revision": null,
+    "slug": "017-VirtualWorkflowExam",
+    "spec_id": "017",
+    "title": "Feature 017 — Virtual Workflow Examples"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.441904Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.441904Z",
+    "sources": [
+      {
+        "digest": "c808fd31f67c8663ad46b104b7cbde297d8fa4719384d32a4c07af93cbc9740a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/017-VirtualWorkflowExam/spec.md"
+      },
+      {
+        "digest": "8e0246712e54342cd12a173ef9503265dd3a277f4b5cbe4bcdafe6d8bbe19228",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/claude-plan.md"
+      },
+      {
+        "digest": "74198892b3fd2982e9705e99422700fb69452e20ff6be1a6a6467073f2444076",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/claude-spec.md"
+      },
+      {
+        "digest": "2716e12a1d4805b84ff29727b6dc74c977945127e999172ae0bf74f020840f26",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3649e766cc61c7f8bafc6bbde35e34253d71133c8d66db60f0f37f606ba60c59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
+      },
+      {
+        "digest": "7c72a1c4d9fd48ecaebaea5794000cbf8664b887409bf3bcd979668c4bf14263",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/index.md"
+      },
+      {
+        "digest": "0768b2d9a26d369edfc9514355f089e6b5672d806605d1b00730161d857eda0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
+      },
+      {
+        "digest": "bf103b09ddd2ffa77c82c36b2ca22ff6a41547d7062609e53bbad941c75758fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
+      },
+      {
+        "digest": "f064e010df0e50c250bb59b82d6e3cd788645e09ab52f0bc1b0f14443f7e3230",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
+      },
+      {
+        "digest": "bb9a485c337e25a598d867d27c9ff7a7667aafc58cdadc0dd7c0cac5d218d2a7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
+      },
+      {
+        "digest": "7ce7b18e708cc69d13148ab4ce517ffeaabc0570f23a076c6eaf6d90fbd106c4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
+      },
+      {
+        "digest": "b785206cc6a0ec0161587521eb383eb5301bc326cc9d62ce4622a7ac6ab3fd78",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
+      },
+      {
+        "digest": "e9956c2c694988788252b52905b64b793989d5d3960e412d3333729a28499264",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
+      },
+      {
+        "digest": "bccf0ea7e50707ac04f16ff482b3d6464582f73d559e33138348024aa57a86c6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "c808fd31f67c8663ad46b104b7cbde297d8fa4719384d32a4c07af93cbc9740a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/017-VirtualWorkflowExam/spec.md"
+      },
+      {
+        "digest": "8e0246712e54342cd12a173ef9503265dd3a277f4b5cbe4bcdafe6d8bbe19228",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/claude-plan.md"
+      },
+      {
+        "digest": "74198892b3fd2982e9705e99422700fb69452e20ff6be1a6a6467073f2444076",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/claude-spec.md"
+      },
+      {
+        "digest": "2716e12a1d4805b84ff29727b6dc74c977945127e999172ae0bf74f020840f26",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3649e766cc61c7f8bafc6bbde35e34253d71133c8d66db60f0f37f606ba60c59",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
+      },
+      {
+        "digest": "7c72a1c4d9fd48ecaebaea5794000cbf8664b887409bf3bcd979668c4bf14263",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/index.md"
+      },
+      {
+        "digest": "0768b2d9a26d369edfc9514355f089e6b5672d806605d1b00730161d857eda0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
+      },
+      {
+        "digest": "bf103b09ddd2ffa77c82c36b2ca22ff6a41547d7062609e53bbad941c75758fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
+      },
+      {
+        "digest": "f064e010df0e50c250bb59b82d6e3cd788645e09ab52f0bc1b0f14443f7e3230",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
+      },
+      {
+        "digest": "bb9a485c337e25a598d867d27c9ff7a7667aafc58cdadc0dd7c0cac5d218d2a7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
+      },
+      {
+        "digest": "7ce7b18e708cc69d13148ab4ce517ffeaabc0570f23a076c6eaf6d90fbd106c4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
+      },
+      {
+        "digest": "b785206cc6a0ec0161587521eb383eb5301bc326cc9d62ce4622a7ac6ab3fd78",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
+      },
+      {
+        "digest": "e9956c2c694988788252b52905b64b793989d5d3960e412d3333729a28499264",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
+      },
+      {
+        "digest": "bccf0ea7e50707ac04f16ff482b3d6464582f73d559e33138348024aa57a86c6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 1,
+    "unresolved": 1
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.441904Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

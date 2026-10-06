@@ -1,0 +1,194 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "17274f3d6ce0e88e7e9ab5e1b9b20a1e0061b75295ab87cfd3135b68c1ef7742",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/015-WorkflowAddition/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "17274f3d6ce0e88e7e9ab5e1b9b20a1e0061b75295ab87cfd3135b68c1ef7742"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "17274f3d6ce0e88e7e9ab5e1b9b20a1e0061b75295ab87cfd3135b68c1ef7742",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/015-WorkflowAddition/spec.md"
+      },
+      {
+        "excerpt": "{ id: \"spec_lines_15_neon\", labelTh: \"Spec 15 บรรทัด Neon\", labelEn: \"Spec sheet 15 lines neon\", kind: \"spec\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1284,
+        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "17274f3d6ce0e88e7e9ab5e1b9b20a1e0061b75295ab87cfd3135b68c1ef7742",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/015-WorkflowAddition/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/015-WorkflowAddition/spec.md",
+    "digest": "17274f3d6ce0e88e7e9ab5e1b9b20a1e0061b75295ab87cfd3135b68c1ef7742",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.431653Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-02-17T22:44:13+07:00",
+      "spec_last_changed_at": "2026-02-17T22:44:13+07:00"
+    },
+    "revision": null,
+    "slug": "015-WorkflowAddition",
+    "spec_id": "015",
+    "title": "Workflow Editor Enhancement Specification"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.431653Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.431653Z",
+    "sources": [
+      {
+        "digest": "17274f3d6ce0e88e7e9ab5e1b9b20a1e0061b75295ab87cfd3135b68c1ef7742",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/015-WorkflowAddition/spec.md"
+      },
+      {
+        "excerpt": "{ id: \"spec_lines_15_neon\", labelTh: \"Spec 15 บรรทัด Neon\", labelEn: \"Spec sheet 15 lines neon\", kind: \"spec\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1284,
+        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "{ id: \"spec_lines_15_neon\", labelTh: \"Spec 15 บรรทัด Neon\", labelEn: \"Spec sheet 15 lines neon\", kind: \"spec\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1284,
+        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
+      }
+    ],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "17274f3d6ce0e88e7e9ab5e1b9b20a1e0061b75295ab87cfd3135b68c1ef7742",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/015-WorkflowAddition/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 19,
+    "unresolved": 19
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.431653Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

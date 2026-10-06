@@ -1,0 +1,162 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L78"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L78",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "524e61fb9a3e0127bcf13ae7b675e9f84910b9a3b7f02ec875439df1174291ac",
+      "requirement_id": "REQ-22B6CC75CFA9",
+      "requirement_text": "1. **Skill detection** — Each agent turn must detect the right skill from the objective/context",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L79"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L79",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ac9e32abe5c28027222e04236c721d2afdaa51a54631809a20eabcfe784f9b32",
+      "requirement_id": "REQ-45F70B6DC01D",
+      "requirement_text": "2. **Language** — Response language must match the objective language (Thai → Thai, English → English)",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L80"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L80",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f2185296651c869099f2dae1a77da316338c011f352d3ffe9172fc16a67fbebd",
+      "requirement_id": "REQ-53C3163FA2EA",
+      "requirement_text": "3. **Memory** — Agent should have access to conversation memory (entity memories, facts)",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L81"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L81",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4e44442646dcddb59ed13e031186a0c8d98f1a55c3d320afa19049a4dd159d64",
+      "requirement_id": "REQ-15E70CD8FCBA",
+      "requirement_text": "4. **Persona** — Agent's persona (from `assistantProfiles` → `personaTemplates`) must be injected",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L82"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L82",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0bc54c08b421c39fb25a1d5a799596c2b9cedb75e7d82e9b0f97f9238806cb67",
+      "requirement_id": "REQ-BC63F147AC7B",
+      "requirement_text": "5. **No looping** — Agent must see conversation history as multi-turn messages, not flat text",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L83"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L83",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d1a8c8e4e799a08c576319c2ecbf7b7ffa590300dbbd2af86139b95d451669d5",
+      "requirement_id": "REQ-52CC8A76AC2D",
+      "requirement_text": "6. **Backward compatible** — Existing team rooms, runs, work items must still work",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L84"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L84",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f4ba5a934e79eb8fb5a828358fcb02eed12dc21e9b2008c97e9c010a6b9642d0",
+      "requirement_id": "REQ-7147DEEE3AD1",
+      "requirement_text": "7. **Feature parity** — Any new Chat feature (new skill, memory improvement) should automatically work in Team Room",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+  "spec_id": "051"
+}

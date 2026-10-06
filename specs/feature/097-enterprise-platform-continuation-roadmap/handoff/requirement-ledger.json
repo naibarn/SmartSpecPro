@@ -1,0 +1,206 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L44"
+      ],
+      "authority_source": "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L44",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9ad48b4d2eff1d1516feaf3852281b763ebfd275baf0511de2f9096893f03648",
+      "requirement_id": "REQ-E0F155B97339",
+      "requirement_text": "This roadmap must inherit the core platform boundaries already established in Features 082, 083, 095, and 096.",
+      "source_spec_digest": "ed2873d8265efafae2cfe2dae0649f4def730def6d99f949f9da80a881f5dc54",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L48"
+      ],
+      "authority_source": "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L48",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "59001195b950829b71d17ac0f592cacfca9b9633597a3ea271f75b89bd182009",
+      "requirement_id": "REQ-1470E7829FF0",
+      "requirement_text": "- tenant isolation must be preserved in all reads, writes, traces, packs, and metrics",
+      "source_spec_digest": "ed2873d8265efafae2cfe2dae0649f4def730def6d99f949f9da80a881f5dc54",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L49"
+      ],
+      "authority_source": "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L49",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6b5da8345d855f6ec5183ffa9b52c59cf2b65c915012ba8198a23876da8fdc4d",
+      "requirement_id": "REQ-A9CB5CE0C2C9",
+      "requirement_text": "- untrusted external or archived content must never be promoted to trusted hot context without policy approval",
+      "source_spec_digest": "ed2873d8265efafae2cfe2dae0649f4def730def6d99f949f9da80a881f5dc54",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L50"
+      ],
+      "authority_source": "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L50",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a07f6940a0d4f6b51ad1b2421a29e1e5029c577d8cdd586e24744b1573e53916",
+      "requirement_id": "REQ-38785CD07FF9",
+      "requirement_text": "- context, trace, replay, and pack artifacts must be explainable and auditable",
+      "source_spec_digest": "ed2873d8265efafae2cfe2dae0649f4def730def6d99f949f9da80a881f5dc54",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L51"
+      ],
+      "authority_source": "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L51",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "218dd39e12b3988a871a0ae9978dda05f81e8d2c71b69f860d1b22bc5994fd8a",
+      "requirement_id": "REQ-FE3BF43BE552",
+      "requirement_text": "- security-sensitive payloads must support redaction and retention policy",
+      "source_spec_digest": "ed2873d8265efafae2cfe2dae0649f4def730def6d99f949f9da80a881f5dc54",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L52"
+      ],
+      "authority_source": "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L52",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3b1f434dad70d3c8728cb3f40b6c570700411e84c6029b71cd085c789d6741ee",
+      "requirement_id": "REQ-959BCCD3A2E2",
+      "requirement_text": "- installation, promotion, and rollback must be deterministic and reversible",
+      "source_spec_digest": "ed2873d8265efafae2cfe2dae0649f4def730def6d99f949f9da80a881f5dc54",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L53"
+      ],
+      "authority_source": "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L53",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "cb02a056bd2597d6ae49dba78fab825fb9f37abf660eadfae09cccf3b42e65fb",
+      "requirement_id": "REQ-69F87A934282",
+      "requirement_text": "- every release gate must have an explicit owner, reviewer, and evidence source",
+      "source_spec_digest": "ed2873d8265efafae2cfe2dae0649f4def730def6d99f949f9da80a881f5dc54",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L119"
+      ],
+      "authority_source": "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L119",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4be51c7afd7d63635cef41cf4f93505fe707268feb0be2104926636a9547980c",
+      "requirement_id": "REQ-DDB937073E86",
+      "requirement_text": "Every implementation phase must persist or derive these records from durable evidence, not ephemeral UI state.",
+      "source_spec_digest": "ed2873d8265efafae2cfe2dae0649f4def730def6d99f949f9da80a881f5dc54",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L170"
+      ],
+      "authority_source": "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md#L170",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7c86b20f5c95d18cbf75a75dc67364e9f519f7468183914368ee80223f265487",
+      "requirement_id": "REQ-53D9903D6519",
+      "requirement_text": "- packs validate required scope and dependencies",
+      "source_spec_digest": "ed2873d8265efafae2cfe2dae0649f4def730def6d99f949f9da80a881f5dc54",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "ed2873d8265efafae2cfe2dae0649f4def730def6d99f949f9da80a881f5dc54",
+  "spec_id": "097"
+}

@@ -1,0 +1,30 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/project/012-chat-agency-control-plane/requirements.deep-project/04-agency-flow-composer/spec.md#L57"
+      ],
+      "authority_source": "specs/project/012-chat-agency-control-plane/requirements.deep-project/04-agency-flow-composer/spec.md#L57",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8f964d12cec0e64a6f175317e0e4513d93a643142d1d1738a6a44f79561ac4f1",
+      "requirement_id": "REQ-FB8A088B5363",
+      "requirement_text": "This is required so composition remains traceable, testable, and debuggable instead of collapsing into one oversized orchestration service.",
+      "source_spec_digest": "2998e16eea1784f74dc2e101c5a46167f4155ffc692a8fcca41dd9e70830de0c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "2998e16eea1784f74dc2e101c5a46167f4155ffc692a8fcca41dd9e70830de0c",
+  "spec_id": "04"
+}

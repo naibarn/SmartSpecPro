@@ -1,0 +1,387 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "229",
+        "referenced_spec_id": "229",
+        "referencing_spec_id": "230",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2222",
+        "source_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+        "successor_spec_id": "230"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "RELATIONSHIP_CANDIDATE",
+        "predecessor_spec_id": "230",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "230",
+        "relation_text": "successor",
+        "requirement_ids": [],
+        "source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1923",
+        "source_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+        "successor_spec_id": null
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "230",
+        "referenced_spec_id": "230",
+        "referencing_spec_id": "218",
+        "relation_text": "supersedes",
+        "requirement_ids": [],
+        "source": "specs/feature/218-ai-product-development-control-plane/spec.md#L1295",
+        "source_digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+        "successor_spec_id": "218"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "230",
+        "referenced_spec_id": "230",
+        "referencing_spec_id": "221",
+        "relation_text": "supersedes",
+        "requirement_ids": [],
+        "source": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md#L3606",
+        "source_digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "successor_spec_id": "221"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "230",
+        "referenced_spec_id": "230",
+        "referencing_spec_id": "221",
+        "relation_text": "supersedes",
+        "requirement_ids": [],
+        "source": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md#L3730",
+        "source_digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "successor_spec_id": "221"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "230",
+        "referenced_spec_id": "230",
+        "referencing_spec_id": "221",
+        "relation_text": "superseded",
+        "requirement_ids": [],
+        "source": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md#L4140",
+        "source_digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
+        "successor_spec_id": "221"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "230",
+        "referenced_spec_id": "230",
+        "referencing_spec_id": "222",
+        "relation_text": "merge",
+        "requirement_ids": [],
+        "source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L10103",
+        "source_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
+        "successor_spec_id": "222"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "230",
+        "referenced_spec_id": "230",
+        "referencing_spec_id": "224",
+        "relation_text": "replaceable",
+        "requirement_ids": [],
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
+        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "successor_spec_id": "224"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "230",
+        "referenced_spec_id": "230",
+        "referencing_spec_id": "224",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2896",
+        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "successor_spec_id": "224"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-230-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 35,
+        "path": "apps/web/server/services/spec230BootstrapContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-230-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 202,
+        "path": "apps/web/server/services/spec230BootstrapContracts.ts"
+      },
+      {
+        "excerpt": "const root = mkdtempSync(path.join(tmpdir(), \"spec230-\"));",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 14,
+        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 230 repository bootstrap\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 22,
+        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
+      },
+      {
+        "excerpt": "const outside = mkdtempSync(path.join(tmpdir(), \"spec230-outside-\"));",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 37,
+        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md",
+    "digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.306374Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-26T09:26:48+07:00",
+      "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
+    },
+    "revision": "6",
+    "slug": "230-skill-first-context-retrieval-canonical",
+    "spec_id": "230",
+    "title": "Spec 230 — SmartAIHub Agentic Development Fabric"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.306374Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.306374Z",
+    "sources": [
+      {
+        "digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-230-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 35,
+        "path": "apps/web/server/services/spec230BootstrapContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-230-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 202,
+        "path": "apps/web/server/services/spec230BootstrapContracts.ts"
+      },
+      {
+        "excerpt": "const root = mkdtempSync(path.join(tmpdir(), \"spec230-\"));",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 14,
+        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 230 repository bootstrap\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 22,
+        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
+      },
+      {
+        "excerpt": "const outside = mkdtempSync(path.join(tmpdir(), \"spec230-outside-\"));",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 37,
+        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "contractVersion: \"spec-230-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 35,
+        "path": "apps/web/server/services/spec230BootstrapContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-230-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 202,
+        "path": "apps/web/server/services/spec230BootstrapContracts.ts"
+      },
+      {
+        "excerpt": "const root = mkdtempSync(path.join(tmpdir(), \"spec230-\"));",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 14,
+        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 230 repository bootstrap\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 22,
+        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
+      },
+      {
+        "excerpt": "const outside = mkdtempSync(path.join(tmpdir(), \"spec230-outside-\"));",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 37,
+        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
+      }
+    ],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 133,
+    "unresolved": 133
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.306374Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

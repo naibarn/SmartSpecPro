@@ -1,0 +1,657 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md"
+      },
+      {
+        "digest": "a3bf9426110d9c46f2b127f211684582b07540c38a6273fb64e3633c9c9dc328",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/claude-plan.md"
+      },
+      {
+        "digest": "cf7c79f05c07843790ad69fd4f328ef0478a80e8ad623d3a5ac59cd84144ada1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/claude-spec.md"
+      },
+      {
+        "digest": "65f50868df87e0ad4fdcd846f4283b7cb921ac9b61d7a0393f9be6d90666f351",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "29e821ec3ce054a2e1d41ae42aae3769138e20d917ef454bbdfb98bfd250c067",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/implementation/release-evidence.md"
+      },
+      {
+        "digest": "a9455788f61103c3388b0a3e83183e48addac5c7eb6f6d6af1bce2fc00e79e19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "a3d183c7c54e4c293b57e84c1b8e76182b9550c8fddfa8ae4b0feb9a0fd54f4f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "5bddcd7411ee59d54db10e9fdef5aa5e0a602c89759acdaf598cc3bc54a7ffec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "e668738dcde273d869db2a3f0489a9edd6be0fb453dd0dd0274210444c44d6da",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "42fcfc61debd027c62686ecd9ae7155162d4b14a14f9f1be4eb6d9a23bff3ac1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "4a874e8ba20a8a26f0a57b972be802bd8a51fb1aad6758aa6094d71736e143fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-6.md"
+      },
+      {
+        "digest": "af9466abdf1601ccc485c0d0e225ea018237c9ff6fb632bfcf30acd55806fd68",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/index.md"
+      },
+      {
+        "digest": "c493b6972070f0d2f9066b6d754dfbcffa9a854f4f78ebb40ddf4772f77f1f85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-01-schema-flags-seeds.md"
+      },
+      {
+        "digest": "47ae85581e67bc76f28ac5ef22535ba449b355b0c8ac7ddc255c312e0ce3efd3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-02-connection-oauth-router.md"
+      },
+      {
+        "digest": "e6b20968c29d2bd475eaed6500e3a564b3a3ac0fd6cfb6f88c369c7ce375bb39",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-03-sharing-policy-approvals-retention.md"
+      },
+      {
+        "digest": "2792e5e879f6bf5da606fe5a479f065b232214ff6308cd43fc763b8d35687311",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-04-transport-resolver-media-router.md"
+      },
+      {
+        "digest": "97252220fa3f61b9b15aa14293bccb0af21525255880d534d4e3ed806c82a57c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-05-settings-profile-ui.md"
+      },
+      {
+        "digest": "65c03b37cd7cee698b4da3c8520ebb802178eb841c88252caad79784f29a546c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-06-media-studio-vertical-slice.md"
+      },
+      {
+        "digest": "80f329668ad415f1023e3cb557ab4421a91930db6e1be5a04cefe8c3d4c08c9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-07-auto-storyboard-marketplace.md"
+      },
+      {
+        "digest": "d1206ba6b6a77b6560fbd35309598a738f5563dbbbbc23d9e00ac5309c946bb2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-08-storyboard-review.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md"
+      },
+      {
+        "digest": "a3bf9426110d9c46f2b127f211684582b07540c38a6273fb64e3633c9c9dc328",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/claude-plan.md"
+      },
+      {
+        "digest": "cf7c79f05c07843790ad69fd4f328ef0478a80e8ad623d3a5ac59cd84144ada1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/claude-spec.md"
+      },
+      {
+        "digest": "65f50868df87e0ad4fdcd846f4283b7cb921ac9b61d7a0393f9be6d90666f351",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "29e821ec3ce054a2e1d41ae42aae3769138e20d917ef454bbdfb98bfd250c067",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/implementation/release-evidence.md"
+      },
+      {
+        "digest": "a9455788f61103c3388b0a3e83183e48addac5c7eb6f6d6af1bce2fc00e79e19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "a3d183c7c54e4c293b57e84c1b8e76182b9550c8fddfa8ae4b0feb9a0fd54f4f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "5bddcd7411ee59d54db10e9fdef5aa5e0a602c89759acdaf598cc3bc54a7ffec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "e668738dcde273d869db2a3f0489a9edd6be0fb453dd0dd0274210444c44d6da",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "42fcfc61debd027c62686ecd9ae7155162d4b14a14f9f1be4eb6d9a23bff3ac1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "4a874e8ba20a8a26f0a57b972be802bd8a51fb1aad6758aa6094d71736e143fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-6.md"
+      },
+      {
+        "digest": "af9466abdf1601ccc485c0d0e225ea018237c9ff6fb632bfcf30acd55806fd68",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/index.md"
+      },
+      {
+        "digest": "c493b6972070f0d2f9066b6d754dfbcffa9a854f4f78ebb40ddf4772f77f1f85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-01-schema-flags-seeds.md"
+      },
+      {
+        "digest": "47ae85581e67bc76f28ac5ef22535ba449b355b0c8ac7ddc255c312e0ce3efd3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-02-connection-oauth-router.md"
+      },
+      {
+        "digest": "e6b20968c29d2bd475eaed6500e3a564b3a3ac0fd6cfb6f88c369c7ce375bb39",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-03-sharing-policy-approvals-retention.md"
+      },
+      {
+        "digest": "2792e5e879f6bf5da606fe5a479f065b232214ff6308cd43fc763b8d35687311",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-04-transport-resolver-media-router.md"
+      },
+      {
+        "digest": "97252220fa3f61b9b15aa14293bccb0af21525255880d534d4e3ed806c82a57c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-05-settings-profile-ui.md"
+      },
+      {
+        "digest": "65c03b37cd7cee698b4da3c8520ebb802178eb841c88252caad79784f29a546c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-06-media-studio-vertical-slice.md"
+      },
+      {
+        "digest": "80f329668ad415f1023e3cb557ab4421a91930db6e1be5a04cefe8c3d4c08c9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-07-auto-storyboard-marketplace.md"
+      },
+      {
+        "digest": "d1206ba6b6a77b6560fbd35309598a738f5563dbbbbc23d9e00ac5309c946bb2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-08-storyboard-review.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md"
+      },
+      {
+        "digest": "a3bf9426110d9c46f2b127f211684582b07540c38a6273fb64e3633c9c9dc328",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/claude-plan.md"
+      },
+      {
+        "digest": "cf7c79f05c07843790ad69fd4f328ef0478a80e8ad623d3a5ac59cd84144ada1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/claude-spec.md"
+      },
+      {
+        "digest": "65f50868df87e0ad4fdcd846f4283b7cb921ac9b61d7a0393f9be6d90666f351",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "29e821ec3ce054a2e1d41ae42aae3769138e20d917ef454bbdfb98bfd250c067",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/implementation/release-evidence.md"
+      },
+      {
+        "digest": "a9455788f61103c3388b0a3e83183e48addac5c7eb6f6d6af1bce2fc00e79e19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "a3d183c7c54e4c293b57e84c1b8e76182b9550c8fddfa8ae4b0feb9a0fd54f4f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "5bddcd7411ee59d54db10e9fdef5aa5e0a602c89759acdaf598cc3bc54a7ffec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "e668738dcde273d869db2a3f0489a9edd6be0fb453dd0dd0274210444c44d6da",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "42fcfc61debd027c62686ecd9ae7155162d4b14a14f9f1be4eb6d9a23bff3ac1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "4a874e8ba20a8a26f0a57b972be802bd8a51fb1aad6758aa6094d71736e143fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-6.md"
+      },
+      {
+        "digest": "af9466abdf1601ccc485c0d0e225ea018237c9ff6fb632bfcf30acd55806fd68",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/index.md"
+      },
+      {
+        "digest": "c493b6972070f0d2f9066b6d754dfbcffa9a854f4f78ebb40ddf4772f77f1f85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-01-schema-flags-seeds.md"
+      },
+      {
+        "digest": "47ae85581e67bc76f28ac5ef22535ba449b355b0c8ac7ddc255c312e0ce3efd3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-02-connection-oauth-router.md"
+      },
+      {
+        "digest": "e6b20968c29d2bd475eaed6500e3a564b3a3ac0fd6cfb6f88c369c7ce375bb39",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-03-sharing-policy-approvals-retention.md"
+      },
+      {
+        "digest": "2792e5e879f6bf5da606fe5a479f065b232214ff6308cd43fc763b8d35687311",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-04-transport-resolver-media-router.md"
+      },
+      {
+        "digest": "97252220fa3f61b9b15aa14293bccb0af21525255880d534d4e3ed806c82a57c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-05-settings-profile-ui.md"
+      },
+      {
+        "digest": "65c03b37cd7cee698b4da3c8520ebb802178eb841c88252caad79784f29a546c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-06-media-studio-vertical-slice.md"
+      },
+      {
+        "digest": "80f329668ad415f1023e3cb557ab4421a91930db6e1be5a04cefe8c3d4c08c9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-07-auto-storyboard-marketplace.md"
+      },
+      {
+        "digest": "d1206ba6b6a77b6560fbd35309598a738f5563dbbbbc23d9e00ac5309c946bb2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-08-storyboard-review.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md",
+    "digest": "776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.128613Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-06-21T07:55:10+07:00",
+      "spec_last_changed_at": "2026-06-21T07:55:10+07:00"
+    },
+    "revision": null,
+    "slug": "121-mcp-connect-media-provider-sharing",
+    "spec_id": "121",
+    "title": "Feature 121: MCP Connect for User and Group Media Provider Accounts"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.128613Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.128613Z",
+    "sources": [
+      {
+        "digest": "776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md"
+      },
+      {
+        "digest": "a3bf9426110d9c46f2b127f211684582b07540c38a6273fb64e3633c9c9dc328",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/claude-plan.md"
+      },
+      {
+        "digest": "cf7c79f05c07843790ad69fd4f328ef0478a80e8ad623d3a5ac59cd84144ada1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/claude-spec.md"
+      },
+      {
+        "digest": "65f50868df87e0ad4fdcd846f4283b7cb921ac9b61d7a0393f9be6d90666f351",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "29e821ec3ce054a2e1d41ae42aae3769138e20d917ef454bbdfb98bfd250c067",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/implementation/release-evidence.md"
+      },
+      {
+        "digest": "a9455788f61103c3388b0a3e83183e48addac5c7eb6f6d6af1bce2fc00e79e19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "a3d183c7c54e4c293b57e84c1b8e76182b9550c8fddfa8ae4b0feb9a0fd54f4f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "5bddcd7411ee59d54db10e9fdef5aa5e0a602c89759acdaf598cc3bc54a7ffec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "e668738dcde273d869db2a3f0489a9edd6be0fb453dd0dd0274210444c44d6da",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "42fcfc61debd027c62686ecd9ae7155162d4b14a14f9f1be4eb6d9a23bff3ac1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "4a874e8ba20a8a26f0a57b972be802bd8a51fb1aad6758aa6094d71736e143fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-6.md"
+      },
+      {
+        "digest": "af9466abdf1601ccc485c0d0e225ea018237c9ff6fb632bfcf30acd55806fd68",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/index.md"
+      },
+      {
+        "digest": "c493b6972070f0d2f9066b6d754dfbcffa9a854f4f78ebb40ddf4772f77f1f85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-01-schema-flags-seeds.md"
+      },
+      {
+        "digest": "47ae85581e67bc76f28ac5ef22535ba449b355b0c8ac7ddc255c312e0ce3efd3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-02-connection-oauth-router.md"
+      },
+      {
+        "digest": "e6b20968c29d2bd475eaed6500e3a564b3a3ac0fd6cfb6f88c369c7ce375bb39",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-03-sharing-policy-approvals-retention.md"
+      },
+      {
+        "digest": "2792e5e879f6bf5da606fe5a479f065b232214ff6308cd43fc763b8d35687311",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-04-transport-resolver-media-router.md"
+      },
+      {
+        "digest": "97252220fa3f61b9b15aa14293bccb0af21525255880d534d4e3ed806c82a57c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-05-settings-profile-ui.md"
+      },
+      {
+        "digest": "65c03b37cd7cee698b4da3c8520ebb802178eb841c88252caad79784f29a546c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-06-media-studio-vertical-slice.md"
+      },
+      {
+        "digest": "80f329668ad415f1023e3cb557ab4421a91930db6e1be5a04cefe8c3d4c08c9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-07-auto-storyboard-marketplace.md"
+      },
+      {
+        "digest": "d1206ba6b6a77b6560fbd35309598a738f5563dbbbbc23d9e00ac5309c946bb2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-08-storyboard-review.md"
+      },
+      {
+        "digest": "fc01d30a5b1ce60bb9324e110f5e9e270c9ba43a61f95063aaaf0587e696bcec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-09-observability-release-gates.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md"
+      },
+      {
+        "digest": "a3bf9426110d9c46f2b127f211684582b07540c38a6273fb64e3633c9c9dc328",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/claude-plan.md"
+      },
+      {
+        "digest": "cf7c79f05c07843790ad69fd4f328ef0478a80e8ad623d3a5ac59cd84144ada1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/claude-spec.md"
+      },
+      {
+        "digest": "65f50868df87e0ad4fdcd846f4283b7cb921ac9b61d7a0393f9be6d90666f351",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "29e821ec3ce054a2e1d41ae42aae3769138e20d917ef454bbdfb98bfd250c067",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/implementation/release-evidence.md"
+      },
+      {
+        "digest": "a9455788f61103c3388b0a3e83183e48addac5c7eb6f6d6af1bce2fc00e79e19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "a3d183c7c54e4c293b57e84c1b8e76182b9550c8fddfa8ae4b0feb9a0fd54f4f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "5bddcd7411ee59d54db10e9fdef5aa5e0a602c89759acdaf598cc3bc54a7ffec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "e668738dcde273d869db2a3f0489a9edd6be0fb453dd0dd0274210444c44d6da",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "42fcfc61debd027c62686ecd9ae7155162d4b14a14f9f1be4eb6d9a23bff3ac1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "4a874e8ba20a8a26f0a57b972be802bd8a51fb1aad6758aa6094d71736e143fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/reviews/self-review-round-6.md"
+      },
+      {
+        "digest": "af9466abdf1601ccc485c0d0e225ea018237c9ff6fb632bfcf30acd55806fd68",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/index.md"
+      },
+      {
+        "digest": "c493b6972070f0d2f9066b6d754dfbcffa9a854f4f78ebb40ddf4772f77f1f85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-01-schema-flags-seeds.md"
+      },
+      {
+        "digest": "47ae85581e67bc76f28ac5ef22535ba449b355b0c8ac7ddc255c312e0ce3efd3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-02-connection-oauth-router.md"
+      },
+      {
+        "digest": "e6b20968c29d2bd475eaed6500e3a564b3a3ac0fd6cfb6f88c369c7ce375bb39",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-03-sharing-policy-approvals-retention.md"
+      },
+      {
+        "digest": "2792e5e879f6bf5da606fe5a479f065b232214ff6308cd43fc763b8d35687311",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-04-transport-resolver-media-router.md"
+      },
+      {
+        "digest": "97252220fa3f61b9b15aa14293bccb0af21525255880d534d4e3ed806c82a57c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-05-settings-profile-ui.md"
+      },
+      {
+        "digest": "65c03b37cd7cee698b4da3c8520ebb802178eb841c88252caad79784f29a546c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-06-media-studio-vertical-slice.md"
+      },
+      {
+        "digest": "80f329668ad415f1023e3cb557ab4421a91930db6e1be5a04cefe8c3d4c08c9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-07-auto-storyboard-marketplace.md"
+      },
+      {
+        "digest": "d1206ba6b6a77b6560fbd35309598a738f5563dbbbbc23d9e00ac5309c946bb2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-08-storyboard-review.md"
+      },
+      {
+        "digest": "fc01d30a5b1ce60bb9324e110f5e9e270c9ba43a61f95063aaaf0587e696bcec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-09-observability-release-gates.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 254,
+    "unresolved": 254
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.128613Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

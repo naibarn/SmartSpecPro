@@ -1,0 +1,118 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/004-desktop-app/spec.md#L47"
+      ],
+      "authority_source": "specs/feature/004-desktop-app/spec.md#L47",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "489dfb13992ab437ff47e643defb50499605547457e694447058803322635a43",
+      "requirement_id": "REQ-3D8ADE51FF50",
+      "requirement_text": "- Desktop must not embed Control Plane API keys or provider keys in the bundle.",
+      "source_spec_digest": "59b1e20bd3dc0766c7f8ac968988d641330be2709180113eaf067ac533ac46c8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/004-desktop-app/spec.md#L48"
+      ],
+      "authority_source": "specs/feature/004-desktop-app/spec.md#L48",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "227ed82b054c5a55ddc7cd7087cbe7713e61a70827a3dc55e48763d8228e2c4b",
+      "requirement_id": "REQ-571E673881F0",
+      "requirement_text": "- Optional local protection:",
+      "source_spec_digest": "59b1e20bd3dc0766c7f8ac968988d641330be2709180113eaf067ac533ac46c8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/004-desktop-app/spec.md#L49"
+      ],
+      "authority_source": "specs/feature/004-desktop-app/spec.md#L49",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "71baa5e9c218343f10f28c9e5857ff46863a4c8b49047b3fb45be086a663ceb1",
+      "requirement_id": "REQ-373BAB72F249",
+      "requirement_text": "- Desktop sends `Authorization: Bearer <VITE_PY_PROXY_TOKEN>` to python-backend",
+      "source_spec_digest": "59b1e20bd3dc0766c7f8ac968988d641330be2709180113eaf067ac533ac46c8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/004-desktop-app/spec.md#L50"
+      ],
+      "authority_source": "specs/feature/004-desktop-app/spec.md#L50",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e6569f4353e67dd00703b831e38721196bd96449b316c4ad759adc418ca39a97",
+      "requirement_id": "REQ-A1D196C5B381",
+      "requirement_text": "- python-backend enforces `SMARTSPEC_PROXY_TOKEN`",
+      "source_spec_digest": "59b1e20bd3dc0766c7f8ac968988d641330be2709180113eaf067ac533ac46c8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/004-desktop-app/spec.md#L51"
+      ],
+      "authority_source": "specs/feature/004-desktop-app/spec.md#L51",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7eb63d17500727c0d43fcdd8dca1e68ac8a6e5a4d3e9c124fd06ed82c9f860c4",
+      "requirement_id": "REQ-7BCB3DD8BA33",
+      "requirement_text": "- Workspace path + file upload limits enforced in UI (max size) + server-side validation (Spec007/003).",
+      "source_spec_digest": "59b1e20bd3dc0766c7f8ac968988d641330be2709180113eaf067ac533ac46c8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "59b1e20bd3dc0766c7f8ac968988d641330be2709180113eaf067ac533ac46c8",
+  "spec_id": "004"
+}

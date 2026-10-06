@@ -1,0 +1,597 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/033-Browser-Automation-Policy/spec.md"
+      },
+      {
+        "digest": "8b072eca5b599fbcfe5aa7488032b8eb15b53dbea92d025c2eacc4a87231a5ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "15f4affcc80234eb90265a4a563396afdb36f89b280cb486a4f8cb24ec814e19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "8d214329af79f1ce82bd730b150f30ab18f828b28abb0b823a06635e50d97cba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-01-review.md"
+      },
+      {
+        "digest": "3339cfbdd6329040f74788f3f49d9a619537f68d31856dad771323d2bad3e0ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-02-review.md"
+      },
+      {
+        "digest": "52e9d5b797c5ced2e90523f1d6330861783b3c063048552bb4b6c777f345456a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-03-review.md"
+      },
+      {
+        "digest": "97b1b56598e6ddfc26de0d78af575d57a9d17dcb8c2396e16f50fafe0de834c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-04-review.md"
+      },
+      {
+        "digest": "3174141bdf041686eb83a4730dee3c4ecbd21e618421d06afdc15cccc624dd87",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-05-review.md"
+      },
+      {
+        "digest": "8bcb1b66e1b82174129f20949f2fafb051b65d14ffd3e024019db5ff7c8cc623",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-06-review.md"
+      },
+      {
+        "digest": "3669b36c8e0f1d07cb3beef53355d19bad6d7c7adcbf435274928517f1c273df",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-07-review.md"
+      },
+      {
+        "digest": "5daae51b16fa7bb4df3675bd8b384957d506e4caa21f44a75168508d8b59eef8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/index.md"
+      },
+      {
+        "digest": "2bdcb506e7cb5798b3e4f68dfebb4f79f74944f575fd772f650d3bd44c7f252a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-01-policy-storage-and-entitlements.md"
+      },
+      {
+        "digest": "0398eb71bca454b6688a477afa62037e1e885e7201379a54d2ee2ebdabb4b0bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-02-policy-engine-contract-and-classification.md"
+      },
+      {
+        "digest": "3f99da40623d9aff22e9d4aafacf9b6152bd1695c00e0ccfe9cf4f564f2cf3ef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-03-approval-binding-and-python-contract.md"
+      },
+      {
+        "digest": "643cc6533c29ad8ee49dd47275ab0cf68dbdaa647bf5f6fb2f497e95c301e8c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-04-execution-surface-enforcement.md"
+      },
+      {
+        "digest": "97f03ce9ad317553a8b0175f7515fd664c2582a8f81b7eb937ae01ca1738df13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-05-data-handling-and-trust-controls.md"
+      },
+      {
+        "digest": "476325f16ea6b6bf38de1670caa1d3c3a44d5eb66b9db9a9ce247c56e23b79fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-06-audit-observability-and-incident-controls.md"
+      },
+      {
+        "digest": "9877d1be51c674c51178d1b1d904d2c3712caeb4a5e83dec3021c798c85baca2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-07-rollout-migrations-and-release-gates.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/033-Browser-Automation-Policy/spec.md"
+      },
+      {
+        "digest": "8b072eca5b599fbcfe5aa7488032b8eb15b53dbea92d025c2eacc4a87231a5ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "15f4affcc80234eb90265a4a563396afdb36f89b280cb486a4f8cb24ec814e19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "8d214329af79f1ce82bd730b150f30ab18f828b28abb0b823a06635e50d97cba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-01-review.md"
+      },
+      {
+        "digest": "3339cfbdd6329040f74788f3f49d9a619537f68d31856dad771323d2bad3e0ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-02-review.md"
+      },
+      {
+        "digest": "52e9d5b797c5ced2e90523f1d6330861783b3c063048552bb4b6c777f345456a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-03-review.md"
+      },
+      {
+        "digest": "97b1b56598e6ddfc26de0d78af575d57a9d17dcb8c2396e16f50fafe0de834c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-04-review.md"
+      },
+      {
+        "digest": "3174141bdf041686eb83a4730dee3c4ecbd21e618421d06afdc15cccc624dd87",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-05-review.md"
+      },
+      {
+        "digest": "8bcb1b66e1b82174129f20949f2fafb051b65d14ffd3e024019db5ff7c8cc623",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-06-review.md"
+      },
+      {
+        "digest": "3669b36c8e0f1d07cb3beef53355d19bad6d7c7adcbf435274928517f1c273df",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-07-review.md"
+      },
+      {
+        "digest": "5daae51b16fa7bb4df3675bd8b384957d506e4caa21f44a75168508d8b59eef8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/index.md"
+      },
+      {
+        "digest": "2bdcb506e7cb5798b3e4f68dfebb4f79f74944f575fd772f650d3bd44c7f252a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-01-policy-storage-and-entitlements.md"
+      },
+      {
+        "digest": "0398eb71bca454b6688a477afa62037e1e885e7201379a54d2ee2ebdabb4b0bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-02-policy-engine-contract-and-classification.md"
+      },
+      {
+        "digest": "3f99da40623d9aff22e9d4aafacf9b6152bd1695c00e0ccfe9cf4f564f2cf3ef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-03-approval-binding-and-python-contract.md"
+      },
+      {
+        "digest": "643cc6533c29ad8ee49dd47275ab0cf68dbdaa647bf5f6fb2f497e95c301e8c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-04-execution-surface-enforcement.md"
+      },
+      {
+        "digest": "97f03ce9ad317553a8b0175f7515fd664c2582a8f81b7eb937ae01ca1738df13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-05-data-handling-and-trust-controls.md"
+      },
+      {
+        "digest": "476325f16ea6b6bf38de1670caa1d3c3a44d5eb66b9db9a9ce247c56e23b79fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-06-audit-observability-and-incident-controls.md"
+      },
+      {
+        "digest": "9877d1be51c674c51178d1b1d904d2c3712caeb4a5e83dec3021c798c85baca2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-07-rollout-migrations-and-release-gates.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/033-Browser-Automation-Policy/spec.md"
+      },
+      {
+        "digest": "8b072eca5b599fbcfe5aa7488032b8eb15b53dbea92d025c2eacc4a87231a5ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "15f4affcc80234eb90265a4a563396afdb36f89b280cb486a4f8cb24ec814e19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "8d214329af79f1ce82bd730b150f30ab18f828b28abb0b823a06635e50d97cba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-01-review.md"
+      },
+      {
+        "digest": "3339cfbdd6329040f74788f3f49d9a619537f68d31856dad771323d2bad3e0ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-02-review.md"
+      },
+      {
+        "digest": "52e9d5b797c5ced2e90523f1d6330861783b3c063048552bb4b6c777f345456a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-03-review.md"
+      },
+      {
+        "digest": "97b1b56598e6ddfc26de0d78af575d57a9d17dcb8c2396e16f50fafe0de834c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-04-review.md"
+      },
+      {
+        "digest": "3174141bdf041686eb83a4730dee3c4ecbd21e618421d06afdc15cccc624dd87",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-05-review.md"
+      },
+      {
+        "digest": "8bcb1b66e1b82174129f20949f2fafb051b65d14ffd3e024019db5ff7c8cc623",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-06-review.md"
+      },
+      {
+        "digest": "3669b36c8e0f1d07cb3beef53355d19bad6d7c7adcbf435274928517f1c273df",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-07-review.md"
+      },
+      {
+        "digest": "5daae51b16fa7bb4df3675bd8b384957d506e4caa21f44a75168508d8b59eef8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/index.md"
+      },
+      {
+        "digest": "2bdcb506e7cb5798b3e4f68dfebb4f79f74944f575fd772f650d3bd44c7f252a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-01-policy-storage-and-entitlements.md"
+      },
+      {
+        "digest": "0398eb71bca454b6688a477afa62037e1e885e7201379a54d2ee2ebdabb4b0bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-02-policy-engine-contract-and-classification.md"
+      },
+      {
+        "digest": "3f99da40623d9aff22e9d4aafacf9b6152bd1695c00e0ccfe9cf4f564f2cf3ef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-03-approval-binding-and-python-contract.md"
+      },
+      {
+        "digest": "643cc6533c29ad8ee49dd47275ab0cf68dbdaa647bf5f6fb2f497e95c301e8c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-04-execution-surface-enforcement.md"
+      },
+      {
+        "digest": "97f03ce9ad317553a8b0175f7515fd664c2582a8f81b7eb937ae01ca1738df13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-05-data-handling-and-trust-controls.md"
+      },
+      {
+        "digest": "476325f16ea6b6bf38de1670caa1d3c3a44d5eb66b9db9a9ce247c56e23b79fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-06-audit-observability-and-incident-controls.md"
+      },
+      {
+        "digest": "9877d1be51c674c51178d1b1d904d2c3712caeb4a5e83dec3021c798c85baca2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-07-rollout-migrations-and-release-gates.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/033-Browser-Automation-Policy/spec.md",
+    "digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.532756Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-03-11T13:17:59+07:00",
+      "spec_last_changed_at": "2026-03-11T13:17:59+07:00"
+    },
+    "revision": null,
+    "slug": "033-Browser-Automation-Policy",
+    "spec_id": "033",
+    "title": "Feature 033: Browser Automation Policy Engine"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.532756Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.532756Z",
+    "sources": [
+      {
+        "digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/033-Browser-Automation-Policy/spec.md"
+      },
+      {
+        "digest": "8b072eca5b599fbcfe5aa7488032b8eb15b53dbea92d025c2eacc4a87231a5ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "15f4affcc80234eb90265a4a563396afdb36f89b280cb486a4f8cb24ec814e19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "8d214329af79f1ce82bd730b150f30ab18f828b28abb0b823a06635e50d97cba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-01-review.md"
+      },
+      {
+        "digest": "3339cfbdd6329040f74788f3f49d9a619537f68d31856dad771323d2bad3e0ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-02-review.md"
+      },
+      {
+        "digest": "52e9d5b797c5ced2e90523f1d6330861783b3c063048552bb4b6c777f345456a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-03-review.md"
+      },
+      {
+        "digest": "97b1b56598e6ddfc26de0d78af575d57a9d17dcb8c2396e16f50fafe0de834c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-04-review.md"
+      },
+      {
+        "digest": "3174141bdf041686eb83a4730dee3c4ecbd21e618421d06afdc15cccc624dd87",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-05-review.md"
+      },
+      {
+        "digest": "8bcb1b66e1b82174129f20949f2fafb051b65d14ffd3e024019db5ff7c8cc623",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-06-review.md"
+      },
+      {
+        "digest": "3669b36c8e0f1d07cb3beef53355d19bad6d7c7adcbf435274928517f1c273df",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-07-review.md"
+      },
+      {
+        "digest": "5daae51b16fa7bb4df3675bd8b384957d506e4caa21f44a75168508d8b59eef8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/index.md"
+      },
+      {
+        "digest": "2bdcb506e7cb5798b3e4f68dfebb4f79f74944f575fd772f650d3bd44c7f252a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-01-policy-storage-and-entitlements.md"
+      },
+      {
+        "digest": "0398eb71bca454b6688a477afa62037e1e885e7201379a54d2ee2ebdabb4b0bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-02-policy-engine-contract-and-classification.md"
+      },
+      {
+        "digest": "3f99da40623d9aff22e9d4aafacf9b6152bd1695c00e0ccfe9cf4f564f2cf3ef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-03-approval-binding-and-python-contract.md"
+      },
+      {
+        "digest": "643cc6533c29ad8ee49dd47275ab0cf68dbdaa647bf5f6fb2f497e95c301e8c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-04-execution-surface-enforcement.md"
+      },
+      {
+        "digest": "97f03ce9ad317553a8b0175f7515fd664c2582a8f81b7eb937ae01ca1738df13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-05-data-handling-and-trust-controls.md"
+      },
+      {
+        "digest": "476325f16ea6b6bf38de1670caa1d3c3a44d5eb66b9db9a9ce247c56e23b79fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-06-audit-observability-and-incident-controls.md"
+      },
+      {
+        "digest": "9877d1be51c674c51178d1b1d904d2c3712caeb4a5e83dec3021c798c85baca2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-07-rollout-migrations-and-release-gates.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/033-Browser-Automation-Policy/spec.md"
+      },
+      {
+        "digest": "8b072eca5b599fbcfe5aa7488032b8eb15b53dbea92d025c2eacc4a87231a5ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "15f4affcc80234eb90265a4a563396afdb36f89b280cb486a4f8cb24ec814e19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "8d214329af79f1ce82bd730b150f30ab18f828b28abb0b823a06635e50d97cba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-01-review.md"
+      },
+      {
+        "digest": "3339cfbdd6329040f74788f3f49d9a619537f68d31856dad771323d2bad3e0ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-02-review.md"
+      },
+      {
+        "digest": "52e9d5b797c5ced2e90523f1d6330861783b3c063048552bb4b6c777f345456a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-03-review.md"
+      },
+      {
+        "digest": "97b1b56598e6ddfc26de0d78af575d57a9d17dcb8c2396e16f50fafe0de834c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-04-review.md"
+      },
+      {
+        "digest": "3174141bdf041686eb83a4730dee3c4ecbd21e618421d06afdc15cccc624dd87",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-05-review.md"
+      },
+      {
+        "digest": "8bcb1b66e1b82174129f20949f2fafb051b65d14ffd3e024019db5ff7c8cc623",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-06-review.md"
+      },
+      {
+        "digest": "3669b36c8e0f1d07cb3beef53355d19bad6d7c7adcbf435274928517f1c273df",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/reviews/section-07-review.md"
+      },
+      {
+        "digest": "5daae51b16fa7bb4df3675bd8b384957d506e4caa21f44a75168508d8b59eef8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/index.md"
+      },
+      {
+        "digest": "2bdcb506e7cb5798b3e4f68dfebb4f79f74944f575fd772f650d3bd44c7f252a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-01-policy-storage-and-entitlements.md"
+      },
+      {
+        "digest": "0398eb71bca454b6688a477afa62037e1e885e7201379a54d2ee2ebdabb4b0bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-02-policy-engine-contract-and-classification.md"
+      },
+      {
+        "digest": "3f99da40623d9aff22e9d4aafacf9b6152bd1695c00e0ccfe9cf4f564f2cf3ef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-03-approval-binding-and-python-contract.md"
+      },
+      {
+        "digest": "643cc6533c29ad8ee49dd47275ab0cf68dbdaa647bf5f6fb2f497e95c301e8c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-04-execution-surface-enforcement.md"
+      },
+      {
+        "digest": "97f03ce9ad317553a8b0175f7515fd664c2582a8f81b7eb937ae01ca1738df13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-05-data-handling-and-trust-controls.md"
+      },
+      {
+        "digest": "476325f16ea6b6bf38de1670caa1d3c3a44d5eb66b9db9a9ce247c56e23b79fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-06-audit-observability-and-incident-controls.md"
+      },
+      {
+        "digest": "9877d1be51c674c51178d1b1d904d2c3712caeb4a5e83dec3021c798c85baca2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/033-Browser-Automation-Policy/sections/section-07-rollout-migrations-and-release-gates.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 48,
+    "unresolved": 48
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.532756Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

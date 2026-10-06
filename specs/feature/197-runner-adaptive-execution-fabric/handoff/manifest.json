@@ -1,0 +1,497 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/spec.md"
+      },
+      {
+        "digest": "1aa992c4e5e2781a4e08db991d5c86c86c2ce0148854b3af226b209d644257c9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
+      },
+      {
+        "digest": "6c23a82ad95e81cc09a81c232be58b65d55bc9939fb7740ef27fcd609fb2ac57",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
+      },
+      {
+        "digest": "947ac2090b5b83a9cf0f5679064275a788e77e8befffbea63572358be15d91f0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
+      },
+      {
+        "digest": "b2f5398731de123c05edb6b474edbc48f2d89dfd392cef2058fccaa8c4dfd3bb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "62abb6ab04b168fc558d25d23c70ae95275323d2c3f08c50abfaf678ace7c1e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
+      },
+      {
+        "digest": "3ca763d7fe9543840fa1da0bac40e0962cd3e2af9965ad84844c93e0c2a748aa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "6e1a6c6939c88af609ca3c6a1a6ed635de50c8b3d3bef4f6f9218ab8adee4d06",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
+      },
+      {
+        "digest": "e7a7a4e57c142db59edc9795d95424c3371d15165804d59a27431339af5286e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
+      },
+      {
+        "digest": "ecaa345025078e5b48ebd62018f2cb0e3f3491a469e96292d05c112ec6ca12bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
+      },
+      {
+        "digest": "352ba30dfd173c1409fc9234f868b3d0431cc980f78ca6549e3d85de9f7ad9f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
+      },
+      {
+        "digest": "44eb18f9b7b937544f4d56b3a019b2ad93c2a1679d5c1ce6c6ce1ab00cce6d87",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
+      },
+      {
+        "digest": "7ce057b3c98143e74fa882c7fda2db7cbd659f3452740981e03a99301ede012e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
+      },
+      {
+        "digest": "efd1eb3ad704a3661a550dbc7957904f67ab0993b5ed1935bbe188f864e2d1bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/spec.md"
+      },
+      {
+        "digest": "1aa992c4e5e2781a4e08db991d5c86c86c2ce0148854b3af226b209d644257c9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
+      },
+      {
+        "digest": "6c23a82ad95e81cc09a81c232be58b65d55bc9939fb7740ef27fcd609fb2ac57",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
+      },
+      {
+        "digest": "947ac2090b5b83a9cf0f5679064275a788e77e8befffbea63572358be15d91f0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
+      },
+      {
+        "digest": "b2f5398731de123c05edb6b474edbc48f2d89dfd392cef2058fccaa8c4dfd3bb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "62abb6ab04b168fc558d25d23c70ae95275323d2c3f08c50abfaf678ace7c1e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
+      },
+      {
+        "digest": "3ca763d7fe9543840fa1da0bac40e0962cd3e2af9965ad84844c93e0c2a748aa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "6e1a6c6939c88af609ca3c6a1a6ed635de50c8b3d3bef4f6f9218ab8adee4d06",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
+      },
+      {
+        "digest": "e7a7a4e57c142db59edc9795d95424c3371d15165804d59a27431339af5286e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
+      },
+      {
+        "digest": "ecaa345025078e5b48ebd62018f2cb0e3f3491a469e96292d05c112ec6ca12bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
+      },
+      {
+        "digest": "352ba30dfd173c1409fc9234f868b3d0431cc980f78ca6549e3d85de9f7ad9f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
+      },
+      {
+        "digest": "44eb18f9b7b937544f4d56b3a019b2ad93c2a1679d5c1ce6c6ce1ab00cce6d87",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
+      },
+      {
+        "digest": "7ce057b3c98143e74fa882c7fda2db7cbd659f3452740981e03a99301ede012e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
+      },
+      {
+        "digest": "efd1eb3ad704a3661a550dbc7957904f67ab0993b5ed1935bbe188f864e2d1bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/spec.md"
+      },
+      {
+        "digest": "1aa992c4e5e2781a4e08db991d5c86c86c2ce0148854b3af226b209d644257c9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
+      },
+      {
+        "digest": "6c23a82ad95e81cc09a81c232be58b65d55bc9939fb7740ef27fcd609fb2ac57",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
+      },
+      {
+        "digest": "947ac2090b5b83a9cf0f5679064275a788e77e8befffbea63572358be15d91f0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
+      },
+      {
+        "digest": "b2f5398731de123c05edb6b474edbc48f2d89dfd392cef2058fccaa8c4dfd3bb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "62abb6ab04b168fc558d25d23c70ae95275323d2c3f08c50abfaf678ace7c1e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
+      },
+      {
+        "digest": "3ca763d7fe9543840fa1da0bac40e0962cd3e2af9965ad84844c93e0c2a748aa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "6e1a6c6939c88af609ca3c6a1a6ed635de50c8b3d3bef4f6f9218ab8adee4d06",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
+      },
+      {
+        "digest": "e7a7a4e57c142db59edc9795d95424c3371d15165804d59a27431339af5286e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
+      },
+      {
+        "digest": "ecaa345025078e5b48ebd62018f2cb0e3f3491a469e96292d05c112ec6ca12bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
+      },
+      {
+        "digest": "352ba30dfd173c1409fc9234f868b3d0431cc980f78ca6549e3d85de9f7ad9f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
+      },
+      {
+        "digest": "44eb18f9b7b937544f4d56b3a019b2ad93c2a1679d5c1ce6c6ce1ab00cce6d87",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
+      },
+      {
+        "digest": "7ce057b3c98143e74fa882c7fda2db7cbd659f3452740981e03a99301ede012e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
+      },
+      {
+        "digest": "efd1eb3ad704a3661a550dbc7957904f67ab0993b5ed1935bbe188f864e2d1bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/197-runner-adaptive-execution-fabric/spec.md",
+    "digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.682295Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-26T09:26:48+07:00",
+      "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
+    },
+    "revision": null,
+    "slug": "197-runner-adaptive-execution-fabric",
+    "spec_id": "197",
+    "title": "Feature 197 — SmartAIHub Runner Adaptive Execution Fabric"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.682295Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.682295Z",
+    "sources": [
+      {
+        "digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/spec.md"
+      },
+      {
+        "digest": "1aa992c4e5e2781a4e08db991d5c86c86c2ce0148854b3af226b209d644257c9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
+      },
+      {
+        "digest": "6c23a82ad95e81cc09a81c232be58b65d55bc9939fb7740ef27fcd609fb2ac57",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
+      },
+      {
+        "digest": "947ac2090b5b83a9cf0f5679064275a788e77e8befffbea63572358be15d91f0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
+      },
+      {
+        "digest": "b2f5398731de123c05edb6b474edbc48f2d89dfd392cef2058fccaa8c4dfd3bb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "62abb6ab04b168fc558d25d23c70ae95275323d2c3f08c50abfaf678ace7c1e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
+      },
+      {
+        "digest": "3ca763d7fe9543840fa1da0bac40e0962cd3e2af9965ad84844c93e0c2a748aa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "6e1a6c6939c88af609ca3c6a1a6ed635de50c8b3d3bef4f6f9218ab8adee4d06",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
+      },
+      {
+        "digest": "e7a7a4e57c142db59edc9795d95424c3371d15165804d59a27431339af5286e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
+      },
+      {
+        "digest": "ecaa345025078e5b48ebd62018f2cb0e3f3491a469e96292d05c112ec6ca12bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
+      },
+      {
+        "digest": "352ba30dfd173c1409fc9234f868b3d0431cc980f78ca6549e3d85de9f7ad9f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
+      },
+      {
+        "digest": "44eb18f9b7b937544f4d56b3a019b2ad93c2a1679d5c1ce6c6ce1ab00cce6d87",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
+      },
+      {
+        "digest": "7ce057b3c98143e74fa882c7fda2db7cbd659f3452740981e03a99301ede012e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
+      },
+      {
+        "digest": "efd1eb3ad704a3661a550dbc7957904f67ab0993b5ed1935bbe188f864e2d1bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/spec.md"
+      },
+      {
+        "digest": "1aa992c4e5e2781a4e08db991d5c86c86c2ce0148854b3af226b209d644257c9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
+      },
+      {
+        "digest": "6c23a82ad95e81cc09a81c232be58b65d55bc9939fb7740ef27fcd609fb2ac57",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
+      },
+      {
+        "digest": "947ac2090b5b83a9cf0f5679064275a788e77e8befffbea63572358be15d91f0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
+      },
+      {
+        "digest": "b2f5398731de123c05edb6b474edbc48f2d89dfd392cef2058fccaa8c4dfd3bb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "62abb6ab04b168fc558d25d23c70ae95275323d2c3f08c50abfaf678ace7c1e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
+      },
+      {
+        "digest": "3ca763d7fe9543840fa1da0bac40e0962cd3e2af9965ad84844c93e0c2a748aa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "6e1a6c6939c88af609ca3c6a1a6ed635de50c8b3d3bef4f6f9218ab8adee4d06",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
+      },
+      {
+        "digest": "e7a7a4e57c142db59edc9795d95424c3371d15165804d59a27431339af5286e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
+      },
+      {
+        "digest": "ecaa345025078e5b48ebd62018f2cb0e3f3491a469e96292d05c112ec6ca12bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
+      },
+      {
+        "digest": "352ba30dfd173c1409fc9234f868b3d0431cc980f78ca6549e3d85de9f7ad9f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
+      },
+      {
+        "digest": "44eb18f9b7b937544f4d56b3a019b2ad93c2a1679d5c1ce6c6ce1ab00cce6d87",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
+      },
+      {
+        "digest": "7ce057b3c98143e74fa882c7fda2db7cbd659f3452740981e03a99301ede012e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
+      },
+      {
+        "digest": "efd1eb3ad704a3661a550dbc7957904f67ab0993b5ed1935bbe188f864e2d1bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 157,
+    "unresolved": 157
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.682295Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

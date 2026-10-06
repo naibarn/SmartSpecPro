@@ -1,0 +1,532 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md"
+      },
+      {
+        "digest": "7910e0fd35fe1afdd929246c1849b7ac0cd9cfe1b719142b2cb69be9a59511c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
+      },
+      {
+        "digest": "2d55201976d3d87d3c00e7ca621e11ed2f7cf537dbfde6c191983fbfe37a6e49",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
+      },
+      {
+        "digest": "b104a716c8efac39e79c006680c7e22924ed693bd13ee7662ab21fbb27a41fe8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "fbc43769b436efbac1287b0ab149d5648289115a348e1cbb3d52ed2eba65e554",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
+      },
+      {
+        "digest": "e32af081c5146eb1412b37a8d65f2df34c4953d87ac731017f0a7677a40e6ee0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
+      },
+      {
+        "digest": "fb9399c908c1d61f42dc1e17fcd05084a77375d19c5c5ca2120eb2757b87c556",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
+      },
+      {
+        "digest": "0885232c87ce57623e6d407640d59b286aea18c3fd421a6bf89d3294493ffdf3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
+      },
+      {
+        "digest": "dc551c966487423350dc32743c6cb236d25ddbbe146a2df17620e9989989a4e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
+      },
+      {
+        "digest": "76ea4c81c05a083c04604401c2078dcb6a000871bc3f51f50d418cad1f29c591",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
+      },
+      {
+        "digest": "c077bc048806b4132c60eda4f75a483f530b31861579ac9ca5a7a2f582e926e8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
+      },
+      {
+        "digest": "c0bd1de4bac2c5fdb58235fc086d3d5ac7ae3203191e804145713f40d648e9a7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md"
+      },
+      {
+        "digest": "7910e0fd35fe1afdd929246c1849b7ac0cd9cfe1b719142b2cb69be9a59511c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
+      },
+      {
+        "digest": "2d55201976d3d87d3c00e7ca621e11ed2f7cf537dbfde6c191983fbfe37a6e49",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
+      },
+      {
+        "digest": "b104a716c8efac39e79c006680c7e22924ed693bd13ee7662ab21fbb27a41fe8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "fbc43769b436efbac1287b0ab149d5648289115a348e1cbb3d52ed2eba65e554",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
+      },
+      {
+        "digest": "e32af081c5146eb1412b37a8d65f2df34c4953d87ac731017f0a7677a40e6ee0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
+      },
+      {
+        "digest": "fb9399c908c1d61f42dc1e17fcd05084a77375d19c5c5ca2120eb2757b87c556",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
+      },
+      {
+        "digest": "0885232c87ce57623e6d407640d59b286aea18c3fd421a6bf89d3294493ffdf3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
+      },
+      {
+        "digest": "dc551c966487423350dc32743c6cb236d25ddbbe146a2df17620e9989989a4e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
+      },
+      {
+        "digest": "76ea4c81c05a083c04604401c2078dcb6a000871bc3f51f50d418cad1f29c591",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
+      },
+      {
+        "digest": "c077bc048806b4132c60eda4f75a483f530b31861579ac9ca5a7a2f582e926e8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
+      },
+      {
+        "digest": "c0bd1de4bac2c5fdb58235fc086d3d5ac7ae3203191e804145713f40d648e9a7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
+      },
+      {
+        "excerpt": "Note: The execute-turn endpoint was removed in spec-051 section-04.",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 7,
+        "path": "python-backend/app/api/team_orchestrator_api.py"
+      },
+      {
+        "excerpt": "# This module has been removed as part of spec-051 section-04.",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1,
+        "path": "python-backend/app/core/rate_limit.py"
+      },
+      {
+        "excerpt": "in spec-051 section-04. Tests for those have been removed.",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 11,
+        "path": "python-backend/tests/test_team_orchestrator_security.py"
+      },
+      {
+        "excerpt": "# Tests removed: app.core.rate_limit was deleted in spec-051 section-04.",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 1,
+        "path": "python-backend/tests/unit/core/test_rate_limit.py"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md"
+      },
+      {
+        "digest": "7910e0fd35fe1afdd929246c1849b7ac0cd9cfe1b719142b2cb69be9a59511c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
+      },
+      {
+        "digest": "2d55201976d3d87d3c00e7ca621e11ed2f7cf537dbfde6c191983fbfe37a6e49",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
+      },
+      {
+        "digest": "b104a716c8efac39e79c006680c7e22924ed693bd13ee7662ab21fbb27a41fe8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "fbc43769b436efbac1287b0ab149d5648289115a348e1cbb3d52ed2eba65e554",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
+      },
+      {
+        "digest": "e32af081c5146eb1412b37a8d65f2df34c4953d87ac731017f0a7677a40e6ee0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
+      },
+      {
+        "digest": "fb9399c908c1d61f42dc1e17fcd05084a77375d19c5c5ca2120eb2757b87c556",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
+      },
+      {
+        "digest": "0885232c87ce57623e6d407640d59b286aea18c3fd421a6bf89d3294493ffdf3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
+      },
+      {
+        "digest": "dc551c966487423350dc32743c6cb236d25ddbbe146a2df17620e9989989a4e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
+      },
+      {
+        "digest": "76ea4c81c05a083c04604401c2078dcb6a000871bc3f51f50d418cad1f29c591",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
+      },
+      {
+        "digest": "c077bc048806b4132c60eda4f75a483f530b31861579ac9ca5a7a2f582e926e8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
+      },
+      {
+        "digest": "c0bd1de4bac2c5fdb58235fc086d3d5ac7ae3203191e804145713f40d648e9a7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md",
+    "digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.655116Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-03-22T10:13:38+07:00",
+      "spec_last_changed_at": "2026-03-22T10:13:38+07:00"
+    },
+    "revision": null,
+    "slug": "051-team-room-reuse-chat-pipeline",
+    "spec_id": "051",
+    "title": "Feature 051: Team Room Reuse Chat Pipeline"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.655116Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.655116Z",
+    "sources": [
+      {
+        "digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md"
+      },
+      {
+        "digest": "7910e0fd35fe1afdd929246c1849b7ac0cd9cfe1b719142b2cb69be9a59511c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
+      },
+      {
+        "digest": "2d55201976d3d87d3c00e7ca621e11ed2f7cf537dbfde6c191983fbfe37a6e49",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
+      },
+      {
+        "digest": "b104a716c8efac39e79c006680c7e22924ed693bd13ee7662ab21fbb27a41fe8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "fbc43769b436efbac1287b0ab149d5648289115a348e1cbb3d52ed2eba65e554",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
+      },
+      {
+        "digest": "e32af081c5146eb1412b37a8d65f2df34c4953d87ac731017f0a7677a40e6ee0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
+      },
+      {
+        "digest": "fb9399c908c1d61f42dc1e17fcd05084a77375d19c5c5ca2120eb2757b87c556",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
+      },
+      {
+        "digest": "0885232c87ce57623e6d407640d59b286aea18c3fd421a6bf89d3294493ffdf3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
+      },
+      {
+        "digest": "dc551c966487423350dc32743c6cb236d25ddbbe146a2df17620e9989989a4e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
+      },
+      {
+        "digest": "76ea4c81c05a083c04604401c2078dcb6a000871bc3f51f50d418cad1f29c591",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
+      },
+      {
+        "digest": "c077bc048806b4132c60eda4f75a483f530b31861579ac9ca5a7a2f582e926e8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
+      },
+      {
+        "digest": "c0bd1de4bac2c5fdb58235fc086d3d5ac7ae3203191e804145713f40d648e9a7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
+      },
+      {
+        "excerpt": "Note: The execute-turn endpoint was removed in spec-051 section-04.",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 7,
+        "path": "python-backend/app/api/team_orchestrator_api.py"
+      },
+      {
+        "excerpt": "# This module has been removed as part of spec-051 section-04.",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1,
+        "path": "python-backend/app/core/rate_limit.py"
+      },
+      {
+        "excerpt": "in spec-051 section-04. Tests for those have been removed.",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 11,
+        "path": "python-backend/tests/test_team_orchestrator_security.py"
+      },
+      {
+        "excerpt": "# Tests removed: app.core.rate_limit was deleted in spec-051 section-04.",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 1,
+        "path": "python-backend/tests/unit/core/test_rate_limit.py"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "Note: The execute-turn endpoint was removed in spec-051 section-04.",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 7,
+        "path": "python-backend/app/api/team_orchestrator_api.py"
+      },
+      {
+        "excerpt": "# This module has been removed as part of spec-051 section-04.",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1,
+        "path": "python-backend/app/core/rate_limit.py"
+      },
+      {
+        "excerpt": "in spec-051 section-04. Tests for those have been removed.",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 11,
+        "path": "python-backend/tests/test_team_orchestrator_security.py"
+      },
+      {
+        "excerpt": "# Tests removed: app.core.rate_limit was deleted in spec-051 section-04.",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 1,
+        "path": "python-backend/tests/unit/core/test_rate_limit.py"
+      }
+    ],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md"
+      },
+      {
+        "digest": "7910e0fd35fe1afdd929246c1849b7ac0cd9cfe1b719142b2cb69be9a59511c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
+      },
+      {
+        "digest": "2d55201976d3d87d3c00e7ca621e11ed2f7cf537dbfde6c191983fbfe37a6e49",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
+      },
+      {
+        "digest": "b104a716c8efac39e79c006680c7e22924ed693bd13ee7662ab21fbb27a41fe8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "fbc43769b436efbac1287b0ab149d5648289115a348e1cbb3d52ed2eba65e554",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
+      },
+      {
+        "digest": "e32af081c5146eb1412b37a8d65f2df34c4953d87ac731017f0a7677a40e6ee0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
+      },
+      {
+        "digest": "fb9399c908c1d61f42dc1e17fcd05084a77375d19c5c5ca2120eb2757b87c556",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
+      },
+      {
+        "digest": "0885232c87ce57623e6d407640d59b286aea18c3fd421a6bf89d3294493ffdf3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
+      },
+      {
+        "digest": "dc551c966487423350dc32743c6cb236d25ddbbe146a2df17620e9989989a4e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
+      },
+      {
+        "digest": "76ea4c81c05a083c04604401c2078dcb6a000871bc3f51f50d418cad1f29c591",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
+      },
+      {
+        "digest": "c077bc048806b4132c60eda4f75a483f530b31861579ac9ca5a7a2f582e926e8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
+      },
+      {
+        "digest": "c0bd1de4bac2c5fdb58235fc086d3d5ac7ae3203191e804145713f40d648e9a7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 7,
+    "unresolved": 7
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.655116Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

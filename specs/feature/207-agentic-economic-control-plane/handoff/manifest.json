@@ -1,0 +1,640 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "209",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L117",
+        "source_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "successor_spec_id": "209"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "217",
+        "relation_text": "supersedes",
+        "requirement_ids": [],
+        "source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1317",
+        "source_digest": "c5d200200571a686baaa34ebdb1e8a3f14e770c305049f3a033487d3ef3b07b2",
+        "successor_spec_id": "217"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "220",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L67",
+        "source_digest": "9522f47e7e4753701e48417d9d06a766367b5541c70a46d7783f998b9fc0488f",
+        "successor_spec_id": "220"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "225",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1736",
+        "source_digest": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
+        "successor_spec_id": "225"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "238",
+        "relation_text": "supersede",
+        "requirement_ids": [],
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
+        "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
+        "successor_spec_id": "238"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "244",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
+        "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
+        "successor_spec_id": "244"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "244",
+        "relation_text": "superseding",
+        "requirement_ids": [],
+        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1425",
+        "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
+        "successor_spec_id": "244"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "250",
+        "relation_text": "supersede",
+        "requirement_ids": [],
+        "source": "specs/feature/250-Development-Reliability/spec.md#L640",
+        "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+        "successor_spec_id": "250"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
+      },
+      {
+        "digest": "387d9db39ca6bf45a15aec8232a5e3ae1d459950a477f81861f548bc19219c2e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/claude-plan.md"
+      },
+      {
+        "digest": "c9231ab058ecd6a4ffb59af4b6a9967f89cbec696e5792a22d0b4e71da8e2b09",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/claude-spec.md"
+      },
+      {
+        "digest": "632b5eafbbf305ab061dcd732a92382d1500299a4282c47ed7d6ae3c957679c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/implementation/completion.md"
+      },
+      {
+        "digest": "9a83f07cf7baef64282f603160bcb800777b3a493beac56e705e0d66c910052c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "b8722fbde9d3762dc470b09050b6c572ce3e7aea2f8b30503441b7df5ca56602",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/release-gate.md"
+      },
+      {
+        "digest": "eb46ba01339b97c6dcdd89a739843a384236b42b0511637c6152aab5d8717931",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "52ee3f34ae92e5a73527921ad5485448f365080b431559f3b72f50d9d87b2991",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/index.md"
+      },
+      {
+        "digest": "f129533f2532a25b152986d30c8680dfa248358062f32f156cc69f2c2e8bc96e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-01-economic-contracts.md"
+      },
+      {
+        "digest": "f4ff5cd7a9f41c9e8938e2b0d6a345cba09ee9f25cdd8182bad9f45cf3ace585",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-02-ledger-persistence.md"
+      },
+      {
+        "digest": "ace3d83a1a063f31794e052c8821e2383b7d7ba914e79cc797becca11b7ffdee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-03-reserve-capture-settlement.md"
+      },
+      {
+        "digest": "02ab073f80b4addb6cd38563286988b52159fe3a6780dd653b828beb8e6bf416",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-04-policy-routing-revenue.md"
+      },
+      {
+        "digest": "debbf424601420a0cd607b243288f0d1d11db46955f813fdacb483c900ecf0b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-05-api-audit-projections.md"
+      },
+      {
+        "digest": "d4a00168249807f00124a931afedd36e0083f40d0cf4954104c2ca1507c3cb89",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-06-migration-release-gates.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
+      },
+      {
+        "digest": "387d9db39ca6bf45a15aec8232a5e3ae1d459950a477f81861f548bc19219c2e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/claude-plan.md"
+      },
+      {
+        "digest": "c9231ab058ecd6a4ffb59af4b6a9967f89cbec696e5792a22d0b4e71da8e2b09",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/claude-spec.md"
+      },
+      {
+        "digest": "632b5eafbbf305ab061dcd732a92382d1500299a4282c47ed7d6ae3c957679c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/implementation/completion.md"
+      },
+      {
+        "digest": "9a83f07cf7baef64282f603160bcb800777b3a493beac56e705e0d66c910052c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "b8722fbde9d3762dc470b09050b6c572ce3e7aea2f8b30503441b7df5ca56602",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/release-gate.md"
+      },
+      {
+        "digest": "eb46ba01339b97c6dcdd89a739843a384236b42b0511637c6152aab5d8717931",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "52ee3f34ae92e5a73527921ad5485448f365080b431559f3b72f50d9d87b2991",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/index.md"
+      },
+      {
+        "digest": "f129533f2532a25b152986d30c8680dfa248358062f32f156cc69f2c2e8bc96e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-01-economic-contracts.md"
+      },
+      {
+        "digest": "f4ff5cd7a9f41c9e8938e2b0d6a345cba09ee9f25cdd8182bad9f45cf3ace585",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-02-ledger-persistence.md"
+      },
+      {
+        "digest": "ace3d83a1a063f31794e052c8821e2383b7d7ba914e79cc797becca11b7ffdee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-03-reserve-capture-settlement.md"
+      },
+      {
+        "digest": "02ab073f80b4addb6cd38563286988b52159fe3a6780dd653b828beb8e6bf416",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-04-policy-routing-revenue.md"
+      },
+      {
+        "digest": "debbf424601420a0cd607b243288f0d1d11db46955f813fdacb483c900ecf0b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-05-api-audit-projections.md"
+      },
+      {
+        "digest": "d4a00168249807f00124a931afedd36e0083f40d0cf4954104c2ca1507c3cb89",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-06-migration-release-gates.md"
+      },
+      {
+        "excerpt": "* Spec 207 requires refunds/reversals to post new immutable accounting facts,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 12,
+        "path": "apps/web/server/services/economicRefundContract.ts"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
+      },
+      {
+        "digest": "387d9db39ca6bf45a15aec8232a5e3ae1d459950a477f81861f548bc19219c2e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/claude-plan.md"
+      },
+      {
+        "digest": "c9231ab058ecd6a4ffb59af4b6a9967f89cbec696e5792a22d0b4e71da8e2b09",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/claude-spec.md"
+      },
+      {
+        "digest": "632b5eafbbf305ab061dcd732a92382d1500299a4282c47ed7d6ae3c957679c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/implementation/completion.md"
+      },
+      {
+        "digest": "9a83f07cf7baef64282f603160bcb800777b3a493beac56e705e0d66c910052c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "b8722fbde9d3762dc470b09050b6c572ce3e7aea2f8b30503441b7df5ca56602",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/release-gate.md"
+      },
+      {
+        "digest": "eb46ba01339b97c6dcdd89a739843a384236b42b0511637c6152aab5d8717931",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "52ee3f34ae92e5a73527921ad5485448f365080b431559f3b72f50d9d87b2991",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/index.md"
+      },
+      {
+        "digest": "f129533f2532a25b152986d30c8680dfa248358062f32f156cc69f2c2e8bc96e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-01-economic-contracts.md"
+      },
+      {
+        "digest": "f4ff5cd7a9f41c9e8938e2b0d6a345cba09ee9f25cdd8182bad9f45cf3ace585",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-02-ledger-persistence.md"
+      },
+      {
+        "digest": "ace3d83a1a063f31794e052c8821e2383b7d7ba914e79cc797becca11b7ffdee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-03-reserve-capture-settlement.md"
+      },
+      {
+        "digest": "02ab073f80b4addb6cd38563286988b52159fe3a6780dd653b828beb8e6bf416",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-04-policy-routing-revenue.md"
+      },
+      {
+        "digest": "debbf424601420a0cd607b243288f0d1d11db46955f813fdacb483c900ecf0b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-05-api-audit-projections.md"
+      },
+      {
+        "digest": "d4a00168249807f00124a931afedd36e0083f40d0cf4954104c2ca1507c3cb89",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-06-migration-release-gates.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/207-agentic-economic-control-plane/spec.md",
+    "digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.870469Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-26T09:26:48+07:00",
+      "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
+    },
+    "revision": null,
+    "slug": "207-agentic-economic-control-plane",
+    "spec_id": "207",
+    "title": "Spec 207 — SmartAIHub Agentic Economic Control Plane"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.870469Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.870469Z",
+    "sources": [
+      {
+        "digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
+      },
+      {
+        "digest": "387d9db39ca6bf45a15aec8232a5e3ae1d459950a477f81861f548bc19219c2e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/claude-plan.md"
+      },
+      {
+        "digest": "c9231ab058ecd6a4ffb59af4b6a9967f89cbec696e5792a22d0b4e71da8e2b09",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/claude-spec.md"
+      },
+      {
+        "digest": "632b5eafbbf305ab061dcd732a92382d1500299a4282c47ed7d6ae3c957679c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/implementation/completion.md"
+      },
+      {
+        "digest": "9a83f07cf7baef64282f603160bcb800777b3a493beac56e705e0d66c910052c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "b8722fbde9d3762dc470b09050b6c572ce3e7aea2f8b30503441b7df5ca56602",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/release-gate.md"
+      },
+      {
+        "digest": "eb46ba01339b97c6dcdd89a739843a384236b42b0511637c6152aab5d8717931",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "52ee3f34ae92e5a73527921ad5485448f365080b431559f3b72f50d9d87b2991",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/index.md"
+      },
+      {
+        "digest": "f129533f2532a25b152986d30c8680dfa248358062f32f156cc69f2c2e8bc96e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-01-economic-contracts.md"
+      },
+      {
+        "digest": "f4ff5cd7a9f41c9e8938e2b0d6a345cba09ee9f25cdd8182bad9f45cf3ace585",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-02-ledger-persistence.md"
+      },
+      {
+        "digest": "ace3d83a1a063f31794e052c8821e2383b7d7ba914e79cc797becca11b7ffdee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-03-reserve-capture-settlement.md"
+      },
+      {
+        "digest": "02ab073f80b4addb6cd38563286988b52159fe3a6780dd653b828beb8e6bf416",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-04-policy-routing-revenue.md"
+      },
+      {
+        "digest": "debbf424601420a0cd607b243288f0d1d11db46955f813fdacb483c900ecf0b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-05-api-audit-projections.md"
+      },
+      {
+        "digest": "d4a00168249807f00124a931afedd36e0083f40d0cf4954104c2ca1507c3cb89",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-06-migration-release-gates.md"
+      },
+      {
+        "excerpt": "* Spec 207 requires refunds/reversals to post new immutable accounting facts,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 12,
+        "path": "apps/web/server/services/economicRefundContract.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "* Spec 207 requires refunds/reversals to post new immutable accounting facts,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 12,
+        "path": "apps/web/server/services/economicRefundContract.ts"
+      }
+    ],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
+      },
+      {
+        "digest": "387d9db39ca6bf45a15aec8232a5e3ae1d459950a477f81861f548bc19219c2e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/claude-plan.md"
+      },
+      {
+        "digest": "c9231ab058ecd6a4ffb59af4b6a9967f89cbec696e5792a22d0b4e71da8e2b09",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/claude-spec.md"
+      },
+      {
+        "digest": "632b5eafbbf305ab061dcd732a92382d1500299a4282c47ed7d6ae3c957679c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/implementation/completion.md"
+      },
+      {
+        "digest": "9a83f07cf7baef64282f603160bcb800777b3a493beac56e705e0d66c910052c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "b8722fbde9d3762dc470b09050b6c572ce3e7aea2f8b30503441b7df5ca56602",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/release-gate.md"
+      },
+      {
+        "digest": "eb46ba01339b97c6dcdd89a739843a384236b42b0511637c6152aab5d8717931",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "52ee3f34ae92e5a73527921ad5485448f365080b431559f3b72f50d9d87b2991",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/index.md"
+      },
+      {
+        "digest": "f129533f2532a25b152986d30c8680dfa248358062f32f156cc69f2c2e8bc96e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-01-economic-contracts.md"
+      },
+      {
+        "digest": "f4ff5cd7a9f41c9e8938e2b0d6a345cba09ee9f25cdd8182bad9f45cf3ace585",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-02-ledger-persistence.md"
+      },
+      {
+        "digest": "ace3d83a1a063f31794e052c8821e2383b7d7ba914e79cc797becca11b7ffdee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-03-reserve-capture-settlement.md"
+      },
+      {
+        "digest": "02ab073f80b4addb6cd38563286988b52159fe3a6780dd653b828beb8e6bf416",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-04-policy-routing-revenue.md"
+      },
+      {
+        "digest": "debbf424601420a0cd607b243288f0d1d11db46955f813fdacb483c900ecf0b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-05-api-audit-projections.md"
+      },
+      {
+        "digest": "d4a00168249807f00124a931afedd36e0083f40d0cf4954104c2ca1507c3cb89",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/207-agentic-economic-control-plane/sections/section-06-migration-release-gates.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 462,
+    "unresolved": 462
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.870469Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

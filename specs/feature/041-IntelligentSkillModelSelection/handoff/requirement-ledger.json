@@ -1,0 +1,118 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L13"
+      ],
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L13",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "46a669fb87926ae7265186a10b9654cf56dec9f3c6930a6e707ba89d682df725",
+      "requirement_id": "REQ-0E969079122D",
+      "requirement_text": "4. Skills hard-code `llmModelId` in skill.md frontmatter — as better models are released, skills must be manually updated or they never benefit from improvements",
+      "source_spec_digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L23"
+      ],
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L23",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5803170932554e0f9a828a3304edeb35a4f75a8a96585987ccecbb54d2ee1b6d",
+      "requirement_id": "REQ-613A16AC7735",
+      "requirement_text": "- Idempotent: re-syncing must NOT overwrite manually-set priorities; only assign priority to newly-synced models with priority=0 and no manual override flag",
+      "source_spec_digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L66"
+      ],
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L66",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9bebe83985815175e025cc7e2cd815bdad84e351f1ac2c6890a3d6c889572b6b",
+      "requirement_id": "REQ-DD8BDD895F80",
+      "requirement_text": "- Backward compatible — skills without requirements must still work (fallback to existing cascade)",
+      "source_spec_digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L69"
+      ],
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L69",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "996f6e94f3fcbd96fbdfa9954ee4ce1934ac59e014099d8cbd0f3329e8b9167f",
+      "requirement_id": "REQ-A8350B1D5F70",
+      "requirement_text": "- OpenRouter priority assignment must be idempotent (re-syncing doesn't reset manually-set priorities)",
+      "source_spec_digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L70"
+      ],
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L70",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2bcc0c6afe8a522f9286688baba08bf9ce726e7d21db7d6990a571cc8ecd7403",
+      "requirement_id": "REQ-1079F0BA508A",
+      "requirement_text": "- Admin manual priority overrides must survive re-sync",
+      "source_spec_digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a",
+  "spec_id": "041"
+}

@@ -1,0 +1,30 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/project/013-features-195-200/requirements.deep-project/04-feature-198-intelligent-chat/spec.md#L17"
+      ],
+      "authority_source": "specs/project/013-features-195-200/requirements.deep-project/04-feature-198-intelligent-chat/spec.md#L17",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "26ae849a2ceaafbb8e9faaed8a2b916c7daae0d922dee806aa8c0de9747e0781",
+      "requirement_id": "REQ-4D3DBDEE9540",
+      "requirement_text": "Follow existing React/router/trpc and Python LangGraph/OpenAI Agents conventions. Use Feature 196 for Goal/Plan semantics, Feature 195 for durable work and Feature 197 for Runner state. Retrieval must preserve tenant ACL/provenance. Evolution never overrides hard policy or silently changes providers/vector sources.",
+      "source_spec_digest": "8ce9ff68997b6d0522d116ebad9cc131ef405b9580891858b0deaa8597569c7e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "8ce9ff68997b6d0522d116ebad9cc131ef405b9580891858b0deaa8597569c7e",
+  "spec_id": "04"
+}

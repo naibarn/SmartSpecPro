@@ -1,0 +1,206 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L15"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L15",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a0170f69d622a40ee78d30c9a56597ab7e14e46ce83aea696e588a5e41d9d5d8",
+      "requirement_id": "REQ-BF04006523D8",
+      "requirement_text": "The agent must know which model to use in advance, making poor choices likely (wrong capability,",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L84"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L84",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b22c29c556320d55f0f283daa99156470f97a45598bdb492fb6ab9baf5c63584",
+      "requirement_id": "REQ-C815CAE0B548",
+      "requirement_text": "1. `POST /api/internal/tools/model-suggest` returns 200 with recommended model + up to 3 alternatives",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L85"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L85",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "81e656342196df4ddce808050cb692ace37bbf65c15f7d1d838d255a5dee4939",
+      "requirement_id": "REQ-7BC23D534EDF",
+      "requirement_text": "2. Returns 401 if gateway token is invalid",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L86"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L86",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "190b5e53c763f7218cbbe59cef10ecc672a3f9e79683415d8367e5ce45a4ae62",
+      "requirement_id": "REQ-8A06A58BCCF7",
+      "requirement_text": "3. Returns 403 if ENABLE_CONTENT_AUTOMATION is false",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L87"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L87",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "74ca49c14d3b33ee71b4e2a421a8d4778fb86e8bf61d335a2064ffa6fac86a62",
+      "requirement_id": "REQ-525D7A2ACC02",
+      "requirement_text": "4. Returns 400 if `purpose` is not one of: image, video, audio, text",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L88"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L88",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ab8423c753837cf52edb9d13da7f23f77eee3b31d40f6eab869c3bd302543307",
+      "requirement_id": "REQ-30E3862A22EE",
+      "requirement_text": "5. `autoDraftTool.ts`: if agent sends no `image_model_id`, system calls model-suggest and fills it in",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L89"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L89",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d2abad050771d119f03dcd14d450016bf047c29531cff2a39a7a8b0c87bd2dcb",
+      "requirement_id": "REQ-FE75EEB6CEB5",
+      "requirement_text": "6. `autoDraftTool.ts`: audit log includes `{ agentModel, recommendedModel, diverged: boolean }`",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L90"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L90",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6adc183db8961f86d704ff2293aeee23ae35d80250325bb742844ad40ccf777a",
+      "requirement_id": "REQ-3EF0B709827B",
+      "requirement_text": "7. All new code has ≥80% test coverage (Vitest)",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L91"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L91",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fa4daa95795481c68a56f0df0a167dca027e8ede8910e442372456bde7c62e68",
+      "requirement_id": "REQ-AEA2E8326407",
+      "requirement_text": "8. TypeScript strict mode passes (`pnpm check`)",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+  "spec_id": "040"
+}

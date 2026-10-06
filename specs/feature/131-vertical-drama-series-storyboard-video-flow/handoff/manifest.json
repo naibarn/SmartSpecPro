@@ -1,0 +1,823 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md"
+      },
+      {
+        "digest": "821cb95cc5fb0093d5392bef9b8e69525b1223d9e96bf7fe9708d74f902d682f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/claude-plan.md"
+      },
+      {
+        "digest": "44eee547f8e846dec3897225bb3df58e59e058e9a3d5c7a09a9a2bce2ce66085",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/claude-spec.md"
+      },
+      {
+        "digest": "df067623430d7bd5cd2c69d0c2122d1628eb4eed0e9ede0773f277ff0d5da630",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/final-quality-pass.md"
+      },
+      {
+        "digest": "e6bd27b776e9d420a8ed7dd4cd9316f09759d843e84249d2b16e03970c58869d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/independent-completeness-audit.md"
+      },
+      {
+        "digest": "3e5841e3e49ed4c9439df3aea6624cbc2c43191d019432123fc1be4c41158eec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/production-grade-upgrade-audit-2026-07-07.md"
+      },
+      {
+        "digest": "be6c0ef362a317a88cad01d4a67aeab28cac833373474673b8e5c1e18e62d952",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "4e395a054a7f802bd0b59712ef964a799d1404118f9fba6582fa0368f5d683e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "781e7ca549d506bef4bda65f3cb6cc2ccab9fe2b1ab480eb88ce337e7f6bbba4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/spec-completeness-round-2.md"
+      },
+      {
+        "digest": "3f31a296e44098f3bcffef45ef139761c36a5f7a0b69a37d8f4ce2bb0e90f0d1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/spec-sync-audit-2026-07-09.md"
+      },
+      {
+        "digest": "49e152c7bb449e339a9ef8b2adea579379d384fc09cc5dfea4b96b61eb7c230c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/index.md"
+      },
+      {
+        "digest": "d0b132e67592b75a9997bf898cf93fc53f8d5767f436e1d88fc96dda9dac2d19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-01-skill-packages.md"
+      },
+      {
+        "digest": "c2bc67c4dd23740a66c32f42438f3afacdde313210962af805a4f12987f90d04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-02-contracts-persistence-assets.md"
+      },
+      {
+        "digest": "9c371dd27651f188849737cbb5bf14e59f343730307f79d35e0832b7d9b8d6d4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-03-dashboard-routes-feature-flags.md"
+      },
+      {
+        "digest": "a982f8894c5af3a78356301b06b984ab2fccefa182aac1de9cdbeb5030466e31",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-04-series-memory-and-episode-pipeline.md"
+      },
+      {
+        "digest": "e22d0baceca106fd377a61b6fce40c0e26cc71a250a93bd4d431dbf9bf9520f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-05-character-stock-and-start-frames.md"
+      },
+      {
+        "digest": "aed30c587534c7026f54028c5eeb2f47a9777808a03610a45ff2d899b982f24e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-06-storyboard-review-handoff.md"
+      },
+      {
+        "digest": "0f9bbdf2c100b9d4e3d24794979a19e3c251dd3e182c1f935052ecec16e6983a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-07-audio-dialogue-subtitles.md"
+      },
+      {
+        "digest": "59a6621093a19f76f888f2f717165f5e4d910c69640a556406cd183931e45b45",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-08-provider-qc-product-tie-in.md"
+      },
+      {
+        "digest": "f2588214bcd775f63872f9c969c5de89f505d8e85061845092d8cf85e433df13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-09-assembly-export-artifacts.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md"
+      },
+      {
+        "digest": "821cb95cc5fb0093d5392bef9b8e69525b1223d9e96bf7fe9708d74f902d682f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/claude-plan.md"
+      },
+      {
+        "digest": "44eee547f8e846dec3897225bb3df58e59e058e9a3d5c7a09a9a2bce2ce66085",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/claude-spec.md"
+      },
+      {
+        "digest": "df067623430d7bd5cd2c69d0c2122d1628eb4eed0e9ede0773f277ff0d5da630",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/final-quality-pass.md"
+      },
+      {
+        "digest": "e6bd27b776e9d420a8ed7dd4cd9316f09759d843e84249d2b16e03970c58869d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/independent-completeness-audit.md"
+      },
+      {
+        "digest": "3e5841e3e49ed4c9439df3aea6624cbc2c43191d019432123fc1be4c41158eec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/production-grade-upgrade-audit-2026-07-07.md"
+      },
+      {
+        "digest": "be6c0ef362a317a88cad01d4a67aeab28cac833373474673b8e5c1e18e62d952",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "4e395a054a7f802bd0b59712ef964a799d1404118f9fba6582fa0368f5d683e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "781e7ca549d506bef4bda65f3cb6cc2ccab9fe2b1ab480eb88ce337e7f6bbba4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/spec-completeness-round-2.md"
+      },
+      {
+        "digest": "3f31a296e44098f3bcffef45ef139761c36a5f7a0b69a37d8f4ce2bb0e90f0d1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/spec-sync-audit-2026-07-09.md"
+      },
+      {
+        "digest": "49e152c7bb449e339a9ef8b2adea579379d384fc09cc5dfea4b96b61eb7c230c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/index.md"
+      },
+      {
+        "digest": "d0b132e67592b75a9997bf898cf93fc53f8d5767f436e1d88fc96dda9dac2d19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-01-skill-packages.md"
+      },
+      {
+        "digest": "c2bc67c4dd23740a66c32f42438f3afacdde313210962af805a4f12987f90d04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-02-contracts-persistence-assets.md"
+      },
+      {
+        "digest": "9c371dd27651f188849737cbb5bf14e59f343730307f79d35e0832b7d9b8d6d4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-03-dashboard-routes-feature-flags.md"
+      },
+      {
+        "digest": "a982f8894c5af3a78356301b06b984ab2fccefa182aac1de9cdbeb5030466e31",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-04-series-memory-and-episode-pipeline.md"
+      },
+      {
+        "digest": "e22d0baceca106fd377a61b6fce40c0e26cc71a250a93bd4d431dbf9bf9520f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-05-character-stock-and-start-frames.md"
+      },
+      {
+        "digest": "aed30c587534c7026f54028c5eeb2f47a9777808a03610a45ff2d899b982f24e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-06-storyboard-review-handoff.md"
+      },
+      {
+        "digest": "0f9bbdf2c100b9d4e3d24794979a19e3c251dd3e182c1f935052ecec16e6983a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-07-audio-dialogue-subtitles.md"
+      },
+      {
+        "digest": "59a6621093a19f76f888f2f717165f5e4d910c69640a556406cd183931e45b45",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-08-provider-qc-product-tie-in.md"
+      },
+      {
+        "digest": "f2588214bcd775f63872f9c969c5de89f505d8e85061845092d8cf85e433df13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-09-assembly-export-artifacts.md"
+      },
+      {
+        "excerpt": "/** VerticalDramaQualityPolicy (spec 131 §16.1) — null → tenant default → built-in defaults */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 26463,
+        "path": "apps/web/drizzle/schema.js"
+      },
+      {
+        "excerpt": "/** VerticalDramaPresetVisualIdentity (spec 131 §8.2.2) — structured look that flows to prompts */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 29124,
+        "path": "apps/web/drizzle/schema.js"
+      },
+      {
+        "excerpt": "/** VerticalDramaQualityPolicy (spec 131 §16.1) — null → tenant default → built-in defaults */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 25442,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "/** VerticalDramaPresetVisualIdentity (spec 131 §8.2.2) — structured look that flows to prompts */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 27806,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "/** VerticalDramaPresetVisualIdentity (spec 131 §8.2.2) — null for legacy presets */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1145,
+        "path": "apps/web/server/routers/verticalDramaSeries.ts"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md"
+      },
+      {
+        "digest": "821cb95cc5fb0093d5392bef9b8e69525b1223d9e96bf7fe9708d74f902d682f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/claude-plan.md"
+      },
+      {
+        "digest": "44eee547f8e846dec3897225bb3df58e59e058e9a3d5c7a09a9a2bce2ce66085",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/claude-spec.md"
+      },
+      {
+        "digest": "df067623430d7bd5cd2c69d0c2122d1628eb4eed0e9ede0773f277ff0d5da630",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/final-quality-pass.md"
+      },
+      {
+        "digest": "e6bd27b776e9d420a8ed7dd4cd9316f09759d843e84249d2b16e03970c58869d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/independent-completeness-audit.md"
+      },
+      {
+        "digest": "3e5841e3e49ed4c9439df3aea6624cbc2c43191d019432123fc1be4c41158eec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/production-grade-upgrade-audit-2026-07-07.md"
+      },
+      {
+        "digest": "be6c0ef362a317a88cad01d4a67aeab28cac833373474673b8e5c1e18e62d952",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "4e395a054a7f802bd0b59712ef964a799d1404118f9fba6582fa0368f5d683e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "781e7ca549d506bef4bda65f3cb6cc2ccab9fe2b1ab480eb88ce337e7f6bbba4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/spec-completeness-round-2.md"
+      },
+      {
+        "digest": "3f31a296e44098f3bcffef45ef139761c36a5f7a0b69a37d8f4ce2bb0e90f0d1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/spec-sync-audit-2026-07-09.md"
+      },
+      {
+        "digest": "49e152c7bb449e339a9ef8b2adea579379d384fc09cc5dfea4b96b61eb7c230c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/index.md"
+      },
+      {
+        "digest": "d0b132e67592b75a9997bf898cf93fc53f8d5767f436e1d88fc96dda9dac2d19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-01-skill-packages.md"
+      },
+      {
+        "digest": "c2bc67c4dd23740a66c32f42438f3afacdde313210962af805a4f12987f90d04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-02-contracts-persistence-assets.md"
+      },
+      {
+        "digest": "9c371dd27651f188849737cbb5bf14e59f343730307f79d35e0832b7d9b8d6d4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-03-dashboard-routes-feature-flags.md"
+      },
+      {
+        "digest": "a982f8894c5af3a78356301b06b984ab2fccefa182aac1de9cdbeb5030466e31",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-04-series-memory-and-episode-pipeline.md"
+      },
+      {
+        "digest": "e22d0baceca106fd377a61b6fce40c0e26cc71a250a93bd4d431dbf9bf9520f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-05-character-stock-and-start-frames.md"
+      },
+      {
+        "digest": "aed30c587534c7026f54028c5eeb2f47a9777808a03610a45ff2d899b982f24e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-06-storyboard-review-handoff.md"
+      },
+      {
+        "digest": "0f9bbdf2c100b9d4e3d24794979a19e3c251dd3e182c1f935052ecec16e6983a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-07-audio-dialogue-subtitles.md"
+      },
+      {
+        "digest": "59a6621093a19f76f888f2f717165f5e4d910c69640a556406cd183931e45b45",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-08-provider-qc-product-tie-in.md"
+      },
+      {
+        "digest": "f2588214bcd775f63872f9c969c5de89f505d8e85061845092d8cf85e433df13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-09-assembly-export-artifacts.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md",
+    "digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.214703Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-07-04T00:17:21+07:00",
+      "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
+    },
+    "revision": "0.5",
+    "slug": "131-vertical-drama-series-storyboard-video-flow",
+    "spec_id": "131",
+    "title": "Feature 131: Vertical Drama Series Storyboard Video Flow"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.214703Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.214703Z",
+    "sources": [
+      {
+        "digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md"
+      },
+      {
+        "digest": "821cb95cc5fb0093d5392bef9b8e69525b1223d9e96bf7fe9708d74f902d682f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/claude-plan.md"
+      },
+      {
+        "digest": "44eee547f8e846dec3897225bb3df58e59e058e9a3d5c7a09a9a2bce2ce66085",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/claude-spec.md"
+      },
+      {
+        "digest": "df067623430d7bd5cd2c69d0c2122d1628eb4eed0e9ede0773f277ff0d5da630",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/final-quality-pass.md"
+      },
+      {
+        "digest": "e6bd27b776e9d420a8ed7dd4cd9316f09759d843e84249d2b16e03970c58869d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/independent-completeness-audit.md"
+      },
+      {
+        "digest": "3e5841e3e49ed4c9439df3aea6624cbc2c43191d019432123fc1be4c41158eec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/production-grade-upgrade-audit-2026-07-07.md"
+      },
+      {
+        "digest": "be6c0ef362a317a88cad01d4a67aeab28cac833373474673b8e5c1e18e62d952",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "4e395a054a7f802bd0b59712ef964a799d1404118f9fba6582fa0368f5d683e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "781e7ca549d506bef4bda65f3cb6cc2ccab9fe2b1ab480eb88ce337e7f6bbba4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/spec-completeness-round-2.md"
+      },
+      {
+        "digest": "3f31a296e44098f3bcffef45ef139761c36a5f7a0b69a37d8f4ce2bb0e90f0d1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/spec-sync-audit-2026-07-09.md"
+      },
+      {
+        "digest": "49e152c7bb449e339a9ef8b2adea579379d384fc09cc5dfea4b96b61eb7c230c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/index.md"
+      },
+      {
+        "digest": "d0b132e67592b75a9997bf898cf93fc53f8d5767f436e1d88fc96dda9dac2d19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-01-skill-packages.md"
+      },
+      {
+        "digest": "c2bc67c4dd23740a66c32f42438f3afacdde313210962af805a4f12987f90d04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-02-contracts-persistence-assets.md"
+      },
+      {
+        "digest": "9c371dd27651f188849737cbb5bf14e59f343730307f79d35e0832b7d9b8d6d4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-03-dashboard-routes-feature-flags.md"
+      },
+      {
+        "digest": "a982f8894c5af3a78356301b06b984ab2fccefa182aac1de9cdbeb5030466e31",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-04-series-memory-and-episode-pipeline.md"
+      },
+      {
+        "digest": "e22d0baceca106fd377a61b6fce40c0e26cc71a250a93bd4d431dbf9bf9520f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-05-character-stock-and-start-frames.md"
+      },
+      {
+        "digest": "aed30c587534c7026f54028c5eeb2f47a9777808a03610a45ff2d899b982f24e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-06-storyboard-review-handoff.md"
+      },
+      {
+        "digest": "0f9bbdf2c100b9d4e3d24794979a19e3c251dd3e182c1f935052ecec16e6983a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-07-audio-dialogue-subtitles.md"
+      },
+      {
+        "digest": "59a6621093a19f76f888f2f717165f5e4d910c69640a556406cd183931e45b45",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-08-provider-qc-product-tie-in.md"
+      },
+      {
+        "digest": "f2588214bcd775f63872f9c969c5de89f505d8e85061845092d8cf85e433df13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-09-assembly-export-artifacts.md"
+      },
+      {
+        "digest": "4bd9a76df08b25235c89ac26ae91a649b8faf02455a1d99b926749d9dbd38467",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-10-ui-redesign-genre-presets-story-generation.md"
+      },
+      {
+        "digest": "a30c1fbf5757f7bf80569c70d8fb4c33a9a44dbb73820f4fa46ea6543b125ac9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-11-user-and-admin-preset-ownership.md"
+      },
+      {
+        "digest": "0003866aca2dd5f975117d90c1fcd2c6b401dee964d646530b651b4ecefa9208",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-12-production-wizard-guided-workflow.md"
+      },
+      {
+        "digest": "401aa662fcdb8aa694b89181bf92df706088870e1db3b91099e5ea0e5b43010d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-13-story-dialogue-density-reform.md"
+      },
+      {
+        "digest": "89e6ca5b6d7cde2199c8adb59de90b1fa4a283faefcbf16f28a2fc9bb66d164e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-14-script-quality-qc-auto-improve.md"
+      },
+      {
+        "digest": "eda55f8505ca5bd5263e19617047e6d268cc353d7cabeb92eb3ea4714add70c6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-15-genre-preset-visual-identity-and-mix.md"
+      },
+      {
+        "digest": "1c7e0a4fa7c189ecf4c635d8b756bcdf5d97938ff8738b64c568692a55b49c2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-16-ad-banner-overlay.md"
+      },
+      {
+        "excerpt": "/** VerticalDramaQualityPolicy (spec 131 §16.1) — null → tenant default → built-in defaults */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 26463,
+        "path": "apps/web/drizzle/schema.js"
+      },
+      {
+        "excerpt": "/** VerticalDramaPresetVisualIdentity (spec 131 §8.2.2) — structured look that flows to prompts */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 29124,
+        "path": "apps/web/drizzle/schema.js"
+      },
+      {
+        "excerpt": "/** VerticalDramaQualityPolicy (spec 131 §16.1) — null → tenant default → built-in defaults */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 25442,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "/** VerticalDramaPresetVisualIdentity (spec 131 §8.2.2) — structured look that flows to prompts */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 27806,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "/** VerticalDramaPresetVisualIdentity (spec 131 §8.2.2) — null for legacy presets */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1145,
+        "path": "apps/web/server/routers/verticalDramaSeries.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "/** VerticalDramaQualityPolicy (spec 131 §16.1) — null → tenant default → built-in defaults */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 26463,
+        "path": "apps/web/drizzle/schema.js"
+      },
+      {
+        "excerpt": "/** VerticalDramaPresetVisualIdentity (spec 131 §8.2.2) — structured look that flows to prompts */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 29124,
+        "path": "apps/web/drizzle/schema.js"
+      },
+      {
+        "excerpt": "/** VerticalDramaQualityPolicy (spec 131 §16.1) — null → tenant default → built-in defaults */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 25442,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "/** VerticalDramaPresetVisualIdentity (spec 131 §8.2.2) — structured look that flows to prompts */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 27806,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "/** VerticalDramaPresetVisualIdentity (spec 131 §8.2.2) — null for legacy presets */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1145,
+        "path": "apps/web/server/routers/verticalDramaSeries.ts"
+      }
+    ],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md"
+      },
+      {
+        "digest": "821cb95cc5fb0093d5392bef9b8e69525b1223d9e96bf7fe9708d74f902d682f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/claude-plan.md"
+      },
+      {
+        "digest": "44eee547f8e846dec3897225bb3df58e59e058e9a3d5c7a09a9a2bce2ce66085",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/claude-spec.md"
+      },
+      {
+        "digest": "df067623430d7bd5cd2c69d0c2122d1628eb4eed0e9ede0773f277ff0d5da630",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/final-quality-pass.md"
+      },
+      {
+        "digest": "e6bd27b776e9d420a8ed7dd4cd9316f09759d843e84249d2b16e03970c58869d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/independent-completeness-audit.md"
+      },
+      {
+        "digest": "3e5841e3e49ed4c9439df3aea6624cbc2c43191d019432123fc1be4c41158eec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/production-grade-upgrade-audit-2026-07-07.md"
+      },
+      {
+        "digest": "be6c0ef362a317a88cad01d4a67aeab28cac833373474673b8e5c1e18e62d952",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "4e395a054a7f802bd0b59712ef964a799d1404118f9fba6582fa0368f5d683e6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "781e7ca549d506bef4bda65f3cb6cc2ccab9fe2b1ab480eb88ce337e7f6bbba4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/spec-completeness-round-2.md"
+      },
+      {
+        "digest": "3f31a296e44098f3bcffef45ef139761c36a5f7a0b69a37d8f4ce2bb0e90f0d1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/reviews/spec-sync-audit-2026-07-09.md"
+      },
+      {
+        "digest": "49e152c7bb449e339a9ef8b2adea579379d384fc09cc5dfea4b96b61eb7c230c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/index.md"
+      },
+      {
+        "digest": "d0b132e67592b75a9997bf898cf93fc53f8d5767f436e1d88fc96dda9dac2d19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-01-skill-packages.md"
+      },
+      {
+        "digest": "c2bc67c4dd23740a66c32f42438f3afacdde313210962af805a4f12987f90d04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-02-contracts-persistence-assets.md"
+      },
+      {
+        "digest": "9c371dd27651f188849737cbb5bf14e59f343730307f79d35e0832b7d9b8d6d4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-03-dashboard-routes-feature-flags.md"
+      },
+      {
+        "digest": "a982f8894c5af3a78356301b06b984ab2fccefa182aac1de9cdbeb5030466e31",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-04-series-memory-and-episode-pipeline.md"
+      },
+      {
+        "digest": "e22d0baceca106fd377a61b6fce40c0e26cc71a250a93bd4d431dbf9bf9520f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-05-character-stock-and-start-frames.md"
+      },
+      {
+        "digest": "aed30c587534c7026f54028c5eeb2f47a9777808a03610a45ff2d899b982f24e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-06-storyboard-review-handoff.md"
+      },
+      {
+        "digest": "0f9bbdf2c100b9d4e3d24794979a19e3c251dd3e182c1f935052ecec16e6983a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-07-audio-dialogue-subtitles.md"
+      },
+      {
+        "digest": "59a6621093a19f76f888f2f717165f5e4d910c69640a556406cd183931e45b45",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-08-provider-qc-product-tie-in.md"
+      },
+      {
+        "digest": "f2588214bcd775f63872f9c969c5de89f505d8e85061845092d8cf85e433df13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-09-assembly-export-artifacts.md"
+      },
+      {
+        "digest": "4bd9a76df08b25235c89ac26ae91a649b8faf02455a1d99b926749d9dbd38467",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-10-ui-redesign-genre-presets-story-generation.md"
+      },
+      {
+        "digest": "a30c1fbf5757f7bf80569c70d8fb4c33a9a44dbb73820f4fa46ea6543b125ac9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-11-user-and-admin-preset-ownership.md"
+      },
+      {
+        "digest": "0003866aca2dd5f975117d90c1fcd2c6b401dee964d646530b651b4ecefa9208",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-12-production-wizard-guided-workflow.md"
+      },
+      {
+        "digest": "401aa662fcdb8aa694b89181bf92df706088870e1db3b91099e5ea0e5b43010d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-13-story-dialogue-density-reform.md"
+      },
+      {
+        "digest": "89e6ca5b6d7cde2199c8adb59de90b1fa4a283faefcbf16f28a2fc9bb66d164e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-14-script-quality-qc-auto-improve.md"
+      },
+      {
+        "digest": "eda55f8505ca5bd5263e19617047e6d268cc353d7cabeb92eb3ea4714add70c6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-15-genre-preset-visual-identity-and-mix.md"
+      },
+      {
+        "digest": "1c7e0a4fa7c189ecf4c635d8b756bcdf5d97938ff8738b64c568692a55b49c2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/sections/section-16-ad-banner-overlay.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 209,
+    "unresolved": 209
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.214703Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

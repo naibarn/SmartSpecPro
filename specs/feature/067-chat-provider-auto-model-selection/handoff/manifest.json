@@ -1,0 +1,347 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "2c231b42f1b5bbdcf7cdd66bcb2a5267fcd99619f152f2690987cd01803a11d7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/spec.md"
+      },
+      {
+        "digest": "489e6ce60ef07999547ff4e6fd1149413bdd5ac60eb85c36cab6968261dad018",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "cf54a6a326e9b9a54807738c4b7dd85c6c010d2a76379d064fc267ee64f832fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
+      },
+      {
+        "digest": "05963e63ce638cb1e70a6817d483e04c321690684fabdbf1243aa47625fe5bef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
+      },
+      {
+        "digest": "eb7f4e6cfacd0669c4903b8a360a62cedb3d5b9407948de826d6015a03ea603a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
+      },
+      {
+        "digest": "acc87b0e11dea49a1456a583c39524ff4a4687be467817f4ec2642490421dda9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
+      },
+      {
+        "digest": "5202bf3fd90948366b0230b9cf34b8b789ba10268e4f590bf8efdeb5e8b9a173",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
+      },
+      {
+        "digest": "fef442aa67ee1d9783367b3b6283a8c6b0b9077c5d123e8addd607ec31a2bde0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "2c231b42f1b5bbdcf7cdd66bcb2a5267fcd99619f152f2690987cd01803a11d7"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "2c231b42f1b5bbdcf7cdd66bcb2a5267fcd99619f152f2690987cd01803a11d7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/spec.md"
+      },
+      {
+        "digest": "489e6ce60ef07999547ff4e6fd1149413bdd5ac60eb85c36cab6968261dad018",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "cf54a6a326e9b9a54807738c4b7dd85c6c010d2a76379d064fc267ee64f832fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
+      },
+      {
+        "digest": "05963e63ce638cb1e70a6817d483e04c321690684fabdbf1243aa47625fe5bef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
+      },
+      {
+        "digest": "eb7f4e6cfacd0669c4903b8a360a62cedb3d5b9407948de826d6015a03ea603a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
+      },
+      {
+        "digest": "acc87b0e11dea49a1456a583c39524ff4a4687be467817f4ec2642490421dda9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
+      },
+      {
+        "digest": "5202bf3fd90948366b0230b9cf34b8b789ba10268e4f590bf8efdeb5e8b9a173",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
+      },
+      {
+        "digest": "fef442aa67ee1d9783367b3b6283a8c6b0b9077c5d123e8addd607ec31a2bde0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "2c231b42f1b5bbdcf7cdd66bcb2a5267fcd99619f152f2690987cd01803a11d7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/spec.md"
+      },
+      {
+        "digest": "489e6ce60ef07999547ff4e6fd1149413bdd5ac60eb85c36cab6968261dad018",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "cf54a6a326e9b9a54807738c4b7dd85c6c010d2a76379d064fc267ee64f832fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
+      },
+      {
+        "digest": "05963e63ce638cb1e70a6817d483e04c321690684fabdbf1243aa47625fe5bef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
+      },
+      {
+        "digest": "eb7f4e6cfacd0669c4903b8a360a62cedb3d5b9407948de826d6015a03ea603a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
+      },
+      {
+        "digest": "acc87b0e11dea49a1456a583c39524ff4a4687be467817f4ec2642490421dda9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
+      },
+      {
+        "digest": "5202bf3fd90948366b0230b9cf34b8b789ba10268e4f590bf8efdeb5e8b9a173",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
+      },
+      {
+        "digest": "fef442aa67ee1d9783367b3b6283a8c6b0b9077c5d123e8addd607ec31a2bde0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/067-chat-provider-auto-model-selection/spec.md",
+    "digest": "2c231b42f1b5bbdcf7cdd66bcb2a5267fcd99619f152f2690987cd01803a11d7",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.763952Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-08T19:58:29+07:00",
+      "spec_last_changed_at": "2026-04-08T19:58:29+07:00"
+    },
+    "revision": "1.0",
+    "slug": "067-chat-provider-auto-model-selection",
+    "spec_id": "067",
+    "title": "067 - Chat Provider-Aware Auto Model Selection"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.763952Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.763952Z",
+    "sources": [
+      {
+        "digest": "2c231b42f1b5bbdcf7cdd66bcb2a5267fcd99619f152f2690987cd01803a11d7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/spec.md"
+      },
+      {
+        "digest": "489e6ce60ef07999547ff4e6fd1149413bdd5ac60eb85c36cab6968261dad018",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "cf54a6a326e9b9a54807738c4b7dd85c6c010d2a76379d064fc267ee64f832fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
+      },
+      {
+        "digest": "05963e63ce638cb1e70a6817d483e04c321690684fabdbf1243aa47625fe5bef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
+      },
+      {
+        "digest": "eb7f4e6cfacd0669c4903b8a360a62cedb3d5b9407948de826d6015a03ea603a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
+      },
+      {
+        "digest": "acc87b0e11dea49a1456a583c39524ff4a4687be467817f4ec2642490421dda9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
+      },
+      {
+        "digest": "5202bf3fd90948366b0230b9cf34b8b789ba10268e4f590bf8efdeb5e8b9a173",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
+      },
+      {
+        "digest": "fef442aa67ee1d9783367b3b6283a8c6b0b9077c5d123e8addd607ec31a2bde0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "2c231b42f1b5bbdcf7cdd66bcb2a5267fcd99619f152f2690987cd01803a11d7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/spec.md"
+      },
+      {
+        "digest": "489e6ce60ef07999547ff4e6fd1149413bdd5ac60eb85c36cab6968261dad018",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "cf54a6a326e9b9a54807738c4b7dd85c6c010d2a76379d064fc267ee64f832fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
+      },
+      {
+        "digest": "05963e63ce638cb1e70a6817d483e04c321690684fabdbf1243aa47625fe5bef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
+      },
+      {
+        "digest": "eb7f4e6cfacd0669c4903b8a360a62cedb3d5b9407948de826d6015a03ea603a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
+      },
+      {
+        "digest": "acc87b0e11dea49a1456a583c39524ff4a4687be467817f4ec2642490421dda9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
+      },
+      {
+        "digest": "5202bf3fd90948366b0230b9cf34b8b789ba10268e4f590bf8efdeb5e8b9a173",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
+      },
+      {
+        "digest": "fef442aa67ee1d9783367b3b6283a8c6b0b9077c5d123e8addd607ec31a2bde0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 79,
+    "unresolved": 79
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.763952Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

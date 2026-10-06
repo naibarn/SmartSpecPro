@@ -1,0 +1,396 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "186",
+        "referenced_spec_id": "186",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "186",
+        "referenced_spec_id": "186",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "215",
+        "referenced_spec_id": "215",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "215",
+        "referenced_spec_id": "215",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "221",
+        "referenced_spec_id": "221",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "221",
+        "referenced_spec_id": "221",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "229",
+        "referenced_spec_id": "229",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "229",
+        "referenced_spec_id": "229",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "248",
+        "referenced_spec_id": "248",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "248",
+        "referenced_spec_id": "248",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "252",
+        "referenced_spec_id": "252",
+        "referencing_spec_id": "256",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L560",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "252",
+        "referenced_spec_id": "252",
+        "referencing_spec_id": "256",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L560",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "253",
+        "referenced_spec_id": "253",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "253",
+        "referenced_spec_id": "253",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "253",
+        "referenced_spec_id": "253",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "253",
+        "referenced_spec_id": "253",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      }
+    ],
+    "confidence": "LOW",
+    "conflicts": [
+      {
+        "kind": "DUPLICATE_SPEC_ID",
+        "paths": [
+          "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution"
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "AUTHORITY_CONFLICT",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
+    "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.557434Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-10-02T19:34:42+07:00",
+      "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
+    },
+    "revision": "1.2",
+    "slug": "256-skill-first-capability-discovery-intent-execution",
+    "spec_id": "256",
+    "title": "Spec 256 — Skill-First Capability Discovery & Intent Execution (R1.2)"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.557434Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.557434Z",
+    "sources": [
+      {
+        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 90,
+    "unresolved": 90
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.557434Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

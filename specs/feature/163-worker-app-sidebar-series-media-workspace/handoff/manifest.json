@@ -1,0 +1,657 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md"
+      },
+      {
+        "digest": "58e58e29dde0779aec68f4f8c96af73b47996d8a528fb0420a14244562e1c7b2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/claude-plan.md"
+      },
+      {
+        "digest": "96a0a51fcca5471a274039c0251c357c9bef22b25c32638fcd8b37e0cafb1a58",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/claude-spec.md"
+      },
+      {
+        "digest": "a505f2d05fdbe6730096875f5ec08fdf00ed7f315ace2c1b5e819e068d02ed41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/completeness-audit.md"
+      },
+      {
+        "digest": "ae3bd17fdfb3922dd644c9a2e4d80e14e851a5296326fa646d542861120574aa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "85588792bd99de8662379fde87085382149030790d20d56f3121c69ba7c1d80e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/gap-review-round-6-restart-and-migration.md"
+      },
+      {
+        "digest": "52c7aff6fda073cdf9d5dc69a659f49d4d3fbddf8cea249f864519e81b0f8dba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/gap-review-round-7-final-clean.md"
+      },
+      {
+        "digest": "245f1e9eaedef861e2ddf284766ebf45b7c24a7da429d84745e25286334b4ea5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/sections-completed.md"
+      },
+      {
+        "digest": "13563fe31c4aeb7f1432cc776e9c9fde0b9aa98afe93e0a8d3acee85af27e6eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/scorecard.md"
+      },
+      {
+        "digest": "0084394eaec368d73c09dc0ca332bacb30a62c36061595c404a6b81aba6715fb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "4f6b94fb69fc517f9287b6568a0f882a110e1dd6ba9e036b564b3df801f1e172",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "c2b0d382de7e2e22e6c326a96d7f973a06e92d0fc2bfbeff4ff1a42aa2f6030d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "70d21846a91634b4fef01a463e3d11840fbaffa78670d887054b00914b52a945",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "eead0c9c033679d67960e7db24e7f8d2124c23a5b79e5c58d7ef55dda9795ea2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "fc005a4db70b2457557c503f29c2ac9e8644f23411845096384b2d2e5fcb0c20",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/index.md"
+      },
+      {
+        "digest": "24d617eee36253b77e93c6a0cf72aefc41a8e4de129bedfefa3f13d323d0a6b7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-01-principal-scopes.md"
+      },
+      {
+        "digest": "dfbabd667a72688dc3248444a6b374b209cc7d0f6c795609e313078b0668b873",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-02-control-plane-binding.md"
+      },
+      {
+        "digest": "76233e89170d93aa351909d2a026488bc0eaed6dbeb6bf4d081ff8c691c14fcb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-03-native-coordinator.md"
+      },
+      {
+        "digest": "7cd3b678a6191a1cd41b948a3ca6f20c1fb0a31a11a6e680786b3f87bc478b23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-04-worker-shell-ui.md"
+      },
+      {
+        "digest": "cd9fdcb836c70bf1b9676c4dc680a439bc5413a023f250b6aa1984da727a6b7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-05-media-workspace-integration.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md"
+      },
+      {
+        "digest": "58e58e29dde0779aec68f4f8c96af73b47996d8a528fb0420a14244562e1c7b2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/claude-plan.md"
+      },
+      {
+        "digest": "96a0a51fcca5471a274039c0251c357c9bef22b25c32638fcd8b37e0cafb1a58",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/claude-spec.md"
+      },
+      {
+        "digest": "a505f2d05fdbe6730096875f5ec08fdf00ed7f315ace2c1b5e819e068d02ed41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/completeness-audit.md"
+      },
+      {
+        "digest": "ae3bd17fdfb3922dd644c9a2e4d80e14e851a5296326fa646d542861120574aa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "85588792bd99de8662379fde87085382149030790d20d56f3121c69ba7c1d80e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/gap-review-round-6-restart-and-migration.md"
+      },
+      {
+        "digest": "52c7aff6fda073cdf9d5dc69a659f49d4d3fbddf8cea249f864519e81b0f8dba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/gap-review-round-7-final-clean.md"
+      },
+      {
+        "digest": "245f1e9eaedef861e2ddf284766ebf45b7c24a7da429d84745e25286334b4ea5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/sections-completed.md"
+      },
+      {
+        "digest": "13563fe31c4aeb7f1432cc776e9c9fde0b9aa98afe93e0a8d3acee85af27e6eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/scorecard.md"
+      },
+      {
+        "digest": "0084394eaec368d73c09dc0ca332bacb30a62c36061595c404a6b81aba6715fb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "4f6b94fb69fc517f9287b6568a0f882a110e1dd6ba9e036b564b3df801f1e172",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "c2b0d382de7e2e22e6c326a96d7f973a06e92d0fc2bfbeff4ff1a42aa2f6030d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "70d21846a91634b4fef01a463e3d11840fbaffa78670d887054b00914b52a945",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "eead0c9c033679d67960e7db24e7f8d2124c23a5b79e5c58d7ef55dda9795ea2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "fc005a4db70b2457557c503f29c2ac9e8644f23411845096384b2d2e5fcb0c20",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/index.md"
+      },
+      {
+        "digest": "24d617eee36253b77e93c6a0cf72aefc41a8e4de129bedfefa3f13d323d0a6b7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-01-principal-scopes.md"
+      },
+      {
+        "digest": "dfbabd667a72688dc3248444a6b374b209cc7d0f6c795609e313078b0668b873",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-02-control-plane-binding.md"
+      },
+      {
+        "digest": "76233e89170d93aa351909d2a026488bc0eaed6dbeb6bf4d081ff8c691c14fcb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-03-native-coordinator.md"
+      },
+      {
+        "digest": "7cd3b678a6191a1cd41b948a3ca6f20c1fb0a31a11a6e680786b3f87bc478b23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-04-worker-shell-ui.md"
+      },
+      {
+        "digest": "cd9fdcb836c70bf1b9676c4dc680a439bc5413a023f250b6aa1984da727a6b7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-05-media-workspace-integration.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md"
+      },
+      {
+        "digest": "58e58e29dde0779aec68f4f8c96af73b47996d8a528fb0420a14244562e1c7b2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/claude-plan.md"
+      },
+      {
+        "digest": "96a0a51fcca5471a274039c0251c357c9bef22b25c32638fcd8b37e0cafb1a58",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/claude-spec.md"
+      },
+      {
+        "digest": "a505f2d05fdbe6730096875f5ec08fdf00ed7f315ace2c1b5e819e068d02ed41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/completeness-audit.md"
+      },
+      {
+        "digest": "ae3bd17fdfb3922dd644c9a2e4d80e14e851a5296326fa646d542861120574aa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "85588792bd99de8662379fde87085382149030790d20d56f3121c69ba7c1d80e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/gap-review-round-6-restart-and-migration.md"
+      },
+      {
+        "digest": "52c7aff6fda073cdf9d5dc69a659f49d4d3fbddf8cea249f864519e81b0f8dba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/gap-review-round-7-final-clean.md"
+      },
+      {
+        "digest": "245f1e9eaedef861e2ddf284766ebf45b7c24a7da429d84745e25286334b4ea5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/sections-completed.md"
+      },
+      {
+        "digest": "13563fe31c4aeb7f1432cc776e9c9fde0b9aa98afe93e0a8d3acee85af27e6eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/scorecard.md"
+      },
+      {
+        "digest": "0084394eaec368d73c09dc0ca332bacb30a62c36061595c404a6b81aba6715fb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "4f6b94fb69fc517f9287b6568a0f882a110e1dd6ba9e036b564b3df801f1e172",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "c2b0d382de7e2e22e6c326a96d7f973a06e92d0fc2bfbeff4ff1a42aa2f6030d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "70d21846a91634b4fef01a463e3d11840fbaffa78670d887054b00914b52a945",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "eead0c9c033679d67960e7db24e7f8d2124c23a5b79e5c58d7ef55dda9795ea2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "fc005a4db70b2457557c503f29c2ac9e8644f23411845096384b2d2e5fcb0c20",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/index.md"
+      },
+      {
+        "digest": "24d617eee36253b77e93c6a0cf72aefc41a8e4de129bedfefa3f13d323d0a6b7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-01-principal-scopes.md"
+      },
+      {
+        "digest": "dfbabd667a72688dc3248444a6b374b209cc7d0f6c795609e313078b0668b873",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-02-control-plane-binding.md"
+      },
+      {
+        "digest": "76233e89170d93aa351909d2a026488bc0eaed6dbeb6bf4d081ff8c691c14fcb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-03-native-coordinator.md"
+      },
+      {
+        "digest": "7cd3b678a6191a1cd41b948a3ca6f20c1fb0a31a11a6e680786b3f87bc478b23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-04-worker-shell-ui.md"
+      },
+      {
+        "digest": "cd9fdcb836c70bf1b9676c4dc680a439bc5413a023f250b6aa1984da727a6b7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-05-media-workspace-integration.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md",
+    "digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.440229Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-08-30T21:05:27+07:00",
+      "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
+    },
+    "revision": null,
+    "slug": "163-worker-app-sidebar-series-media-workspace",
+    "spec_id": "163",
+    "title": "Feature 163 — Worker App Sidebar, Series Binding and Media Workspace"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.440229Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.440229Z",
+    "sources": [
+      {
+        "digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md"
+      },
+      {
+        "digest": "58e58e29dde0779aec68f4f8c96af73b47996d8a528fb0420a14244562e1c7b2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/claude-plan.md"
+      },
+      {
+        "digest": "96a0a51fcca5471a274039c0251c357c9bef22b25c32638fcd8b37e0cafb1a58",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/claude-spec.md"
+      },
+      {
+        "digest": "a505f2d05fdbe6730096875f5ec08fdf00ed7f315ace2c1b5e819e068d02ed41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/completeness-audit.md"
+      },
+      {
+        "digest": "ae3bd17fdfb3922dd644c9a2e4d80e14e851a5296326fa646d542861120574aa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "85588792bd99de8662379fde87085382149030790d20d56f3121c69ba7c1d80e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/gap-review-round-6-restart-and-migration.md"
+      },
+      {
+        "digest": "52c7aff6fda073cdf9d5dc69a659f49d4d3fbddf8cea249f864519e81b0f8dba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/gap-review-round-7-final-clean.md"
+      },
+      {
+        "digest": "245f1e9eaedef861e2ddf284766ebf45b7c24a7da429d84745e25286334b4ea5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/sections-completed.md"
+      },
+      {
+        "digest": "13563fe31c4aeb7f1432cc776e9c9fde0b9aa98afe93e0a8d3acee85af27e6eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/scorecard.md"
+      },
+      {
+        "digest": "0084394eaec368d73c09dc0ca332bacb30a62c36061595c404a6b81aba6715fb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "4f6b94fb69fc517f9287b6568a0f882a110e1dd6ba9e036b564b3df801f1e172",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "c2b0d382de7e2e22e6c326a96d7f973a06e92d0fc2bfbeff4ff1a42aa2f6030d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "70d21846a91634b4fef01a463e3d11840fbaffa78670d887054b00914b52a945",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "eead0c9c033679d67960e7db24e7f8d2124c23a5b79e5c58d7ef55dda9795ea2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "fc005a4db70b2457557c503f29c2ac9e8644f23411845096384b2d2e5fcb0c20",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/index.md"
+      },
+      {
+        "digest": "24d617eee36253b77e93c6a0cf72aefc41a8e4de129bedfefa3f13d323d0a6b7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-01-principal-scopes.md"
+      },
+      {
+        "digest": "dfbabd667a72688dc3248444a6b374b209cc7d0f6c795609e313078b0668b873",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-02-control-plane-binding.md"
+      },
+      {
+        "digest": "76233e89170d93aa351909d2a026488bc0eaed6dbeb6bf4d081ff8c691c14fcb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-03-native-coordinator.md"
+      },
+      {
+        "digest": "7cd3b678a6191a1cd41b948a3ca6f20c1fb0a31a11a6e680786b3f87bc478b23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-04-worker-shell-ui.md"
+      },
+      {
+        "digest": "cd9fdcb836c70bf1b9676c4dc680a439bc5413a023f250b6aa1984da727a6b7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-05-media-workspace-integration.md"
+      },
+      {
+        "digest": "733d7c5f875849cb7cd9f8d8246ef49912b48418cc340d642bf616beec4f6ce4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-06-integration-rollout.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md"
+      },
+      {
+        "digest": "58e58e29dde0779aec68f4f8c96af73b47996d8a528fb0420a14244562e1c7b2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/claude-plan.md"
+      },
+      {
+        "digest": "96a0a51fcca5471a274039c0251c357c9bef22b25c32638fcd8b37e0cafb1a58",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/claude-spec.md"
+      },
+      {
+        "digest": "a505f2d05fdbe6730096875f5ec08fdf00ed7f315ace2c1b5e819e068d02ed41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/completeness-audit.md"
+      },
+      {
+        "digest": "ae3bd17fdfb3922dd644c9a2e4d80e14e851a5296326fa646d542861120574aa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "85588792bd99de8662379fde87085382149030790d20d56f3121c69ba7c1d80e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/gap-review-round-6-restart-and-migration.md"
+      },
+      {
+        "digest": "52c7aff6fda073cdf9d5dc69a659f49d4d3fbddf8cea249f864519e81b0f8dba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/gap-review-round-7-final-clean.md"
+      },
+      {
+        "digest": "245f1e9eaedef861e2ddf284766ebf45b7c24a7da429d84745e25286334b4ea5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/implementation/sections-completed.md"
+      },
+      {
+        "digest": "13563fe31c4aeb7f1432cc776e9c9fde0b9aa98afe93e0a8d3acee85af27e6eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/scorecard.md"
+      },
+      {
+        "digest": "0084394eaec368d73c09dc0ca332bacb30a62c36061595c404a6b81aba6715fb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "4f6b94fb69fc517f9287b6568a0f882a110e1dd6ba9e036b564b3df801f1e172",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "c2b0d382de7e2e22e6c326a96d7f973a06e92d0fc2bfbeff4ff1a42aa2f6030d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-3.md"
+      },
+      {
+        "digest": "70d21846a91634b4fef01a463e3d11840fbaffa78670d887054b00914b52a945",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-4.md"
+      },
+      {
+        "digest": "eead0c9c033679d67960e7db24e7f8d2124c23a5b79e5c58d7ef55dda9795ea2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/reviews/self-review-round-5.md"
+      },
+      {
+        "digest": "fc005a4db70b2457557c503f29c2ac9e8644f23411845096384b2d2e5fcb0c20",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/index.md"
+      },
+      {
+        "digest": "24d617eee36253b77e93c6a0cf72aefc41a8e4de129bedfefa3f13d323d0a6b7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-01-principal-scopes.md"
+      },
+      {
+        "digest": "dfbabd667a72688dc3248444a6b374b209cc7d0f6c795609e313078b0668b873",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-02-control-plane-binding.md"
+      },
+      {
+        "digest": "76233e89170d93aa351909d2a026488bc0eaed6dbeb6bf4d081ff8c691c14fcb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-03-native-coordinator.md"
+      },
+      {
+        "digest": "7cd3b678a6191a1cd41b948a3ca6f20c1fb0a31a11a6e680786b3f87bc478b23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-04-worker-shell-ui.md"
+      },
+      {
+        "digest": "cd9fdcb836c70bf1b9676c4dc680a439bc5413a023f250b6aa1984da727a6b7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-05-media-workspace-integration.md"
+      },
+      {
+        "digest": "733d7c5f875849cb7cd9f8d8246ef49912b48418cc340d642bf616beec4f6ce4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-06-integration-rollout.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 107,
+    "unresolved": 107
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.440229Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

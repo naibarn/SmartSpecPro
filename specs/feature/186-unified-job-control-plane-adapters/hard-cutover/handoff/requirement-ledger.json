@@ -1,0 +1,184 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L10"
+      ],
+      "authority_source": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L10",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d3477164438e239adb8a8e7d6c09f28e904ded28a4e11972f1b30a9ec8a7f0a8",
+      "requirement_id": "REQ-CE786F3FB8D8",
+      "requirement_text": "Every migrated asynchronous operation must create a canonical `worker_jobs`",
+      "source_spec_digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L15"
+      ],
+      "authority_source": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L15",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "094a1d326e8375e74104a692ec5827c2bb42df0449240c6f24fbdb12e350be8e",
+      "requirement_id": "REQ-E6DBF4869ECE",
+      "requirement_text": "legacy domain projections. A generic wrapper must claim the canonical job, run",
+      "source_spec_digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L75"
+      ],
+      "authority_source": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L75",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "865c87b494fe9e01d5568b386c5acdab9d33f1b7394b4c14207ab2b42452448a",
+      "requirement_id": "REQ-BAED75E0AA2B",
+      "requirement_text": "- A successful producer call leaves one job, one `CREATED`/`QUEUED` history, and",
+      "source_spec_digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L77"
+      ],
+      "authority_source": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L77",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "30b69c2ffd7fcad170eafc814ce4ce41f1957635fce866b3e4eab4d95c103a78",
+      "requirement_id": "REQ-BFBA53DE464F",
+      "requirement_text": "- Duplicate creates and duplicate outbox publishes converge on the same IDs.",
+      "source_spec_digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L78"
+      ],
+      "authority_source": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L78",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a5c75f59a6f9ba749a7033cc431368fe130f71f28043c977de883ae1ee695175",
+      "requirement_id": "REQ-F390FC29021D",
+      "requirement_text": "- Outbox publisher loss, broker loss, duplicate delivery, stale lease, and",
+      "source_spec_digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L80"
+      ],
+      "authority_source": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L80",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ee840c037735987e9612fb04bdb2ee305530faf52e3bb047bf1d08fb4d033577",
+      "requirement_id": "REQ-CA25B880201D",
+      "requirement_text": "- Generic wrappers never trust transport tenant/actor/status fields.",
+      "source_spec_digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L81"
+      ],
+      "authority_source": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L81",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "61ebe88ae0e2ee1a6d333197f7345e00a8cf2f22e0be5dc43bebe617b403d5ce",
+      "requirement_id": "REQ-3041245B53E4",
+      "requirement_text": "- Direct transport inventory reaches zero outside an explicit compatibility",
+      "source_spec_digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L83"
+      ],
+      "authority_source": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md#L83",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b064c424b07f65dce92f800a82eaa4b50cfeab59904748e279dabe526d823928",
+      "requirement_id": "REQ-EF7C69218DE9",
+      "requirement_text": "- Focused tests and structural audits pass for each completed wave.",
+      "source_spec_digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+  "spec_id": "hard-cutover"
+}

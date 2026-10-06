@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartspecpro.local/spec-handoff/manifest-v1.schema.json",
+  "title": "Canonical Spec Handoff Manifest v1",
+  "type": "object",
+  "required": ["schema_version", "generation", "identity", "relevance_assessment", "authority", "disposition", "continuation_assessment", "lifecycle", "implementation", "integration", "verification", "deployment", "acceptance", "requirements_summary", "dependencies", "blockers", "continuation", "reconciliation", "concurrency", "updated_at"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "generation": {"type": "integer", "minimum": 0},
+    "identity": {"type": "object", "required": ["spec_id", "slug", "title", "canonical_path", "digest", "metadata"], "properties": {"spec_id": {"type": "string"}, "slug": {"type": "string"}, "title": {"type": "string"}, "canonical_path": {"type": "string"}, "revision": {"type": ["string", "null"]}, "digest": {"type": "string"}, "metadata": {"type": "object", "required": ["spec_created_at", "spec_last_changed_at", "implementation_last_touched_at", "last_evidence_at", "last_runtime_reference_at"]}}},
+    "authority": {"type": "object", "required": ["status", "confidence", "predecessors", "successors", "conflicts", "evidence"]},
+    "relevance_assessment": {"type": "object", "required": ["current_architecture_fit", "successor_or_supersession", "current_runtime_dependency", "current_product_relevance", "residual_requirements", "security_data_compliance_obligations", "implementation_equivalence", "conflict_duplication_risk", "active_references", "deployment_reality", "evidence"]},
+    "disposition": {"type": "object", "required": ["value", "rationale", "confidence", "evidence"]},
+    "continuation_assessment": {"type": "object", "required": ["decision", "confidence", "rationale", "residual_requirements", "evidence", "next_action"]},
+    "lifecycle": {"type": "object", "required": ["current_state", "previous_state", "state_evidence", "updated_at"]},
+    "implementation": {"type": "object"}, "integration": {"type": "object"},
+    "verification": {"type": "object"}, "deployment": {"type": "object"},
+    "acceptance": {"type": "object"}, "requirements_summary": {"type": "object"},
+    "dependencies": {"type": "object"}, "blockers": {"type": "array"},
+    "continuation": {"type": "object"}, "reconciliation": {"type": "object"},
+    "concurrency": {"type": "object", "required": ["expected_spec_digest", "expected_canonical_sha"]},
+    "updated_at": {"type": "string", "format": "date-time"}
+  }
+}

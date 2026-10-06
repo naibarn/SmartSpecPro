@@ -1,0 +1,597 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/028-Chat-Bridge/spec.md"
+      },
+      {
+        "digest": "91d947efb2a811d727b82fa4a8a37dc0e173087f9c2202a94a5c143ac17e5f38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/claude-plan.md"
+      },
+      {
+        "digest": "788661aebe7967b7e4fcda725539d7bcfab969cde553b250fb875a6b12d1f00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/claude-spec.md"
+      },
+      {
+        "digest": "db552781a619edb6c460734075869dee2d6bd26d95a364cfe94b00cbc318614d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "8b29a228d358bbc2cdf1443722c9f468db4a4c0f87ddf263aa3f851743d8e87d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/implementation/usage.md"
+      },
+      {
+        "digest": "2522f42b81c9bf463d0c0533fc5a387efd6697c9d8ea3a75bdefa8aaa9214bb1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/reviews/iteration-1-opus-review.md"
+      },
+      {
+        "digest": "5b34ca7aaa6ffcf3b9acf567af8554cd688b13a353095a53afb84bfd11017e48",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/index.md"
+      },
+      {
+        "digest": "3f1d9b9ce419a46e2a53f6e93a8b1179df6b26335b5deb13547c9f28bab6f0eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-01-schema-migration.md"
+      },
+      {
+        "digest": "67873bbe63a3c977cb644bcc85e7d7f87b292951c14fbbd31d7ce9c9f10eb060",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-02-webhook-handler.md"
+      },
+      {
+        "digest": "bff6524b1b4efc5f4a4178635099ecd3da147a26e571cf9f24f19087f38918cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-03-i18n-types.md"
+      },
+      {
+        "digest": "56e60b1648e7cd0e20f9d73d965b834f85abadf9b423798774c4483b8a2ba48d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-04-link-flow.md"
+      },
+      {
+        "digest": "eeb8564b7430e6cf01f2188439cf2d1182f6508ad77fec4bf00fc70b31d3d2dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-05-channel-gateway.md"
+      },
+      {
+        "digest": "ca47f1a2cff11a377e1dc84341b18290c49a247f2e93bcef51f7ad2f24daa876",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-06-delivery-queue.md"
+      },
+      {
+        "digest": "3cc123d170b9956138a49c44bdd4c873b0af3e73abf6b72ab498d3977c302877",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-07-server-side-chat.md"
+      },
+      {
+        "digest": "e84af5b88f6d705d11f430814e9f11f449cbfc64a816cd82ac5d0972a30deba8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-08-pipeline-hooks.md"
+      },
+      {
+        "digest": "75c391b76a9b7507b3dd436963615cd1208e06dc7694675e0d9d98339def9f5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-09-telegram-commands.md"
+      },
+      {
+        "digest": "97745bc5b5bae02c05867e8f89d9886228d38b81599063ca91f75a62df70745f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-10-router-extensions.md"
+      },
+      {
+        "digest": "1b4c597ec761cc62ffec0377a9814811caf2d319eb94da3542dfb3c2cb373061",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-11-integration-tests.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/028-Chat-Bridge/spec.md"
+      },
+      {
+        "digest": "91d947efb2a811d727b82fa4a8a37dc0e173087f9c2202a94a5c143ac17e5f38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/claude-plan.md"
+      },
+      {
+        "digest": "788661aebe7967b7e4fcda725539d7bcfab969cde553b250fb875a6b12d1f00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/claude-spec.md"
+      },
+      {
+        "digest": "db552781a619edb6c460734075869dee2d6bd26d95a364cfe94b00cbc318614d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "8b29a228d358bbc2cdf1443722c9f468db4a4c0f87ddf263aa3f851743d8e87d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/implementation/usage.md"
+      },
+      {
+        "digest": "2522f42b81c9bf463d0c0533fc5a387efd6697c9d8ea3a75bdefa8aaa9214bb1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/reviews/iteration-1-opus-review.md"
+      },
+      {
+        "digest": "5b34ca7aaa6ffcf3b9acf567af8554cd688b13a353095a53afb84bfd11017e48",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/index.md"
+      },
+      {
+        "digest": "3f1d9b9ce419a46e2a53f6e93a8b1179df6b26335b5deb13547c9f28bab6f0eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-01-schema-migration.md"
+      },
+      {
+        "digest": "67873bbe63a3c977cb644bcc85e7d7f87b292951c14fbbd31d7ce9c9f10eb060",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-02-webhook-handler.md"
+      },
+      {
+        "digest": "bff6524b1b4efc5f4a4178635099ecd3da147a26e571cf9f24f19087f38918cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-03-i18n-types.md"
+      },
+      {
+        "digest": "56e60b1648e7cd0e20f9d73d965b834f85abadf9b423798774c4483b8a2ba48d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-04-link-flow.md"
+      },
+      {
+        "digest": "eeb8564b7430e6cf01f2188439cf2d1182f6508ad77fec4bf00fc70b31d3d2dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-05-channel-gateway.md"
+      },
+      {
+        "digest": "ca47f1a2cff11a377e1dc84341b18290c49a247f2e93bcef51f7ad2f24daa876",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-06-delivery-queue.md"
+      },
+      {
+        "digest": "3cc123d170b9956138a49c44bdd4c873b0af3e73abf6b72ab498d3977c302877",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-07-server-side-chat.md"
+      },
+      {
+        "digest": "e84af5b88f6d705d11f430814e9f11f449cbfc64a816cd82ac5d0972a30deba8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-08-pipeline-hooks.md"
+      },
+      {
+        "digest": "75c391b76a9b7507b3dd436963615cd1208e06dc7694675e0d9d98339def9f5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-09-telegram-commands.md"
+      },
+      {
+        "digest": "97745bc5b5bae02c05867e8f89d9886228d38b81599063ca91f75a62df70745f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-10-router-extensions.md"
+      },
+      {
+        "digest": "1b4c597ec761cc62ffec0377a9814811caf2d319eb94da3542dfb3c2cb373061",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-11-integration-tests.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/028-Chat-Bridge/spec.md"
+      },
+      {
+        "digest": "91d947efb2a811d727b82fa4a8a37dc0e173087f9c2202a94a5c143ac17e5f38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/claude-plan.md"
+      },
+      {
+        "digest": "788661aebe7967b7e4fcda725539d7bcfab969cde553b250fb875a6b12d1f00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/claude-spec.md"
+      },
+      {
+        "digest": "db552781a619edb6c460734075869dee2d6bd26d95a364cfe94b00cbc318614d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "8b29a228d358bbc2cdf1443722c9f468db4a4c0f87ddf263aa3f851743d8e87d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/implementation/usage.md"
+      },
+      {
+        "digest": "2522f42b81c9bf463d0c0533fc5a387efd6697c9d8ea3a75bdefa8aaa9214bb1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/reviews/iteration-1-opus-review.md"
+      },
+      {
+        "digest": "5b34ca7aaa6ffcf3b9acf567af8554cd688b13a353095a53afb84bfd11017e48",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/index.md"
+      },
+      {
+        "digest": "3f1d9b9ce419a46e2a53f6e93a8b1179df6b26335b5deb13547c9f28bab6f0eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-01-schema-migration.md"
+      },
+      {
+        "digest": "67873bbe63a3c977cb644bcc85e7d7f87b292951c14fbbd31d7ce9c9f10eb060",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-02-webhook-handler.md"
+      },
+      {
+        "digest": "bff6524b1b4efc5f4a4178635099ecd3da147a26e571cf9f24f19087f38918cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-03-i18n-types.md"
+      },
+      {
+        "digest": "56e60b1648e7cd0e20f9d73d965b834f85abadf9b423798774c4483b8a2ba48d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-04-link-flow.md"
+      },
+      {
+        "digest": "eeb8564b7430e6cf01f2188439cf2d1182f6508ad77fec4bf00fc70b31d3d2dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-05-channel-gateway.md"
+      },
+      {
+        "digest": "ca47f1a2cff11a377e1dc84341b18290c49a247f2e93bcef51f7ad2f24daa876",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-06-delivery-queue.md"
+      },
+      {
+        "digest": "3cc123d170b9956138a49c44bdd4c873b0af3e73abf6b72ab498d3977c302877",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-07-server-side-chat.md"
+      },
+      {
+        "digest": "e84af5b88f6d705d11f430814e9f11f449cbfc64a816cd82ac5d0972a30deba8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-08-pipeline-hooks.md"
+      },
+      {
+        "digest": "75c391b76a9b7507b3dd436963615cd1208e06dc7694675e0d9d98339def9f5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-09-telegram-commands.md"
+      },
+      {
+        "digest": "97745bc5b5bae02c05867e8f89d9886228d38b81599063ca91f75a62df70745f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-10-router-extensions.md"
+      },
+      {
+        "digest": "1b4c597ec761cc62ffec0377a9814811caf2d319eb94da3542dfb3c2cb373061",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-11-integration-tests.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/028-Chat-Bridge/spec.md",
+    "digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.488130Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-02-28T15:37:20+07:00",
+      "spec_last_changed_at": "2026-02-28T15:37:20+07:00"
+    },
+    "revision": "2.0",
+    "slug": "028-Chat-Bridge",
+    "spec_id": "028",
+    "title": "SmartSpecPro Telegram Chat Bridge"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.488130Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.488130Z",
+    "sources": [
+      {
+        "digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/028-Chat-Bridge/spec.md"
+      },
+      {
+        "digest": "91d947efb2a811d727b82fa4a8a37dc0e173087f9c2202a94a5c143ac17e5f38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/claude-plan.md"
+      },
+      {
+        "digest": "788661aebe7967b7e4fcda725539d7bcfab969cde553b250fb875a6b12d1f00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/claude-spec.md"
+      },
+      {
+        "digest": "db552781a619edb6c460734075869dee2d6bd26d95a364cfe94b00cbc318614d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "8b29a228d358bbc2cdf1443722c9f468db4a4c0f87ddf263aa3f851743d8e87d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/implementation/usage.md"
+      },
+      {
+        "digest": "2522f42b81c9bf463d0c0533fc5a387efd6697c9d8ea3a75bdefa8aaa9214bb1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/reviews/iteration-1-opus-review.md"
+      },
+      {
+        "digest": "5b34ca7aaa6ffcf3b9acf567af8554cd688b13a353095a53afb84bfd11017e48",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/index.md"
+      },
+      {
+        "digest": "3f1d9b9ce419a46e2a53f6e93a8b1179df6b26335b5deb13547c9f28bab6f0eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-01-schema-migration.md"
+      },
+      {
+        "digest": "67873bbe63a3c977cb644bcc85e7d7f87b292951c14fbbd31d7ce9c9f10eb060",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-02-webhook-handler.md"
+      },
+      {
+        "digest": "bff6524b1b4efc5f4a4178635099ecd3da147a26e571cf9f24f19087f38918cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-03-i18n-types.md"
+      },
+      {
+        "digest": "56e60b1648e7cd0e20f9d73d965b834f85abadf9b423798774c4483b8a2ba48d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-04-link-flow.md"
+      },
+      {
+        "digest": "eeb8564b7430e6cf01f2188439cf2d1182f6508ad77fec4bf00fc70b31d3d2dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-05-channel-gateway.md"
+      },
+      {
+        "digest": "ca47f1a2cff11a377e1dc84341b18290c49a247f2e93bcef51f7ad2f24daa876",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-06-delivery-queue.md"
+      },
+      {
+        "digest": "3cc123d170b9956138a49c44bdd4c873b0af3e73abf6b72ab498d3977c302877",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-07-server-side-chat.md"
+      },
+      {
+        "digest": "e84af5b88f6d705d11f430814e9f11f449cbfc64a816cd82ac5d0972a30deba8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-08-pipeline-hooks.md"
+      },
+      {
+        "digest": "75c391b76a9b7507b3dd436963615cd1208e06dc7694675e0d9d98339def9f5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-09-telegram-commands.md"
+      },
+      {
+        "digest": "97745bc5b5bae02c05867e8f89d9886228d38b81599063ca91f75a62df70745f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-10-router-extensions.md"
+      },
+      {
+        "digest": "1b4c597ec761cc62ffec0377a9814811caf2d319eb94da3542dfb3c2cb373061",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-11-integration-tests.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/028-Chat-Bridge/spec.md"
+      },
+      {
+        "digest": "91d947efb2a811d727b82fa4a8a37dc0e173087f9c2202a94a5c143ac17e5f38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/claude-plan.md"
+      },
+      {
+        "digest": "788661aebe7967b7e4fcda725539d7bcfab969cde553b250fb875a6b12d1f00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/claude-spec.md"
+      },
+      {
+        "digest": "db552781a619edb6c460734075869dee2d6bd26d95a364cfe94b00cbc318614d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "8b29a228d358bbc2cdf1443722c9f468db4a4c0f87ddf263aa3f851743d8e87d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/implementation/usage.md"
+      },
+      {
+        "digest": "2522f42b81c9bf463d0c0533fc5a387efd6697c9d8ea3a75bdefa8aaa9214bb1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/reviews/iteration-1-opus-review.md"
+      },
+      {
+        "digest": "5b34ca7aaa6ffcf3b9acf567af8554cd688b13a353095a53afb84bfd11017e48",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/index.md"
+      },
+      {
+        "digest": "3f1d9b9ce419a46e2a53f6e93a8b1179df6b26335b5deb13547c9f28bab6f0eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-01-schema-migration.md"
+      },
+      {
+        "digest": "67873bbe63a3c977cb644bcc85e7d7f87b292951c14fbbd31d7ce9c9f10eb060",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-02-webhook-handler.md"
+      },
+      {
+        "digest": "bff6524b1b4efc5f4a4178635099ecd3da147a26e571cf9f24f19087f38918cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-03-i18n-types.md"
+      },
+      {
+        "digest": "56e60b1648e7cd0e20f9d73d965b834f85abadf9b423798774c4483b8a2ba48d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-04-link-flow.md"
+      },
+      {
+        "digest": "eeb8564b7430e6cf01f2188439cf2d1182f6508ad77fec4bf00fc70b31d3d2dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-05-channel-gateway.md"
+      },
+      {
+        "digest": "ca47f1a2cff11a377e1dc84341b18290c49a247f2e93bcef51f7ad2f24daa876",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-06-delivery-queue.md"
+      },
+      {
+        "digest": "3cc123d170b9956138a49c44bdd4c873b0af3e73abf6b72ab498d3977c302877",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-07-server-side-chat.md"
+      },
+      {
+        "digest": "e84af5b88f6d705d11f430814e9f11f449cbfc64a816cd82ac5d0972a30deba8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-08-pipeline-hooks.md"
+      },
+      {
+        "digest": "75c391b76a9b7507b3dd436963615cd1208e06dc7694675e0d9d98339def9f5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-09-telegram-commands.md"
+      },
+      {
+        "digest": "97745bc5b5bae02c05867e8f89d9886228d38b81599063ca91f75a62df70745f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-10-router-extensions.md"
+      },
+      {
+        "digest": "1b4c597ec761cc62ffec0377a9814811caf2d319eb94da3542dfb3c2cb373061",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/028-Chat-Bridge/sections/section-11-integration-tests.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 27,
+    "unresolved": 27
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.488130Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

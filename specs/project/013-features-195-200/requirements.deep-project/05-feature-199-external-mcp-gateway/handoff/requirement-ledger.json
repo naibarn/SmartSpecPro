@@ -1,0 +1,52 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/project/013-features-195-200/requirements.deep-project/05-feature-199-external-mcp-gateway/spec.md#L17"
+      ],
+      "authority_source": "specs/project/013-features-195-200/requirements.deep-project/05-feature-199-external-mcp-gateway/spec.md#L17",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0268873a3bbd2738138b936d6abb3d64357995d26d4f345ecbb4c69e91a4b8da",
+      "requirement_id": "REQ-AE85293523BA",
+      "requirement_text": "Extend current MCP registry/routes/routers, persistence and Python MCP adapters; map existing hosted/inbound MCP foundations instead of duplicating them. Use Feature 196 Capability Gateway, Feature 195 `worker_jobs`, Feature 197 Runner and Feature 198 Chat. External Agents must never connect directly to arbitrary upstreams.",
+      "source_spec_digest": "a3c8ba15178bd400e4ce776f2d3861f3ae66dda580bcacdb5d2ca138f8868fa8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/project/013-features-195-200/requirements.deep-project/05-feature-199-external-mcp-gateway/spec.md#L30"
+      ],
+      "authority_source": "specs/project/013-features-195-200/requirements.deep-project/05-feature-199-external-mcp-gateway/spec.md#L30",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7fa2f081d3fc1b4bd26a9e247f1985e076f765632880f816a0c142277a4e43d9",
+      "requirement_id": "REQ-AADEA857FA29",
+      "requirement_text": "2. OAuth callback or credential refresh arrives after the connection was revoked; it must remain unusable.",
+      "source_spec_digest": "a3c8ba15178bd400e4ce776f2d3861f3ae66dda580bcacdb5d2ca138f8868fa8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "a3c8ba15178bd400e4ce776f2d3861f3ae66dda580bcacdb5d2ca138f8868fa8",
+  "spec_id": "05"
+}

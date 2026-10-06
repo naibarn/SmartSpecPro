@@ -1,0 +1,497 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "48a9d13a32c0fc5ef503064b4592d356ea174b2055d04ec792674ab57a43b3f4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md"
+      },
+      {
+        "digest": "c7725592050d2a3016c094658ac239381806688f2e00248ede6447d2618eb11a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/claude-plan.md"
+      },
+      {
+        "digest": "af289b14a207789784b8a1c3bec61e57db99c4f3be077ceecfee89c847715963",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3d5ce77e12f2b3990085026cc95a69ef81b7c42bef890fa45322d925bf7f1dea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/implementation/evidence.md"
+      },
+      {
+        "digest": "9c27f5a5dd1035bcf90bd70b62088f28e9c70b9fbd109101ce59e533feb9727c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/reviews/self-review-01.md"
+      },
+      {
+        "digest": "f03e90ff5a992cf9de3d863f68f024cf10c87ffdf706f6e750853911b45e3400",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/reviews/self-review-02.md"
+      },
+      {
+        "digest": "521509b21cf7a053b63c4d6124b1314b9fd2af6361b94ff9e219834dc8343916",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/index.md"
+      },
+      {
+        "digest": "214b808e67f40771883d3488b8598744e7c4fb34465e909c84dc7033607e341d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-01-contracts-and-crypto.md"
+      },
+      {
+        "digest": "e4f8c9d9f6512b1c7fd119bc1d62c8e288ceae4cdb0a79f4e0653e12e2016296",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-02-discovery-and-registration.md"
+      },
+      {
+        "digest": "137c5c8c1fa765ca5c559d5faed52bd0da98c2a51e7f013082d477bd0fe5e31a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-03-browser-authorization.md"
+      },
+      {
+        "digest": "5f8f61a3729dd5fc560c3041f25c0b4fd2da9d5874b3f3c515a140c27e36f885",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-04-token-verifier-and-revocation.md"
+      },
+      {
+        "digest": "6d64d6904a01c723895ed9877550929352d2d983e8d05b5e2699067581885d99",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-05-user-control-plane.md"
+      },
+      {
+        "digest": "75b724a0fd11b636985c3546ddfaece70ebf8e508af663fb6ceb78519b54e02f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-06-client-compatibility.md"
+      },
+      {
+        "digest": "d7c6b9baa35e89021610669746a22a8983e3c35e8bd8e352cededf6f9975dd3e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-07-rollout-and-evidence.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "48a9d13a32c0fc5ef503064b4592d356ea174b2055d04ec792674ab57a43b3f4"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "48a9d13a32c0fc5ef503064b4592d356ea174b2055d04ec792674ab57a43b3f4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md"
+      },
+      {
+        "digest": "c7725592050d2a3016c094658ac239381806688f2e00248ede6447d2618eb11a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/claude-plan.md"
+      },
+      {
+        "digest": "af289b14a207789784b8a1c3bec61e57db99c4f3be077ceecfee89c847715963",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3d5ce77e12f2b3990085026cc95a69ef81b7c42bef890fa45322d925bf7f1dea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/implementation/evidence.md"
+      },
+      {
+        "digest": "9c27f5a5dd1035bcf90bd70b62088f28e9c70b9fbd109101ce59e533feb9727c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/reviews/self-review-01.md"
+      },
+      {
+        "digest": "f03e90ff5a992cf9de3d863f68f024cf10c87ffdf706f6e750853911b45e3400",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/reviews/self-review-02.md"
+      },
+      {
+        "digest": "521509b21cf7a053b63c4d6124b1314b9fd2af6361b94ff9e219834dc8343916",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/index.md"
+      },
+      {
+        "digest": "214b808e67f40771883d3488b8598744e7c4fb34465e909c84dc7033607e341d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-01-contracts-and-crypto.md"
+      },
+      {
+        "digest": "e4f8c9d9f6512b1c7fd119bc1d62c8e288ceae4cdb0a79f4e0653e12e2016296",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-02-discovery-and-registration.md"
+      },
+      {
+        "digest": "137c5c8c1fa765ca5c559d5faed52bd0da98c2a51e7f013082d477bd0fe5e31a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-03-browser-authorization.md"
+      },
+      {
+        "digest": "5f8f61a3729dd5fc560c3041f25c0b4fd2da9d5874b3f3c515a140c27e36f885",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-04-token-verifier-and-revocation.md"
+      },
+      {
+        "digest": "6d64d6904a01c723895ed9877550929352d2d983e8d05b5e2699067581885d99",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-05-user-control-plane.md"
+      },
+      {
+        "digest": "75b724a0fd11b636985c3546ddfaece70ebf8e508af663fb6ceb78519b54e02f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-06-client-compatibility.md"
+      },
+      {
+        "digest": "d7c6b9baa35e89021610669746a22a8983e3c35e8bd8e352cededf6f9975dd3e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-07-rollout-and-evidence.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "48a9d13a32c0fc5ef503064b4592d356ea174b2055d04ec792674ab57a43b3f4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md"
+      },
+      {
+        "digest": "c7725592050d2a3016c094658ac239381806688f2e00248ede6447d2618eb11a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/claude-plan.md"
+      },
+      {
+        "digest": "af289b14a207789784b8a1c3bec61e57db99c4f3be077ceecfee89c847715963",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3d5ce77e12f2b3990085026cc95a69ef81b7c42bef890fa45322d925bf7f1dea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/implementation/evidence.md"
+      },
+      {
+        "digest": "9c27f5a5dd1035bcf90bd70b62088f28e9c70b9fbd109101ce59e533feb9727c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/reviews/self-review-01.md"
+      },
+      {
+        "digest": "f03e90ff5a992cf9de3d863f68f024cf10c87ffdf706f6e750853911b45e3400",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/reviews/self-review-02.md"
+      },
+      {
+        "digest": "521509b21cf7a053b63c4d6124b1314b9fd2af6361b94ff9e219834dc8343916",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/index.md"
+      },
+      {
+        "digest": "214b808e67f40771883d3488b8598744e7c4fb34465e909c84dc7033607e341d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-01-contracts-and-crypto.md"
+      },
+      {
+        "digest": "e4f8c9d9f6512b1c7fd119bc1d62c8e288ceae4cdb0a79f4e0653e12e2016296",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-02-discovery-and-registration.md"
+      },
+      {
+        "digest": "137c5c8c1fa765ca5c559d5faed52bd0da98c2a51e7f013082d477bd0fe5e31a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-03-browser-authorization.md"
+      },
+      {
+        "digest": "5f8f61a3729dd5fc560c3041f25c0b4fd2da9d5874b3f3c515a140c27e36f885",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-04-token-verifier-and-revocation.md"
+      },
+      {
+        "digest": "6d64d6904a01c723895ed9877550929352d2d983e8d05b5e2699067581885d99",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-05-user-control-plane.md"
+      },
+      {
+        "digest": "75b724a0fd11b636985c3546ddfaece70ebf8e508af663fb6ceb78519b54e02f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-06-client-compatibility.md"
+      },
+      {
+        "digest": "d7c6b9baa35e89021610669746a22a8983e3c35e8bd8e352cededf6f9975dd3e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-07-rollout-and-evidence.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md",
+    "digest": "48a9d13a32c0fc5ef503064b4592d356ea174b2055d04ec792674ab57a43b3f4",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.333658Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-08-19T02:18:53+07:00",
+      "spec_last_changed_at": "2026-08-19T02:18:53+07:00"
+    },
+    "revision": null,
+    "slug": "147-mcp-zero-config-oauth-onboarding",
+    "spec_id": "147",
+    "title": "Feature 147 — Zero-config MCP OAuth onboarding for Hermes, Claude, and Codex"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.333658Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.333658Z",
+    "sources": [
+      {
+        "digest": "48a9d13a32c0fc5ef503064b4592d356ea174b2055d04ec792674ab57a43b3f4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md"
+      },
+      {
+        "digest": "c7725592050d2a3016c094658ac239381806688f2e00248ede6447d2618eb11a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/claude-plan.md"
+      },
+      {
+        "digest": "af289b14a207789784b8a1c3bec61e57db99c4f3be077ceecfee89c847715963",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3d5ce77e12f2b3990085026cc95a69ef81b7c42bef890fa45322d925bf7f1dea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/implementation/evidence.md"
+      },
+      {
+        "digest": "9c27f5a5dd1035bcf90bd70b62088f28e9c70b9fbd109101ce59e533feb9727c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/reviews/self-review-01.md"
+      },
+      {
+        "digest": "f03e90ff5a992cf9de3d863f68f024cf10c87ffdf706f6e750853911b45e3400",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/reviews/self-review-02.md"
+      },
+      {
+        "digest": "521509b21cf7a053b63c4d6124b1314b9fd2af6361b94ff9e219834dc8343916",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/index.md"
+      },
+      {
+        "digest": "214b808e67f40771883d3488b8598744e7c4fb34465e909c84dc7033607e341d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-01-contracts-and-crypto.md"
+      },
+      {
+        "digest": "e4f8c9d9f6512b1c7fd119bc1d62c8e288ceae4cdb0a79f4e0653e12e2016296",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-02-discovery-and-registration.md"
+      },
+      {
+        "digest": "137c5c8c1fa765ca5c559d5faed52bd0da98c2a51e7f013082d477bd0fe5e31a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-03-browser-authorization.md"
+      },
+      {
+        "digest": "5f8f61a3729dd5fc560c3041f25c0b4fd2da9d5874b3f3c515a140c27e36f885",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-04-token-verifier-and-revocation.md"
+      },
+      {
+        "digest": "6d64d6904a01c723895ed9877550929352d2d983e8d05b5e2699067581885d99",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-05-user-control-plane.md"
+      },
+      {
+        "digest": "75b724a0fd11b636985c3546ddfaece70ebf8e508af663fb6ceb78519b54e02f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-06-client-compatibility.md"
+      },
+      {
+        "digest": "d7c6b9baa35e89021610669746a22a8983e3c35e8bd8e352cededf6f9975dd3e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-07-rollout-and-evidence.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "48a9d13a32c0fc5ef503064b4592d356ea174b2055d04ec792674ab57a43b3f4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md"
+      },
+      {
+        "digest": "c7725592050d2a3016c094658ac239381806688f2e00248ede6447d2618eb11a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/claude-plan.md"
+      },
+      {
+        "digest": "af289b14a207789784b8a1c3bec61e57db99c4f3be077ceecfee89c847715963",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3d5ce77e12f2b3990085026cc95a69ef81b7c42bef890fa45322d925bf7f1dea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/implementation/evidence.md"
+      },
+      {
+        "digest": "9c27f5a5dd1035bcf90bd70b62088f28e9c70b9fbd109101ce59e533feb9727c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/reviews/self-review-01.md"
+      },
+      {
+        "digest": "f03e90ff5a992cf9de3d863f68f024cf10c87ffdf706f6e750853911b45e3400",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/reviews/self-review-02.md"
+      },
+      {
+        "digest": "521509b21cf7a053b63c4d6124b1314b9fd2af6361b94ff9e219834dc8343916",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/index.md"
+      },
+      {
+        "digest": "214b808e67f40771883d3488b8598744e7c4fb34465e909c84dc7033607e341d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-01-contracts-and-crypto.md"
+      },
+      {
+        "digest": "e4f8c9d9f6512b1c7fd119bc1d62c8e288ceae4cdb0a79f4e0653e12e2016296",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-02-discovery-and-registration.md"
+      },
+      {
+        "digest": "137c5c8c1fa765ca5c559d5faed52bd0da98c2a51e7f013082d477bd0fe5e31a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-03-browser-authorization.md"
+      },
+      {
+        "digest": "5f8f61a3729dd5fc560c3041f25c0b4fd2da9d5874b3f3c515a140c27e36f885",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-04-token-verifier-and-revocation.md"
+      },
+      {
+        "digest": "6d64d6904a01c723895ed9877550929352d2d983e8d05b5e2699067581885d99",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-05-user-control-plane.md"
+      },
+      {
+        "digest": "75b724a0fd11b636985c3546ddfaece70ebf8e508af663fb6ceb78519b54e02f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-06-client-compatibility.md"
+      },
+      {
+        "digest": "d7c6b9baa35e89021610669746a22a8983e3c35e8bd8e352cededf6f9975dd3e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/sections/section-07-rollout-and-evidence.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 59,
+    "unresolved": 59
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.333658Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

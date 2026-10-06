@@ -1,0 +1,228 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/013-VectorDatabase/spec.md#L99"
+      ],
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L99",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "39d45fe7e988d4bfb315daa1a3def7807c97a1b3068c55210745d552441fb1db",
+      "requirement_id": "REQ-23B4FD740328",
+      "requirement_text": "tenantId: string;        // Multi-tenant isolation (REQUIRED)",
+      "source_spec_digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/013-VectorDatabase/spec.md#L119"
+      ],
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L119",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b6499b05d274f8641e8a6a7bf1eb58c2fc918e4aa3fc9ee2c43236f78c19cebd",
+      "requirement_id": "REQ-A307A6952857",
+      "requirement_text": "| Router | Action | Required Call | Priority |",
+      "source_spec_digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/013-VectorDatabase/spec.md#L132"
+      ],
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L132",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c620644c0bf221e88ce2481fcfb7801ff0c14b139cb1e46cd3e2cdacac2b12d4",
+      "requirement_id": "REQ-AD347763E568",
+      "requirement_text": "**Required:** BullMQ queue `vector-indexing` or Cloud Tasks queue for async processing.",
+      "source_spec_digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/013-VectorDatabase/spec.md#L250"
+      ],
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L250",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1484aa274d15c0959b2ddbb180a216b63da71199e69dea9ca96064c29195c1f4",
+      "requirement_id": "REQ-3A205892ECD6",
+      "requirement_text": "- account_id (required)",
+      "source_spec_digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/013-VectorDatabase/spec.md#L251"
+      ],
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L251",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "632a7e00b5185ab5e9c2a2cef9e1051dc621c908c4691bb025bcc039d82a5125",
+      "requirement_id": "REQ-B9B8A0125316",
+      "requirement_text": "- api_token (encrypted, required)",
+      "source_spec_digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/013-VectorDatabase/spec.md#L613"
+      ],
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L613",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b5ad3a3d11e8c90e3786629d2378d9bf6e48a771ab1fbcc1e7689bd3b6b842d0",
+      "requirement_id": "REQ-A278A97C8655",
+      "requirement_text": "| From | To | Action Required |",
+      "source_spec_digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/013-VectorDatabase/spec.md#L629"
+      ],
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L629",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b2be2abc2930a4da7976f27ab3a0ae6cd8a36c5c977bb3c57bd0ad99a6e30be5",
+      "requirement_id": "REQ-A6A8BC0CA509",
+      "requirement_text": "- **REQUIRED:** Every vector operation MUST include `tenantId` in metadata",
+      "source_spec_digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/013-VectorDatabase/spec.md#L630"
+      ],
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L630",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a0609689e71d83f3af48f229730140565472249fca634144b04c087bd4bc4f0e",
+      "requirement_id": "REQ-74985E744FF3",
+      "requirement_text": "- **REQUIRED:** Every search MUST filter by authenticated user's `tenantId`",
+      "source_spec_digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/013-VectorDatabase/spec.md#L631"
+      ],
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L631",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "146365e4d35023bd23fbfb8d29a55baf87954f16c9d6b5cf8d0f62fb05d54f4b",
+      "requirement_id": "REQ-F24CB2BDCDA1",
+      "requirement_text": "- **REQUIRED:** `tenantId` derived from JWT, NEVER from client input",
+      "source_spec_digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/013-VectorDatabase/spec.md#L632"
+      ],
+      "authority_source": "specs/feature/013-VectorDatabase/spec.md#L632",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "dbc4e57a08b2bebb152a13f102b02553d2d8bbc56ddd5670a511cea8cb90b58c",
+      "requirement_id": "REQ-D38B05C47BF1",
+      "requirement_text": "- **REQUIRED:** Admin reindex must preserve per-tenant vectors",
+      "source_spec_digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+  "spec_id": "013"
+}
