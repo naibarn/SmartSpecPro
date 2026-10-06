@@ -336,18 +336,18 @@ def _upsert_workspace(
     git_dir = _git_dir(workspace)
     workspace_id, _ = _workspace_identity(workspace)
     facts = _git_facts(workspace)
-    if role is None:
-        role = "UNKNOWN_WORKSPACE"
-        configured = policy.get("canonical_user_workspace")
-        if configured and str(workspace) == configured:
-            role = "CANONICAL_USER_WORKSPACE"
-    if role not in ROLES:
-        raise WorkspaceAuthorityError("WORKSPACE_ROLE_INVALID")
     with _db(repo) as db:
         db.execute("BEGIN IMMEDIATE")
         try:
             _ensure_project(db, policy)
             old = _workspace_by_id(db, workspace_id)
+            if role is None:
+                role = old["role"] if old else "UNKNOWN_WORKSPACE"
+                configured = policy.get("canonical_user_workspace")
+                if not old and configured and str(workspace) == configured:
+                    role = "CANONICAL_USER_WORKSPACE"
+            if role not in ROLES:
+                raise WorkspaceAuthorityError("WORKSPACE_ROLE_INVALID")
             if role == "CANONICAL_USER_WORKSPACE":
                 project = db.execute(
                     "SELECT canonical_workspace_id FROM projects WHERE project_id=? AND repository_id=?",
@@ -681,7 +681,12 @@ def _preserve_local_commits(repo: Path, policy: dict[str, Any], workspace: dict[
     destination = root / policy["project_id"] / workspace["workspace_id"].replace(":", "-") / f"commits-{workspace['head_sha'][:12]}.bundle"
     destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     if not destination.exists():
-        _git(repo, "bundle", "create", str(destination), workspace["head_sha"], f"^{target}")
+        recovery_ref = f"refs/workspace-authority/recovery/{uuid.uuid4()}"
+        _git(repo, "update-ref", recovery_ref, workspace["head_sha"])
+        try:
+            _git(repo, "bundle", "create", str(destination), recovery_ref, f"^{target}")
+        finally:
+            _git(repo, "update-ref", "-d", recovery_ref)
         os.chmod(destination, 0o600)
         _git(repo, "bundle", "verify", str(destination))
     return str(destination)
