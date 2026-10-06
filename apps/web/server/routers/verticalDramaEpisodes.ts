@@ -18084,10 +18084,22 @@ export const verticalDramaEpisodesRouter = router({
           });
         }
         const frame = plan.frames[frameIndex];
+        const submittedCharacterKeys = Object.entries(input.overrides)
+          .filter(([, description]) => description.trim().length > 0)
+          .map(([key]) => key.trim());
         const overrides = normalizeVerticalDramaCharacterDescriptionOverrides(
           input.overrides,
           frame.requiredCharacterRefs ?? []
         );
+        const rejectedCharacterKeys = submittedCharacterKeys.filter(
+          key => !Object.hasOwn(overrides, key)
+        );
+        if (rejectedCharacterKeys.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `บันทึกรายละเอียดไม่ได้: ตัวละคร ${rejectedCharacterKeys.join(", ")} ไม่อยู่ในรายชื่อตัวละครของช็อตนี้ กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง`,
+          });
+        }
         const updatedFrame = {
           ...frame,
           ...(Object.keys(overrides).length > 0
@@ -18119,7 +18131,7 @@ export const verticalDramaEpisodesRouter = router({
               }),
             }
           : existingPack;
-        await tx
+        const [savedRow] = await tx
           .update(verticalDramaEpisodes)
           .set({
             startFramePlan: updatedPlan,
@@ -18133,10 +18145,35 @@ export const verticalDramaEpisodesRouter = router({
               eq(verticalDramaEpisodes.userId, userId),
               eq(verticalDramaEpisodes.seriesId, seriesId)
             )
+          )
+          .returning({ startFramePlan: verticalDramaEpisodes.startFramePlan });
+        const savedPlan =
+          (savedRow?.startFramePlan as VerticalDramaStartFramePlan | null) ??
+          null;
+        const savedFrame = savedPlan?.frames?.find(
+          entry => entry.shotNumber === input.shotNumber
+        );
+        const savedOverrides = normalizeVerticalDramaCharacterDescriptionOverrides(
+          savedFrame?.characterDescriptionOverrides,
+          frame.requiredCharacterRefs ?? []
+        );
+        const overridesWereSaved =
+          Object.keys(savedOverrides).length === Object.keys(overrides).length &&
+          Object.entries(overrides).every(
+            ([key, description]) => savedOverrides[key] === description
           );
+        if (
+          !savedPlan ||
+          !overridesWereSaved
+        ) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "บันทึกรายละเอียดตัวละครไม่สำเร็จ กรุณาลองอีกครั้ง",
+          });
+        }
         return {
-          startFramePlan: updatedPlan,
-          overrides: overrides as VerticalDramaCharacterDescriptionOverrides,
+          startFramePlan: savedPlan,
+          overrides: savedOverrides as VerticalDramaCharacterDescriptionOverrides,
         };
       });
     }),
