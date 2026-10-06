@@ -133,6 +133,18 @@ def update_manifest(spec_dir: Path, *, expected_generation: int, expected_spec_d
                     raise ValueError(f"invalid manifest path: {dotted}")
                 current = current[part]
             current[parts[-1]] = value
+        explicit_roots = {path.split(".", 1)[0] for path in changes}
+        manual_fields = explicit_roots & {"authority", "disposition", "continuation_assessment", "lifecycle"}
+        if manual_fields:
+            decisions = updated.setdefault("manual_decisions", {})
+            for field in manual_fields:
+                decisions[field] = json.loads(json.dumps(updated[field]))
+        if "reconciliation.confidence" in changes:
+            decisions = updated.setdefault("manual_decisions", {})
+            decisions["reconciliation_confidence"] = {
+                "value": updated["reconciliation"]["confidence"],
+                "source_spec_digest": actual_digest,
+            }
         updated["generation"] = expected_generation + 1
         updated["updated_at"] = utc_now()
         updated["concurrency"]["expected_spec_digest"] = actual_digest

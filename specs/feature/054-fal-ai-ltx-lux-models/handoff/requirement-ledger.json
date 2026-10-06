@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -144,6 +144,28 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L903"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L903",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "03d7fb1f2464f4f696702900e7111a90ae08af8f45fe6421cccddeed35bcfd1e",
+      "requirement_id": "REQ-388950B95481",
+      "requirement_text": "ทุก URL field ที่ user ส่งมา (`image_url`, `end_image_url`, `audio_url`, `video_url`) ต้องผ่าน `validate_uri_no_ssrf()` ก่อนส่งไป fal.ai:",
+      "source_spec_digest": "10639155328d1a00cec413fc7b2441800ee46d43cc5f2f4b0de953a8cac91668",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L919"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L919",
@@ -158,6 +180,28 @@
       "requirement_digest": "2b0db8dd109c221e59f2b6bc2dc5399b3a1791e7d766c42a9c9561561e98d829",
       "requirement_id": "REQ-A81B14F919AA",
       "requirement_text": "**Fix required:** เพิ่ม explicit check ใน `FalAIProvider._validate_urls()` ที่ reject `host.docker.internal`:",
+      "source_spec_digest": "10639155328d1a00cec413fc7b2441800ee46d43cc5f2f4b0de953a8cac91668",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L933"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L933",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d081d900282219f28addf78efac626648cf2c877c31d66593ad7a59270da12dc",
+      "requirement_id": "REQ-59598BA9F332",
+      "requirement_text": "**Defense-in-depth (MANDATORY):** tRPC layer (`media.ts`) ต้องเพิ่ม Zod `.refine()` บน `extraParams` ที่ validate URLs matching `^https?://` ว่าไม่ชี้ไป internal hosts:",
       "source_spec_digest": "10639155328d1a00cec413fc7b2441800ee46d43cc5f2f4b0de953a8cac91668",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -224,6 +268,50 @@
       "requirement_digest": "c37f6d7207c9fe743c8575d87915a700979e53e34142b75ae95acf100453dd57",
       "requirement_id": "REQ-D6FB5C7263EB",
       "requirement_text": "3. `resolution` field ต้องมี `affectsPricing: true`",
+      "source_spec_digest": "10639155328d1a00cec413fc7b2441800ee46d43cc5f2f4b0de953a8cac91668",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L960"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L960",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "cf50f03e56a0e59a18b541b97acbb8d5a35b9358f5decd6af4d3a1d379bae5ee",
+      "requirement_id": "REQ-8F6621F11BFD",
+      "requirement_text": "Credits ต้องคำนวณจาก **actual output** ของ fal.ai response, ไม่ใช่จาก client-declared params.",
+      "source_spec_digest": "10639155328d1a00cec413fc7b2441800ee46d43cc5f2f4b0de953a8cac91668",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L964"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L964",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "dd6ac6f0da6781ce65915f940d5bae2bbd1a56dc05c2a432089759801dff025e",
+      "requirement_id": "REQ-A74B451A9673",
+      "requirement_text": "**Current pattern:** Node.js pre-reserves credits ตอน submit (ใน `media.ts`) แล้วไม่มี post-completion reconciliation — ดังนั้นต้องสร้าง reconciliation path:",
       "source_spec_digest": "10639155328d1a00cec413fc7b2441800ee46d43cc5f2f4b0de953a8cac91668",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -342,6 +430,28 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1000"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1000",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4eeb5c00ef8b74c369d46661a773b28a739566b8735756c3f533dc551f5fd02f",
+      "requirement_id": "R2",
+      "requirement_text": "fal.ai CDN URLs (`v3b.fal.media/files/...`) เป็น public URLs — ต้อง re-host ไป platform R2/S3:",
+      "source_spec_digest": "10639155328d1a00cec413fc7b2441800ee46d43cc5f2f4b0de953a8cac91668",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1002"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1002",
@@ -376,7 +486,7 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "2af4127e0d5dfb46f4937df4e6794763691e32a5ca162c23201d432a88c81760",
-      "requirement_id": "R2",
+      "requirement_id": "R2-1003",
       "requirement_text": "2. Upload ไป R2/S3 ภายใต้ tenant-namespaced path",
       "source_spec_digest": "10639155328d1a00cec413fc7b2441800ee46d43cc5f2f4b0de953a8cac91668",
       "successor_mapping": [],
@@ -422,6 +532,28 @@
       "requirement_digest": "384d9bbcfb23e260e57fdf76fdde10ace8f2a5351816e72568e3c3528accae4b",
       "requirement_id": "REQ-1785B66F749E",
       "requirement_text": "4. ป้องกันการเข้าถึง media ข้าม tenant",
+      "source_spec_digest": "10639155328d1a00cec413fc7b2441800ee46d43cc5f2f4b0de953a8cac91668",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1024"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1024",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "eafa74404c6c1a172df4b0fadafdb062b94a63dd88c109d5c3fe779c0fedecd9",
+      "requirement_id": "REQ-F1C2E68DB613",
+      "requirement_text": "Lux TTS voice cloning ต้องมี controls:",
       "source_spec_digest": "10639155328d1a00cec413fc7b2441800ee46d43cc5f2f4b0de953a8cac91668",
       "successor_mapping": [],
       "verification_evidence": [],

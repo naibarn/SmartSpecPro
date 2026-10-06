@@ -276,7 +276,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md",
     "digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
@@ -552,8 +552,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 269,
-    "unresolved": 269
+    "total": 309,
+    "unresolved": 309
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.251011Z",

@@ -36,3 +36,13 @@ Framework validation for this candidate: 50 focused tests passed; `compileall`, 
 - Its focused test evidence records 131 passing, 11 failing, 3 skipped, and 37 todo in the 11-file slice; the dedicated 10-file security slice passed, and two unsafe URL tests passed in isolation. The normalized external URL case is blocked by DNS resolution for `cdn.example.com`; this is not claimed as a code pass. The broader library service suite also has mock-contract failures.
 - The other dated Security Spec (`20260212`) remains R0 and unclassified. Its requested full TypeScript check is not run in this shared implementation session; use a dedicated runner or CI after reviewing its exact current acceptance evidence.
 - Updated reconciliation review queue: R0 data integrity 2, R0 security 1, R1 identity conflicts 36, R1 runtime references 35, R2 test references 11, R3 relationship claims 7, R4 status claims 166, R5 without direct evidence 62 (320 remaining records).
+
+## Follow-up review after parser and writer repairs
+
+- Thai normative headings/keywords are now extracted without treating Thai causal prose outside requirement sections as acceptance criteria. Security Spec `20260212` now has 24 requirement rows instead of one `UNPARSED` placeholder; all remain open except four Phase A/B rows marked PARTIAL by static source evidence.
+- Explicit manifest decisions written through the shared writer now persist across reconciliation. Reviewed confidence is bound to the normative Spec digest and expires automatically when that digest changes. Regression tests cover both same-digest persistence and changed-digest invalidation.
+- CLI `reconcile --spec-dir` now normalizes relative paths against `--repo`; regression test covers that invocation.
+- Full reconcile twice: 294/294 outcomes with stable generations/confidence/requirement counts. Global index: 436/436 records; no missing handoffs, invalid manifests, or drift. Framework suite: 56 tests pass.
+- Security Spec `20260211` remains ACTIVE_CANONICAL / VALIDATION_ONLY with 4 PASS, 1 PARTIAL, and 2 VALIDATION_PENDING requirements after full reconciliation.
+- Security Spec `20260212` is ACTIVE_CANONICAL / RECONCILIATION_REQUIRED at MEDIUM confidence; full 8 GB package typecheck and critical-flow smoke remain queued for CI/dedicated runner.
+- Remaining review queue is 319 records: R0 data integrity 2, R1 identity conflicts 36, R1 runtime references 35, R2 test references 11, R3 relationship claims 7, R4 status claims 166, R5 without direct evidence 62. The queue is still open and is not an implementation backlog.

@@ -341,7 +341,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md",
     "digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
@@ -628,8 +628,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 160,
-    "unresolved": 160
+    "total": 170,
+    "unresolved": 170
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.405856Z",

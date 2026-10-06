@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -1347,6 +1347,138 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L962"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L962",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6e1a2d680ecd2754ffae50bb1c2bef4fb6587426185650901f74094df73b1c7d",
+      "requirement_id": "REQ-FE82E5A7AC5B",
+      "requirement_text": "- Sidebar navigation uses semantic navigation landmarks, grouped labels, active",
+      "source_spec_digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L965"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L965",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "39acb7b0e9a1aaa610aa60ba8cb4c19094cace8eba0a637a7fbb0e8fbd0f0025",
+      "requirement_id": "REQ-3AB7A1BC7959",
+      "requirement_text": "- Series selector, search, filters, wizard steps, native folder action, policy",
+      "source_spec_digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L967"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L967",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a59c5e1e029cd3d4cbec986ab95937509cabeff64bf5c5991834dd83ff9ec5d4",
+      "requirement_id": "REQ-D8A8C159AEAA",
+      "requirement_text": "- Focus is visible, trapped inside open dialogs/wizards, and returned to the",
+      "source_spec_digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L969"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L969",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6118827b4e0cf16bf7064f9e3f7b54584e9288525f63ed9c7983da9ecddee296",
+      "requirement_id": "REQ-E7C40AFA1584",
+      "requirement_text": "- Loading, progress, stale, offline, revoked, and action-result updates use a",
+      "source_spec_digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L971"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L971",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f35dcacfff7b21124b41a52a598a514bf9a1f3b2f0c36630cae324a8d7287fc9",
+      "requirement_id": "REQ-803A4065D0E9",
+      "requirement_text": "- Every icon-only action, status badge, thumbnail, path warning, and disabled",
+      "source_spec_digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L973"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L973",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "03ad7eccebd25b8588dc8c5d27e9291ff2dc2271638a42c41ce3d404b7366276",
+      "requirement_id": "REQ-6E2DF2FB7E16",
+      "requirement_text": "- Status, scope, binding, QC, and confidence never rely on color alone; focus",
+      "source_spec_digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L974"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L974",
@@ -1361,6 +1493,28 @@
       "requirement_digest": "f2869b9f8990ba7240b785886e73b53988cad54aba363ee64e9ee707ead705f1",
       "requirement_id": "REQ-592B958154D0",
       "requirement_text": "contrast and light/dark semantic tokens are required.",
+      "source_spec_digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L975"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md#L975",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "11ae412a210a764a9a03262ac37e71b4aa866defb2628061c7ee4232f69e60e2",
+      "requirement_id": "REQ-016EA400662C",
+      "requirement_text": "- Reduced motion disables animated Sidebar transitions and nonessential queue",
       "source_spec_digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
       "successor_mapping": [],
       "verification_evidence": [],

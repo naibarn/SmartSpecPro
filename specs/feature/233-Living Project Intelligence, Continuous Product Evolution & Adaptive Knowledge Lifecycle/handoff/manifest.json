@@ -271,7 +271,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md",
     "digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
@@ -399,8 +399,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 86,
-    "unresolved": 86
+    "total": 95,
+    "unresolved": 95
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.334781Z",

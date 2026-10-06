@@ -303,7 +303,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md",
     "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
@@ -410,8 +410,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 148,
-    "unresolved": 148
+    "total": 248,
+    "unresolved": 248
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.384178Z",

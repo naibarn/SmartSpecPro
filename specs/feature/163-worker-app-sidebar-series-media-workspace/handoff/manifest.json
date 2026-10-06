@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md",
     "digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
@@ -663,8 +663,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 115,
-    "unresolved": 115
+    "total": 122,
+    "unresolved": 122
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.440229Z",

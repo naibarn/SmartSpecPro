@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -687,6 +687,72 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L485"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L485",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8b10e8e15814f9ebb5f2356bdea4476e54fbf20ca2704ba81f7c0b9380bc57b1",
+      "requirement_id": "REQ-68DAF21EC960",
+      "requirement_text": "| `vd-story-structure-v1` | Node validator | Missing episode/shot, duplicate numbering, schema failure |",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L486"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L486",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3e4197fa5ee5ce7323fd4e82799a96a043c937524f823d79881d72d784776aff",
+      "requirement_id": "REQ-99E58CF73DFF",
+      "requirement_text": "| `vd-story-identity-roster-v1` | Node validator | Unknown character, speaker, location, or canonical-ID mismatch |",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L487"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L487",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d1a1e12410342b1090aac83e4ce4f5922156088d06a2e442dcbc2e021197babd",
+      "requirement_id": "REQ-9D0F85C21199",
+      "requirement_text": "| `vd-story-control-contract-v1` | Node validator | Story-control, architecture, endpoint, or production-contract violation |",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L488"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L488",
@@ -709,6 +775,28 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L489"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L489",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ed6270e50c046a1b9c72742e41e0e06db49afe106b8e4e8d3c8762f0ca0dfcb4",
+      "requirement_id": "REQ-A7AE2880F358",
+      "requirement_text": "| `vd-story-budget-v1` | Node validator | Hard content/speech/token/call/credit limit exceeded |",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L490"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L490",
@@ -723,6 +811,28 @@
       "requirement_digest": "df247e5b6818e7a9a9ead63f8df97f36e27942cc5769e5a3c8be7ebb74c09db3",
       "requirement_id": "REQ-036754D69194",
       "requirement_text": "| `vd-story-plan-alignment-v1` | Alignment reviewer plus Node gate | Required beat unresolved, unsupported deferral, or critical contradiction |",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L491"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L491",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1f872be87242e3a621a028358f0803a3c3697cebeabd5b3b5a591f63bceb3a11",
+      "requirement_id": "REQ-C36921AADF5C",
+      "requirement_text": "| `vd-story-dramaturgy-v1` | Season dramaturgy critic | Only configured craft-floor failures; it cannot override deterministic facts |",
       "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
       "successor_mapping": [],
       "verification_evidence": [],

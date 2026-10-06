@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -3041,6 +3041,28 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1288"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1288",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c16c6c8ae55bb91a008873fd447d1df84206cebe443ac4786fce4c3fd385c283",
+      "requirement_id": "REQ-F85CABC876A3",
+      "requirement_text": "1. A Draft QC run persists a valid baseline, produces an immutable",
+      "source_spec_digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1290"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1290",
@@ -3063,6 +3085,138 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1292"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1292",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "14b04a6a80dadd125259822ff6774def66dae6aade05aa38c527dca8e53859ec",
+      "requirement_id": "REQ-D6174D516B39",
+      "requirement_text": "2. Repair is attempted with no result, an old result, a wrong source",
+      "source_spec_digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1296"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1296",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e0ff9ade010f248930ccca29e5f34d368b5e07f8a9b851e54ab1c08ad031a2ec",
+      "requirement_id": "REQ-06D7B68A10CF",
+      "requirement_text": "3. Agent active, shadow, legacy, manifest-missing, timeout, and runtime-error",
+      "source_spec_digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1299"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1299",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a79de6756f7010b7a41d19d63c8d182cd50955e775b9589bbc0c00f16281d0cd",
+      "requirement_id": "REQ-EE3587C628F4",
+      "requirement_text": "4. Browser refresh, tab close, network loss, worker restart, Redis expiry, and",
+      "source_spec_digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1302"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1302",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e2b5d30c2a3ee19dc45c65f08d9113561b2de8b68bc2115763a2f3207f1bc31c",
+      "requirement_id": "REQ-F972928DA730",
+      "requirement_text": "5. A new user edit or source/profile change fences the old attempt, preserves",
+      "source_spec_digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1305"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1305",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "64f8de4e12fbc21800e379f8aa9b5310d11daf35e06dc558983550a9ecbc9004",
+      "requirement_id": "REQ-92A5C61F088B",
+      "requirement_text": "6. Failures injected before reservation, after model response, after provider",
+      "source_spec_digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1308"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1308",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d3416711b746080f9607ab680af058d0c1e0edac0027c5ef8ea7bc37c4edc0fc",
+      "requirement_id": "REQ-1510969FDC49",
+      "requirement_text": "7. Every current profile passes the source-pack/claim/evidence/rights/B-roll",
+      "source_spec_digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1310"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1310",
@@ -3077,6 +3231,72 @@
       "requirement_digest": "1985da3f935b8b4c3621adb52c6ea1fc4fc2f22683841c8cc5b14881e3086436",
       "requirement_id": "REQ-7613A73F836E",
       "requirement_text": "accidental required source pack.",
+      "source_spec_digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1311"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1311",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2148e346ff5ee8664d09bc4eaf1abe000b5a2a9bf467f8b88c642d8534e10346",
+      "requirement_id": "REQ-E866F675B68E",
+      "requirement_text": "8. The full chain preserves the same context fingerprint and selected semantic",
+      "source_spec_digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1314"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1314",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "dfdcb4e1ed445c17352cec60aa96bbc59d2bf6f7f0795a4862afe7452aff30e6",
+      "requirement_id": "REQ-900198FB5F5D",
+      "requirement_text": "9. A provider-limit failure never silently marks a lossy truncation as",
+      "source_spec_digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1316"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1316",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "aecaf3a3b0943d4c58f95a525ecf6a08226fdd5163df901f995b16c704e0f1dd",
+      "requirement_id": "REQ-9D7B4E316651",
+      "requirement_text": "10. A provider result that may have been accepted enters reconciliation and",
       "source_spec_digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
       "successor_mapping": [],
       "verification_evidence": [],

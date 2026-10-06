@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -349,6 +349,94 @@
       "requirement_digest": "c7307a76f7ff0511b1e5a32adfd24c0b4901f481a927354fa0704447bd800ce3",
       "requirement_id": "REQ-61F6368F9218",
       "requirement_text": "The provider scheduler must enforce all applicable dimensions independently:",
+      "source_spec_digest": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/spec.md#L233"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/spec.md#L233",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "cfbda71dfe4c882e137ca3b5e1e494dba1995c9d27943816d85e25b8ae3ac38d",
+      "requirement_id": "REQ-42FF05A12B06",
+      "requirement_text": "- provider account/credential scope and its submission window;",
+      "source_spec_digest": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/spec.md#L234"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/spec.md#L234",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c473e2b047ce0e782ec782fa16d447255e3dc10c5449fcafe88d83b5364dbb8c",
+      "requirement_id": "REQ-50FA7EDA3646",
+      "requirement_text": "- provider-side concurrent running-task limit;",
+      "source_spec_digest": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/spec.md#L235"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/spec.md#L235",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b76fc8b16729adf3405528956754c60487139af402824aab9e664c9988c33efb",
+      "requirement_id": "REQ-BB9798B623CC",
+      "requirement_text": "- tenant/user submission or active-provider-task limit, with the initial",
+      "source_spec_digest": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/spec.md#L238"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/spec.md#L238",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "eb9138c3f0aa48a1a660ab8376326919d77ea767ac11372ac0c33bb3999c97a7",
+      "requirement_id": "REQ-83A13323E040",
+      "requirement_text": "- a separate application backlog/admission budget that protects PostgreSQL",
       "source_spec_digest": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
       "successor_mapping": [],
       "verification_evidence": [],

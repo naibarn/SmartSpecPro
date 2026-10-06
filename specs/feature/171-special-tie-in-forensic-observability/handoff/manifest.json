@@ -191,7 +191,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/171-special-tie-in-forensic-observability/spec.md",
     "digest": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
@@ -356,8 +356,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 2,
-    "unresolved": 2
+    "total": 10,
+    "unresolved": 10
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.498841Z",

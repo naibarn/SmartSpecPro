@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -1804,6 +1804,28 @@
       "requirement_digest": "e2637273fd46ffee64f77450d8e93fa1e591661f53832ed5975417bd1012c96a",
       "requirement_id": "REQ-D64A9EC9F7C6",
       "requirement_text": "Admin must be able to configure a default Thai automatic-document note, including support for the default message:",
+      "source_spec_digest": "538d8e736792d0969a84eccdb92f9c54dadb01b4c9bf9fe5b45ee25887f20a0a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L291"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L291",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "468a74e5ecd77c8ff03c0409f86a8143e0ad5ff24d163dabee800e372a9925ee",
+      "requirement_id": "REQ-FF96A1009273",
+      "requirement_text": "`เอกสารนี้ออกด้วยระบบอัตโนมัติ ไม่จำเป็นต้องมีลายเซ็นต์ผู้มีอำนาจลงนาม`",
       "source_spec_digest": "538d8e736792d0969a84eccdb92f9c54dadb01b4c9bf9fe5b45ee25887f20a0a",
       "successor_mapping": [],
       "verification_evidence": [],

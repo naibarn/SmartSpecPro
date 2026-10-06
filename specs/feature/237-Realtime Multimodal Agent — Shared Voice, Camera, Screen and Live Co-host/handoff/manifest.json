@@ -170,7 +170,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md",
     "digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
@@ -292,8 +292,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 45,
-    "unresolved": 45
+    "total": 62,
+    "unresolved": 62
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.358807Z",

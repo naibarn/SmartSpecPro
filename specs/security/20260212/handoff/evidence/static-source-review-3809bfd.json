@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-10-06T02:04:41Z",
+  "canonical_ref": "refs/heads/main",
+  "canonical_sha": "3809bfd59c3f8c5116eb69c76e346373e19a39d9",
+  "spec_path": "specs/security/20260212/spec.md",
+  "source_findings": [
+    {
+      "requirement_area": "Phase A aliases and strictness",
+      "path": "apps/web/tsconfig.json",
+      "observed": "extends ../../tsconfig.base.json; strict=true; noEmit=true; @server/* and @smartspec/ui/src/* aliases are present."
+    },
+    {
+      "requirement_area": "Target configuration",
+      "path": "tsconfig.base.json",
+      "observed": "target is ES2022."
+    },
+    {
+      "requirement_area": "Factory import correction",
+      "path": "apps/web/server/routers/factory.ts",
+      "observed": "imports publicProcedure and router from ../_core/trpc."
+    },
+    {
+      "requirement_area": "Forge ENV fields",
+      "path": "apps/web/server/_core/env.ts",
+      "observed": "forgeApiUrl and forgeApiKey are declared and read from FORGE_API_URL/FORGE_API_KEY."
+    },
+    {
+      "requirement_area": "Dependency declaration",
+      "path": "apps/web/package.json",
+      "observed": "stripe ^18.5.0 is a runtime dependency."
+    },
+    {
+      "requirement_area": "Typecheck workflow",
+      "path": ".github/workflows/ci.yml",
+      "observed": "CI includes turbo build/typecheck; package scripts expose check/typecheck with an 8 GB Node heap. There are no check:client or check:server scripts."
+    }
+  ],
+  "verification": {
+    "status": "NOT_RUN",
+    "reason": "Repository instructions prohibit npm run typecheck in a shared implementation session; the package check also requests an 8 GB heap.",
+    "required_next": "Run the package check in CI or a dedicated admitted runner and compare current diagnostics with the Spec baseline; then verify the listed critical flows."
+  },
+  "limitations": [
+    "Static source alignment does not prove TS2307/TS2339/TS7006/TS2322/TS2345/TS2554 counts or zero-error acceptance.",
+    "High-error client/server area cleanup and critical flow smoke tests were not established by this review.",
+    "No source file was changed during this review."
+  ]
+}

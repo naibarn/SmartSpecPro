@@ -147,6 +147,43 @@ class StoreTests(unittest.TestCase):
             (spec / "handoff/manifest.json").write_text(json.dumps(value), encoding="utf-8")
             self.assertEqual(initialize(spec, root)["manual_decisions"]["disposition"]["value"], "RETIRED")
 
+    def test_manifest_writer_persists_explicit_disposition_across_reconciliation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec = self.setup_spec(root)
+            first = reconcile_one(spec, root, write=True)["manifest"]
+            decision = {"value": "RETIRED", "rationale": "Current architecture evidence confirms retirement.", "confidence": "HIGH", "evidence": ["architecture-review.md"]}
+            update_manifest(
+                spec,
+                expected_generation=first["generation"],
+                expected_spec_digest=first["identity"]["digest"],
+                expected_canonical_sha=None,
+                changes={"disposition": decision},
+                repo=root,
+            )
+            reconciled = reconcile_one(spec, root, write=True)["manifest"]
+            self.assertEqual(reconciled["disposition"], decision)
+            self.assertEqual(reconciled["manual_decisions"]["disposition"], decision)
+
+    def test_reviewed_reconciliation_confidence_is_digest_bound(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec = self.setup_spec(root)
+            first = reconcile_one(spec, root, write=True)["manifest"]
+            update_manifest(
+                spec,
+                expected_generation=first["generation"],
+                expected_spec_digest=first["identity"]["digest"],
+                expected_canonical_sha=None,
+                changes={"reconciliation.confidence": "MEDIUM"},
+                repo=root,
+            )
+            same_digest = reconcile_one(spec, root, write=True)["manifest"]
+            self.assertEqual(same_digest["reconciliation"]["confidence"], "MEDIUM")
+            (spec / "spec.md").write_text("# Changed\nRequirement changed.\n", encoding="utf-8")
+            changed_digest = reconcile_one(spec, root, write=True)["manifest"]
+            self.assertEqual(changed_digest["reconciliation"]["confidence"], "LOW")
+
 
 if __name__ == "__main__":
     unittest.main()

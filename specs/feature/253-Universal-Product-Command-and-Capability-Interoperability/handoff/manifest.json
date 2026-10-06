@@ -132,7 +132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md",
     "digest": "81d69c4736aa34b278f7a002e8a6f7edc6c5eee48d6f819fe736f64aab394288",
@@ -239,8 +239,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 22,
-    "unresolved": 22
+    "total": 30,
+    "unresolved": 30
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.538571Z",

@@ -394,7 +394,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/207-agentic-economic-control-plane/spec.md",
     "digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
@@ -667,8 +667,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 469,
-    "unresolved": 469
+    "total": 538,
+    "unresolved": 538
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.870469Z",

@@ -5,5 +5,5 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `VALIDATION_ONLY` (MEDIUM)
 - Requirements: 4 pass / 3 unresolved of 7
-- Next action: Complete focused editor insertion verification and rerun the normalized external URL case with deterministic DNS fixtures; then reassess requirement-level acceptance.
-- Manifest generation: 13
+- Next action: Complete focused editor insertion verification and rerun normalized external URL validation with deterministic DNS fixtures.
+- Manifest generation: 17

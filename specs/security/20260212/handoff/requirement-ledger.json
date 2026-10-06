@@ -1,10 +1,120 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 7,
+  "reconciliation_version": 3,
   "requirements": [
     {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L115"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L115",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "3809bfd59c3f8c5116eb69c76e346373e19a39d9",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/tsconfig.json",
+        "tsconfig.base.json"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Current aliases and strict target configuration are present; TS2307 counts were not verified.",
+      "requirement_digest": "dddd55cd32dc04ef397ce2df56aa873243b4b434d21ef958d2bd1d88bed62e3e",
+      "requirement_id": "REQ-CEB0D4AC3FC6",
+      "requirement_text": "- `TS2307` ฝั่ง ui wrappers และ `@server/routers` ต้องหายทั้งหมด",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+      ],
+      "verification_method": "Static source review at canonical main SHA 3809bfd59c3f8c5116eb69c76e346373e19a39d9; full typecheck not run."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L116"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L116",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "3809bfd59c3f8c5116eb69c76e346373e19a39d9",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/tsconfig.json",
+        "tsconfig.base.json"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "The alias foundation is present, but the TS2305 reduction criterion requires current typecheck counts.",
+      "requirement_digest": "b3c8be27591e8b97351bdb2c43f49ac42d6831a989010c4906756617baf6c967",
+      "requirement_id": "REQ-BE9025D8A971",
+      "requirement_text": "- `TS2305` จำนวนมากที่เป็นผลพวงจาก module-not-found ต้องลดลงอย่างมีนัยสำคัญ",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+      ],
+      "verification_method": "Static source review at canonical main SHA 3809bfd59c3f8c5116eb69c76e346373e19a39d9; full typecheck not run."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L131"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L131",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "3809bfd59c3f8c5116eb69c76e346373e19a39d9",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/routers/factory.ts",
+        "apps/web/server/_core/env.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Factory import and Forge ENV fields are aligned in source; TS2307/TS2339 acceptance remains unverified.",
+      "requirement_digest": "8a5cbd6923a0046b241b7a49530ef588594753af6c90dc9bb94124a704fc3cc2",
+      "requirement_id": "REQ-A8EF20AB3311",
+      "requirement_text": "- `TS2307`/`TS2339` ที่มาจาก env/import drift หาย",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+      ],
+      "verification_method": "Static source review at canonical main SHA 3809bfd59c3f8c5116eb69c76e346373e19a39d9; full typecheck not run."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L132"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L132",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "3809bfd59c3f8c5116eb69c76e346373e19a39d9",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/_core/env.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Forge ENV fields are declared; a full field-access diagnostic is pending the package typecheck.",
+      "requirement_digest": "7e7ebda299af764cbd86bd84d9473ad37d5b53fe2ca31ccb88fe3278ea5e9bdd",
+      "requirement_id": "REQ-F371FF743D93",
+      "requirement_text": "- ไม่มี field access ที่ไม่ได้ประกาศบน `ENV`",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+      ],
+      "verification_method": "Static source review at canonical main SHA 3809bfd59c3f8c5116eb69c76e346373e19a39d9; full typecheck not run."
+    },
+    {
       "applicability": "UNASSESSED",
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L142"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -12,14 +122,432 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Review normative Spec and extract requirement-level ledger entries.",
-      "requirement_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
-      "requirement_id": "UNPARSED-SPEC-158A323A",
-      "requirement_text": "Normative requirement extraction needs review; no safe structured requirement set was detected.",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5f4a5d64e426cd01aba2c07d1fec71679a17edf16cb01408a0f5af822f43eb3f",
+      "requirement_id": "REQ-D8F299140B50",
+      "requirement_text": "- error ข้อความแนว `property ... does not exist on type \"The property 'useContext'...\"` ต้องหาย",
       "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
       "successor_mapping": [],
       "verification_evidence": [],
-      "verification_method": "Manual requirement extraction and mapping review."
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L161"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L161",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fcb4cd0869059b56578bfee4805af74246f135cc3b89e5838b1382a53cf112e6",
+      "requirement_id": "REQ-6EA651D2209D",
+      "requirement_text": "- `TS7006`, `TS2322`, `TS2345`, `TS2554` เหลือ 0",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L162"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L162",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a3736a7cf3dc9d5d5a17b9dd79397fac31bfcc64ada84180c983296bd3041e57",
+      "requirement_id": "REQ-8161540C0F8F",
+      "requirement_text": "- ไม่มี `as any` ใหม่ที่ไม่จำเป็น",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L174"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L174",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9405e68d7b913ebb24b101377bea24318fedb29bc5607f176c19de7be34e89f7",
+      "requirement_id": "REQ-4FDA684876A8",
+      "requirement_text": "- `npm run check` ผ่าน 100%",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L175"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L175",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3a4297507d263fde8dc8190ec9302ecda9ac2930cffbccb99f38383b26d96460",
+      "requirement_id": "REQ-1C16BC0686C7",
+      "requirement_text": "- CI fail ทันทีเมื่อมี type regressions",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L213"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L213",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a1f4bd8ee501d1b9307639be039b1621dae3ce0ddadd9c3eb91bceaa6fbfbf2e",
+      "requirement_id": "REQ-9F6192874BAB",
+      "requirement_text": "1. ห้ามปิด `strict` หรือ `noEmit` เพื่อให้ผ่านปลอม",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L214"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L214",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1c6d8f30fd714c22a9b5fe769feeec14e87178c257d812f4d11cc45e776d3415",
+      "requirement_id": "REQ-E5C26C7CDD61",
+      "requirement_text": "2. ห้ามแก้โดย cast เป็น `any` จำนวนมาก",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L215"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L215",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "aacae5f22ba7135af98f1200ae84c58c81944f4a5a44a4e0b5736ab43f8524e1",
+      "requirement_id": "REQ-D4670CD8B82C",
+      "requirement_text": "3. ห้ามลบ validation/runtime guard ที่เกี่ยวกับ auth/tenant/url safety",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L216"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L216",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e386f248a4d0fc55bbcc7da98c07677f4fc58426a2e3214268ee823569ab7c9a",
+      "requirement_id": "REQ-9B36C7E718B4",
+      "requirement_text": "4. ห้ามเปลี่ยนพฤติกรรม auth/session โดยไม่มี test ครอบ",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L224"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L224",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "15f4f63ae7f099972e2adab2676186ea3e5873de4d2de25b86391ab09de31959",
+      "requirement_id": "REQ-38E5938393EA",
+      "requirement_text": "1. `cd apps/web && npm run check`",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L225"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L225",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c8085e595334b143731c2c86a053207046078f8f2ebf6cc988cd818eb155e04a",
+      "requirement_id": "REQ-E662B0A26C7F",
+      "requirement_text": "2. รัน unit tests ของโมดูลที่แก้",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L226"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L226",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "336a2967971ad9f665b87f395520e02b8b6c6f4e8c0ac939d5d9152ea0bcf264",
+      "requirement_id": "REQ-25E7698F7EF9",
+      "requirement_text": "3. รัน smoke ของ flows สำคัญ:",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L227"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L227",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e948b18ee9e6010900eb7e3078286076106c3485de875fd2a7c2b0b4627c6d2f",
+      "requirement_id": "REQ-E4B93D2D3A95",
+      "requirement_text": "- login/auth context",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L228"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L228",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "117ace695c5f00d9d9026a090699fb85a58bc70041eb1da3f913fc8c374575f0",
+      "requirement_id": "REQ-84969A6368E8",
+      "requirement_text": "- admin settings",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L229"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L229",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "71c928274fc99bdc15792344ff64abe02b891ecf7185e36f73a7b097e325cda5",
+      "requirement_id": "REQ-7042B8AF6573",
+      "requirement_text": "- media studio",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L230"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L230",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ee68d460af346c792ba872587d3e8b800e34ec0d7268e35c3708b514a2ebb97c",
+      "requirement_id": "REQ-2E3DFA30BC7A",
+      "requirement_text": "- document management",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L234"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L234",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fe1e658f97beea2e7a6d587ad2d7d4ffe4fb6955ca6bd772778f90808e5e9ff9",
+      "requirement_id": "REQ-1492AEDDE856",
+      "requirement_text": "1. TypeScript errors = 0",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L235"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L235",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4a638c1e5184522b69d170c67353f0dce6002b58ea02714c0bb8d376b4a1eff2",
+      "requirement_id": "REQ-B41300D8F1E2",
+      "requirement_text": "2. ไม่มีการลดมาตรฐาน strictness",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L236"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L236",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fd4fda5678b53196251d28d7d1ef9b49472fb95ecf8459e02d308b972ca0bdb0",
+      "requirement_id": "REQ-7F961218061C",
+      "requirement_text": "3. Critical flows ใช้งานได้",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L237"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L237",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "80a767ccb47225585b5559d3556840968d8667c9f476c45fa7e5800a5cdb7b5a",
+      "requirement_id": "REQ-0E4CF46FCFF3",
+      "requirement_text": "4. ไม่มี security regression ใหม่จากการแก้ type",
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,

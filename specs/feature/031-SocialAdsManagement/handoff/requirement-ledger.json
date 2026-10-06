@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -291,6 +291,72 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L143"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L143",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6889996ccb93cf6b18aeb36ee9186aa4c8c88346ee4e907c43bc65efa71cb21e",
+      "requirement_id": "REQ-16B9CB15ADCA",
+      "requirement_text": "- A post scheduled 10 minutes ahead publishes automatically within 90s of `scheduledAt` with no human action (verified against a real test Page).",
+      "source_spec_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L144"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L144",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ec48fda6506e6e75e206293fff742d71d40d3010858fb39bc1e6f4af284277ea",
+      "requirement_id": "REQ-F19CA08B59D4",
+      "requirement_text": "- Kill/restart of `smartspec-web.service` mid-window does not double-publish (idempotency proven by test).",
+      "source_spec_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L145"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L145",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "66b0fbab09e0f6d2b0ca7fba6244301d55df7841743be369c3818776cf5045d5",
+      "requirement_id": "REQ-0CBEE9BD6F70",
+      "requirement_text": "- Redis inspection during a monitor run shows zero token-shaped strings in any job payload or job history (automated test greps `EAA` prefix + `access_token`).",
+      "source_spec_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L173"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L173",
@@ -393,6 +459,28 @@
       "requirement_digest": "a9f52cd00cf560ba9c0030f50e2c96454d427e536eb48266b7aff5ec540c70e1",
       "requirement_id": "REQ-5979577651C6",
       "requirement_text": "- `auto_pause_overspend`: pause campaign when daily cap exceeded (default ON, cap required)",
+      "source_spec_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L305"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L305",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0488a58170ae5045e474e46a87f9d4f691a7ac8a7299fa52630969e086c9b381",
+      "requirement_id": "REQ-61844AA46A71",
+      "requirement_text": "- With a deliberately policy-violating ad on a **sandbox account** (§15), the DISAPPROVED state is detected within one poll cycle, the ad is paused, an intent-row + notification exist, and the Issues tab shows the `issues_info` reason.",
       "source_spec_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -841,6 +929,28 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L574"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L574",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "53b61fed91d1aa045a282930d01381535fdcbaf8f5f0a598aa01bec0077e9fb9",
+      "requirement_id": "REQ-7ED1B09981A8",
+      "requirement_text": "- After 7 days of collection on the 6 live test pages, each page card renders real trends; a page with zero posts in the window renders correctly (no division-by-zero engagement rates — facts builder emits nulls, not fabricated zeros).",
+      "source_spec_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L596"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L596",
@@ -877,6 +987,72 @@
       "requirement_digest": "c937874e7c6b96c708792ddc174736a754d5fff7137408fe864e212076757d1a",
       "requirement_id": "REQ-F0068B442566",
       "requirement_text": "- **Provisional-data humility:** conversion metrics younger than the attribution restatement window must be flagged as provisional in the advice (mirrors §8.3).",
+      "source_spec_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L641"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L641",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d4ecdfa43be18996387b0af18531a2e882538a2784788bba597a6fa629d5f99f",
+      "requirement_id": "REQ-5EBA41276918",
+      "requirement_text": "- On-demand page report for a live test page returns structured Thai recommendations where every recommendation cites a fact present in the stored `facts_snapshot`; ads report on the live test account correctly triages the real `DISAPPROVED`/`WITH_ISSUES` ads found in the 2026-07-17 baseline test.",
+      "source_spec_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L642"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L642",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d42058096a1799f008d2cf8ec077a8581c867da7bdcb160ca845172ee1bb9caf",
+      "requirement_id": "REQ-33CDE5C25A47",
+      "requirement_text": "- Editing `skill.md` (e.g., changing recommendation priorities) changes the next report's behavior with **no deploy and no code change** (after registry cache refresh).",
+      "source_spec_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L643"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-SocialAdsManagement/spec.md#L643",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "317a2c0c5b56e6cce91d25c718276adac8623f40790acce5ad2770a5f35492c1",
+      "requirement_id": "REQ-859217028B26",
+      "requirement_text": "- Facts-token-hygiene unit test green (§18.1).",
       "source_spec_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
       "successor_mapping": [],
       "verification_evidence": [],

@@ -333,7 +333,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/031-SocialAdsManagement/spec.md",
     "digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
@@ -610,8 +610,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 40,
-    "unresolved": 40
+    "total": 48,
+    "unresolved": 48
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.520042Z",

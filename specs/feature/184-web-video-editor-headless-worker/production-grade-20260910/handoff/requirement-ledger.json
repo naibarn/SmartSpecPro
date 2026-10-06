@@ -1,10 +1,13 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L73"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -12,14 +15,146 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Review normative Spec and extract requirement-level ledger entries.",
-      "requirement_digest": "ba947a22f5c72ac287c401ea5939f1e1a3b590be2a77d98df264b29fe4ff88ea",
-      "requirement_id": "UNPARSED-SPEC-449176BC",
-      "requirement_text": "Normative requirement extraction needs review; no safe structured requirement set was detected.",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "06c8db8dfcc118bd12cd22b163238a679fbbc3fe2eb6260cd0187b01ccbb58eb",
+      "requirement_id": "REQ-DED066ECB1AC",
+      "requirement_text": "- `/readyz` reports DB and Redis ready across restart, delayed Redis restore and",
       "source_spec_digest": "ba947a22f5c72ac287c401ea5939f1e1a3b590be2a77d98df264b29fe4ff88ea",
       "successor_mapping": [],
       "verification_evidence": [],
-      "verification_method": "Manual requirement extraction and mapping review."
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L75"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L75",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9bc5e369e8362c0cc1542d395777fce930bf4cd70318e56ea99c689c66b01349",
+      "requirement_id": "REQ-90F9E68208B9",
+      "requirement_text": "- Worker registration includes a signed, versioned operation manifest. Claim",
+      "source_spec_digest": "ba947a22f5c72ac287c401ea5939f1e1a3b590be2a77d98df264b29fe4ff88ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L78"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L78",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "dd2423a60421c89963e04b9a4ccb322d6a6c2e5ad141ca11c1e002795b93ea1a",
+      "requirement_id": "R2",
+      "requirement_text": "- Single and multiple Bin uploads complete through R2 with checksum, quota,",
+      "source_spec_digest": "ba947a22f5c72ac287c401ea5939f1e1a3b590be2a77d98df264b29fe4ff88ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L81"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L81",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "42e3c3cc62a3d4cafa51eda49d818192440719b24bff55493410ad205d04185f",
+      "requirement_id": "REQ-671CF4630FB3",
+      "requirement_text": "- Two-tab and stale-result tests prove revision CAS and no stale publication.",
+      "source_spec_digest": "ba947a22f5c72ac287c401ea5939f1e1a3b590be2a77d98df264b29fe4ff88ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L82"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L82",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "01fd3118b2043eed0fe90f1264e74a15638e322328462c24c4ffa980853e13a5",
+      "requirement_id": "REQ-6328FF97B0E4",
+      "requirement_text": "- At least 20 tracks scroll and virtualize without losing lock/mute/solo/volume,",
+      "source_spec_digest": "ba947a22f5c72ac287c401ea5939f1e1a3b590be2a77d98df264b29fe4ff88ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L84"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L84",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f7661dc812ade0b8222300f3cb444139e183a809b7afc3dec4cf212431a8916f",
+      "requirement_id": "REQ-54700FADE7EE",
+      "requirement_text": "- Browser proof covers 390x844, 768x1024, 1280x800 and 1440x900. Real Worker",
+      "source_spec_digest": "ba947a22f5c72ac287c401ea5939f1e1a3b590be2a77d98df264b29fe4ff88ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L87"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md#L87",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "66a68c32fe0e94a468aeb9f171ecbc6131d5082b767816982fd949127a5fd1db",
+      "requirement_id": "REQ-296994166A57",
+      "requirement_text": "- A rollback can disable web dispatch or one operation family without deleting",
+      "source_spec_digest": "ba947a22f5c72ac287c401ea5939f1e1a3b590be2a77d98df264b29fe4ff88ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,

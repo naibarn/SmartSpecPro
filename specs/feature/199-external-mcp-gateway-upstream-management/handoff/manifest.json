@@ -389,7 +389,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/199-external-mcp-gateway-upstream-management/spec.md",
     "digest": "2c98b861736fe69226a9d3f2f2d8e7028fdf107a6ce94343b0c713eb76b91ff9",
@@ -788,8 +788,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 1505,
-    "unresolved": 1505
+    "total": 1509,
+    "unresolved": 1509
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.715240Z",

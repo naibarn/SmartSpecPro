@@ -218,7 +218,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/239-External Personal Agent Interoperability/spec.md",
     "digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
@@ -325,8 +325,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 40,
-    "unresolved": 40
+    "total": 107,
+    "unresolved": 107
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.375567Z",

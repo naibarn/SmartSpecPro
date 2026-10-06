@@ -266,7 +266,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md",
     "digest": "275beeba6f8b56ba420aa90cbecd7193c4e1e567b8510370a97e807d5bbaa8cc",
@@ -665,8 +665,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 354,
-    "unresolved": 354
+    "total": 399,
+    "unresolved": 399
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.693825Z",

@@ -114,7 +114,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md",
     "digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
@@ -221,8 +221,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 22,
-    "unresolved": 22
+    "total": 30,
+    "unresolved": 30
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.352662Z",

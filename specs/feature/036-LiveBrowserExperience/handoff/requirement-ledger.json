@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -217,6 +217,28 @@
       "requirement_digest": "8285e18de330949452a57266c31db8fd44728f6b3e66271a0c4a74dfa65ba254",
       "requirement_id": "REQ-D6E7E1847920",
       "requirement_text": "- pauses agent when user action is required",
+      "source_spec_digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L363"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L363",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "55adc8422c373ca58e49f4ab50728392169dfa4f7c21ebe70012bb6d1e57e4c5",
+      "requirement_id": "REQ-C75F44101B9E",
+      "requirement_text": "หน้า `Live Browser Workspace` ต้องมีอย่างน้อย 4 zones:",
       "source_spec_digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1831,6 +1853,28 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L1212"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L1212",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "64ea9bb40d788879eeb5c303bd22930e795a93508041976d9e5fa30ff6c901ad",
+      "requirement_id": "REQ-4A727C37780B",
+      "requirement_text": "เมื่อ user ขอ takeover บน sensitive class ต้องตรวจอย่างน้อย:",
+      "source_spec_digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L1214"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L1214",
@@ -1941,6 +1985,28 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L1225"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L1225",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a1604b44375e40b9f3a99cb4ee7f6d777bf8b3c4c11fec01609336ce671a71f6",
+      "requirement_id": "REQ-513114E4C919",
+      "requirement_text": "ระบบไม่จำเป็นต้อง log keystroke-by-keystroke แต่ต้องเก็บ:",
+      "source_spec_digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L1227"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L1227",
@@ -2021,6 +2087,28 @@
       "requirement_digest": "22289c1cc6ab6d4528705fc24a9bc3d4ce6833612d3e710660c494103da3f86a",
       "requirement_id": "REQ-8CAB964364CB",
       "requirement_text": "- screenshot hash หรือ equivalent evidence handle",
+      "source_spec_digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L1232"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L1232",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "057738a4df5db4f7d1468dde647bf43cdd535a412d6140478d1f15595f89fee1",
+      "requirement_id": "REQ-F788237938D1",
+      "requirement_text": "Secret-like fields ต้องเก็บเฉพาะ redacted metadata",
       "source_spec_digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2461,6 +2549,28 @@
       "requirement_digest": "cf1fc3adb36677079bdb63344e85fedafc165b17bc5aedeb7057d2a6c55f8608",
       "requirement_id": "REQ-022E59AEF712",
       "requirement_text": "| user closes tab during approve_only | session remains waiting until timeout/cancel/resume by same authorized user |",
+      "source_spec_digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L1271"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/036-LiveBrowserExperience/spec.md#L1271",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "36d8a380e395816e148214c2ccd0d9ef2dfef5c4557ef314fbb3fe9bc4eb33bc",
+      "requirement_id": "REQ-115B19601D0C",
+      "requirement_text": "metrics ที่ต้องมี:",
       "source_spec_digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
       "successor_mapping": [],
       "verification_evidence": [],

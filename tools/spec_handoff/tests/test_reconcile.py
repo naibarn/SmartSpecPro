@@ -34,7 +34,7 @@ class ReconciliationTests(unittest.TestCase):
             second = reconcile_one(spec, repo, write=True)
             after = {name: (spec / "handoff" / name).read_bytes() for name in before}
             self.assertEqual(first["manifest"]["generation"], second["manifest"]["generation"])
-            self.assertEqual(second["ledger"]["reconciliation_version"], 2)
+            self.assertEqual(second["ledger"]["reconciliation_version"], 3)
             self.assertEqual(before, after)
 
     def test_reconciler_version_migration_advances_ledger_generation_once(self):
@@ -135,6 +135,18 @@ class ReconciliationTests(unittest.TestCase):
             self.assertTrue(any("Freshness" in text for text in texts))
             self.assertFalse(any("Build a new CMS later" in text for text in texts))
             self.assertFalse(any("unrelated risk note" in text for text in texts))
+
+    def test_requirement_extraction_supports_thai_normative_headings_and_keywords(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            spec = self.make_spec(repo, "# Example\n\n## Root cause\n- config lacks a path alias ที่จำเป็น\n\n## เกณฑ์การยอมรับ\n- ระบบต้องคง strict mode ไว้\n\n## Security Constraints (ห้ามทำ)\n- ห้ามใช้ any เพื่อปิด type errors\n")
+            result = reconcile_one(spec, repo, write=True)
+            rows = result["ledger"]["requirements"]
+            self.assertEqual(len(rows), 2)
+            self.assertTrue(any("ต้องคง strict" in row["requirement_text"] for row in rows))
+            self.assertTrue(any("ห้ามใช้ any" in row["requirement_text"] for row in rows))
+            self.assertFalse(any("จำเป็น" in row["requirement_text"] for row in rows))
+            self.assertNotIn("UNPARSED-SPEC-", " ".join(row["requirement_id"] for row in rows))
 
 
 if __name__ == "__main__":

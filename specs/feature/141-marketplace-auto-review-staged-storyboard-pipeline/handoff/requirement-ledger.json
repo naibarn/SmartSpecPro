@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -1787,6 +1787,28 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1642"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1642",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "edcbc2cb2fa2b751e40cd19ca0d7f50e6956e9ed31aca5d3755e863c3705fe61",
+      "requirement_id": "REQ-A0E256A54BE1",
+      "requirement_text": "- Feature 136 measured text-LLM baseline: approximately 66,093 tokens across",
+      "source_spec_digest": "a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1644"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1644",
@@ -1801,6 +1823,50 @@
       "requirement_digest": "2bdd98ea7c6200bb1864bad26e51720acc89d4130f0cf122302d7c2d501b31eb",
       "requirement_id": "REQ-17DC107CD05F",
       "requirement_text": "- Feature 141 plan plus all nine successful video-prompt calls must use no more",
+      "source_spec_digest": "a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1646"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1646",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1dc35663acd27dcc37261e8d3236441338c5ae603e23b055358caaf1a64471c8",
+      "requirement_id": "REQ-9A8863CB381B",
+      "requirement_text": "- Story Arc Planner alone targets a valid first-pass response materially below",
+      "source_spec_digest": "a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1648"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md#L1648",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8a4ad350680ba2bde0d6f9aee275470b9eb30bf378910654ac06deefe8381916",
+      "requirement_id": "REQ-26FDF457FCB3",
+      "requirement_text": "- no normal success path invokes a full nine-shot LLM rewrite after plan",
       "source_spec_digest": "a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
       "successor_mapping": [],
       "verification_evidence": [],

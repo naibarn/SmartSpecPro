@@ -97,6 +97,9 @@ def main(argv: list[str] | None = None) -> int:
     update_req.add_argument("--requirement-id", required=True)
     update_req.add_argument("--changes-json", required=True)
     args = parser.parse_args(argv)
+    args.repo = args.repo.resolve()
+    if getattr(args, "spec_dir", None) is not None and not args.spec_dir.is_absolute():
+        args.spec_dir = (args.repo / args.spec_dir).resolve()
     if args.command == "inventory":
         result = inventory(args.repo)
         data = json_bytes(result)

@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md",
     "digest": "769f585b63b4e9eb008eaf7b7ad248b17a45a2ffa2418e7cf4162dfe16c2eb76",
@@ -191,8 +191,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 235,
-    "unresolved": 235
+    "total": 275,
+    "unresolved": 275
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.494876Z",

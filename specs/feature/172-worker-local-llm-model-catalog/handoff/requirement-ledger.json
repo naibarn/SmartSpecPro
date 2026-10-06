@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -1317,6 +1317,50 @@
       "requirement_digest": "baf261406af91c6c2f3dfd631ec8bca7447efc14b36ca540507b278691b06589",
       "requirement_id": "REQ-F6270AB4502C",
       "requirement_text": "Deletion/export requests must include Local LLM job payloads and results, while",
+      "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/spec.md#L909"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/spec.md#L909",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ac6801b63a94128a8e2307b4eabb73b6e5dad9abf9b64cbb77dde922cefcd7be",
+      "requirement_id": "REQ-6596507B277D",
+      "requirement_text": "`local_only` เพราะ Cloud สามารถเห็น payload ระหว่าง relay ได้ หากต้องการ",
+      "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/spec.md#L910"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/spec.md#L910",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ebeafd5ee818ba13daa156b11b006eb50862b34fc9e8a717a560eeac8b3e44cc",
+      "requirement_id": "REQ-091D2A4182FE",
+      "requirement_text": "`local_only` จริงต้องเริ่มจาก Desktop/Worker local UI หรือเพิ่ม E2E encryption",
       "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
       "successor_mapping": [],
       "verification_evidence": [],

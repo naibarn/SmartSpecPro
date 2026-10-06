@@ -99,7 +99,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/176-drama-series-emotion-timeline-web/spec.md",
     "digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
@@ -263,8 +263,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 32,
-    "unresolved": 32
+    "total": 37,
+    "unresolved": 37
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.535034Z",

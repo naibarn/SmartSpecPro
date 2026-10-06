@@ -479,7 +479,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md",
     "digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
@@ -1096,8 +1096,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 923,
-    "unresolved": 923
+    "total": 929,
+    "unresolved": 929
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.910148Z",

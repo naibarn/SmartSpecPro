@@ -268,7 +268,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md",
     "digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
@@ -375,8 +375,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 218,
-    "unresolved": 218
+    "total": 377,
+    "unresolved": 377
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.426629Z",
