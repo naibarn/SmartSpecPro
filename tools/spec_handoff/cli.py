@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .contracts import completion_eligible, validate_ledger
 from .inventory import inventory, json_bytes
+from .reconciliation_classifications import ARTIFACT as CLASSIFICATION_ARTIFACT, build_classifications, validate_classifications
 from .index import build_views, generate_spec_status, status_drift, write_views
 from .reconcile import reconcile_all, reconcile_one
 from .store import initialize, read_manifest, render_status
@@ -82,6 +83,10 @@ def main(argv: list[str] | None = None) -> int:
     next_cmd.add_argument("--limit", type=int, default=20)
     stale = commands.add_parser("stale", help="find stale spec and exact-SHA evidence")
     relationships = commands.add_parser("relationships", help="show known and candidate Spec relationships")
+    classifications = commands.add_parser("classifications", help="build or validate evidence-bound repository reconciliation classifications")
+    classifications.add_argument("--write", action="store_true", help="write the classification artifact")
+    classifications.add_argument("--check", action="store_true", help="validate the committed artifact against dynamic inventory")
+    classifications.add_argument("--baseline-sha", default=None, help="source revision recorded in the generated artifact")
     update = commands.add_parser("update", help="optimistically update canonical manifest through the shared writer")
     update.add_argument("--spec-dir", type=Path, required=True)
     update.add_argument("--expected-generation", type=int, required=True)
@@ -217,6 +222,33 @@ def main(argv: list[str] | None = None) -> int:
             per_spec_drift = status_drift(args.repo)
         print(json.dumps({"record_count": views["spec-index.json"]["record_count"], "canonical_spec_count": views["spec-index.json"]["canonical_spec_count"], "global_invariant": views["reconciliation-report.json"]["invariant_discovered_equals_indexed"], "drift": drift, "per_spec_status_drift": per_spec_drift, "written": args.write}, indent=2))
         return 2 if args.check and (drift or per_spec_drift) else 0
+    if args.command == "classifications":
+        artifact = args.repo / CLASSIFICATION_ARTIFACT
+        if args.check:
+            try:
+                document = json.loads(artifact.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                print(f"classification artifact unavailable: {exc}")
+                return 1
+            errors = validate_classifications(args.repo, document)
+            if errors:
+                print("\n".join(errors))
+                return 1
+            print(f"classification artifact PASS: {document['inventory_record_count']} records; unresolved={document['classification_counts'].get('UNRESOLVED_AUTHORITY', 0)}")
+            return 0
+        if not args.write:
+            parser.error("classifications requires --write or --check")
+        import subprocess
+        baseline = args.baseline_sha or subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=args.repo, text=True).strip()
+        document = build_classifications(args.repo, baseline_sha=baseline)
+        errors = validate_classifications(args.repo, document)
+        if errors:
+            print("\n".join(errors))
+            return 1
+        from .store import _atomic_write as _store_atomic_write
+        _store_atomic_write(artifact, (json.dumps(document, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        print(f"wrote {artifact.relative_to(args.repo)}: {len(document['records'])} records; unresolved={document['classification_counts'].get('UNRESOLVED_AUTHORITY', 0)}")
+        return 0
     if args.command in {"next", "stale", "relationships"}:
         views = build_views(args.repo)
         if args.command == "next":

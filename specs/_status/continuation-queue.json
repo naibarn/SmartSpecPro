@@ -566,7 +566,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 0,
-      "next_action": "Review the eight unresolved duplicate Spec ID groups first, then resume evidence-based review of the remaining current ambiguity records. Preserve unsupported classifications.",
+      "next_action": "Resolve Feature 161 normative authority from an approved source or an authoritative non-Spec disposition. Do not mark repository-wide reconciliation complete while this record remains unresolved.",
       "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",
       "priority": "R1_RUNTIME_REFERENCE",
       "record_key": "canonical:specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",

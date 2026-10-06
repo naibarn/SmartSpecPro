@@ -7,18 +7,29 @@ cd "${ROOT_DIR}"
 
 python3 -B -m unittest discover -s skills/orchestra/tests -v
 
-python3 - <<'PY'
+cleanup_skill_test_env() {
+  if [[ -n "${skill_test_env:-}" && -d "${skill_test_env}" ]]; then
+    rm -rf -- "${skill_test_env}"
+  fi
+}
+trap cleanup_skill_test_env EXIT
+
+python3 -B - <<'PY'
 from pathlib import Path
 import importlib.util
 import json
 import re
 import sys
+import subprocess
 
 root = Path("skills")
+repo = Path.cwd()
 errors: list[str] = []
 warnings: list[str] = []
-
 sys.dont_write_bytecode = True
+sys.path.insert(0, str(root.resolve()))
+from runtime_hygiene import runtime_artifacts, tracked_runtime_paths
+
 portable_spec = importlib.util.spec_from_file_location("portable_install", root / "portable_install.py")
 portable_install = importlib.util.module_from_spec(portable_spec)
 assert portable_spec and portable_spec.loader
@@ -86,9 +97,13 @@ for text_file in sorted(root.rglob("*")):
         if forbidden in text:
             errors.append(f"{text_file}: forbidden project-specific reference: {forbidden}")
 
-for path in root.rglob("*"):
-    if any(part in {".venv", ".pytest_cache", "__pycache__"} for part in path.parts):
-        errors.append(f"{path}: runtime artifact present; run skills/clean-runtime-artifacts.sh")
+artifacts = runtime_artifacts(root)
+tracked_artifacts = tracked_runtime_paths(repo, artifacts)
+if tracked_artifacts:
+    errors.extend(f"{path}: tracked runtime artifact is package contamination" for path in tracked_artifacts)
+local_artifacts = [path for path in artifacts if path.relative_to(repo) not in tracked_artifacts]
+if local_artifacts:
+    errors.append(f"{len(local_artifacts)} ignored local runtime artifact path(s) under skills; run skills/clean-runtime-artifacts.sh before packaging/audit")
 
 sub_agents_dir = root / "sub-agents" / "agents"
 sub_agents_readme = root / "sub-agents" / "README.md"
@@ -848,7 +863,10 @@ bash skills/verify-installed-skills-sync.sh
 for skill in deep-implement deep-project deep-plan; do
   if [[ -f "skills/${skill}/pyproject.toml" ]]; then
     echo "running tests for ${skill}"
-    (cd "skills/${skill}" && uv run --extra dev pytest)
+    skill_test_env="$(mktemp -d "${TMPDIR:-/tmp}/portable-skill-audit.XXXXXX")"
+    (cd "skills/${skill}" && UV_PROJECT_ENVIRONMENT="${skill_test_env}/.venv" PYTHONDONTWRITEBYTECODE=1 uv run --extra dev pytest -p no:cacheprovider)
+    cleanup_skill_test_env
+    skill_test_env=""
   fi
 done
 
