@@ -3,6 +3,12 @@
 Use worktree discipline to isolate risky or broad code changes from unrelated
 dirty work. This is a workflow rule, not a requirement for every tiny edit.
 
+Workspace freshness is a separate required outcome: after integration, a dirty
+or task-branch worktree remains preserved, while a clean worktree at the latest
+configured canonical SHA is made available for new/unrelated work and reported
+by absolute path. Do not conflate keeping an active task isolated with leaving
+the user's only visible editor/SSH workspace stale.
+
 ## When Worktrees Are Required
 
 Create or recommend a separate worktree when any of these are true:
@@ -36,4 +42,3 @@ Worktrees are optional for:
 For repo-local skill-system updates, staying in the current worktree is allowed
 when edits are confined to `skills/`, `.claude/agents/`, and `orchestra/`.
 Existing dirty application files must be ignored and preserved.
-

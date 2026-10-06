@@ -38,6 +38,43 @@ Preparation fetches the configured canonical ref, verifies that the requested so
 
 The shared developer checkout may be dirty, detached, or on a feature branch. Its status and contents remain unchanged. A source root inside that checkout is rejected.
 
+## Keep an editor/SSH workspace current
+
+Use this after every successful promotion and at session start/resume when the
+currently open folder is not on the latest configured canonical SHA. Inspect
+the absolute path (`pwd -P`), repository identity/remotes, branch/upstream,
+`HEAD`, dirty status, and configured canonical ref. When checking an SSH host,
+run these checks on that host; a local clone or fetched remote-tracking ref does
+not prove that the remote editor folder is current.
+
+- If the open checkout is clean, on the configured canonical branch, and an
+  ancestor of the fetched canonical tip, fast-forward it and verify exact SHA.
+- If it is dirty, on a task branch, or diverged, leave it unchanged. Create or
+  reuse a separate clean worktree from the same repository at the exact fetched
+  canonical SHA. Do not copy files over the old root or use reset/clean to force
+  synchronization.
+- Verify the new workspace's absolute path, common Git repository, canonical
+  branch/ref or detached SHA, clean status, and ancestry. Report the path the
+  user should open in the SSH/editor UI. If the UI cannot be switched
+  programmatically, say so and provide the exact path; never say the old folder
+  is current.
+- If canonical advances before handoff, repeat the check and move/create the
+  clean workspace to the newer SHA. Bind the handoff to the final checked SHA.
+
+To create a safe sibling workspace when the current checkout is dirty or
+diverged:
+
+```bash
+git worktree add --detach <absolute-sibling-path> <fetched-canonical-sha>
+git -C <absolute-sibling-path> rev-parse HEAD
+git -C <absolute-sibling-path> status --short --branch
+```
+
+Reuse an existing path only after proving it is a worktree of the same
+repository, clean, and safe to fast-forward. Never remove or repurpose a dirty
+or unclassified worktree. If the workspace is for new implementation, create a
+task branch from the verified canonical SHA before editing.
+
 ## Run under the lease
 
 Use the lease values returned by preparation:

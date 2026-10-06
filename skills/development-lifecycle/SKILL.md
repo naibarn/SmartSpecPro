@@ -14,6 +14,34 @@ This contract is the shared semantic source for lifecycle skills and orchestrati
 - `canonical_ref` is supplied by repository/project policy. `origin/main` is only a repository default when policy selects it; never hard-code it in reusable lifecycle logic.
 - Canonical repository/project state is the shared engineering truth. Task completion is not required to integrate a safe, valuable checkpoint.
 
+## Workspace freshness
+
+Canonical history and the directory open in an editor/SSH session are separate
+facts. At session start, resume, after every integration, and before starting a
+new unrelated task, inspect the configured canonical ref, the current
+worktree's absolute path, `HEAD`, branch/upstream, and dirty state. Report the
+actual workspace path and SHA; never imply that fetching or merging updated a
+different checkout or an SSH editor window.
+
+- If the active checkout is clean, on the configured canonical branch, and can
+  fast-forward, update it to the fetched canonical tip and verify exact SHA
+  equality.
+- If it is dirty, on another branch, or cannot fast-forward, preserve it
+  unchanged. Never reset, clean, force-switch, overwrite files, or stash/drop
+  another session's work to make it appear current.
+- Make current canonical source usable immediately by creating or reusing a
+  separate clean worktree at the exact fetched canonical SHA. Verify repository
+  identity, absolute path, `HEAD`, clean status, and canonical ancestry. Tell the
+  user the exact path to open over SSH/editor and identify the preserved active
+  checkout as stale for unrelated/new work.
+- Continue an in-flight task in its preserved checkout only with its base SHA
+  recorded and a reconciliation plan for the next safe checkpoint. Start
+  unrelated work from the latest canonical workspace.
+- After each promotion, refresh this workspace selection again. If the active
+  checkout cannot be fast-forwarded, update or create the separate canonical
+  worktree and include its path/SHA in the handoff. A stale editor root is an
+  actionable workspace-sync gap, not a completed handoff.
+
 ## Shared states
 
 Use `DISCOVERING`, `WORKING`, `CHECKPOINT_READY`, `CANONICALIZING`, `PARTIAL_INTEGRATED`, `CONTINUATION_REQUIRED`, `WAITING_DEPENDENCY`, `WAITING_EXTERNAL`, `WAITING_RESOURCE`, `WAITING_CAPABILITY`, `WAITING_APPROVAL`, `WAITING_CANONICAL_ARTIFACT`, `IMPLEMENTATION_COMPLETE`, `VALIDATION_PENDING`, `VALIDATING`, `REPAIR_REQUIRED`, `VERIFIED`, `RELEASE_READY`, `DEPLOYING`, `DEPLOYED`, `BLOCKED_RECOVERABLE`, `FAILED_TERMINAL`, and `CANCELLED` consistently. `PARTIAL_INTEGRATED` and valid `WAITING_*` states are non-terminal.
@@ -77,7 +105,7 @@ Never strand valuable progress only in chat, agent memory, a session, dirty chec
 
 ## Central build source
 
-After parallel session changes are integrated, build from the latest configured canonical ref, never from whichever feature branch or session worktree launched the command. Pin the build to the fetched canonical SHA, record that SHA with the result, and check the canonical ref again after the build; if it advanced, mark that build stale and rebuild the newer tip. Source verification proves which code was selected; only a successful build command proves the build passed. Serialize builds using the shared source root on the same host; cross-host build scheduling belongs to the existing `worker_jobs` plus outbox control plane. Update the primary checkout to the built SHA only when it is clean and already on the configured canonical branch. If it is dirty or on another branch, preserve it unchanged, report the sync blocker, and keep the canonical build workspace/result path visible.
+After parallel session changes are integrated, build from the latest configured canonical ref, never from whichever feature branch or session worktree launched the command. Pin the build to the fetched canonical SHA, record that SHA with the result, and check the canonical ref again after the build; if it advanced, mark that build stale and rebuild the newer tip. Source verification proves which code was selected; only a successful build command proves the build passed. Serialize builds using the shared source root on the same host; cross-host build scheduling belongs to the existing `worker_jobs` plus outbox control plane. Update the primary checkout to the built SHA only when it is clean and already on the configured canonical branch. If it is dirty or on another branch, preserve it unchanged, prepare a separate clean canonical worktree, and report both paths and SHAs. Do not call workspace synchronization complete until the user-facing path for current canonical source is explicit and verified.
 
 ## Dependency waits and reactivation
 

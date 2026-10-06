@@ -53,6 +53,10 @@ Maintain scenario coverage for:
 - safe partial checkpoints route through `session-finish` and `integration-controller`
   before a pause/stop/handoff; task completion and heavy verification are not promotion
   prerequisites, and `main` does not imply release or production readiness
+- after promotion or resume, a dirty/divergent SSH/editor checkout is preserved while a
+  clean worktree at the latest configured canonical SHA is made available and its exact
+  user-openable path/SHA is reported; fetching refs in another checkout never counts as
+  workspace synchronization
 - quality evidence keeps applicable functional, visual, accessibility, security,
   performance, data-integrity, operational, deployment, and evidence-completeness checks
   distinct
