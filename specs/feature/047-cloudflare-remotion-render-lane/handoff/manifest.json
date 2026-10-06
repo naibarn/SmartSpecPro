@@ -1,0 +1,195 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "96d678fdc6e69ace9ce1626e6ddf84f3ecdd0ececed26ada1a5d51655dc58039",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/047-cloudflare-remotion-render-lane/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "96d678fdc6e69ace9ce1626e6ddf84f3ecdd0ececed26ada1a5d51655dc58039"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "96d678fdc6e69ace9ce1626e6ddf84f3ecdd0ececed26ada1a5d51655dc58039",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/047-cloudflare-remotion-render-lane/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "96d678fdc6e69ace9ce1626e6ddf84f3ecdd0ececed26ada1a5d51655dc58039",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/047-cloudflare-remotion-render-lane/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 1,
+  "identity": {
+    "canonical_path": "specs/feature/047-cloudflare-remotion-render-lane/spec.md",
+    "digest": "96d678fdc6e69ace9ce1626e6ddf84f3ecdd0ececed26ada1a5d51655dc58039",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T04:27:55.968535Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": "2.0",
+    "slug": "047-cloudflare-remotion-render-lane",
+    "spec_id": "047",
+    "title": "Feature 047: Cloudflare Remotion Render Lane with Opt-in Credit Billing"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T04:27:55.968535Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T04:27:55.968535Z",
+    "sources": [
+      {
+        "digest": "96d678fdc6e69ace9ce1626e6ddf84f3ecdd0ececed26ada1a5d51655dc58039",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/047-cloudflare-remotion-render-lane/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/047-cloudflare-remotion-render-lane/spec.md",
+        "source_digest": "96d678fdc6e69ace9ce1626e6ddf84f3ecdd0ececed26ada1a5d51655dc58039",
+        "value": "Proposed"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed",
+        "line": 3,
+        "source": "specs/feature/047-cloudflare-remotion-render-lane/spec.md",
+        "source_digest": "96d678fdc6e69ace9ce1626e6ddf84f3ecdd0ececed26ada1a5d51655dc58039",
+        "value": "Proposed"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "96d678fdc6e69ace9ce1626e6ddf84f3ecdd0ececed26ada1a5d51655dc58039",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/047-cloudflare-remotion-render-lane/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 73,
+    "unresolved": 73
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T04:27:55.968535Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

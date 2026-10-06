@@ -1,0 +1,195 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "d35836f364148c2174cb0c74b260c71cbc8e091408f5645a960f628b10bf6ba4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "d35836f364148c2174cb0c74b260c71cbc8e091408f5645a960f628b10bf6ba4"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "d35836f364148c2174cb0c74b260c71cbc8e091408f5645a960f628b10bf6ba4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "d35836f364148c2174cb0c74b260c71cbc8e091408f5645a960f628b10bf6ba4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 1,
+  "identity": {
+    "canonical_path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
+    "digest": "d35836f364148c2174cb0c74b260c71cbc8e091408f5645a960f628b10bf6ba4",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T04:27:58.936549Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": "1.3",
+    "slug": "287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract",
+    "spec_id": "287",
+    "title": "SPEC-287 — Unified UI Governance, Rendering Conformance & Mini App Design Contract"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T04:27:58.936549Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T04:27:58.936549Z",
+    "sources": [
+      {
+        "digest": "d35836f364148c2174cb0c74b260c71cbc8e091408f5645a960f628b10bf6ba4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** PROPOSED / ADDITIVE",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
+        "source_digest": "d35836f364148c2174cb0c74b260c71cbc8e091408f5645a960f628b10bf6ba4",
+        "value": "PROPOSED / ADDITIVE"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** PROPOSED / ADDITIVE",
+        "line": 3,
+        "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
+        "source_digest": "d35836f364148c2174cb0c74b260c71cbc8e091408f5645a960f628b10bf6ba4",
+        "value": "PROPOSED / ADDITIVE"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "d35836f364148c2174cb0c74b260c71cbc8e091408f5645a960f628b10bf6ba4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 191,
+    "unresolved": 191
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T04:27:58.936549Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

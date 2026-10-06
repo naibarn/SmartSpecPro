@@ -1105,6 +1105,21 @@
     {
       "authority": "UNRESOLVED",
       "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2",
+      "priority": "R3_RELATIONSHIP_CLAIM",
+      "record_key": "canonical:specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "267"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
       "declared_claim_count": 1,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/018-SlideShowAndCanvasEdit",
@@ -1326,6 +1341,21 @@
         "TEST": 0
       },
       "spec_id": "046"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/047-cloudflare-remotion-render-lane",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/047-cloudflare-remotion-render-lane",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "047"
     },
     {
       "authority": "UNRESOLVED",
@@ -3597,6 +3627,36 @@
       "confidence": "LOW",
       "declared_claim_count": 1,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/259-smartaihub-thclaws-hybrid-runtime-cloud-development-llm-subscription-interop",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/259-smartaihub-thclaws-hybrid-runtime-cloud-development-llm-subscription-interop",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "259"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/264-emergency-hazard-intelligence-temporal-observation-impact-coordination-extension",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/264-emergency-hazard-intelligence-temporal-observation-impact-coordination-extension",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "264"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5",
@@ -3606,6 +3666,66 @@
         "TEST": 0
       },
       "spec_id": "271"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "272"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/273-portable-mini-app-data-architecture",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/273-portable-mini-app-data-architecture",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "273"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/274-canonical-executable-artifact-manifest",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/274-canonical-executable-artifact-manifest",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "274"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/275-autonomous-execution-learning-reliability",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/275-autonomous-execution-learning-reliability",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "275"
     },
     {
       "authority": "UNRESOLVED",
@@ -3741,6 +3861,51 @@
         "TEST": 0
       },
       "spec_id": "286"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "287"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/290-Longdo-Map-Migration-Google-Maps-Decommission",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/290-Longdo-Map-Migration-Google-Maps-Decommission",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "290"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/291-Local-Agentic-Model-Runtime-Capability-Resolution",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/291-Local-Agentic-Model-Runtime-Capability-Resolution",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "291"
     },
     {
       "authority": "UNRESOLVED",
@@ -4586,6 +4751,21 @@
         "TEST": 0
       },
       "spec_id": "277"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "288"
     },
     {
       "authority": "UNRESOLVED",

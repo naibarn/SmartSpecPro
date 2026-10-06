@@ -1,0 +1,216 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/274-canonical-executable-artifact-manifest/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/274-canonical-executable-artifact-manifest/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/274-canonical-executable-artifact-manifest/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 1,
+  "identity": {
+    "canonical_path": "specs/feature/274-canonical-executable-artifact-manifest/spec.md",
+    "digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T04:27:58.200984Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": "1",
+    "slug": "274-canonical-executable-artifact-manifest",
+    "spec_id": "274",
+    "title": "Canonical Executable Artifact Manifest & Lightweight Integrity Contract"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T04:27:58.200984Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T04:27:58.200984Z",
+    "sources": [
+      {
+        "digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/274-canonical-executable-artifact-manifest/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_ADDITIVE_BACKWARD_COMPATIBLE",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/274-canonical-executable-artifact-manifest/spec.md",
+        "source_digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
+        "value": "PROPOSED_ADDITIVE_BACKWARD_COMPATIBLE"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Additive / Backward-Compatible\\",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 11,
+        "source": "specs/feature/274-canonical-executable-artifact-manifest/spec.md",
+        "source_digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
+        "value": "Proposed / Additive / Backward-Compatible\\"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_ADDITIVE_BACKWARD_COMPATIBLE",
+        "line": 5,
+        "source": "specs/feature/274-canonical-executable-artifact-manifest/spec.md",
+        "source_digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
+        "value": "PROPOSED_ADDITIVE_BACKWARD_COMPATIBLE"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Additive / Backward-Compatible\\",
+        "line": 11,
+        "source": "specs/feature/274-canonical-executable-artifact-manifest/spec.md",
+        "source_digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
+        "value": "Proposed / Additive / Backward-Compatible\\"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/274-canonical-executable-artifact-manifest/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 44,
+    "unresolved": 44
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T04:27:58.200984Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}
