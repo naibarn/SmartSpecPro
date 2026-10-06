@@ -99,6 +99,23 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "WORKSPACE_REPOSITORY_INSTANCE_MISMATCH"):
             authority.register_workspace(self.canonical, self.policy, external, role="EXTERNAL_WORKSPACE")
 
+    def test_external_runner_session_requires_explicit_live_owner_lease(self) -> None:
+        external = self.root / "external-runner"
+        subprocess.run(["git", "clone", str(self.remote), str(external)], check=True, capture_output=True)
+
+        registered = authority.register_workspace(
+            self.canonical,
+            self.policy,
+            external,
+            role="EXTERNAL_WORKSPACE",
+            owner_session_id="claude-runner-session",
+            owner_pid=os.getpid(),
+            owner_lease_seconds=300,
+        )
+
+        self.assertEqual(registered["role"], "EXTERNAL_WORKSPACE")
+        self.assertEqual(registered["session_state"], "ACTIVE_SESSION")
+
     def test_duplicate_canonical_role_is_rejected(self) -> None:
         authority.get_canonical_user_workspace(self.canonical, self.policy)
         other = self.root / "second-canonical"
@@ -220,6 +237,30 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(git(self.canonical, "rev-parse", "HEAD"), local_head)
         self.assertTrue(Path(result["recovery_bundle"]).is_file())
 
+    def test_patch_equivalent_commit_is_classified_without_deleting_refs(self) -> None:
+        git(self.canonical, "switch", "-c", "local-equivalent")
+        (self.canonical / "tracked.txt").write_text("equivalent patch\n", encoding="utf-8")
+        git(self.canonical, "add", "tracked.txt")
+        git(self.canonical, "commit", "-m", "local implementation")
+        local_head = git(self.canonical, "rev-parse", "HEAD")
+
+        (self.seed / "tracked.txt").write_text("equivalent patch\n", encoding="utf-8")
+        git(self.seed, "add", "tracked.txt")
+        git(self.seed, "commit", "-m", "canonical equivalent implementation")
+        git(self.seed, "push", "origin", "main")
+        policy = authority.load_workspace_policy(self.canonical, self.policy)
+        authority._fetch_canonical(self.canonical, policy)
+        canonical_tip = git(self.canonical, "rev-parse", "refs/remotes/origin/main")
+
+        classification = authority._local_commit_classification(self.canonical, local_head, canonical_tip)
+
+        self.assertEqual(classification["state"], "PATCH_EQUIVALENT")
+        self.assertEqual(classification["patch_equivalent_commits"], [local_head])
+        self.assertEqual(git(self.canonical, "rev-parse", "HEAD"), local_head)
+        self.assertEqual(git(self.canonical, "branch", "--show-current"), "local-equivalent")
+        with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "COMMIT_EQUIVALENCE_CLASSIFICATION_FAILED"):
+            authority._local_commit_classification(self.canonical, local_head, "0" * 40)
+
     def test_concurrent_external_workspace_registration_is_serialized(self) -> None:
         clones = [self.root / "external-a", self.root / "external-b"]
         for clone in clones:
@@ -227,7 +268,14 @@ class WorkspaceAuthorityTests(unittest.TestCase):
 
         def register(clone: Path) -> dict[str, object]:
             return authority.register_workspace(
-                self.canonical, self.policy, clone, role="EXTERNAL_WORKSPACE", task_id=clone.name
+                self.canonical,
+                self.policy,
+                clone,
+                role="EXTERNAL_WORKSPACE",
+                task_id=clone.name,
+                owner_session_id=f"session-{clone.name}",
+                owner_pid=os.getpid(),
+                owner_lease_seconds=300,
             )
 
         results = []
@@ -237,9 +285,10 @@ class WorkspaceAuthorityTests(unittest.TestCase):
 
         self.assertEqual(len({result["workspace_id"] for result in results}), 2)
         self.assertEqual({result["task_id"] for result in results}, {"external-a", "external-b"})
+        self.assertTrue(all(result["session_state"] == "ACTIVE_SESSION" for result in results))
 
-    def test_registry_indexes_one_hundred_twenty_temporary_worktrees(self) -> None:
-        for index in range(120):
+    def test_registry_indexes_hundreds_of_temporary_worktrees(self) -> None:
+        for index in range(220):
             workspace = self.root / "temporary-worktrees" / f"task-{index:03d}"
             git(self.canonical, "worktree", "add", "--detach", str(workspace), "HEAD")
             authority.register_workspace(
@@ -255,8 +304,8 @@ class WorkspaceAuthorityTests(unittest.TestCase):
             workspace for workspace in resolved["workspaces"]
             if workspace["role"] == "TASK_WORKTREE"
         ]
-        self.assertEqual(len(task_workspaces), 120)
-        self.assertEqual(len({workspace["workspace_id"] for workspace in task_workspaces}), 120)
+        self.assertEqual(len(task_workspaces), 220)
+        self.assertEqual(len({workspace["workspace_id"] for workspace in task_workspaces}), 220)
 
     def test_convergence_retries_when_canonical_advances_mid_operation(self) -> None:
         original_fetch = authority._fetch_canonical
@@ -418,6 +467,13 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         repeated = {row["number"] for row in scenarios if row.get("repetitions", 1) >= 2}
         self.assertTrue({18, 19, 20, 21, 22, 30}.issubset(repeated))
         self.assertTrue(all(row.get("proof_kind") in {"LOCAL_EXECUTABLE", "CONTRACT_SIMULATION"} for row in scenarios))
+        local_rows = [row for row in scenarios if row["proof_kind"] == "LOCAL_EXECUTABLE"]
+        available_tests = {name for name in dir(self) if name.startswith("test_")}
+        self.assertTrue(all(row.get("test_name") in available_tests for row in local_rows))
+        self.assertEqual(
+            {row["number"] for row in local_rows if row.get("test_name")},
+            {row["number"] for row in local_rows},
+        )
 
 
 if __name__ == "__main__":

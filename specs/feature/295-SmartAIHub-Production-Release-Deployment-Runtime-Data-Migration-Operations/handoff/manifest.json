@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6b68c02dc9cfe51ac50bf6c34207fad7fea22225",
+    "expected_canonical_sha": "5dbfe3e2d121fd4519540cfe69abe38c25c58904",
     "expected_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814"
   },
   "continuation": {
-    "next_action": "Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.",
+    "next_action": "Execute and bind each remaining LOCAL_EXECUTABLE scenario to a named test; retain contract simulations as explicitly unproven until cross-host authority, Mission Control actions, external receipt authentication, and SPEC-295 runtime convergence are implemented without duplicating worker_jobs/evidence authority.",
     "next_ready_workunit": "P0-WU-4",
     "reactivation_predicate": null,
     "resume_point": "P0-WU-4",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
@@ -103,9 +103,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6b68c02dc9cfe51ac50bf6c34207fad7fea22225",
+    "canonical_sha": "5dbfe3e2d121fd4519540cfe69abe38c25c58904",
     "integrated": true,
-    "integrated_at": "2026-10-06T18:35:20Z"
+    "integrated_at": "2026-10-06T18:43:27Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -222,7 +222,7 @@
     "unresolved": 165
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T18:36:30.323801Z",
+  "updated_at": "2026-10-06T18:45:20.696173Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

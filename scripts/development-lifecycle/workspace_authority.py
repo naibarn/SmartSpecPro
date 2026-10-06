@@ -662,7 +662,12 @@ def preserve_dirty_workspace(
 def _local_commit_classification(repo: Path, head: str, target: str) -> dict[str, Any]:
     if _is_ancestor(repo, head, target):
         return {"state": "ALREADY_IN_CANONICAL", "unique_commits": []}
-    output = str(_git(repo, "cherry", target, head, check=False) or "")
+    result = subprocess.run(
+        ["git", "-C", str(repo), "cherry", target, head], text=True, capture_output=True
+    )
+    if result.returncode:
+        raise WorkspaceAuthorityError("COMMIT_EQUIVALENCE_CLASSIFICATION_FAILED")
+    output = result.stdout
     rows = [line for line in output.splitlines() if line.startswith(("+", "-"))]
     unique = [line[2:] for line in rows if line.startswith("+")]
     equivalent = [line[2:] for line in rows if line.startswith("-")]
