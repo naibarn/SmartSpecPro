@@ -177,7 +177,7 @@ Integration MUST occur through adapters, projections, profiles, capability regis
 | Assistant behavior | Spec 269 | Reuse workforce/assistant semantics |
 | Design/UI intelligence | Spec 270 | Reuse for interface/design generation where relevant |
 | Decision/routing ingress | Spec 279 | Reuse normalized command ingress |
-| Work context / organizations | Spec 282 | Reuse participants, responsibilities, federation |
+| Work context / organizations | Spec 292 | Reuse participants, responsibilities, federation |
 | External capability intelligence | Spec 283 | Qualify external BIM/AEC tools/providers |
 | Artifact continuity | Spec 284 | Preserve drawings, models, revisions and quotations |
 | Task/evidence UX | Spec 277 | Reuse task/progress/evidence presentation patterns |
@@ -1632,7 +1632,7 @@ Both SHALL reference the same decision/change record.
 
 ## 48. Organization and multi-party workflow
 
-Spec 285 SHALL consume Spec 282 for:
+Spec 285 SHALL consume Spec 292 for:
 
 - project participants;
 - organizations;
@@ -2422,7 +2422,7 @@ Before code:
 - supplier/product capabilities;
 - project-type/domain packs;
 - skill/mini-app marketplace packaging where existing marketplace specs permit;
-- cross-organization project exchange through Spec 282.
+- cross-organization project exchange through Spec 292.
 
 ### P285.13 — Specialist engineering + construction safety
 
@@ -2873,7 +2873,7 @@ R1.0 baseline was explicitly checked against twelve architecture gap categories.
 | 6 | Cost false precision | method/scope/source/date/range/confidence contracts |
 | 7 | Built-in/furniture real-world fit | deterministic clearance + site verification gate |
 | 8 | Renovation/as-built mismatch | existing/proposed/field reconciliation |
-| 9 | Multi-party coordination | Decision/ChangeSet + Spec 282/277 integration |
+| 9 | Multi-party coordination | Decision/ChangeSet + Spec 292/277 integration |
 | 10 | Organization/security/licensing | ACL, external packages, capability qualification, license checks |
 | 11 | Mobile/general-public usability | SmartAIHub Home surface + progressive explanation |
 | 12 | Future expansion | OpenUSD derived scene, IFCX lab, marketplace/white-label, maintenance extension |
@@ -2931,7 +2931,7 @@ G0 — Canonical inventory before code
 4. Locate existing IFC/BIM/CAD/3D dependencies, if any.
 5. Locate current Spec 256 capability registrations.
 6. Locate current Spec 277 Task/Evidence UI primitives.
-7. Locate Specs 282–284 contracts and use them rather than recreating work context/artifact continuity.
+7. Locate Specs 292, 283, and 284 contracts and use them rather than recreating work context/artifact continuity.
 8. Locate existing price/catalog/marketplace abstractions.
 9. Produce ownership/gap matrix.
 10. Stop only on a true authority collision or unavailable required source; otherwise implement additively.
