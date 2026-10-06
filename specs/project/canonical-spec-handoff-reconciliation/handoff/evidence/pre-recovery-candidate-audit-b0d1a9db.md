@@ -26,3 +26,12 @@ These are observations, not winner selections or final per-Spec classifications.
 Resume predicate remains: `Recovered/canonical Spec set has been uploaded, validated, and integrated into canonical ref`.
 
 After that predicate is true, refresh dynamic inventory, validate all handoffs, regenerate global views, rerun inventory-dependent scenarios 8, 9, 10, 11, 19, and 20, then begin bulk reconciliation. Do not regenerate or close inventory-derived outputs before recovery.
+
+## Git provenance follow-up
+
+Read-only Git object/history inspection on `origin/main` `23e45a7136a4c3728604752c879f939331a33292` found:
+
+- The candidate Spec 278 blob exists in recovery commit `1698c7f0528999d57504e7c2f41065dbd2550217` on `codex/canonical-dirty-rescue-20261004T175541Z-d7a43e0d28-3579615`; that commit is not an ancestor of `origin/main`. The current canonical Spec 278 file was introduced separately by `364157539bbbba2b0c5dcce232bdabf942b41187`.
+- No reachable commit contains the candidate Spec 282 blob. The current canonical Spec 282 file was introduced separately by `34f7df1770d42f82bd689a57c31d833277b371f5`.
+
+This adds provenance evidence but does not establish authority or select a winner. Keep both identity conflicts unresolved for post-upload reconciliation.
