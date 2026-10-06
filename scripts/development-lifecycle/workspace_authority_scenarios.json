@@ -4,35 +4,214 @@
   "projection": "SPEC-294",
   "production_projection": "SPEC-295",
   "scenarios": [
-    {"number":1,"name":"clean-user-workspace-after-integration","proof_kind":"LOCAL_EXECUTABLE","assert":"registered canonical workspace reaches exact integrated SHA"},
-    {"number":2,"name":"dirty-user-workspace-after-integration","proof_kind":"LOCAL_EXECUTABLE","assert":"preserve snapshot and block convergence without altering source"},
-    {"number":3,"name":"two-concurrent-agent-worktrees","proof_kind":"LOCAL_EXECUTABLE","assert":"distinct explicit workspace identities and concurrent leases"},
-    {"number":4,"name":"PR-merged-while-VS-Code-open","proof_kind":"LOCAL_EXECUTABLE","assert":"fetch canonical tip and fast-forward registered editor workspace"},
-    {"number":5,"name":"user-workspace-behind-main","proof_kind":"LOCAL_EXECUTABLE","assert":"fast-forward only when clean and canonical ancestry holds"},
-    {"number":6,"name":"user-workspace-on-stale-feature-branch","proof_kind":"LOCAL_EXECUTABLE","assert":"retain branch and switch only when unique commits are absent"},
-    {"number":7,"name":"stale-worktree-metadata","proof_kind":"LOCAL_EXECUTABLE","assert":"missing path becomes stale metadata; never active session"},
-    {"number":8,"name":"hundreds-of-obsolete-worktrees","proof_kind":"LOCAL_EXECUTABLE","assert":"bounded indexed registry query and dry-run retirement"},
-    {"number":9,"name":"session-ended-worktree-remains","proof_kind":"LOCAL_EXECUTABLE","assert":"dead owner becomes stale while worktree remains registered"},
-    {"number":10,"name":"dirty-recovery-workspace","proof_kind":"LOCAL_EXECUTABLE","assert":"recovery workspace role is never automatically retired"},
-    {"number":11,"name":"local-only-commit","proof_kind":"LOCAL_EXECUTABLE","assert":"unique unpushed commit blocks convergence and retirement"},
-    {"number":12,"name":"squash-merged-equivalent-commit","proof_kind":"LOCAL_EXECUTABLE","assert":"patch-equivalent evidence permits classification but not blind ref deletion"},
-    {"number":13,"name":"stash-already-integrated","proof_kind":"LOCAL_EXECUTABLE","assert":"stash content is classified; resolver never drops stash"},
-    {"number":14,"name":"stash-unique-intended-work","proof_kind":"LOCAL_EXECUTABLE","assert":"unique stash blocks completion until separately preserved/integrated"},
-    {"number":15,"name":"external-codex-workspace","proof_kind":"LOCAL_EXECUTABLE","assert":"external workspace is explicit role and not local owner by inference"},
-    {"number":16,"name":"claude-external-runner-workspace","proof_kind":"LOCAL_EXECUTABLE","assert":"external runner session requires lease/owner evidence"},
-    {"number":17,"name":"BYO-server-clone","proof_kind":"LOCAL_EXECUTABLE","assert":"repository identity is distinct from filesystem location"},
-    {"number":18,"name":"desktop-and-web-same-project","proof_kind":"LOCAL_EXECUTABLE","repetitions":5,"assert":"serialized registry updates remain idempotent across callers"},
-    {"number":19,"name":"interrupted-integration-resume","proof_kind":"LOCAL_EXECUTABLE","repetitions":5,"assert":"same integration receipt can resume without duplicate transition"},
-    {"number":20,"name":"interrupted-workspace-convergence","proof_kind":"LOCAL_EXECUTABLE","repetitions":5,"assert":"repeat convergence refreshes to latest canonical SHA"},
-    {"number":21,"name":"recovery-after-failed-convergence","proof_kind":"LOCAL_EXECUTABLE","repetitions":3,"assert":"failure leaves recovery snapshot and source unchanged"},
-    {"number":22,"name":"canonical-SHA-changes-during-convergence","proof_kind":"LOCAL_EXECUTABLE","repetitions":5,"assert":"stale target never emits completion receipt"},
-    {"number":23,"name":"multiple-repositories-in-one-project","proof_kind":"CONTRACT_SIMULATION","assert":"authority key includes project and repository identity"},
-    {"number":24,"name":"one-project-repository-behind-another","proof_kind":"CONTRACT_SIMULATION","assert":"convergence is evaluated per repository target"},
-    {"number":25,"name":"deployment-behind-source","proof_kind":"CONTRACT_SIMULATION","assert":"development convergence does not claim release convergence"},
-    {"number":26,"name":"migration-behind-deployment","proof_kind":"CONTRACT_SIMULATION","assert":"release receipt retains required/applied migration mismatch"},
-    {"number":27,"name":"partial-Cloudflare-rollout","proof_kind":"CONTRACT_SIMULATION","assert":"partial instances cannot be production converged"},
-    {"number":28,"name":"stale-container-instance","proof_kind":"CONTRACT_SIMULATION","assert":"stale runtime revision remains visible and blocks release convergence"},
-    {"number":29,"name":"rollback","proof_kind":"CONTRACT_SIMULATION","assert":"rollback is a new verified convergence target with lineage"},
-    {"number":30,"name":"zero-session-global-closeout","proof_kind":"LOCAL_EXECUTABLE","repetitions":3,"assert":"zero sessions does not imply zero dirty worktrees; each dimension is reported separately"}
+    {
+      "number": 1,
+      "name": "clean-user-workspace-after-integration",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "registered canonical workspace reaches exact integrated SHA",
+      "test_name": "test_clean_registered_canonical_workspace_fast_forwards_to_integrated_sha"
+    },
+    {
+      "number": 2,
+      "name": "dirty-user-workspace-after-integration",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "preserve snapshot and block convergence without altering source",
+      "test_name": "test_dirty_canonical_workspace_is_snapshotted_and_never_overwritten"
+    },
+    {
+      "number": 3,
+      "name": "two-concurrent-agent-worktrees",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "distinct explicit workspace identities with concurrent live owner leases",
+      "test_name": "test_concurrent_external_workspace_registration_is_serialized"
+    },
+    {
+      "number": 4,
+      "name": "PR-merged-while-VS-Code-open",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "fetch canonical tip and fast-forward registered editor workspace",
+      "test_name": "test_clean_registered_canonical_workspace_fast_forwards_to_integrated_sha"
+    },
+    {
+      "number": 5,
+      "name": "user-workspace-behind-main",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "fast-forward only when clean and canonical ancestry holds",
+      "test_name": "test_clean_registered_canonical_workspace_fast_forwards_to_integrated_sha"
+    },
+    {
+      "number": 6,
+      "name": "user-workspace-on-stale-feature-branch",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "retain branch and switch only when unique commits are absent",
+      "test_name": "test_canonical_workspace_fast_forwards_when_main_is_checked_out_elsewhere"
+    },
+    {
+      "number": 7,
+      "name": "stale-worktree-metadata",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "missing path becomes stale metadata; never active session",
+      "test_name": "test_missing_worktree_metadata_is_preserved_as_nonretirable_record"
+    },
+    {
+      "number": 8,
+      "name": "hundreds-of-obsolete-worktrees",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "bounded indexed registry query over 220 registered worktrees",
+      "test_name": "test_registry_indexes_hundreds_of_temporary_worktrees"
+    },
+    {
+      "number": 9,
+      "name": "session-ended-worktree-remains",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "dead owner becomes stale while worktree remains registered",
+      "test_name": "test_dirty_state_does_not_imply_active_session_and_dead_owner_is_stale"
+    },
+    {
+      "number": 10,
+      "name": "dirty-recovery-workspace",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "recovery workspace role is never automatically retired",
+      "test_name": "test_recovery_workspace_is_never_automatically_retired"
+    },
+    {
+      "number": 11,
+      "name": "local-only-commit",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "unique unpushed commit blocks convergence and retirement",
+      "test_name": "test_unique_local_commit_blocks_convergence_without_moving_head"
+    },
+    {
+      "number": 12,
+      "name": "squash-merged-equivalent-commit",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "patch-equivalent evidence permits classification but not blind ref deletion",
+      "test_name": "test_patch_equivalent_commit_is_classified_without_deleting_refs"
+    },
+    {
+      "number": 13,
+      "name": "stash-already-integrated",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "stash content is classified; resolver never drops stash",
+      "test_name": "test_workspace_retirement_blocks_stash_and_missing_unproven_workspace"
+    },
+    {
+      "number": 14,
+      "name": "stash-unique-intended-work",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "unique stash blocks completion until separately preserved/integrated",
+      "test_name": "test_workspace_retirement_blocks_stash_and_missing_unproven_workspace"
+    },
+    {
+      "number": 15,
+      "name": "external-codex-workspace",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "external workspace is explicit role and not local owner by inference",
+      "test_name": "test_external_workspace_requires_explicit_role_and_matching_canonical_remote"
+    },
+    {
+      "number": 16,
+      "name": "claude-external-runner-workspace",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "external runner session requires lease/owner evidence",
+      "test_name": "test_external_runner_session_requires_explicit_live_owner_lease"
+    },
+    {
+      "number": 17,
+      "name": "BYO-server-clone",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "repository identity is distinct from filesystem location",
+      "test_name": "test_external_workspace_requires_explicit_role_and_matching_canonical_remote"
+    },
+    {
+      "number": 18,
+      "name": "desktop-and-web-same-project",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "repetitions": 5,
+      "assert": "serialized registry updates remain idempotent across callers",
+      "test_name": "test_concurrent_external_workspace_registration_is_serialized"
+    },
+    {
+      "number": 19,
+      "name": "interrupted-integration-resume",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "repetitions": 5,
+      "assert": "same integration receipt can resume without duplicate transition",
+      "test_name": "test_repeated_convergence_to_same_integration_is_idempotent_for_workspace_state"
+    },
+    {
+      "number": 20,
+      "name": "interrupted-workspace-convergence",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "repetitions": 5,
+      "assert": "repeat convergence refreshes to latest canonical SHA",
+      "test_name": "test_repeated_convergence_to_same_integration_is_idempotent_for_workspace_state"
+    },
+    {
+      "number": 21,
+      "name": "recovery-after-failed-convergence",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "repetitions": 3,
+      "assert": "failure leaves recovery snapshot and source unchanged",
+      "test_name": "test_dirty_canonical_workspace_is_snapshotted_and_never_overwritten"
+    },
+    {
+      "number": 22,
+      "name": "canonical-SHA-changes-during-convergence",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "repetitions": 5,
+      "assert": "stale target never emits completion receipt",
+      "test_name": "test_convergence_retries_when_canonical_advances_mid_operation"
+    },
+    {
+      "number": 23,
+      "name": "multiple-repositories-in-one-project",
+      "proof_kind": "CONTRACT_SIMULATION",
+      "assert": "authority key includes project and repository identity"
+    },
+    {
+      "number": 24,
+      "name": "one-project-repository-behind-another",
+      "proof_kind": "CONTRACT_SIMULATION",
+      "assert": "convergence is evaluated per repository target"
+    },
+    {
+      "number": 25,
+      "name": "deployment-behind-source",
+      "proof_kind": "CONTRACT_SIMULATION",
+      "assert": "development convergence does not claim release convergence"
+    },
+    {
+      "number": 26,
+      "name": "migration-behind-deployment",
+      "proof_kind": "CONTRACT_SIMULATION",
+      "assert": "release receipt retains required/applied migration mismatch"
+    },
+    {
+      "number": 27,
+      "name": "partial-Cloudflare-rollout",
+      "proof_kind": "CONTRACT_SIMULATION",
+      "assert": "partial instances cannot be production converged"
+    },
+    {
+      "number": 28,
+      "name": "stale-container-instance",
+      "proof_kind": "CONTRACT_SIMULATION",
+      "assert": "stale runtime revision remains visible and blocks release convergence"
+    },
+    {
+      "number": 29,
+      "name": "rollback",
+      "proof_kind": "CONTRACT_SIMULATION",
+      "assert": "rollback is a new verified convergence target with lineage"
+    },
+    {
+      "number": 30,
+      "name": "zero-session-global-closeout",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "repetitions": 3,
+      "assert": "zero sessions does not imply zero dirty worktrees; each dimension is reported separately",
+      "test_name": "test_zero_session_closeout_keeps_dirty_workspaces_visible"
+    }
   ]
 }
