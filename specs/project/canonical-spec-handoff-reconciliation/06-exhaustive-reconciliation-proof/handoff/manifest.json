@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "ba706ada52550427c8d9efdde206aacac7b38e3a",
+    "expected_canonical_sha": "c72b38df94391656b913f2d1635b97e6ac0c1440",
     "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
   },
   "continuation": {
@@ -41,8 +41,8 @@
         "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md"
       },
       {
-        "canonical_sha": "9ab681181a6ac850a366bb92ebf5dc024029655b",
-        "digest": "392bcddb5fba366d150b6f860d9fbb43e80fe1bf4d2848a2bf5780b66d48b52c",
+        "canonical_sha": "c72b38df94391656b913f2d1635b97e6ac0c1440",
+        "digest": "98be8ab360dda4f1cfd82eb636f06e496929b5b98d1025391b521a94728d3cec",
         "kind": "RECONCILIATION_CLASSIFICATION",
         "path": "specs/_status/reconciliation-classifications.json"
       },
@@ -54,7 +54,7 @@
       },
       {
         "canonical_sha": "9ab681181a6ac850a366bb92ebf5dc024029655b",
-        "digest": "aba5a76b851a3d70a4c875c98852a0aa42256cda9e010d9a2fab5add3ae73a96",
+        "digest": "737c729f1a410be226c83fe96eb8ae7483c1f1d66b2173a209100721da266772",
         "kind": "RECONCILIATION_REVIEW",
         "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/reconciliation-review-20261006.md"
       },
@@ -94,7 +94,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 32,
+  "generation": 34,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -119,9 +119,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ba706ada52550427c8d9efdde206aacac7b38e3a",
+    "canonical_sha": "c72b38df94391656b913f2d1635b97e6ac0c1440",
     "integrated": true,
-    "integrated_at": "2026-10-06T10:01:46Z"
+    "integrated_at": "2026-10-06T10:39:19Z"
   },
   "lifecycle": {
     "current_state": "WORKING",
@@ -181,8 +181,8 @@
           "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md"
         },
         {
-          "canonical_sha": "9ab681181a6ac850a366bb92ebf5dc024029655b",
-          "digest": "392bcddb5fba366d150b6f860d9fbb43e80fe1bf4d2848a2bf5780b66d48b52c",
+          "canonical_sha": "c72b38df94391656b913f2d1635b97e6ac0c1440",
+          "digest": "98be8ab360dda4f1cfd82eb636f06e496929b5b98d1025391b521a94728d3cec",
           "kind": "RECONCILIATION_CLASSIFICATION",
           "path": "specs/_status/reconciliation-classifications.json"
         },
@@ -194,7 +194,7 @@
         },
         {
           "canonical_sha": "9ab681181a6ac850a366bb92ebf5dc024029655b",
-          "digest": "aba5a76b851a3d70a4c875c98852a0aa42256cda9e010d9a2fab5add3ae73a96",
+          "digest": "737c729f1a410be226c83fe96eb8ae7483c1f1d66b2173a209100721da266772",
           "kind": "RECONCILIATION_REVIEW",
           "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/reconciliation-review-20261006.md"
         },
@@ -325,7 +325,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T10:36:06.000551Z",
+  "updated_at": "2026-10-06T10:40:11.498619Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

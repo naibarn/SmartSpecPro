@@ -24789,7 +24789,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "ba706ada52550427c8d9efdde206aacac7b38e3a",
+      "canonical_sha": "c72b38df94391656b913f2d1635b97e6ac0c1440",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",

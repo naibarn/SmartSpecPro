@@ -3,6 +3,7 @@
 ## Baseline and inventory
 
 - Source baseline: `origin/main` / `9ab681181a6ac850a366bb92ebf5dc024029655b`.
+- Reconciliation implementation integrated by PR #80 at `main` SHA `c72b38df94391656b913f2d1635b97e6ac0c1440`.
 - Dynamic inventory: 305 canonical Specs, 463 records, 331 ambiguity-review records.
 - Relationship projection: 302 candidate edges; duplicate canonical authority count: 0.
 - Six renumber aliases validate; eight duplicate-ID groups remain closed.
