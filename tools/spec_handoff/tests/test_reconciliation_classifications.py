@@ -10,10 +10,10 @@ ROOT = Path(__file__).resolve().parents[3]
 
 class ReconciliationClassificationTests(unittest.TestCase):
     def test_dynamic_inventory_has_exact_evidence_bound_classification_coverage(self):
-        document = build_classifications(ROOT, baseline_sha="9ab681181a6ac850a366bb92ebf5dc024029655b")
+        document = build_classifications(ROOT, baseline_sha="2287490fddfa4008bca30e8920be2426b62f6ba8")
         self.assertEqual([], validate_classifications(ROOT, document))
         self.assertEqual(463, document["inventory_record_count"])
-        self.assertEqual(329, document["reconciliation_review_count"])
+        self.assertEqual(327, document["reconciliation_review_count"])
         self.assertEqual(0, document["duplicate_canonical_authority_count"])
         self.assertEqual(6, document["renumber_alias_count"])
         self.assertEqual(302, document["relationship_edge_count"])
@@ -58,7 +58,7 @@ class ReconciliationClassificationTests(unittest.TestCase):
         self.assertTrue(all(row.rstrip().split("|")[-2].strip().startswith("FRAMEWORK_PASS") for row in rows))
         self.assertIn("306 canonical Specs and 463 total discovered/indexed records", matrix)
         self.assertIn("302 candidate edges", matrix)
-        self.assertIn("329 records", matrix)
+        self.assertIn("327 records", matrix)
 
 
 if __name__ == "__main__":

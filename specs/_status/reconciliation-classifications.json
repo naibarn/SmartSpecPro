@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "baseline_sha": "4433949a6416a056478b65598a7f16a51e8654ca",
+  "baseline_sha": "2287490fddfa4008bca30e8920be2426b62f6ba8",
   "inventory_record_count": 463,
-  "reconciliation_review_count": 329,
+  "reconciliation_review_count": 327,
   "relationship_edge_count": 302,
   "renumber_alias_count": 6,
   "canonical_spec_count": 306,
@@ -21,7 +21,7 @@
     "VALID_NON_CANONICAL": 155
   },
   "review_classification_counts": {
-    "CANONICAL_ACTIVE": 301,
+    "CANONICAL_ACTIVE": 299,
     "DUPLICATE_REVISION": 0,
     "HISTORICAL_REVISION": 0,
     "IMPLEMENTATION_EVIDENCE": 1,
@@ -686,7 +686,7 @@
           "sha256": "d6cae7c41a963e3c05a599d8e52030d1d57f0391bae199648ba171a92658f8b3"
         }
       ],
-      "in_reconciliation_review": true
+      "in_reconciliation_review": false
     },
     {
       "record_key": "canonical:specs/feature/007-python-backend-service",
@@ -4847,7 +4847,7 @@
           "sha256": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01"
         }
       ],
-      "in_reconciliation_review": true
+      "in_reconciliation_review": false
     },
     {
       "record_key": "canonical:specs/feature/227-policy-retrieval-alignment-canonical",

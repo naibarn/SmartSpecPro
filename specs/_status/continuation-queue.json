@@ -29,21 +29,6 @@
     {
       "authority": "UNRESOLVED",
       "confidence": "LOW",
-      "declared_claim_count": 0,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/006-docker-dev-environment",
-      "priority": "R1_RUNTIME_REFERENCE",
-      "record_key": "canonical:specs/feature/006-docker-dev-environment",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 1,
-        "TEST": 0
-      },
-      "spec_id": "006"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
       "declared_claim_count": 15,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/010-GoogleDriveScope",
@@ -385,21 +370,6 @@
         "TEST": 118
       },
       "spec_id": "224"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 1,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge",
-      "priority": "R1_RUNTIME_REFERENCE",
-      "record_key": "canonical:specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 6,
-        "TEST": 6
-      },
-      "spec_id": "226"
     },
     {
       "authority": "UNRESOLVED",
