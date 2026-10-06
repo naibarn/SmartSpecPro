@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "c72b38df94391656b913f2d1635b97e6ac0c1440",
+    "expected_canonical_sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542",
     "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
   },
   "continuation": {
-    "next_action": "Repository-wide Spec reconciliation is resolved with zero unresolved authority and all 329 review records deterministically classified. Close REVIEW_REMAINING_RECONCILIATION_RECORDS; run FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE. Keep CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE false until that gate passes.",
+    "next_action": "REPOSITORY_WIDE_SPEC_RECONCILIATION_COMPLETE = TRUE. Close REVIEW_REMAINING_RECONCILIATION_RECORDS. NEXT_WORKUNIT = FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE. Keep CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE false until that final gate passes.",
     "next_ready_workunit": "FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE",
     "reactivation_predicate": null,
-    "resume_point": "SPEC-161 authority disposition C is recorded at specs/feature/161-vertical-drama-async-skill-jobs/spec.md and its authority-resolution Handoff. Current source baseline is origin/main 4433949a6416a056478b65598a7f16a51e8654ca. Inventory 463 records / 306 canonical Specs; 329 review records, zero unresolved authority, zero duplicate authorities, six aliases, 302 relationship candidates. Resume at FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE after this reconciliation checkpoint is integrated and exact-SHA checks pass.",
+    "resume_point": "SPEC-161 disposition C is integrated and post-integration integrity validation passed on origin/main 1023ec47a74262f285bd0d8a03f36c2d758d9542. Inventory 463 records / 306 canonical Specs; 329 review records, 0 unresolved authority, 0 duplicate canonical authorities, 6 aliases, 302 relationship edges with 0 dangling edges. Resume at FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE. Repository-wide reconciliation is complete; canonical Handoff migration remains incomplete.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -44,9 +44,14 @@
         "digest": "7fdd8e716a7d740fe256b2836af43cfbfbc09ef0f520bff7ccee1ca7e4ec1a4f",
         "kind": "CLASSIFICATION_PROJECTION",
         "path": "specs/_status/reconciliation-classifications.json"
+      },
+      {
+        "digest": "f39e8b07b5ceb4914f98fc5f2e52e602dd63810fe5b33d72a5b7be9849398260",
+        "kind": "SPEC161_POSTINTEGRATION_VALIDATION",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/spec161-postintegration-validation-20261006.md"
       }
     ],
-    "next_action": "Run FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE on the integrated canonical SHA; do not declare CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE before it passes.",
+    "next_action": "Proceed to FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE on current canonical main. Do not set CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE = TRUE until that gate passes.",
     "rationale": "SPEC-161 authority has a deterministic evidence-backed disposition and all current repository integrity checks pass. This closes REVIEW_REMAINING_RECONCILIATION_RECORDS only; the final canonical handoff migration gate and migration-complete outcome remain open.",
     "residual_requirements": []
   },
@@ -76,7 +81,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 37,
+  "generation": 39,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -101,9 +106,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "c72b38df94391656b913f2d1635b97e6ac0c1440",
+    "canonical_sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542",
     "integrated": true,
-    "integrated_at": "2026-10-06T10:39:19Z"
+    "integrated_at": "2026-10-06T12:22:55Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -155,7 +160,7 @@
         "sha": "20513622e955bd6b66b4adec1afa7d3b83b5304d0b2aa74b1f5146c256b17da6"
       }
     ],
-    "updated_at": "2026-10-06T00:43:01.838078Z"
+    "updated_at": "2026-10-06T12:22:55Z"
   },
   "manual_decisions": {
     "continuation_assessment": {
@@ -171,9 +176,14 @@
           "digest": "7fdd8e716a7d740fe256b2836af43cfbfbc09ef0f520bff7ccee1ca7e4ec1a4f",
           "kind": "CLASSIFICATION_PROJECTION",
           "path": "specs/_status/reconciliation-classifications.json"
+        },
+        {
+          "digest": "f39e8b07b5ceb4914f98fc5f2e52e602dd63810fe5b33d72a5b7be9849398260",
+          "kind": "SPEC161_POSTINTEGRATION_VALIDATION",
+          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/spec161-postintegration-validation-20261006.md"
         }
       ],
-      "next_action": "Run FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE on the integrated canonical SHA; do not declare CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE before it passes.",
+      "next_action": "Proceed to FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE on current canonical main. Do not set CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE = TRUE until that gate passes.",
       "rationale": "SPEC-161 authority has a deterministic evidence-backed disposition and all current repository integrity checks pass. This closes REVIEW_REMAINING_RECONCILIATION_RECORDS only; the final canonical handoff migration gate and migration-complete outcome remain open.",
       "residual_requirements": []
     },
@@ -227,7 +237,7 @@
           "sha": "20513622e955bd6b66b4adec1afa7d3b83b5304d0b2aa74b1f5146c256b17da6"
         }
       ],
-      "updated_at": "2026-10-06T00:43:01.838078Z"
+      "updated_at": "2026-10-06T12:22:55Z"
     },
     "reconciliation_confidence": {
       "source_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -310,14 +320,32 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T12:15:20.386136Z",
+  "updated_at": "2026-10-06T12:24:11.547754Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
+    "evidence": [
+      {
+        "digest": "f39e8b07b5ceb4914f98fc5f2e52e602dd63810fe5b33d72a5b7be9849398260",
+        "kind": "SPEC161_POSTINTEGRATION_VALIDATION",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/spec161-postintegration-validation-20261006.md"
+      },
+      {
+        "command": "python3 -B -m unittest discover -s tools/spec_handoff/tests -v",
+        "kind": "HANDOFF_UNIT_TESTS",
+        "result": "81 passed",
+        "sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542"
+      },
+      {
+        "command": "bash skills/audit-skills.sh",
+        "kind": "SKILL_AUDIT",
+        "result": "330 passed",
+        "sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542"
+      }
+    ],
+    "freshness": "EXACT_SHA",
     "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542",
+    "status": "PASS",
     "task_regressions": []
   }
 }
