@@ -13,7 +13,7 @@ SCHEMA_VERSION = 1
 DISPOSITIONS = {
     "ACTIVE_CANONICAL", "ACTIVE_SUPPORTING", "LEGACY_COMPATIBILITY",
     "SUPERSEDED_FULL", "SUPERSEDED_PARTIAL", "MERGED_INTO", "RETIRED",
-    "HISTORICAL_ONLY", "DORMANT_UNRESOLVED", "CANCELLED_EXPLICIT",
+    "HISTORICAL_ONLY", "DORMANT_VALID", "DORMANT_UNRESOLVED", "CANCELLED_EXPLICIT",
     "INVALID_OR_UNKNOWN",
 }
 CONTINUATIONS = {
@@ -32,7 +32,7 @@ LIFECYCLE_STATES = {
     "WAITING_APPROVAL", "WAITING_CANONICAL_ARTIFACT", "IMPLEMENTATION_COMPLETE",
     "VALIDATION_PENDING", "VALIDATING", "REPAIR_REQUIRED", "VERIFIED",
     "RELEASE_READY", "DEPLOYING", "DEPLOYED", "BLOCKED_RECOVERABLE",
-    "FAILED_TERMINAL", "CANCELLED",
+    "FAILED_TERMINAL", "DORMANT_VALID", "CANCELLED",
 }
 
 
@@ -118,7 +118,7 @@ def validate_manifest(manifest: dict[str, Any]) -> list[str]:
         errors.append("DO_NOT_CONTINUE requires supporting evidence")
     if manifest["lifecycle"].get("current_state") not in LIFECYCLE_STATES:
         errors.append("lifecycle.current_state is invalid")
-    if manifest["authority"].get("status") not in {"ACTIVE_CANONICAL", "ACTIVE_SUPPORTING", "LEGACY_COMPATIBILITY", "SUPERSEDED_FULL", "SUPERSEDED_PARTIAL", "MERGED_INTO", "RETIRED", "HISTORICAL_ONLY", "DORMANT_UNRESOLVED", "CANCELLED_EXPLICIT", "INVALID_OR_UNKNOWN", "AUTHORITY_CONFLICT", "UNRESOLVED"}:
+    if manifest["authority"].get("status") not in {"ACTIVE_CANONICAL", "ACTIVE_SUPPORTING", "LEGACY_COMPATIBILITY", "SUPERSEDED_FULL", "SUPERSEDED_PARTIAL", "MERGED_INTO", "RETIRED", "HISTORICAL_ONLY", "DORMANT_VALID", "DORMANT_UNRESOLVED", "CANCELLED_EXPLICIT", "INVALID_OR_UNKNOWN", "AUTHORITY_CONFLICT", "UNRESOLVED"}:
         errors.append("authority.status is invalid")
     for section, key in (("disposition", "confidence"), ("authority", "confidence"), ("reconciliation", "confidence")):
         if manifest[section].get(key) not in CONFIDENCE:
