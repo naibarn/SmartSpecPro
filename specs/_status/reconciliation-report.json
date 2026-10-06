@@ -68770,7 +68770,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": null,
+      "canonical_sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -68785,8 +68785,7 @@
         "requirement REQ-552ADB7044A9 is OPEN",
         "requirement REQ-D6B6A1ADCC70 is OPEN",
         "requirement REQ-4C379A93119A is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "HIGH",
       "configured_root": "specs/feature",
@@ -140357,14 +140356,13 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "c72b38df94391656b913f2d1635b97e6ac0c1440",
+      "canonical_sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542",
       "completion_eligible": false,
       "completion_reasons": [
         "Spec authority is unresolved or conflicting",
         "disposition is not an active continuation target",
         "lifecycle has not reached implementation completion",
-        "requirement UNPARSED-SPEC-AACD834B is OPEN",
-        "required verification evidence is missing"
+        "requirement UNPARSED-SPEC-AACD834B is OPEN"
       ],
       "confidence": "HIGH",
       "configured_root": "specs/project",
@@ -140380,11 +140378,11 @@
       "deployment": "UNKNOWN",
       "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
       "disposition": "DORMANT_UNRESOLVED",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "EXACT_SHA",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:19.043588Z",
       "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Run FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE on the integrated canonical SHA; do not declare CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE before it passes.",
+      "next_action": "Proceed to FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE on current canonical main. Do not set CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE = TRUE until that gate passes.",
       "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",
       "primary_blocker": null,
       "problem": null,
@@ -140439,7 +140437,7 @@
       "successors": [],
       "title": "Exhaustive Reconciliation Proof",
       "true_blockers": 0,
-      "verification": "UNKNOWN"
+      "verification": "PASS"
     },
     {
       "acceptance": "UNKNOWN",

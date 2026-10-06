@@ -22,7 +22,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542",
     "expected_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f"
   },
   "continuation": {
@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 8,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -93,10 +93,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542",
+    "integrated": true,
+    "integrated_at": "2026-10-06T12:22:55Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -108,7 +108,7 @@
         "sha": "3ab5930dc85d84d02b8de32f3e17d69ce09993241c99d5474fb25754a07532ce"
       }
     ],
-    "updated_at": "2026-10-06T12:01:19.793317Z"
+    "updated_at": "2026-10-06T12:22:55Z"
   },
   "manual_decisions": {
     "authority": {
@@ -160,7 +160,7 @@
           "sha": "3ab5930dc85d84d02b8de32f3e17d69ce09993241c99d5474fb25754a07532ce"
         }
       ],
-      "updated_at": "2026-10-06T12:01:19.793317Z"
+      "updated_at": "2026-10-06T12:22:55Z"
     },
     "reconciliation_confidence": {
       "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -353,7 +353,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T12:16:25.028664Z",
+  "updated_at": "2026-10-06T12:23:28.493112Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
