@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.spec_handoff.index import _review_priority, build_views, status_drift, write_views
+from tools.spec_handoff.index import _record_view, _review_priority, build_views, status_drift, write_views
 from tools.spec_handoff.inventory import inventory
 from tools.spec_handoff.reconcile import reconcile_one
 
@@ -43,6 +43,26 @@ class IndexTests(unittest.TestCase):
             self.assertEqual(row["primary_blocker"], "HANDOFF_REQUIRED")
             self.assertEqual(row["lifecycle"], "DISCOVERING")
             self.assertNotEqual(row["continuation"], "CONTINUE_REQUIRED")
+
+    def test_review_actions_match_malformed_and_security_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "specs/_config").mkdir(parents=True)
+            (repo / "specs/_config/handoff-roots.toml").write_text(
+                '[spec_handoff]\nschema_version=1\ncanonical_roots=["specs/security"]\nalternate_roots=[]\n',
+                encoding="utf-8",
+            )
+            (repo / "specs/security/20261006").mkdir(parents=True)
+            (repo / "specs/security/20261006/spec.md").write_text("# Security\nBlock unsafe schemes.\n", encoding="utf-8")
+            (repo / "specs/security/001-missing-spec").mkdir()
+            discovered = inventory(repo)["records"]
+            malformed = next(row for row in discovered if row["record_kind"] == "MALFORMED_CANDIDATE")
+            security = next(row for row in discovered if row["record_kind"] == "CANONICAL_SPEC")
+            reconcile_one(repo / security["path"], repo, write=True)
+            malformed_view = _record_view(repo, malformed)
+            security_view = _record_view(repo, security)
+            self.assertIn("locate its normative spec.md", malformed_view["next_action"])
+            self.assertIn("current implementation and regression tests", security_view["next_action"])
 
     def test_generated_status_manual_drift_is_detected(self):
         with tempfile.TemporaryDirectory() as tmp:

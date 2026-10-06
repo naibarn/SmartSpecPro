@@ -55,9 +55,17 @@ def _record_view(repo: Path, record: dict[str, Any]) -> dict[str, Any]:
             "completion_reasons": completion_reasons,
             "true_blockers": sum(1 for blocker in blockers if isinstance(blocker, dict) and blocker.get("classification") == "TRUE_EXTERNAL"),
         })
+        if record.get("configured_root") == "specs/security" and manifest.get("continuation_assessment", {}).get("decision") == "RECONCILIATION_REQUIRED":
+            base["next_action"] = "Map each security requirement to current implementation and regression tests; assess current exposure and retain unresolved status where exact coverage or fresh verification is missing."
         return base
     not_spec = record["record_kind"] in {"PLANNING_ARTIFACT", "PROJECT_REQUIREMENTS", "COLLECTION_ENTRY_NO_SPEC"}
-    base.update({"authority": "NOT_APPLICABLE" if not_spec else "UNRESOLVED", "disposition": "INVALID_OR_UNKNOWN" if not_spec else "DORMANT_UNRESOLVED", "lifecycle": "NOT_A_CANONICAL_SPEC", "continuation": "NOT_APPLICABLE" if not_spec else "RECONCILIATION_REQUIRED", "confidence": "NOT_APPLICABLE" if not_spec else "UNRESOLVED", "verification": "UNKNOWN", "deployment": "UNKNOWN", "acceptance": "UNKNOWN", "requirements": {"pass": 0, "open": 0, "total": 0}, "primary_blocker": record.get("problem"), "next_action": "Review whether this candidate belongs to a configured canonical Spec root." if not not_spec else "This record is an inventory item, not a canonical Spec handoff.", "evidence_freshness": "UNKNOWN", "last_reconciled": None, "successors": []})
+    if not_spec:
+        next_action = "This record is an inventory item, not a canonical Spec handoff."
+    elif record.get("record_kind") in {"MALFORMED_CANDIDATE", "INVALID_SPEC"}:
+        next_action = "Keep this configured-root candidate visible as malformed; locate its normative spec.md or record why it is intentionally absent before initializing a handoff."
+    else:
+        next_action = "Review this candidate's identity and canonical-root classification."
+    base.update({"authority": "NOT_APPLICABLE" if not_spec else "UNRESOLVED", "disposition": "INVALID_OR_UNKNOWN" if not_spec else "DORMANT_UNRESOLVED", "lifecycle": "NOT_A_CANONICAL_SPEC", "continuation": "NOT_APPLICABLE" if not_spec else "RECONCILIATION_REQUIRED", "confidence": "NOT_APPLICABLE" if not_spec else "UNRESOLVED", "verification": "UNKNOWN", "deployment": "UNKNOWN", "acceptance": "UNKNOWN", "requirements": {"pass": 0, "open": 0, "total": 0}, "primary_blocker": record.get("problem"), "next_action": next_action, "evidence_freshness": "UNKNOWN", "last_reconciled": None, "successors": []})
     return base
 
 
