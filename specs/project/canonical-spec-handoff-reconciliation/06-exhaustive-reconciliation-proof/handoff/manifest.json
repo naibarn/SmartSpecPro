@@ -25,14 +25,14 @@
     "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
   },
   "continuation": {
-    "next_action": "Continue evidence-led review of the remaining 331 ambiguity-review records. Do not repeat the resolved eight duplicate-ID groups, and do not mark repository-wide Spec reconciliation or Canonical Spec Handoff migration complete.",
+    "next_action": "Recover the approved normative Spec 161 source or record an authoritative disposition; then resolve that single UNRESOLVED_AUTHORITY record and rerun the full repository reconciliation gate.",
     "next_ready_workunit": "REVIEW_REMAINING_RECONCILIATION_RECORDS",
     "reactivation_predicate": null,
-    "resume_point": "The eight duplicate-ID groups 000, 014, 031, 045, 058, 059, 162, and 164 have deterministic dispositions in duplicate-authority-resolution-20261006.md, integrated at ba706ada52550427c8d9efdde206aacac7b38e3a. Post-integration checks are recorded in duplicate-spec-postintegration-20261006.md. Continue by selecting the next justified records from spec-handoff next; 331 ambiguity-review records remain.",
+    "resume_point": "At baseline origin/main 9ab681181a6ac850a366bb92ebf5dc024029655b, all 331 review records have deterministic primary classifications except Feature 161. The validated 463-record classification projection is specs/_status/reconciliation-classifications.json; the exact 307→305 count bridge is under handoff/evidence. Duplicate authority groups remain closed. Resume at Feature 161 normative-authority recovery; do not promote claude-spec.md by inference.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
+    "confidence": "HIGH",
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
@@ -41,15 +41,31 @@
         "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md"
       },
       {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
+        "canonical_sha": "9ab681181a6ac850a366bb92ebf5dc024029655b",
+        "digest": "392bcddb5fba366d150b6f860d9fbb43e80fe1bf4d2848a2bf5780b66d48b52c",
+        "kind": "RECONCILIATION_CLASSIFICATION",
+        "path": "specs/_status/reconciliation-classifications.json"
+      },
+      {
+        "canonical_sha": "9ab681181a6ac850a366bb92ebf5dc024029655b",
+        "digest": "2211e1226651f582da906b7ff736dbb99e1b6f4d9ab93be12c7efb695b623128",
+        "kind": "COUNT_BRIDGE",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/canonical-count-bridge-20261006.md"
+      },
+      {
+        "canonical_sha": "9ab681181a6ac850a366bb92ebf5dc024029655b",
+        "digest": "aba5a76b851a3d70a4c875c98852a0aa42256cda9e010d9a2fab5add3ae73a96",
+        "kind": "RECONCILIATION_REVIEW",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/reconciliation-review-20261006.md"
+      },
+      {
+        "excerpt": "Synthesized specification; normative spec.md is absent and no authoritative source recovery is established.",
+        "kind": "BLOCKER",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/claude-spec.md"
       }
     ],
-    "next_action": "Review the eight unresolved duplicate Spec ID groups first, then resume evidence-based review of the remaining current ambiguity records. Preserve unsupported classifications.",
-    "rationale": "The recovered SpecV9 set is uploaded, validated, and integrated. Current inventory, relationship graph, and open review count were refreshed on the latest canonical baseline. Repository-wide evidence reconciliation remains open; no overall completion claim is made.",
+    "next_action": "Resolve Feature 161 normative authority from an approved source or an authoritative non-Spec disposition. Do not mark repository-wide reconciliation complete while this record remains unresolved.",
+    "rationale": "Dynamic inventory and classification validation cover all 463 records and all 331 review records. Feature 161 is the sole unresolved authority: its canonical-root directory has no normative spec.md, contains a claude-spec.md synthesized from an approved design, and has downstream references, but no authoritative source or decision permits promotion to normative authority or retirement. Skill audit and package tests now pass after isolating runtime environments outside skill source directories.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -78,7 +94,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 24,
+  "generation": 32,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -156,7 +172,7 @@
   },
   "manual_decisions": {
     "continuation_assessment": {
-      "confidence": "UNRESOLVED",
+      "confidence": "HIGH",
       "decision": "RECONCILIATION_REQUIRED",
       "evidence": [
         {
@@ -165,15 +181,31 @@
           "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md"
         },
         {
-          "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-          "identity_ambiguous": true,
-          "kind": "SOURCE",
-          "line": 1281,
-          "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
+          "canonical_sha": "9ab681181a6ac850a366bb92ebf5dc024029655b",
+          "digest": "392bcddb5fba366d150b6f860d9fbb43e80fe1bf4d2848a2bf5780b66d48b52c",
+          "kind": "RECONCILIATION_CLASSIFICATION",
+          "path": "specs/_status/reconciliation-classifications.json"
+        },
+        {
+          "canonical_sha": "9ab681181a6ac850a366bb92ebf5dc024029655b",
+          "digest": "2211e1226651f582da906b7ff736dbb99e1b6f4d9ab93be12c7efb695b623128",
+          "kind": "COUNT_BRIDGE",
+          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/canonical-count-bridge-20261006.md"
+        },
+        {
+          "canonical_sha": "9ab681181a6ac850a366bb92ebf5dc024029655b",
+          "digest": "aba5a76b851a3d70a4c875c98852a0aa42256cda9e010d9a2fab5add3ae73a96",
+          "kind": "RECONCILIATION_REVIEW",
+          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/reconciliation-review-20261006.md"
+        },
+        {
+          "excerpt": "Synthesized specification; normative spec.md is absent and no authoritative source recovery is established.",
+          "kind": "BLOCKER",
+          "path": "specs/feature/161-vertical-drama-async-skill-jobs/claude-spec.md"
         }
       ],
-      "next_action": "Review the eight unresolved duplicate Spec ID groups first, then resume evidence-based review of the remaining current ambiguity records. Preserve unsupported classifications.",
-      "rationale": "The recovered SpecV9 set is uploaded, validated, and integrated. Current inventory, relationship graph, and open review count were refreshed on the latest canonical baseline. Repository-wide evidence reconciliation remains open; no overall completion claim is made.",
+      "next_action": "Resolve Feature 161 normative authority from an approved source or an authoritative non-Spec disposition. Do not mark repository-wide reconciliation complete while this record remains unresolved.",
+      "rationale": "Dynamic inventory and classification validation cover all 463 records and all 331 review records. Feature 161 is the sole unresolved authority: its canonical-root directory has no normative spec.md, contains a claude-spec.md synthesized from an approved design, and has downstream references, but no authoritative source or decision permits promotion to normative authority or retirement. Skill audit and package tests now pass after isolating runtime environments outside skill source directories.",
       "residual_requirements": []
     },
     "lifecycle": {
@@ -293,7 +325,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T10:04:46.771754Z",
+  "updated_at": "2026-10-06T10:36:06.000551Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

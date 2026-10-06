@@ -3,7 +3,7 @@
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `WORKING`
-- Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
+- Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1 unresolved of 1
-- Next action: Review the eight unresolved duplicate Spec ID groups first, then resume evidence-based review of the remaining current ambiguity records. Preserve unsupported classifications.
-- Manifest generation: 24
+- Next action: Resolve Feature 161 normative authority from an approved source or an authoritative non-Spec disposition. Do not mark repository-wide reconciliation complete while this record remains unresolved.
+- Manifest generation: 32

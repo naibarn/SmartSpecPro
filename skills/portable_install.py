@@ -19,7 +19,7 @@ SKILLS_ROOT = REPO_ROOT / "skills"
 MANIFEST_PATH = SKILLS_ROOT / "mirrored-skills.txt"
 BACKUP_PLAYBOOK = "BACKUP-PLAYBOOK.md"
 PACKAGE_RUNTIME_DIRS = (".claude-plugin", "agents", "hooks", "prompts", "scripts")
-IGNORE_PARTS = {"__pycache__", ".pytest_cache", ".venv", ".git"}
+IGNORE_PARTS = {"__pycache__", ".pytest_cache", ".venv", ".git", "tests"}
 IGNORE_FILENAMES = {".DS_Store", ".gitkeep"}
 IGNORE_SUFFIXES = {".pyc", ".pyo"}
 

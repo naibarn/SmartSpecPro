@@ -5,6 +5,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
+python3 -B skills/runtime_hygiene.py check-cleanup "${ROOT_DIR}"
+
 find skills \
   \( -path '*/.venv' -o -path '*/.pytest_cache' -o -path '*/__pycache__' \) \
   -type d -prune -print -exec rm -r -- {} +

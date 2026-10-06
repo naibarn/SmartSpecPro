@@ -64,6 +64,7 @@ htmlcov/
 .tox/
 .venv/
 venv/
+**/handoff/.write.lock
 /ckpts/
 apps/worker-app/src-tauri/resources/content-protection-runtime/*
 !apps/worker-app/src-tauri/resources/content-protection-runtime/.gitkeep
