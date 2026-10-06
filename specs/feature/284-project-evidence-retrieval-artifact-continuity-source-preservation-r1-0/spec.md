@@ -8,7 +8,7 @@
 **Knowledge/Evidence authority:** Spec 266  
 **Retrieval Broker:** Spec 229  
 **Memory:** Spec 268  
-**Work Context:** Spec 282  
+**Work Context:** Spec 292
 **External Capability Intelligence:** Spec 283  
 **Library/Object storage:** existing Library/R2  
 **Operational state:** existing canonical work/approval/business owners  
