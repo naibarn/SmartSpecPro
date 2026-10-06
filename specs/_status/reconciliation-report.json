@@ -136766,7 +136766,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "392b41dbaadcee6bfb4497735d451db8b553aef7",
+      "canonical_sha": "1b93981fdde901e30ca6f681af02315de68d65cb",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -137050,7 +137050,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.193296Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0-WU-3: produce and bind durable canonical-convergence and worktree-retirement receipts; then execute remaining race and 30-case regression coverage.",
+      "next_action": "Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.",
       "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
       "primary_blocker": null,
       "problem": null,
@@ -137113,7 +137113,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "392b41dbaadcee6bfb4497735d451db8b553aef7",
+      "canonical_sha": "1b93981fdde901e30ca6f681af02315de68d65cb",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -137654,7 +137654,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.211822Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0-WU-3: produce and bind durable canonical-convergence and worktree-retirement receipts; then execute remaining race and 30-case regression coverage.",
+      "next_action": "Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.",
       "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "primary_blocker": null,
       "problem": null,
@@ -137717,7 +137717,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "392b41dbaadcee6bfb4497735d451db8b553aef7",
+      "canonical_sha": "1b93981fdde901e30ca6f681af02315de68d65cb",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -137931,7 +137931,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.246992Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0-WU-3: produce and bind durable canonical-convergence and worktree-retirement receipts; then execute remaining race and 30-case regression coverage.",
+      "next_action": "Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.",
       "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
       "primary_blocker": null,
       "problem": null,
