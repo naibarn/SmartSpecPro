@@ -462,6 +462,20 @@ def _build_custom_character_identity_lock(
     )
 
 
+def _build_compact_custom_character_identity_lock(
+    overrides: dict[str, str],
+) -> str:
+    """Keep compact prompts authoritative without repeating the full prose lock."""
+    if not overrides:
+        return ""
+    entries = "; ".join(f"{key}={description}" for key, description in overrides.items())
+    return (
+        "CUSTOM IDENTITY OVERRIDES (authoritative; use descriptions instead of screen positions): "
+        + entries
+        + "."
+    )
+
+
 def _resolve_character_positions(
     payload: dict[str, Any],
     observed_start_state: dict[str, Any] | None,
@@ -1614,6 +1628,9 @@ def _terminal_prompt(
         )
     )
     if dialogue:
+        compact_identity_lock = _build_compact_custom_character_identity_lock(
+            custom_identity_overrides
+        )
         cast_map = []
         for character in all_characters:
             character_id = character.get("id")
@@ -1622,10 +1639,13 @@ def _terminal_prompt(
                 continue
             name = character.get("name") or character_id
             identity = _custom_identity_for(custom_identity_overrides, character_id, name)
+            # The override lock and per-line speaker map already identify these
+            # characters. Repeating their descriptions beside a screen position
+            # wastes budget and can create competing identity cues.
+            if identity:
+                continue
             cast_map.append(
-                f"{character_id} identified by {identity}"
-                if identity
-                else f"{character_id}={name}@{position}"
+                f"{character_id}={name}@{position}"
             )
         dialogue_map = []
         for idx, line in enumerate(dialogue):
@@ -1650,37 +1670,48 @@ def _terminal_prompt(
             first_speaker,
         )
         first_anchor = (
-            f"{first_id} identified by {first_identity}"
+            first_id
             if first_identity
             else f"{first_id}@{first_line.get('position') or ''}"
         )
         speaker_order_header = (
-            "CANONICAL SPEAKER ORDER (position unless a custom identity override applies): "
+            "CANONICAL SPEAKER ORDER (identity override takes precedence): "
             if custom_identity_overrides
             else "CANONICAL SPEAKER ORDER: "
         )
         speaker_anchor_rule = (
-            "Each timed line repeats its speaker ID and strongest identity anchor. "
-            "Use viewer-relative position only when no custom identity override is supplied. "
+            "Each timed line repeats its speaker ID and identity anchor. "
+            "Use screen position only when no custom identity override applies. "
             if custom_identity_overrides
             else "Each timed line repeats its speaker ID and exact viewer-relative position. "
         )
         compact_map_header = (
-            "HARD SPEAKER MAP (MANDATORY; user identity overrides supersede screen positions; authoritative; do not swap)\n"
+            "HARD SPEAKER MAP (authoritative; do not swap; identity overrides supersede positions)\n"
             if custom_identity_overrides
             else "HARD SPEAKER MAP (MANDATORY CAST POSITION LOCK; authoritative; do not swap)\n"
         )
         compact_dialogue = (
             compact_map_header
-            + "CHARACTER, POSITION, AND DIALOGUE LOCK\n"
-            "FIXED CAST MAP (viewer-side): " + "; ".join(cast_map) + "\n"
+            + (
+                ("CAST POSITIONS: " if custom_identity_overrides else "FIXED CAST MAP (viewer-side): ")
+                + "; ".join(cast_map)
+                + "\n"
+                if cast_map
+                else ""
+            )
             + speaker_order_header
             + "; ".join(dialogue_map) + "\n"
             + speaker_anchor_rule
-            + "Only that mapped character speaks or moves their mouth; every other character stays silent. "
-            "At speech start, face the visible scene partner, never the lens. "
-            "Off-screen lines stay audio-only; screen callers animate only inside the existing call display. "
-            f"FIRST SPEAKER LOCK: {first_anchor}."
+            + (
+                "Only the mapped speaker moves their mouth; all others stay silent. "
+                "Face the visible partner, not the lens. Off-screen lines stay audio-only; callers animate only in the existing call display. "
+                f"FIRST SPEAKER: {first_anchor}."
+                if custom_identity_overrides
+                else "Only that mapped character speaks or moves their mouth; every other character stays silent. "
+                "At speech start, face the visible scene partner, never the lens. "
+                "Off-screen lines stay audio-only; screen callers animate only inside the existing call display. "
+                f"FIRST SPEAKER LOCK: {first_anchor}."
+            )
         )
         speech_timeline = _build_motion_timeline(
             # Unbound action prose can assign speech to the wrong screen-side
@@ -1726,8 +1757,11 @@ def _terminal_prompt(
         ),
         "CONSTRAINTS: Preserve cast, props and environment; no duplicates, morphing, teleporting, cuts, resets or time jumps.",
     ]
-    if custom_identity_lock:
-        compact_sections.insert(2, custom_identity_lock)
+    compact_identity_lock = _build_compact_custom_character_identity_lock(
+        custom_identity_overrides
+    )
+    if compact_identity_lock:
+        compact_sections.insert(2, compact_identity_lock)
     if visual_cast_lock:
         compact_sections.insert(2, visual_cast_lock)
     if existing_virtual_screen_lock:
@@ -1738,7 +1772,7 @@ def _terminal_prompt(
 
     minimal_text = "\n\n".join([
         "START FRAME LOCK: Preserve approved frame-0 identity, positions, wardrobe and objects.",
-        custom_identity_lock,
+        compact_identity_lock,
         compact_observed,
         protected_core,
         existing_virtual_screen_lock,

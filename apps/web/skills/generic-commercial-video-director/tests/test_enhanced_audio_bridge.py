@@ -393,6 +393,66 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         self.assertNotIn("MANDATORY CAST POSITION LOCK", prompt)
         self.assertIn("custom identity override", prompt)
 
+    def test_compact_grok_prompt_avoids_repeating_custom_identity_until_over_budget(self):
+        cast = [
+            {"characterKey": f"character-{index}-long-id", "name": f"ตัวละคร{index}ชื่อยาว", "position": position}
+            for index, position in enumerate(
+                ["viewer-far-left", "viewer-left", "viewer-center-left", "viewer-center"],
+                start=1,
+            )
+        ]
+        dialogue = [
+            {
+                "speakerId": cast[index % 2]["characterKey"],
+                "speaker": cast[index % 2]["name"],
+                "text": f"ประโยค{index + 1}สำคัญที่ต้องคงถ้อยคำเดิมทุกคำ" * 2,
+            }
+            for index in range(3)
+        ]
+        payload = {
+            "videoPromptMaxChars": 4096,
+            "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
+            "shot": {
+                "durationSeconds": 8,
+                "verifiedCastPositions": cast,
+                "characterDescriptionOverrides": {
+                    cast[0]["characterKey"]: "เด็กชายสวมเสื้อสีเทาและมีท่าทางหวาดระแวง " * 3,
+                    cast[1]["characterKey"]: "ผู้หญิงผมยาวสวมเสื้อสีครีมและมีสีหน้ากังวล " * 3,
+                },
+            },
+            "dialogue": dialogue,
+        }
+        observed = {
+            "characters": [
+                {
+                    "characterId": character["characterKey"],
+                    "screenPosition": character["position"],
+                    "pose": "ยืนกุมมือขณะหันหน้าเข้าหากัน",
+                    "gaze": "มองคู่สนทนาด้วยสีหน้ากังวล",
+                    "handOccupancy": {
+                        "left": "ถือแฟ้มเอกสารสีน้ำตาล",
+                        "right": "วางบนโต๊ะไม้",
+                    },
+                }
+                for character in cast
+            ],
+            "environment": "ห้องนั่งเล่นที่มีหน้าต่างและโต๊ะไม้",
+            "lighting": "แสงกลางวันนุ่มจากทางซ้าย",
+        }
+
+        prompt = _terminal_prompt(payload, {}, observed)
+
+        self.assertLessEqual(len(prompt.encode("utf-16-le")) // 2, 4096)
+        for index, line in enumerate(dialogue, start=1):
+            self.assertIn(line["text"], prompt)
+            self.assertEqual(prompt.count(f'"{line["text"]}"'), 1)
+            self.assertIn(
+                f'Line {index} ONLY ({line["speakerId"]} identified by ',
+                prompt,
+            )
+        self.assertIn("เด็กชายสวมเสื้อสีเทา", prompt)
+        self.assertIn("ผู้หญิงผมยาวสวมเสื้อสีครีม", prompt)
+
     def test_terminal_prompt_keeps_dialogue_speaker_offscreen_when_not_in_observed_frame(self):
         payload = {
             "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
