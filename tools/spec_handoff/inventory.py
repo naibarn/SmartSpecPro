@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 _ID = re.compile(r"^(?P<id>\d{1,4})(?:[-_ ].*)?$")
-_REV = re.compile(r"\b(?:rev(?:ision)?|version)\s*[:#-]?\s*v?(\d+(?:\.\d+){0,3})\b", re.I)
+_REV = re.compile(r"(?<![A-Z0-9])(?:rev(?:ision)?|version)\b\s*\*{0,2}\s*[:#-]?\s*\*{0,2}\s*[\"']?[rv]?(\d+(?:\.\d+){0,3})\b", re.I)
 
 
 def load_config(repo: Path) -> dict[str, Any]:
