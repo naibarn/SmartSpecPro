@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/223-zcode-external-harness-adapter/spec.md",
     "digest": "e64e0a641a1396c934bd6bb03e6557969c423001de897ee9deed1984b06f5e61",
@@ -191,8 +191,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 368,
-    "unresolved": 368
+    "total": 417,
+    "unresolved": 417
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.180434Z",

@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -1872,6 +1872,94 @@
       "requirement_digest": "8b716a0344aad7af3aaf75ec00dd08df0d7738a7806d40812eac8f5d14f5e7fc",
       "requirement_id": "REQ-EEF2E80BDC75",
       "requirement_text": "Callback endpoints must enforce:",
+      "source_spec_digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1004"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1004",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9a0d7a41725e562fe89bd6e2be008c841cff541d70538159f643543a16c2b8af",
+      "requirement_id": "REQ-B14AE7834069",
+      "requirement_text": "- a success/failure status",
+      "source_spec_digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1005"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1005",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "59875039e42eab83d606ae5453ec0b99dd7d9df890536315f091840ea21aa222",
+      "requirement_id": "REQ-B3EB57578511",
+      "requirement_text": "- a readable summary",
+      "source_spec_digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1006"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1006",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4a237bcd70dcb1b38e713fcc65e3ef3dfbe7bb3e000849ec8c98cfb8e03a12e7",
+      "requirement_id": "REQ-6F06E50B75BB",
+      "requirement_text": "- links to outputs",
+      "source_spec_digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1007"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/072-claw-worker-platform-access/spec.md#L1007",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "454f1fca8e4447a443370c72b0be4d1829acc2fcd2324bd2012309c29a200f27",
+      "requirement_id": "REQ-BAD3BF56AE95",
+      "requirement_text": "- access to published artifacts in SmartSpecPro",
       "source_spec_digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
       "successor_mapping": [],
       "verification_evidence": [],

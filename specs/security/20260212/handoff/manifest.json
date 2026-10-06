@@ -6,7 +6,7 @@
   },
   "authority": {
     "claims": [],
-    "confidence": "UNRESOLVED",
+    "confidence": "MEDIUM",
     "conflicts": [],
     "evidence": [
       {
@@ -15,79 +15,52 @@
         "path": "specs/security/20260212/spec.md"
       },
       {
-        "digest": "3ce47ce1c34e6b6276570c24ebc7355fcea3c05888422cc33c2cf413f487317b",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-self-review.md"
+        "kind": "SOURCE",
+        "path": "apps/web/tsconfig.json"
       },
       {
-        "digest": "51f6ca6c65aa84e8a5b22482aaa5f4cadd0dde8192f8b862d9c327f3425884d1",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-summary.md"
+        "kind": "SOURCE",
+        "path": "tsconfig.base.json"
       },
       {
-        "digest": "f4a0575b074682f6ca683143858d1596906c300a1f165873772faee8aab7a065",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/index.md"
+        "kind": "SOURCE",
+        "path": "apps/web/server/routers/factory.ts"
       },
       {
-        "digest": "636c24eee060991aa770a6bc72afa86e9a120dfd9e62de80aff5f850e853234e",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-01-baseline-and-reporting.md"
+        "kind": "SOURCE",
+        "path": "apps/web/server/_core/env.ts"
       },
       {
-        "digest": "4f145c2916b12d395f2315b8cf14464fb1600afbe5dc74491c33e8612c042748",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "path": "apps/web/package.json"
       },
       {
-        "digest": "0d7f4cd5102a45f97ca690794fa9692d5b1a7a1c7ac1214b380e945babc210ac",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "path": ".github/workflows/ci.yml"
       },
       {
-        "digest": "9d451a3ecdf868bb037cc1bc7f9e88a72c98009d43768d604566922cf3374e96",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
-      },
-      {
-        "digest": "443c996538263ce538203b7c46ffd2cf85c04bc61200092ae5004eba8569c07c",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
-      },
-      {
-        "digest": "f957119d0368bdd395702fb87abd84ae2cea837b2e8e956da812ec398870dfb1",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
-      },
-      {
-        "digest": "1d2521c394744935c5941744d535ab3fb26e1ed66af79cdc8b1b9aad91ae9d43",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
-      },
-      {
-        "digest": "765fedf1c5778f54ba579cc8d2e24ee8b63725d504ed3e7bc1c8e3d52aec2e23",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
+        "kind": "VERIFICATION",
+        "path": "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
       }
     ],
     "predecessors": [],
-    "status": "UNRESOLVED",
+    "status": "ACTIVE_CANONICAL",
     "successors": []
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "3809bfd59c3f8c5116eb69c76e346373e19a39d9",
     "expected_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
-    "reactivation_predicate": null,
-    "resume_point": null,
-    "waiting_predicate": null
+    "next_action": "Queue the 8 GB apps/web typecheck and critical flow smoke checks on CI or a dedicated runner; reconcile remaining type errors before any feature implementation.",
+    "next_ready_workunit": "SPEC-20260212-TYPECHECK-DELTA",
+    "reactivation_predicate": "Resume when exact-SHA typecheck evidence is available or the configured CI run completes.",
+    "resume_point": "Compare source review static-source-review-3809bfd.json with fresh TypeScript diagnostic counts at canonical main SHA.",
+    "waiting_predicate": "A CI/dedicated runner returns exact-SHA apps/web typecheck output and focused critical-flow results."
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
+    "confidence": "MEDIUM",
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
@@ -96,64 +69,42 @@
         "path": "specs/security/20260212/spec.md"
       },
       {
-        "digest": "3ce47ce1c34e6b6276570c24ebc7355fcea3c05888422cc33c2cf413f487317b",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-self-review.md"
+        "kind": "SOURCE",
+        "path": "apps/web/tsconfig.json"
       },
       {
-        "digest": "51f6ca6c65aa84e8a5b22482aaa5f4cadd0dde8192f8b862d9c327f3425884d1",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-summary.md"
+        "kind": "SOURCE",
+        "path": "tsconfig.base.json"
       },
       {
-        "digest": "f4a0575b074682f6ca683143858d1596906c300a1f165873772faee8aab7a065",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/index.md"
+        "kind": "SOURCE",
+        "path": "apps/web/server/routers/factory.ts"
       },
       {
-        "digest": "636c24eee060991aa770a6bc72afa86e9a120dfd9e62de80aff5f850e853234e",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-01-baseline-and-reporting.md"
+        "kind": "SOURCE",
+        "path": "apps/web/server/_core/env.ts"
       },
       {
-        "digest": "4f145c2916b12d395f2315b8cf14464fb1600afbe5dc74491c33e8612c042748",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "path": "apps/web/package.json"
       },
       {
-        "digest": "0d7f4cd5102a45f97ca690794fa9692d5b1a7a1c7ac1214b380e945babc210ac",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "path": ".github/workflows/ci.yml"
       },
       {
-        "digest": "9d451a3ecdf868bb037cc1bc7f9e88a72c98009d43768d604566922cf3374e96",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
-      },
-      {
-        "digest": "443c996538263ce538203b7c46ffd2cf85c04bc61200092ae5004eba8569c07c",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
-      },
-      {
-        "digest": "f957119d0368bdd395702fb87abd84ae2cea837b2e8e956da812ec398870dfb1",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
-      },
-      {
-        "digest": "1d2521c394744935c5941744d535ab3fb26e1ed66af79cdc8b1b9aad91ae9d43",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
-      },
-      {
-        "digest": "765fedf1c5778f54ba579cc8d2e24ee8b63725d504ed3e7bc1c8e3d52aec2e23",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
+        "kind": "VERIFICATION",
+        "path": "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
-    "residual_requirements": []
+    "next_action": "Run apps/web typecheck in CI or a dedicated resource-admitted runner; compare current per-code counts with the 2026-02-12 baseline, then decide which phases still require implementation. Do not run the 8 GB package check in this shared session.",
+    "rationale": "Primary config/import/env/dependency corrections are present, but the current error baseline, strict cleanup, split check scripts, and critical flow evidence are unknown. No implementation continuation can be justified until admitted verification compares current diagnostics with the stated baseline.",
+    "residual_requirements": [
+      "REQ-4FDA684876A8",
+      "REQ-6EA651D2209D",
+      "REQ-1C16BC0686C7",
+      "REQ-7F961218061C"
+    ]
   },
   "dependencies": {
     "predicates": [],
@@ -170,7 +121,7 @@
     "status": "UNKNOWN"
   },
   "disposition": {
-    "confidence": "UNRESOLVED",
+    "confidence": "MEDIUM",
     "evidence": [
       {
         "digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
@@ -178,65 +129,38 @@
         "path": "specs/security/20260212/spec.md"
       },
       {
-        "digest": "3ce47ce1c34e6b6276570c24ebc7355fcea3c05888422cc33c2cf413f487317b",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-self-review.md"
+        "kind": "SOURCE",
+        "path": "apps/web/tsconfig.json"
       },
       {
-        "digest": "51f6ca6c65aa84e8a5b22482aaa5f4cadd0dde8192f8b862d9c327f3425884d1",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-summary.md"
+        "kind": "SOURCE",
+        "path": "tsconfig.base.json"
       },
       {
-        "digest": "f4a0575b074682f6ca683143858d1596906c300a1f165873772faee8aab7a065",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/index.md"
+        "kind": "SOURCE",
+        "path": "apps/web/server/routers/factory.ts"
       },
       {
-        "digest": "636c24eee060991aa770a6bc72afa86e9a120dfd9e62de80aff5f850e853234e",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-01-baseline-and-reporting.md"
+        "kind": "SOURCE",
+        "path": "apps/web/server/_core/env.ts"
       },
       {
-        "digest": "4f145c2916b12d395f2315b8cf14464fb1600afbe5dc74491c33e8612c042748",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "path": "apps/web/package.json"
       },
       {
-        "digest": "0d7f4cd5102a45f97ca690794fa9692d5b1a7a1c7ac1214b380e945babc210ac",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "path": ".github/workflows/ci.yml"
       },
       {
-        "digest": "9d451a3ecdf868bb037cc1bc7f9e88a72c98009d43768d604566922cf3374e96",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
-      },
-      {
-        "digest": "443c996538263ce538203b7c46ffd2cf85c04bc61200092ae5004eba8569c07c",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
-      },
-      {
-        "digest": "f957119d0368bdd395702fb87abd84ae2cea837b2e8e956da812ec398870dfb1",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
-      },
-      {
-        "digest": "1d2521c394744935c5941744d535ab3fb26e1ed66af79cdc8b1b9aad91ae9d43",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
-      },
-      {
-        "digest": "765fedf1c5778f54ba579cc8d2e24ee8b63725d504ed3e7bc1c8e3d52aec2e23",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
+        "kind": "VERIFICATION",
+        "path": "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
       }
     ],
-    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
-    "value": "DORMANT_UNRESOLVED"
+    "rationale": "This unique Web Platform remediation Spec still maps to current typecheck/CI concerns. Phase A/B source fixes are present; numeric type-error reduction and later phase acceptance are unverified.",
+    "value": "ACTIVE_CANONICAL"
   },
-  "generation": 4,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/security/20260212/spec.md",
     "digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
@@ -255,24 +179,290 @@
   "implementation": {
     "checkpoint_shas": [],
     "mapping": [],
-    "source_paths": [],
+    "source_paths": [
+      "apps/web/tsconfig.json",
+      "apps/web/server/routers/factory.ts",
+      "apps/web/server/_core/env.ts",
+      "apps/web/package.json"
+    ],
     "started": false,
-    "status": "UNKNOWN"
+    "status": "PARTIAL"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "3809bfd59c3f8c5116eb69c76e346373e19a39d9",
+    "integrated": true,
+    "integrated_at": "2026-10-06T02:04:41Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
-    "state_evidence": [],
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [
+      {
+        "kind": "SOURCE_REVIEW",
+        "path": "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+      }
+    ],
     "updated_at": "2026-10-06T00:43:01.859456Z"
   },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "MEDIUM",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/security/20260212/spec.md"
+        },
+        {
+          "kind": "SOURCE",
+          "path": "apps/web/tsconfig.json"
+        },
+        {
+          "kind": "SOURCE",
+          "path": "tsconfig.base.json"
+        },
+        {
+          "kind": "SOURCE",
+          "path": "apps/web/server/routers/factory.ts"
+        },
+        {
+          "kind": "SOURCE",
+          "path": "apps/web/server/_core/env.ts"
+        },
+        {
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "path": "apps/web/package.json"
+        },
+        {
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "path": ".github/workflows/ci.yml"
+        },
+        {
+          "kind": "VERIFICATION",
+          "path": "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "MEDIUM",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/security/20260212/spec.md"
+        },
+        {
+          "kind": "SOURCE",
+          "path": "apps/web/tsconfig.json"
+        },
+        {
+          "kind": "SOURCE",
+          "path": "tsconfig.base.json"
+        },
+        {
+          "kind": "SOURCE",
+          "path": "apps/web/server/routers/factory.ts"
+        },
+        {
+          "kind": "SOURCE",
+          "path": "apps/web/server/_core/env.ts"
+        },
+        {
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "path": "apps/web/package.json"
+        },
+        {
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "path": ".github/workflows/ci.yml"
+        },
+        {
+          "kind": "VERIFICATION",
+          "path": "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+        }
+      ],
+      "next_action": "Run apps/web typecheck in CI or a dedicated resource-admitted runner; compare current per-code counts with the 2026-02-12 baseline, then decide which phases still require implementation. Do not run the 8 GB package check in this shared session.",
+      "rationale": "Primary config/import/env/dependency corrections are present, but the current error baseline, strict cleanup, split check scripts, and critical flow evidence are unknown. No implementation continuation can be justified until admitted verification compares current diagnostics with the stated baseline.",
+      "residual_requirements": [
+        "REQ-4FDA684876A8",
+        "REQ-6EA651D2209D",
+        "REQ-1C16BC0686C7",
+        "REQ-7F961218061C"
+      ]
+    },
+    "disposition": {
+      "confidence": "MEDIUM",
+      "evidence": [
+        {
+          "digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/security/20260212/spec.md"
+        },
+        {
+          "kind": "SOURCE",
+          "path": "apps/web/tsconfig.json"
+        },
+        {
+          "kind": "SOURCE",
+          "path": "tsconfig.base.json"
+        },
+        {
+          "kind": "SOURCE",
+          "path": "apps/web/server/routers/factory.ts"
+        },
+        {
+          "kind": "SOURCE",
+          "path": "apps/web/server/_core/env.ts"
+        },
+        {
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "path": "apps/web/package.json"
+        },
+        {
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "path": ".github/workflows/ci.yml"
+        },
+        {
+          "kind": "VERIFICATION",
+          "path": "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+        }
+      ],
+      "rationale": "This unique Web Platform remediation Spec still maps to current typecheck/CI concerns. Phase A/B source fixes are present; numeric type-error reduction and later phase acceptance are unverified.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "VALIDATION_PENDING",
+      "previous_state": "DISCOVERING",
+      "state_evidence": [
+        {
+          "kind": "SOURCE_REVIEW",
+          "path": "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+        }
+      ],
+      "updated_at": "2026-10-06T00:43:01.859456Z"
+    },
+    "reconciliation_confidence": {
+      "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+      "value": "MEDIUM"
+    },
+    "requirements": {
+      "REQ-A8EF20AB3311": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L131"
+        ],
+        "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L131",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "3809bfd59c3f8c5116eb69c76e346373e19a39d9",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/routers/factory.ts",
+          "apps/web/server/_core/env.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Factory import and Forge ENV fields are aligned in source; TS2307/TS2339 acceptance remains unverified.",
+        "requirement_digest": "8a5cbd6923a0046b241b7a49530ef588594753af6c90dc9bb94124a704fc3cc2",
+        "requirement_id": "REQ-A8EF20AB3311",
+        "requirement_text": "- `TS2307`/`TS2339` ที่มาจาก env/import drift หาย",
+        "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+        ],
+        "verification_method": "Static source review at canonical main SHA 3809bfd59c3f8c5116eb69c76e346373e19a39d9; full typecheck not run."
+      },
+      "REQ-BE9025D8A971": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L116"
+        ],
+        "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L116",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "3809bfd59c3f8c5116eb69c76e346373e19a39d9",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/tsconfig.json",
+          "tsconfig.base.json"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "The alias foundation is present, but the TS2305 reduction criterion requires current typecheck counts.",
+        "requirement_digest": "b3c8be27591e8b97351bdb2c43f49ac42d6831a989010c4906756617baf6c967",
+        "requirement_id": "REQ-BE9025D8A971",
+        "requirement_text": "- `TS2305` จำนวนมากที่เป็นผลพวงจาก module-not-found ต้องลดลงอย่างมีนัยสำคัญ",
+        "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+        ],
+        "verification_method": "Static source review at canonical main SHA 3809bfd59c3f8c5116eb69c76e346373e19a39d9; full typecheck not run."
+      },
+      "REQ-CEB0D4AC3FC6": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L115"
+        ],
+        "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L115",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "3809bfd59c3f8c5116eb69c76e346373e19a39d9",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/tsconfig.json",
+          "tsconfig.base.json"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Current aliases and strict target configuration are present; TS2307 counts were not verified.",
+        "requirement_digest": "dddd55cd32dc04ef397ce2df56aa873243b4b434d21ef958d2bd1d88bed62e3e",
+        "requirement_id": "REQ-CEB0D4AC3FC6",
+        "requirement_text": "- `TS2307` ฝั่ง ui wrappers และ `@server/routers` ต้องหายทั้งหมด",
+        "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+        ],
+        "verification_method": "Static source review at canonical main SHA 3809bfd59c3f8c5116eb69c76e346373e19a39d9; full typecheck not run."
+      },
+      "REQ-F371FF743D93": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L132"
+        ],
+        "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/spec.md#L132",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "3809bfd59c3f8c5116eb69c76e346373e19a39d9",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/_core/env.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Forge ENV fields are declared; a full field-access diagnostic is pending the package typecheck.",
+        "requirement_digest": "7e7ebda299af764cbd86bd84d9473ad37d5b53fe2ca31ccb88fe3278ea5e9bdd",
+        "requirement_id": "REQ-F371FF743D93",
+        "requirement_text": "- ไม่มี field access ที่ไม่ได้ประกาศบน `ENV`",
+        "source_spec_digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+        ],
+        "verification_method": "Static source review at canonical main SHA 3809bfd59c3f8c5116eb69c76e346373e19a39d9; full typecheck not run."
+      }
+    }
+  },
   "reconciliation": {
-    "confidence": "LOW",
+    "confidence": "MEDIUM",
     "inferred_fields": [
       "authority.status",
       "disposition.value",
@@ -431,18 +621,22 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 1,
-    "unresolved": 1
+    "total": 24,
+    "unresolved": 24
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.859456Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
+    "evidence": [
+      "specs/security/20260212/handoff/evidence/static-source-review-3809bfd.json"
+    ],
     "freshness": "UNKNOWN",
-    "required_profiles": [],
+    "required_profiles": [
+      "package"
+    ],
     "sha": null,
-    "status": "UNKNOWN",
+    "status": "NOT_RUN",
     "task_regressions": []
   }
 }

@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -115,6 +115,182 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L181"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L181",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6d2609bb5816eed2f6fbfeb76f5e001220db43a1529e337c5f6ec88c9f5d2978",
+      "requirement_id": "REQ-93DA5476032D",
+      "requirement_text": "- 60-minute staging Facebook run with at least 20 scheduled co-host QA insertions and **zero scene-change-induced OBS output restarts**; viewer-side delivery measured separately. 90-minute multi-destination rehearsal when and only when all requested account approvals are available.",
+      "source_spec_digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L182"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L182",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "21255d1ff213566098476e030a8ba4df0eda3b606feb2bd4c57531c5bd1ba533",
+      "requirement_id": "REQ-821F4CF6849E",
+      "requirement_text": "- 100 boundary pause/resume cycles without skipped/duplicated prepared clips, interrupted words or simultaneous speech. Restart controller during an active OBS output and reconcile exact next cursor.",
+      "source_spec_digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L183"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L183",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "164da03afcbaca71b441cce29f1a424afb1e8837dfcd7408bc2328bd42e2f690",
+      "requirement_id": "REQ-B63092C43CCE",
+      "requirement_text": "- 1,000-asset mixed-Project fixture including inaccessible/revoked/unlicensed/partially downloaded/expired videos: no unauthorized or corrupt bytes on air. Append/reorder 100 queued clips during active playout without modifying the currently airing asset.",
+      "source_spec_digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L184"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L184",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "579706f0a53a2654b9662e3a7409270899fd5b7428e87697bd2997e65bd8d38d",
+      "requirement_id": "R2",
+      "requirement_text": "- Simulated R2 outage and render outage with initially 180s prepared: monitor actual playable buffer, enter safe fallback on depletion, never confuse storage/object availability with local readiness.",
+      "source_spec_digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L185"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L185",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "824cf184b80505408a033c371743aed832e1c6698c49131fe1f60ee760104c4d",
+      "requirement_id": "REQ-C097D8A92F77",
+      "requirement_text": "- 500 synthetic mixed-platform comments with duplicates, timestamp skew, stale product context, injected instructions and conflicting pricing; no cross-tenant read, platform identity collision or incorrect claim.",
+      "source_spec_digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L186"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L186",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8f0399c40001a4847afa0f2131893bb335bc04ba052a8311603a1f1134d8b088",
+      "requirement_id": "REQ-2B2E39C7F930",
+      "requirement_text": "- 100 approved product FAQ fixtures (including unavailable price and cross-platform price disagreement): zero unsupported claims in tested on-air output, verified source and version receipts, operator emergency hold and TTS failure recovery.",
+      "source_spec_digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L187"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L187",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7a254d95dd1e76457852828adbeff5d97e557a8d84eb59ef954f9e784094e49c",
+      "requirement_id": "REQ-DAECE6D1E5F7",
+      "requirement_text": "- Actual account approval/AI-content eligibility and OBS+audio test on every released platform. No fictitious `LIVE_CONFIRMED` solely from OBS output status.",
+      "source_spec_digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L188"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L188",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "96fdc055382ab58219ebd45e2728146ab20418cb08323a61bafee8cd26a13808",
+      "requirement_id": "REQ-63A488D533B0",
+      "requirement_text": "- Budget guard, credits reservation/settlement through existing economic API and replay-safe refund/cleanup under fault injection; add production smoke and cost limits after target environment is benchmarked.",
+      "source_spec_digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L209"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md#L209",
@@ -215,7 +391,7 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "0bef125a843b6f63312482801dd2b557afe774c345024bafb758246c79a3a836",
-      "requirement_id": "R2",
+      "requirement_id": "R2-237",
       "requirement_text": "All viewer messages and marketplace pages are untrusted; sandbox text retrieval, strip tool directives in quoted data, block cross-project fact exposure, audit tool intent and never let an OBS Browser Source fetch privileged internal APIs using long-lived browser credentials. Use short-lived Runner-bound media URLs or authenticated proxy, **no raw R2 keys or OBS WebSocket password in browser, prompt, log or MCP result**. Preserve viewer pseudonyms per platform/live; cross-platform replay of a viewer's name/avatar requires explicit lawful entitlement, otherwise use anonymous paraphrase. Always display an accurate prerecorded/AI disclosure on approved destination feeds and review the **account/market-specific** AI content/commerce rules. Emergency `HARD_MUTE` must be local and operable even if the cloud control plane is unavailable; `EMERGENCY_HOLD` swaps to a preapproved slate; `STOP_DESTINATION` is independent per authorized output when supported. Distinguish a stop *intent* from an observed stop and alert on partial failure. **Acceptance:** injection/permission/revocation fixtures, leak-free exported diagnostics, offline local kill-switch and external stop confirmation.",
       "source_spec_digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
       "successor_mapping": [],

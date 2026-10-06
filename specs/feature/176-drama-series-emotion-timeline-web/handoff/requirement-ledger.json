@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -613,6 +613,116 @@
       "requirement_digest": "e41915e2e5eeb849b493dba3028000d3b2acfd6db4081aa60ea52e38d3013d5e",
       "requirement_id": "REQ-B824A2DC7F7D",
       "requirement_text": "Rights approval is bound to an exact take checksum, usage scope, model/license snapshot and reviewer record; semantic critique cannot grant it. Changing a caption creates a new take lineage and does not inherit the old take's output review. Reusing/editing an approved genuine take retains its ancestor/provenance chain; export revalidates rights for every ancestor used and the current intended distribution scope. A revoked ancestor blocks dependent new exports, but the system must not claim it can recall copies already distributed externally.",
+      "source_spec_digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L256"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L256",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5830796cb717c276e0d6a02202ea054dcc75f3d382aa724f94c5703cfc3a1498",
+      "requirement_id": "REQ-C76098327529",
+      "requirement_text": "| Timing | On a manually annotated Thai corpus, ≥95% of high-confidence matched dialogue boundaries within 500 ms; unmatched/uncertain regions visibly flagged. Critical approved music anchors align within one output video frame. |",
+      "source_spec_digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L257"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L257",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "078cd5b3cca59da7e4ee18224333b9c191afdf261989006b7ab1d0f9796a827b",
+      "requirement_id": "REQ-95231972891C",
+      "requirement_text": "| Grounding | Every timed emotion region references valid source evidence; no unseen future reveal, fabricated dialogue or fabricated ASR on silence. Source conflicts prevent automatic final approval. |",
+      "source_spec_digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L258"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L258",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3e04c278a3c28eb778a6d2106c502e9a611f8523a2cf5e4633af6ff5af55de09",
+      "requirement_id": "REQ-9426F6AB50AA",
+      "requirement_text": "| Audible improvement | At least 12 varied 30–90 second scenes, including grief, threat, tenderness, silence and fast dialogue; ≥5 Thai-speaking listeners, randomized loudness-matched comparison against current/no-score baseline. Target ≥70% preference for emotional fit and median improvement ≥1 point on a 5-point scale, without reduced dialogue clarity. Report counts and uncertainty, not only an aggregate score. |",
+      "source_spec_digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L259"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L259",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "96bbb69836262ac3d5294cde3683abbfca16da16f977f2eb4a9d5083fba36d06",
+      "requirement_id": "REQ-BF93A38E3073",
+      "requirement_text": "| Series continuity | At least 3 consecutive subepisodes and one composed production episode; reviewers confirm palette/theme continuity and no jarring joins. Matching seed alone is not evidence of motif continuity. |",
+      "source_spec_digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L260"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L260",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3fc517a81cb3bf50b82d475da6a6ceee5bed639e4d60bd1674beee228edc84c4",
+      "requirement_id": "REQ-F46290CC7388",
+      "requirement_text": "| Technical / rights | Feature 177 measured export gates pass; 100% take lineage uses genuine Music 3, no silent fallback, and every selected take has valid scoped rights review. |",
       "source_spec_digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
       "successor_mapping": [],
       "verification_evidence": [],

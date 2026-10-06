@@ -232,7 +232,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md",
     "digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
@@ -564,8 +564,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 407,
-    "unresolved": 407
+    "total": 556,
+    "unresolved": 556
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.157683Z",

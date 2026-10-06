@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -16475,6 +16475,94 @@
       "requirement_digest": "d37d267efe2a38ec29b1b973536ca55f0b09ccb26d669930a3cd7826b3d679ff",
       "requirement_id": "REQ-9EB1A9C4AB92",
       "requirement_text": "The frontend SHALL receive capability flags such as:",
+      "source_spec_digest": "2c98b861736fe69226a9d3f2f2d8e7028fdf107a6ce94343b0c713eb76b91ff9",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/199-external-mcp-gateway-upstream-management/spec.md#L5748"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/199-external-mcp-gateway-upstream-management/spec.md#L5748",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ef33dcc888085f4bcc7510c577d774e167b6380c5321a6cbe9d7c87263ccbc56",
+      "requirement_id": "REQ-D4522002648C",
+      "requirement_text": "| Platform Admin | Admin MCP Gateway | Yes | Optional | Yes | Yes | If assigned |",
+      "source_spec_digest": "2c98b861736fe69226a9d3f2f2d8e7028fdf107a6ce94343b0c713eb76b91ff9",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/199-external-mcp-gateway-upstream-management/spec.md#L5749"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/199-external-mcp-gateway-upstream-management/spec.md#L5749",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1a5cfc00223baa0e9598465a698bb58a67041c485198ddf5d0fd60949c61c524",
+      "requirement_id": "REQ-CBF62842C056",
+      "requirement_text": "| Tenant Admin | Workspace MCP | Within platform policy | Yes | Yes | No | If assigned |",
+      "source_spec_digest": "2c98b861736fe69226a9d3f2f2d8e7028fdf107a6ce94343b0c713eb76b91ff9",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/199-external-mcp-gateway-upstream-management/spec.md#L5750"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/199-external-mcp-gateway-upstream-management/spec.md#L5750",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6f59b06e8c8284876f6c1fb78a925d70f6ec3279cbb036e35c66b1f59b8654fc",
+      "requirement_id": "REQ-4EB1F43FD5B7",
+      "requirement_text": "| End User | Connected Apps | Only if personal policy permits | Yes | No | No | Yes, owned/assigned only |",
+      "source_spec_digest": "2c98b861736fe69226a9d3f2f2d8e7028fdf107a6ce94343b0c713eb76b91ff9",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/199-external-mcp-gateway-upstream-management/spec.md#L5751"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/199-external-mcp-gateway-upstream-management/spec.md#L5751",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c4fd6fc313f515344f39a075008aed6c16bd08fda0738cd4136679e8f8be5c3b",
+      "requirement_id": "REQ-2832B1451B7C",
+      "requirement_text": "| Agent | No admin UI | No | No | No | No | No |",
       "source_spec_digest": "2c98b861736fe69226a9d3f2f2d8e7028fdf107a6ce94343b0c713eb76b91ff9",
       "successor_mapping": [],
       "verification_evidence": [],

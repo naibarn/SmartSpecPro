@@ -341,7 +341,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md",
     "digest": "1034e85b6d91b8dd7833902173194b0f7ecc7f1cc5b90dac73cb65a64fa05ef7",
@@ -628,8 +628,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 178,
-    "unresolved": 178
+    "total": 317,
+    "unresolved": 317
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.378142Z",

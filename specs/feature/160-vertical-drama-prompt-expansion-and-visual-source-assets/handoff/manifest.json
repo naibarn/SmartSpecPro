@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md",
     "digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
@@ -959,8 +959,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 144,
-    "unresolved": 144
+    "total": 110,
+    "unresolved": 110
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.414534Z",

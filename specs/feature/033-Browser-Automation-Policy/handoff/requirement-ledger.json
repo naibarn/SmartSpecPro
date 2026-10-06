@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -181,6 +181,138 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L315"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L315",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "00334a24422378c57b78c5620d6124fa0c06297a9f5ccc9f1fa60f3b18b236f8",
+      "requirement_id": "REQ-0B2A3111ED2F",
+      "requirement_text": "- Approval ต้องแสดงให้ผู้ใช้เห็นว่า agent กำลังจะทำอะไร ที่ไหน ด้วยข้อมูลใด",
+      "source_spec_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L316"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L316",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "50587cddffc498485ba444454da5412a3e56db6ff27deb45fff1afa3061a7100",
+      "requirement_id": "REQ-D01BFAA68DAD",
+      "requirement_text": "- **Approval TTL = 300 วินาที (5 นาที)** — configurable ต่อ workflow ผ่าน `browserWorkflowEntitlements.config.approvalTtlSeconds` (default: 300, min: 60, max: 900)",
+      "source_spec_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L317"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L317",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7576179babdfe404e7232ba3500ae348996ecc75015c812656568a994b8054a4",
+      "requirement_id": "REQ-5BC35A23F32A",
+      "requirement_text": "- Approval ต้องถูกผูกกับ **page context** (action_digest + dom_fingerprint + target_origin) — ถ้า context เปลี่ยน approval จะ invalidate ทันทีแม้ยังไม่หมดอายุ",
+      "source_spec_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L318"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L318",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fe409588e45969844683a8d0bf1b5662f0a741b94d5e274514b45a905b91414b",
+      "requirement_id": "REQ-333444E9D88F",
+      "requirement_text": "- **Context-bound invalidation**: ถ้า DOM fingerprint เปลี่ยน > 20% หรือ origin เปลี่ยน → approval ถือว่า invalid → ต้องขอ approval ใหม่",
+      "source_spec_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L319"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L319",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fff8235b6f5506ebdb955e817be29a5637c9cb87914a3e54bb0b8f49f98153cc",
+      "requirement_id": "REQ-49052BF82DF6",
+      "requirement_text": "- Approval ที่ให้สำหรับ action หนึ่ง ไม่ควร reuse เป็นอัน action อื่นโดยปริยาย",
+      "source_spec_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L320"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L320",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "63a03470c65ec2b023d4019b4b61640ec3af83c027f7acc8fa9de13d121b0332",
+      "requirement_id": "REQ-F231CCDF7FA8",
+      "requirement_text": "- Approval UI ต้องอ่านง่ายและตอบผลกระทบของ action ได้ชัดเจน",
+      "source_spec_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L671"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L671",
@@ -195,6 +327,28 @@
       "requirement_digest": "4c87ff3ab48982a773864a3246ffce4d91db2718718b6b836c4a3d22f9e11b05",
       "requirement_id": "REQ-E82A7983E513",
       "requirement_text": "ระบบปัจจุบันมี tenant isolation ใน `browserTool.ts` (Redis semaphore key ผูก tenant_id) และ `approval_db_service.py` (required tenant_id) — policy engine ต้อง extend isolation ให้ครอบคลุม browser profile ด้วย",
+      "source_spec_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L677"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L677",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "27eecad0024574333d6548912205b8a87b7d29a352839dd6feeffa003158186d",
+      "requirement_id": "REQ-7BE2440132E0",
+      "requirement_text": "อย่างน้อยต้อง log:",
       "source_spec_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -481,6 +635,28 @@
       "requirement_digest": "4007211ed72476744e4947b3bc5ea3f1f9ca5411838b420ff4bfeb0451e0dca3",
       "requirement_id": "REQ-EAD82ABFE46D",
       "requirement_text": "| `result` / `outcome` | ผลลัพธ์จริงหลัง action |",
+      "source_spec_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L695"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L695",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "bc5d2bd057f38d80de6610bb9f6244b42496410c813170620d5008f1b84d82c3",
+      "requirement_id": "REQ-16796884CC58",
+      "requirement_text": "**ข้อกำหนดเพิ่มเติม:**",
       "source_spec_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
       "successor_mapping": [],
       "verification_evidence": [],

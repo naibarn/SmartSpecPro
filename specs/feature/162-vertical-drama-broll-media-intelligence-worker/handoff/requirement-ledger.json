@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -2329,6 +2329,94 @@
       "requirement_digest": "7d68c2d2e9a7d4ff59909ace34d2310314da0d99b91937585dae732b8e6fe87e",
       "requirement_id": "REQ-6E17C6D95D22",
       "requirement_text": "| references incomplete | missing-role warning | show required/optional roles and exact capability limits |",
+      "source_spec_digest": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2276"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2276",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e5653b4583f3d653128e2db7885b1102639b26cba9a4f3f9da4e83c4cadd0ee8",
+      "requirement_id": "REQ-EC60FD51FD0A",
+      "requirement_text": "- Keyboard path covers shot selection, drawer/sheet open/close, tabs, start-frame",
+      "source_spec_digest": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2280"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2280",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "05f0aeb40f35dc7b407bcea8dc3c86cc151b097f36f776a3f9160f91eb42dff7",
+      "requirement_id": "REQ-98C984160DB9",
+      "requirement_text": "- Dialog/sheet traps focus while open, returns focus to the invoking shot action,",
+      "source_spec_digest": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2282"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2282",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9ab8e08ee54e7994c910535d1a866b31d6caa80b7cec9cb52ecf153e54887f56",
+      "requirement_id": "REQ-1BBAF1B843E0",
+      "requirement_text": "- Every thumbnail, icon-only action, progress state, player, timeline marker,",
+      "source_spec_digest": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2284"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2284",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "835992e41d2e6bcdc96c12623bd571dbb96ddeabd2a3be3f092d92031d162072",
+      "requirement_id": "REQ-B2A8A5836E80",
+      "requirement_text": "- Do not use color alone for route, status, confidence, or QC outcome. Respect",
       "source_spec_digest": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
       "successor_mapping": [],
       "verification_evidence": [],

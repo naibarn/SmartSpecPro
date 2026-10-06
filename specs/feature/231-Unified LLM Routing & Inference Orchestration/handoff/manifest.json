@@ -628,7 +628,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
     "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
@@ -1840,8 +1840,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 87,
-    "unresolved": 87
+    "total": 211,
+    "unresolved": 211
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.314880Z",

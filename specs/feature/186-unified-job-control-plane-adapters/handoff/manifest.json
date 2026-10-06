@@ -465,7 +465,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/186-unified-job-control-plane-adapters/spec.md",
     "digest": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
@@ -922,8 +922,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 155,
-    "unresolved": 155
+    "total": 159,
+    "unresolved": 159
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.593259Z",

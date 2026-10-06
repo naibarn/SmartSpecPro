@@ -579,7 +579,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md",
     "digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
@@ -1553,8 +1553,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 123,
-    "unresolved": 123
+    "total": 135,
+    "unresolved": 135
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.093287Z",

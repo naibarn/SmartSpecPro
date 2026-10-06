@@ -90,7 +90,7 @@
     "rationale": "Current server APIs, dashboard, staleness services and skill-upgrade tests remain present on canonical main. The focused verification also exposes unmet upgrade criteria, so this Spec remains current work.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 12,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/038-Citation-Gated-Content-Quality/spec.md",
     "digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
@@ -1306,8 +1306,8 @@
     "fail": 3,
     "not_applicable": 0,
     "pass": 0,
-    "total": 105,
-    "unresolved": 102
+    "total": 106,
+    "unresolved": 103
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.576942Z",

@@ -561,7 +561,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md",
     "digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
@@ -1001,8 +1001,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 685,
-    "unresolved": 685
+    "total": 1193,
+    "unresolved": 1193
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.666743Z",

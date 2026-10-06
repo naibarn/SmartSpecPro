@@ -311,7 +311,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md",
     "digest": "a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
@@ -605,8 +605,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 128,
-    "unresolved": 128
+    "total": 131,
+    "unresolved": 131
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.284911Z",

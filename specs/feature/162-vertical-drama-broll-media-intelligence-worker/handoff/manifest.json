@@ -363,7 +363,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md",
     "digest": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
@@ -670,8 +670,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 268,
-    "unresolved": 268
+    "total": 272,
+    "unresolved": 272
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.427043Z",

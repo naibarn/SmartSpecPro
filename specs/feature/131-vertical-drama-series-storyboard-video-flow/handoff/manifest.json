@@ -391,7 +391,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md",
     "digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
@@ -829,8 +829,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 214,
-    "unresolved": 214
+    "total": 247,
+    "unresolved": 247
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.214703Z",

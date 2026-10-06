@@ -504,7 +504,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md",
     "digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
@@ -913,8 +913,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 50,
-    "unresolved": 50
+    "total": 68,
+    "unresolved": 68
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.327211Z",

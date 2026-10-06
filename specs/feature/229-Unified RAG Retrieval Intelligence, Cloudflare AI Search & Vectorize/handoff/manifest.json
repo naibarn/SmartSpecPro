@@ -186,7 +186,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -324,8 +324,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 95,
-    "unresolved": 95
+    "total": 105,
+    "unresolved": 105
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.298981Z",

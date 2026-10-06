@@ -16,9 +16,10 @@ from .store import _atomic_write, _file_lock, handoff_dir, read_manifest, render
 from .declared_claims import collect_declared_claims, resolve_claim_targets
 
 _NORMATIVE = re.compile(r"\b(must|shall|required|acceptance criteria|must not|shall not)\b", re.I)
+_THAI_NORMATIVE = re.compile(r"ต้อง|ห้าม|ข้อกำหนด")
 _DECLARED_GOAL = re.compile(r"^\*\*goal\*\*\s*:", re.I)
 _REQ_ID = re.compile(r"\b((?:REQ|FR|NFR|AC|R)[-_ ]?\d+[A-Z0-9._-]*)\b", re.I)
-_REQUIREMENT_HEADINGS = ("requirements", "acceptance criteria", "functional scope", "non-functional requirements", "goals", "success criteria", "detailed section specifications")
+_REQUIREMENT_HEADINGS = ("requirements", "acceptance", "functional scope", "non-functional requirements", "goals", "success criteria", "detailed section specifications", "done criteria", "mandatory commands", "security constraints", "ข้อกำหนด", "เกณฑ์การยอมรับ", "เงื่อนไขการยอมรับ", "ข้อจำกัดด้านความปลอดภัย")
 _MANUAL_FIELDS = ("disposition", "continuation_assessment", "authority", "lifecycle")
 
 
@@ -51,7 +52,7 @@ def extract_requirements(spec_path: Path, spec_id: str, digest: str) -> dict[str
         candidate = line.strip()
         if not candidate or candidate.startswith("<!--") or re.fullmatch(r"[| :\-]+", candidate):
             continue
-        is_normative = bool(_NORMATIVE.search(candidate) or _DECLARED_GOAL.match(candidate))
+        is_normative = bool(_NORMATIVE.search(candidate) or _DECLARED_GOAL.match(candidate) or (in_requirements and _THAI_NORMATIVE.search(candidate)))
         markdown_list = bool(re.match(r"^(?:[-*+]\s+|\d+[.)]\s+|\|)", candidate))
         table_header = candidate.startswith("|") and number < len(lines) and bool(re.fullmatch(r"[| :\-]+", lines[number].strip()))
         if (in_requirements and markdown_list and not table_header) or is_normative:
@@ -104,7 +105,7 @@ def extract_requirements(spec_path: Path, spec_id: str, digest: str) -> dict[str
             "evidence_sha": None, "evidence_freshness": "UNKNOWN", "blocker": None,
             "next_action": "Review normative Spec and extract requirement-level ledger entries.", "final_state": "OPEN",
         })
-    return {"schema_version": 1, "reconciliation_version": 2, "spec_id": spec_id, "spec_digest": digest, "generation": 0, "requirements": requirements}
+    return {"schema_version": 1, "reconciliation_version": 3, "spec_id": spec_id, "spec_digest": digest, "generation": 0, "requirements": requirements}
 
 
 def _supporting_evidence(spec_dir: Path) -> list[dict[str, str]]:
@@ -127,6 +128,13 @@ def _apply_manual(manifest: dict[str, Any]) -> dict[str, Any]:
     for field in _MANUAL_FIELDS:
         if field in manual:
             manifest[field] = manual[field]
+    confidence_decision = manual.get("reconciliation_confidence", {})
+    if (
+        isinstance(confidence_decision, dict)
+        and confidence_decision.get("source_spec_digest") == manifest.get("identity", {}).get("digest")
+        and confidence_decision.get("value") in {"HIGH", "MEDIUM", "LOW", "UNRESOLVED"}
+    ):
+        manifest["reconciliation"]["confidence"] = confidence_decision["value"]
     conclusions = manual.get("relevance_conclusions", {})
     if isinstance(conclusions, dict):
         allowed = {"current_architecture_fit", "successor_or_supersession", "current_runtime_dependency", "current_product_relevance", "residual_requirements", "security_data_compliance_obligations", "implementation_equivalence", "conflict_duplication_risk", "deployment_reality", "residual_requirement_assessment"}

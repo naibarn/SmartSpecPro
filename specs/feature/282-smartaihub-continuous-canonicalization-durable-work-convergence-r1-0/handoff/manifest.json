@@ -120,7 +120,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md",
     "digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
@@ -227,8 +227,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 31,
-    "unresolved": 31
+    "total": 41,
+    "unresolved": 41
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.764900Z",

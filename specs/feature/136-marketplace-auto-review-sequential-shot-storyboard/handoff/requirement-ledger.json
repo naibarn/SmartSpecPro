@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "reconciliation_version": 2,
+  "generation": 3,
+  "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -525,6 +525,94 @@
       "requirement_digest": "e5346d4bb2fc2b68de6d898297cef6344792659812751b216598e986e068ff62",
       "requirement_id": "REQ-9442BD25688A",
       "requirement_text": "- A title must never force a visible component absent from the product images",
+      "source_spec_digest": "f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md#L436"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md#L436",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "dd613b64dd23156290372f0ea336a02bfdb283e61a946ae320f6642afd042c0b",
+      "requirement_id": "REQ-E383C949E0FF",
+      "requirement_text": "1. With BOTH tenant flags off (`marketplaceSequentialStoryboard`,",
+      "source_spec_digest": "f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md#L443"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md#L443",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5cd80adbbfc3e503d9f65fa606de15100cb976068fc98f35fbfac206adf13859",
+      "requirement_id": "REQ-6FD34C2D594E",
+      "requirement_text": "2. The single-anchor product reference rule (`approvedProductReferenceUrls`,",
+      "source_spec_digest": "f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md#L447"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md#L447",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c037ddf824a5ea91e6013c3d46b35e667e30009a0c687219a8771224ca059f37",
+      "requirement_id": "REQ-31DDD342CAAB",
+      "requirement_text": "3. Grid-layout vision QA (`:18960-19240`) and `splitStoryboardGrid`",
+      "source_spec_digest": "f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md#L450"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md#L450",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e2f6db307f47fb35c8b509118b752ec04c554997782517c2a7a3bec4d10b7781",
+      "requirement_id": "REQ-2696D908F140",
+      "requirement_text": "4. `characterPresenceMode` semantics for the 3x3 grid are untouched; the new",
       "source_spec_digest": "f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1295,6 +1383,28 @@
       "requirement_digest": "d0b0756fcd719712b179fb8c3a38e07fc3099f732b6f196f492e094b429d95a8",
       "requirement_id": "REQ-3C0136880B5F",
       "requirement_text": "- Free-text \"คำที่ห้ามใช้\" → `forbiddenClaims`.",
+      "source_spec_digest": "f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md#L1622"
+      ],
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md#L1622",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4a906589e2cf419c0552dfb231fa59bdedaf87fb4426f80a07e101a764d5c4d9",
+      "requirement_id": "REQ-65DC31699AC7",
+      "requirement_text": "\"ความต้องการเพิ่มเติม (ไม่บังคับ)\" → `userRequirements`.",
       "source_spec_digest": "f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
       "successor_mapping": [],
       "verification_evidence": [],

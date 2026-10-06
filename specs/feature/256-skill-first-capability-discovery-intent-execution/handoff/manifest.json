@@ -295,7 +295,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
     "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
@@ -402,8 +402,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 88,
-    "unresolved": 88
+    "total": 161,
+    "unresolved": 161
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.557434Z",

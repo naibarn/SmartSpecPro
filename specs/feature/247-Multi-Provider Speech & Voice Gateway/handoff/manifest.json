@@ -135,7 +135,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md",
     "digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
@@ -242,8 +242,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 101,
-    "unresolved": 101
+    "total": 114,
+    "unresolved": 114
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.472778Z",

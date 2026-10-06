@@ -552,7 +552,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md",
     "digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
@@ -1274,8 +1274,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 911,
-    "unresolved": 911
+    "total": 2042,
+    "unresolved": 2042
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.585111Z",

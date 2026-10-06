@@ -281,7 +281,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/072-claw-worker-platform-access/spec.md",
     "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
@@ -528,8 +528,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 167,
-    "unresolved": 167
+    "total": 171,
+    "unresolved": 171
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.791672Z",

@@ -34,21 +34,6 @@
       "spec_id": "013"
     },
     {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 0,
-      "next_action": "Map each security requirement to current implementation and regression tests; assess current exposure and retain unresolved status where exact coverage or fresh verification is missing.",
-      "path": "specs/security/20260212",
-      "priority": "R0_SECURITY",
-      "record_key": "canonical:specs/security/20260212",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 0,
-        "TEST": 0
-      },
-      "spec_id": null
-    },
-    {
       "authority": "AUTHORITY_CONFLICT",
       "confidence": "LOW",
       "declared_claim_count": 10,
@@ -4719,7 +4704,7 @@
       "decision": "VALIDATION_ONLY",
       "path": "specs/security/20260211",
       "priority": "P2",
-      "rationale": "Complete focused editor insertion verification and rerun the normalized external URL case with deterministic DNS fixtures; then reassess requirement-level acceptance.",
+      "rationale": "Complete focused editor insertion verification and rerun normalized external URL validation with deterministic DNS fixtures.",
       "record_key": "canonical:specs/security/20260211",
       "spec_id": null
     }
