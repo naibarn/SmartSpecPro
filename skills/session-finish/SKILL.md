@@ -17,7 +17,8 @@ implement / partial progress
   → FAST INTEGRATION GATE
   → commit
   → integrate into configured canonical ref
-  → refresh the canonical working workspace
+  → resolve/converge the registered canonical user workspace
+  → retire the task worktree only after recovery/integration evidence
   → heavy test / full typecheck / integration / UAT
   → if a problem appears, repair on current canonical state and promote that repair
 ```
@@ -38,9 +39,10 @@ Run inexpensive scoped checks that establish these facts. Do not wait for full t
 3. Fetch the latest configured canonical ref, reconcile the task with it, and repeat the fast gate on the exact candidate commit.
 4. Commit the largest safe task-owned checkpoint and integrate it into configured canonical ref using the normal non-force GitHub path. Do not wait for the whole task to complete. If only a subset can safely integrate, split that subset, promote it, and preserve the unsafe/incomplete remainder with an explicit handoff/recovery reference.
 5. Confirm the integrated commit is reachable from the updated configured canonical ref. Report its SHA, whether progress is `PARTIAL` or `IMPLEMENTATION_COMPLETE`, remaining scope, next action, and post-integration checks still outstanding.
-6. Refresh the workspace used for subsequent work. If the active checkout is clean and already on the configured canonical branch, fast-forward it and verify exact SHA equality. If it is dirty, on a task branch, or cannot fast-forward, preserve it untouched and create or reuse a clean worktree at the exact canonical SHA. Verify its path, repository identity, SHA, and clean status; include the absolute path in the handoff and tell the user which SSH/editor folder to open. Continue task-owned work only with its base SHA recorded; start unrelated work from the canonical worktree.
-7. Run post-integration verification through CI, a dedicated runner, or an admitted safe resource window. Track each obligation against the integrated SHA with an owner, status, and next action.
-8. If verification finds a regression, create a repair task from current configured canonical ref, fix it there, pass the same fast gate, promote a new commit to configured canonical ref, then refresh the canonical workspace again. Preserve history; do not hide the fix in a side branch.
+6. Resolve and converge the registry's `CANONICAL_USER_WORKSPACE` through `scripts/development-lifecycle/workspace_authority.py`, using the integrated SHA. The resolver preserves dirty work and records recovery evidence before any update. Do not substitute a newly created alternate folder for the registered user workspace. If convergence is blocked, record the exact reason and leave completion pending.
+7. Record task workspace SHA, integrated SHA, canonical SHA, canonical user workspace SHA, convergence receipt, recovery linkage, and retirement status. Retire an owned temporary worktree only after its changes are verified integrated or durably archived; run dry-run first. A dirty/stashed/unpushed/live-owned/unknown worktree remains preserved and completion stays pending.
+8. Run post-integration verification through CI, a dedicated runner, or an admitted safe resource window. Track each obligation against the integrated SHA with an owner, status, and next action.
+9. If verification finds a regression, create a repair task from current configured canonical ref, fix it there, pass the same fast gate, promote a new commit to configured canonical ref, then converge the registered canonical workspace again. Preserve history; do not hide the fix in a side branch.
 
 ## Mandatory checkpoint triggers
 

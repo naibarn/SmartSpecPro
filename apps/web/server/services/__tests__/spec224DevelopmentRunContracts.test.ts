@@ -43,10 +43,24 @@ describe("Spec 224 DevelopmentRun kernel", () => {
       "RUN_TRANSITION_INVALID"
     );
     const verified = transitionDevelopmentRun(
-      { ...run, state: "FINAL_VERIFY", evidenceRefs: ["evidence:final-pass"] },
+      {
+        ...run,
+        state: "FINAL_VERIFY",
+        evidenceRefs: [
+          "evidence:final-pass",
+          "evidence:workspace-convergence:receipt-1",
+          "evidence:worktree-retirement:receipt-1",
+        ],
+      },
       "COMPLETED"
     );
     expect(verified.state).toBe("COMPLETED");
+    expect(() =>
+      transitionDevelopmentRun(
+        { ...run, state: "FINAL_VERIFY", evidenceRefs: ["evidence:final-pass"] },
+        "COMPLETED"
+      )
+    ).toThrow("WORKSPACE_CONVERGENCE_EVIDENCE_REQUIRED");
     expect(() => transitionDevelopmentRun(verified, "DISCOVERY")).toThrow(
       "RUN_TERMINAL"
     );

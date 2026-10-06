@@ -724,7 +724,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       { run, revision: 0, events: [] },
       {
         status: "succeeded",
-        output: { evidenceRefs: ["evidence:final-worker-result"] },
+        output: { evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"] },
         resultRef: "result:final-worker",
       }
     );
@@ -765,7 +765,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       { run, revision: 0, events: [] },
       {
         status: "succeeded",
-        output: { evidenceRefs: ["evidence:final-worker-result"] },
+        output: { evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"] },
       }
     );
 
@@ -789,7 +789,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       { run, revision: 0, events: [] },
       {
         status: "succeeded",
-        output: { evidenceRefs: ["evidence:final-worker-result"] },
+        output: { evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"] },
       }
     );
     await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
@@ -830,7 +830,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       { run, revision: 0, events: [] },
       {
         status: "succeeded",
-        output: { evidenceRefs: ["evidence:final-worker-result"] },
+        output: { evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"] },
         resultRef: "result:final-worker",
       }
     );
@@ -864,7 +864,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       {
         status: "succeeded",
         output: {
-          evidenceRefs: ["evidence:final-worker-result"],
+          evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"],
           verificationProvenance: {
             ...finalVerifyProvenance,
             specDigest: "f".repeat(64),
@@ -907,7 +907,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       {
         status: "succeeded",
         output: {
-          evidenceRefs: ["evidence:final-worker-result"],
+          evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"],
           verificationProvenance: {
             ...finalVerifyProvenance,
             candidateSha: "not-a-sha",
@@ -939,7 +939,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       {
         status: "succeeded",
         output: {
-          evidenceRefs: ["evidence:final-worker-result"],
+          evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"],
           verificationProvenance: finalVerifyProvenance,
         },
       }

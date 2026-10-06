@@ -234,14 +234,15 @@ If `orchestra/platform.md` does NOT exist, auto-detect the current runtime. In t
 Print the orchestra banner. Then check whether `orchestra/snapshot.json` exists at the project root.
 
 **Canonical workspace preflight:** Before reading a task snapshot or changing
-files, inspect the exact open checkout (`pwd -P`, repository identity/remotes,
-branch/upstream, `HEAD`, dirty status) and fetch/compare the configured
-canonical ref. If this folder is stale but clean and fast-forwardable on the
-canonical branch, update and verify it. If it is dirty, divergent, or a task
-branch, preserve it and prepare/reuse a clean worktree at the exact canonical
-SHA. For a resume, keep the in-flight task in its recorded checkout and report
-the separate current path for new/unrelated work. Never say that an SSH/editor
-folder is current based only on another clone's `origin/<ref>`.
+files, resolve project/repository/workspace authority through
+`scripts/development-lifecycle/workspace_authority.py`. Verify the exact
+registered `CANONICAL_USER_WORKSPACE` path, configured canonical ref, HEAD,
+dirty state, owner lease, and divergence. Do not infer authority from path,
+branch, suffix, or creator. After integration, converge and verify that same
+registered workspace. Preserve dirty work and leave completion pending when
+convergence is unsafe; never substitute a permanent alternate folder. For a
+resume, retain task-workspace ownership/base SHA separately from user-workspace
+convergence state.
 
 **If `orchestra/snapshot.json` exists:**
 - If the user explicitly asked for `new`, `fresh`, `reset`, or `archive and restart`, follow the fresh-start path.
@@ -277,17 +278,15 @@ If both commands return empty output, skip this check silently and proceed.
 
 **Continuous canonicalization rule:** `origin/main` is the latest integrated development state, not a claim that the code is release-ready, production-ready, or fully validated. During implementation, promote every coherent, safe, valuable checkpoint after the FAST INTEGRATION GATE; task completion is not required. Use isolated/disabled boundaries for unfinished behavior where needed, and keep release, tag, and production deployment behind their own gates. Read `references/continuous-canonicalization.md` and use `$session-finish` at safe checkpoints and before any pause, stop, quota/context boundary, provider timeout, ownership transfer, or end-of-session handoff. Use `$integration-controller` to reconcile and promote partial or complete work promptly. Never use a readiness marker or pending heavy check as a reason to leave safe progress outside `main`.
 
-**Canonical workspace freshness rule:** At fresh start and resume, verify the
-actual open folder's absolute path, repository identity, branch/upstream, `HEAD`,
-dirty state, and configured canonical SHA. After every promotion, refresh the
-workspace used for subsequent work. Fast-forward only a clean checkout already
-on the canonical branch; otherwise preserve it and make a clean worktree at the
-exact latest canonical SHA available. Include the exact SSH/editor path and SHA
-in the handoff. A fetched canonical ref in another checkout does not update the
-open editor folder; never claim it is current without checking that exact path.
-New/unrelated work starts from the canonical workspace. In-flight work may stay
-in its preserved task checkout only with its base SHA and reconciliation action
-recorded.
+**Canonical workspace freshness rule:** At fresh start/resume and after each
+promotion, consume the shared Workspace Authority Resolver and verify the
+registered user workspace on the host that owns it. Only a clean, explicitly
+registered workspace with no conflicting owner or unique intended work may be
+fast-forwarded. Dirty content is preserved with recovery linkage before any
+follow-up action; uncertain work remains untouched. Report its actual path/SHA
+and convergence state. Internal build/test worktrees never replace the
+user-facing authority. In-flight task workspace identity, owner, and base SHA
+remain separate from user-workspace synchronization.
 
 **Backup-first rule:** If an operation may destroy data, dump/copy/export the at-risk state to timestamped backup files first, record their paths, and then continue automatically. Examples: SQL dump before destructive migration, file copy before overwrite-heavy refactor, JSON/CSV export before bulk rewrite. Ask the user only if a reliable backup cannot be created or restore viability is unclear.
 

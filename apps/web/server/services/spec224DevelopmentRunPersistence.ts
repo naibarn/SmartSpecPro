@@ -1129,6 +1129,26 @@ export function createDevelopmentRunService(
                 reason: "final_verification_evidence_missing",
               };
             }
+            if (
+              !evidenceRefs.some(ref => /^evidence:workspace-convergence:[A-Za-z0-9_./:@#-]{1,181}$/.test(ref)) ||
+              !evidenceRefs.some(ref => /^evidence:worktree-retirement:[A-Za-z0-9_./:@#-]{1,181}$/.test(ref))
+            ) {
+              const paused = await applyTransition(tx, record, scope, {
+                idempotencyKey: `reconcile:${record.run.workerJobId}:final-verify:workspace-convergence-pending`,
+                nextState: "WAITING_HUMAN_DECISION",
+                eventType: "DECISION_REQUIRED",
+                payload: {
+                  reason: "workspace_convergence_or_retirement_evidence_missing",
+                  workerJobId: record.run.workerJobId,
+                },
+              });
+              return {
+                action: "WAIT",
+                run: paused.run,
+                revision: paused.revision,
+                reason: "workspace_convergence_or_retirement_evidence_missing",
+              };
+            }
             let closureErrorCode: string | null = null;
             try {
               const provenanceErrorCode = finalVerifyProvenanceErrorCode(

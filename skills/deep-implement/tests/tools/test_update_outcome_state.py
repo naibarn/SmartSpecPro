@@ -11,6 +11,9 @@ def test_missing_evidence_keeps_outcome_validation_pending(mock_implementation_d
         "required_verification_fresh": True,
         "task_regressions_clear": True,
         "authority_resolved": True,
+        "canonical_verified": True,
+        "user_workspace_converged": True,
+        "worktree_lifecycle_settled": True,
     })
     assert state == "VALIDATION_PENDING"
 
@@ -27,5 +30,8 @@ def test_fresh_predicate_evidence_closes_outcome(mock_implementation_dir):
         "required_verification_fresh": True,
         "task_regressions_clear": True,
         "authority_resolved": True,
+        "canonical_verified": True,
+        "user_workspace_converged": True,
+        "worktree_lifecycle_settled": True,
     })
     assert state == "COMPLETE"

@@ -14,33 +14,27 @@ This contract is the shared semantic source for lifecycle skills and orchestrati
 - `canonical_ref` is supplied by repository/project policy. `origin/main` is only a repository default when policy selects it; never hard-code it in reusable lifecycle logic.
 - Canonical repository/project state is the shared engineering truth. Task completion is not required to integrate a safe, valuable checkpoint.
 
-## Workspace freshness
+## Workspace authority and freshness
 
 Canonical history and the directory open in an editor/SSH session are separate
-facts. At session start, resume, after every integration, and before starting a
-new unrelated task, inspect the configured canonical ref, the current
-worktree's absolute path, `HEAD`, branch/upstream, and dirty state. Report the
-actual workspace path and SHA; never imply that fetching or merging updated a
-different checkout or an SSH editor window.
+facts. `scripts/development-lifecycle/workspace_authority.py` is the shared
+resolver for project/repository identity, explicit workspace roles, owners,
+recovery evidence, convergence, and retirement. Skills and runtime integrations
+must consume this resolver instead of independently inferring authority from a
+path, branch, suffix, or creator.
 
-- If the active checkout is clean, on the configured canonical branch, and can
-  fast-forward, update it to the fetched canonical tip and verify exact SHA
-  equality.
-- If it is dirty, on another branch, or cannot fast-forward, preserve it
-  unchanged. Never reset, clean, force-switch, overwrite files, or stash/drop
-  another session's work to make it appear current.
-- Make current canonical source usable immediately by creating or reusing a
-  separate clean worktree at the exact fetched canonical SHA. Verify repository
-  identity, absolute path, `HEAD`, clean status, and canonical ancestry. Tell the
-  user the exact path to open over SSH/editor and identify the preserved active
-  checkout as stale for unrelated/new work.
-- Continue an in-flight task in its preserved checkout only with its base SHA
-  recorded and a reconciliation plan for the next safe checkpoint. Start
-  unrelated work from the latest canonical workspace.
-- After each promotion, refresh this workspace selection again. If the active
-  checkout cannot be fast-forwarded, update or create the separate canonical
-  worktree and include its path/SHA in the handoff. A stale editor root is an
-  actionable workspace-sync gap, not a completed handoff.
+At session start/resume and after each integration, inspect the resolver's
+registered `CANONICAL_USER_WORKSPACE`, configured canonical ref, local SHA,
+dirty state, owner lease, and divergence. Verify on the SSH host that owns the
+editor workspace when applicable. After promotion, call `converge` with the
+integrated SHA, then `verify`. Convergence means exact parity with the latest
+canonical SHA and a clean workspace, tied to a durable receipt. If dirty, first
+record ownership and preserve staged, unstaged, and untracked content; leave
+the user workspace untouched and report convergence pending. Never replace the
+user-facing authority with a permanent alternate checkout. Internal exact-SHA
+worktrees are allowed only as explicitly registered task/session/integration
+workspaces. Continue in-flight work only with its base SHA and reconciliation
+plan recorded; unrelated work starts from the registered canonical workspace.
 
 ## Shared states
 

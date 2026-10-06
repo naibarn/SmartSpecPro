@@ -155,6 +155,8 @@ function verifyInput(overrides: Record<string, unknown> = {}) {
     expectedFencingVersion: 0,
     idempotencyKey: "final-verify:complete:v1",
     finalEvidenceRef: "evidence:final-224-r22",
+    workspaceConvergenceEvidenceRef: "evidence:workspace-convergence:receipt-224",
+    worktreeRetirementEvidenceRef: "evidence:worktree-retirement:receipt-224",
     ...overrides,
   };
 }

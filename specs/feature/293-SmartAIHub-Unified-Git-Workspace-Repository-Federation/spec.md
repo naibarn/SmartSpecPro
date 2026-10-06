@@ -2217,3 +2217,78 @@ R1.4 cumulative audit count: **46 independent passes**.
 
 > **Source identity, execution trust, repository governance and release labels are separate dimensions.** No PR check, tag name, remote name, provider connection, workflow credential or cached preview may silently substitute for current authorization, immutable object provenance and generation-fenced policy.
 
+# 60. P0 Project Workspace Authority & Repository Convergence
+
+This amendment supersedes any earlier boundary that excluded local worktree
+lifecycle from SPEC-293. SPEC-293 is the normative authority for project and
+repository identity, canonical remote/ref/SHA, workspace identity and role,
+execution ownership, dirty-work recovery, canonical user workspace convergence,
+and temporary worktree lifecycle. SPEC-294 consumes these facts as a UI
+projection; SPEC-295 consumes integrated source identity as the source side of
+production convergence. Neither creates a competing workspace authority.
+
+## 60.1 Workspace authority records
+
+Each project/repository binding MUST resolve through one shared authority
+registry. Its record includes stable project and repository IDs, canonical
+remote/ref/current SHA, the canonical user workspace ID/location, and workspace
+IDs with role, HEAD, branch/upstream, dirty and untracked state, session/runner
+owner and lease, creator/task/session, creation time, last verified state,
+convergence state, and recovery linkage. Git paths, branch names, suffixes,
+status labels, and creator identity are observations; they MUST NOT confer
+authority.
+
+Every observed workspace has exactly one role: `CANONICAL_USER_WORKSPACE`,
+`TASK_WORKTREE`, `SESSION_WORKTREE`, `INTEGRATION_WORKTREE`,
+`RECOVERY_WORKSPACE`, `EXTERNAL_WORKSPACE`, or `UNKNOWN_WORKSPACE`. One active
+canonical user workspace is permitted per project/repository binding. External
+hosts require explicit registration and fresh host/runner evidence; a local
+process scan cannot assert their session is active or closed.
+
+## 60.2 Dirty preservation and convergence
+
+After integration, the registered canonical user workspace MUST converge to
+the latest configured canonical ref and verify exact SHA equality before
+development completion. A clean workspace may fast-forward only after proving
+repository identity, explicit role, no active owner conflict, no unique local
+commit/stash, and latest-ref stability. Dirty work MUST be left byte-for-byte
+untouched while staged, unstaged, and untracked state is preserved in a
+restricted recovery archive and linked by a durable receipt. Unique local
+commits, stashes, inaccessible ownership, branch-use conflicts, or moving
+canonical refs produce a blocker; they do not authorize reset, overwrite, or
+automatic cherry-pick.
+
+## 60.3 Workspace and execution lifecycle
+
+Session activity is derived from live runner/process identity plus a
+non-expired lease, not from dirty files, a registered worktree, or a local
+branch. Report `ACTIVE_SESSION`, `DIRTY_WORKSPACE`, `WORKTREE_EXISTS`,
+`LOCAL_BRANCH_EXISTS`, and untracked content independently. Temporary
+workspaces record owner, task/session, creation time, expected lifecycle,
+integration and retirement state. A completed clean worktree is retireable
+only when it has no live owner, dirty/untracked/ignored/stashed data or unique
+unpushed commit, and integration or explicit archive disposition is evidenced.
+Retirement supports dry-run and creates no destructive mass cleanup path.
+
+`DEVELOPMENT_COMPLETE` requires integrated source, canonical-ref verification,
+canonical-user-workspace convergence, settled/retired temporary-worktree
+lifecycle, and all required fresh checks. `RELEASE_COMPLETE` additionally
+requires artifact provenance, settled required migrations, deployment, runtime
+convergence, and health evidence. `PROJECT_CONVERGED` requires both for the
+selected target. Receipts bind project/repository/workspace/task/session,
+source/integration/target SHA, actor, authority, result and timestamp; they are
+written through the existing Handoff/evidence architecture.
+
+## 60.4 Reference implementation and compatibility
+
+The current local reference resolver is
+`scripts/development-lifecycle/workspace_authority.py`; it stores shared
+worktree identity/leases/receipts in the Git common directory, keeps recovery
+archives outside tracked source, and exposes resolve, register, preserve,
+converge, verify and dry-run/apply retirement operations. SPEC-224 orchestration
+remains supported through an adapter: a final-verification result alone is not
+workspace convergence evidence. Providers without a persistent user filesystem
+MAY bind convergence to their managed project workspace, with the same receipt
+semantics. Cross-host ownership and Mission Control UI remain dependent on
+their registered runner/provider adapters and MUST report `UNKNOWN` when proof
+is stale or absent.
