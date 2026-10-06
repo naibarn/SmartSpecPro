@@ -558,4 +558,4 @@ A section commit is a checkpoint, never completion. Close the outcome only when 
 
 ## Canonical Spec handoff
 
-For SmartSpecPro Specs, follow `skills/development-lifecycle/spec-handoff-contract.md`. Read the canonical manifest and requirement ledger before execution. Map section outcomes to requirement IDs and write implementation evidence through `requirement-update`; bind verification to the exact canonical SHA. Sections processed, commits, retry counts, or local config never imply Spec completion. On `STALE_WRITE`, reload and recompute the update.
+For Specs in repositories with a configured canonical handoff root, follow `skills/development-lifecycle/spec-handoff-contract.md`. Read the canonical manifest and requirement ledger before execution. Map section outcomes to requirement IDs and write implementation evidence through `requirement-update`; bind verification to the exact canonical SHA. Sections processed, commits, retry counts, or local config never imply Spec completion. On `STALE_WRITE`, reload and recompute the update.

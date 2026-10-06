@@ -14,7 +14,7 @@ This is the shared Spec lifecycle contract for this repository. The implementati
 
 Disposition, implementation lifecycle, and continuation are independent dimensions. Age, Spec number, filename, revision number, or file timestamp cannot choose authority or justify retirement/continuation. Relationships found by text search are candidates until evidence or an authoritative decision resolves them. Unproven cases remain `DORMANT_UNRESOLVED` / `RECONCILIATION_REQUIRED` with evidence and a next action.
 
-## SmartSpecPro writer API
+## Shared writer API
 
 Run from the repository root; use `specs/_config/handoff-roots.toml` and never maintain a Spec-ID allowlist.
 

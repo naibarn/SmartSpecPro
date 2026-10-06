@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -43,6 +44,27 @@ class IndexTests(unittest.TestCase):
             self.assertEqual(row["primary_blocker"], "HANDOFF_REQUIRED")
             self.assertEqual(row["lifecycle"], "DISCOVERING")
             self.assertNotEqual(row["continuation"], "CONTINUE_REQUIRED")
+
+    def test_retired_specs_are_excluded_from_implementation_queue(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "specs/_config").mkdir(parents=True)
+            (repo / "specs/_config/handoff-roots.toml").write_text('[spec_handoff]\nschema_version=1\ncanonical_roots=["specs/feature"]\nalternate_roots=[]\n', encoding="utf-8")
+            spec = repo / "specs/feature/001-retired"
+            spec.mkdir(parents=True)
+            (spec / "spec.md").write_text("# Retired\nThe old service must remain documented.\n", encoding="utf-8")
+            result = reconcile_one(spec, repo, write=True)
+            manifest = result["manifest"]
+            manifest["manual_decisions"] = {
+                "disposition": {"value": "RETIRED", "rationale": "Approved retirement decision.", "confidence": "HIGH", "evidence": ["decision.md"]},
+                "continuation_assessment": {"decision": "DO_NOT_CONTINUE_RETIRED", "confidence": "HIGH", "rationale": "The old service is intentionally removed.", "residual_requirements": [], "evidence": ["decision.md"], "next_action": "Retain history only."},
+            }
+            (spec / "handoff/manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+            reconcile_one(spec, repo, write=True)
+            views = build_views(repo)
+            record_key = "canonical:specs/feature/001-retired"
+            self.assertNotIn(record_key, {row["record_key"] for row in views["continuation-queue.json"]["records"]})
+            self.assertIn(record_key, {row["record_key"] for row in views["continuation-queue.json"]["excluded"]})
 
     def test_review_actions_match_malformed_and_security_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:

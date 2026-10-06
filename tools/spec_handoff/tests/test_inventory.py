@@ -70,6 +70,22 @@ class InventoryTests(unittest.TestCase):
             self.assertEqual(parent["record_kind"], "PROJECT_REQUIREMENTS")
             self.assertIsNone(parent["problem"])
 
+    def test_identical_nested_spec_copy_remains_indexed_without_authority_collision(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.make_repo(repo)
+            original = repo / "specs/feature/001-one"
+            nested = original / "specs/feature/001-one"
+            nested.mkdir(parents=True)
+            (nested / "spec.md").write_bytes((original / "spec.md").read_bytes())
+            result = inventory(repo)
+            records = {row["path"]: row for row in result["records"]}
+            duplicate = records["specs/feature/001-one/specs/feature/001-one"]
+            self.assertEqual(duplicate["record_kind"], "DUPLICATE_SPEC_COPY")
+            self.assertEqual(duplicate["problem"], "DUPLICATE_SPEC_COPY_OF:specs/feature/001-one")
+            self.assertNotIn(nested.relative_to(repo).as_posix(), records["specs/feature/001-one"]["relationships"]["duplicate_ids"])
+            self.assertEqual(len(records), result["invariants"]["record_count"])
+
 
 if __name__ == "__main__":
     unittest.main()

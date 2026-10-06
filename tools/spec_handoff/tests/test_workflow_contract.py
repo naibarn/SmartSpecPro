@@ -30,6 +30,12 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(skill=path):
                 self.assertTrue("Canonical Spec" in content or "spec-handoff-contract.md" in content)
 
+    def test_checkpoint_skills_stage_only_task_owned_paths(self):
+        session_finish = (REPO / "skills/session-finish/SKILL.md").read_text(encoding="utf-8").lower()
+        integration = (REPO / "skills/integration-controller/SKILL.md").read_text(encoding="utf-8").lower()
+        self.assertIn("stage only files owned by this task", session_finish)
+        self.assertIn("without staging other work", integration)
+
     def test_planning_to_resume_flow_uses_one_manifest_and_exact_sha(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)

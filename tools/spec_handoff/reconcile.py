@@ -21,10 +21,46 @@ _DECLARED_GOAL = re.compile(r"^\*\*goal\*\*\s*:", re.I)
 _REQ_ID = re.compile(r"\b((?:REQ|FR|NFR|AC|R)[-_ ]?\d+[A-Z0-9._-]*)\b", re.I)
 _REQUIREMENT_HEADINGS = ("requirements", "acceptance", "functional scope", "non-functional requirements", "goals", "success criteria", "detailed section specifications", "done criteria", "mandatory commands", "security constraints", "ข้อกำหนด", "เกณฑ์การยอมรับ", "เงื่อนไขการยอมรับ", "ข้อจำกัดด้านความปลอดภัย")
 _MANUAL_FIELDS = ("disposition", "continuation_assessment", "authority", "lifecycle")
+_REPO_PATH_MARKERS = {"apps", "packages", "python-backend", "scripts", "skills", "specs", "tests"}
 
 
-def extract_requirements(spec_path: Path, spec_id: str, digest: str) -> dict[str, Any]:
+def _normalize_repo_reference(value: str, repo: Path) -> str:
+    """Make recognized in-repository absolute references portable across worktrees."""
+    raw_path, separator, anchor = value.partition("#")
+    path = Path(raw_path)
+    if not path.is_absolute():
+        return value
+    repo = repo.resolve()
+    candidates: list[Path] = []
+    try:
+        candidates.append(path.relative_to(repo))
+    except ValueError:
+        parts = path.parts
+        if ".codex" in parts and "worktrees" in parts:
+            worktree_index = parts.index("worktrees")
+            if worktree_index + 2 < len(parts):
+                candidates.append(Path(*parts[worktree_index + 2:]))
+        candidates.extend(Path(*parts[index:]) for index, part in enumerate(parts) if part in _REPO_PATH_MARKERS)
+    for candidate in candidates:
+        if candidate.parts and (repo / candidate).exists():
+            suffix = f"#{anchor}" if separator else ""
+            return candidate.as_posix() + suffix
+    return value
+
+
+def _normalize_manifest_paths(value: Any, repo: Path) -> Any:
+    if isinstance(value, dict):
+        return {key: _normalize_manifest_paths(item, repo) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_normalize_manifest_paths(item, repo) for item in value]
+    if isinstance(value, str):
+        return _normalize_repo_reference(value, repo)
+    return value
+
+
+def extract_requirements(spec_path: Path, spec_id: str, digest: str, *, repo: Path | None = None) -> dict[str, Any]:
     text = spec_path.read_text(encoding="utf-8")
+    source_path = spec_path.relative_to(repo).as_posix() if repo else spec_path.as_posix()
     lines = text.splitlines()
     in_requirements = False
     current_level = 0
@@ -63,7 +99,7 @@ def extract_requirements(spec_path: Path, spec_id: str, digest: str) -> dict[str
     for number, statement in selected:
         normalized = re.sub(r"\s+", " ", re.sub(r"^(?:[-*+]\s+|\d+[.)]\s+)", "", statement)).strip(" |`*_ ").casefold()
         if normalized in seen_text:
-            seen_text[normalized]["authority_refs"].append(f"{spec_path.as_posix()}#L{number}")
+            seen_text[normalized]["authority_refs"].append(f"{source_path}#L{number}")
             continue
         match = _REQ_ID.search(statement)
         req_id = match.group(1).upper().replace(" ", "-") if match else "REQ-" + hashlib.sha256(f"{spec_id}:{number}:{statement}".encode()).hexdigest()[:12].upper()
@@ -73,8 +109,8 @@ def extract_requirements(spec_path: Path, spec_id: str, digest: str) -> dict[str
         line_digest = hashlib.sha256(statement.encode("utf-8")).hexdigest()
         requirements.append({
             "requirement_id": req_id,
-            "authority_source": f"{spec_path.as_posix()}#L{number}",
-            "authority_refs": [f"{spec_path.as_posix()}#L{number}"],
+            "authority_source": f"{source_path}#L{number}",
+            "authority_refs": [f"{source_path}#L{number}"],
             "requirement_text": statement,
             "requirement_digest": line_digest,
             "source_spec_digest": digest,
@@ -95,7 +131,7 @@ def extract_requirements(spec_path: Path, spec_id: str, digest: str) -> dict[str
     if not requirements:
         requirements.append({
             "requirement_id": "UNPARSED-SPEC-" + hashlib.sha256(spec_id.encode()).hexdigest()[:8].upper(),
-            "authority_source": spec_path.as_posix(),
+            "authority_source": source_path,
             "requirement_text": "Normative requirement extraction needs review; no safe structured requirement set was detected.",
             "requirement_digest": digest,
             "source_spec_digest": digest,
@@ -108,7 +144,7 @@ def extract_requirements(spec_path: Path, spec_id: str, digest: str) -> dict[str
     return {"schema_version": 1, "reconciliation_version": 3, "spec_id": spec_id, "spec_digest": digest, "generation": 0, "requirements": requirements}
 
 
-def _supporting_evidence(spec_dir: Path) -> list[dict[str, str]]:
+def _supporting_evidence(spec_dir: Path, repo: Path) -> list[dict[str, str]]:
     evidence: list[dict[str, str]] = []
     useful = {"requirements.md", "brief.md", "claude-spec.md", "claude-plan.md", "plan.md", "completion.md", "release-gate.md", "project-manifest.md"}
     for path in sorted(spec_dir.rglob("*")):
@@ -119,7 +155,7 @@ def _supporting_evidence(spec_dir: Path) -> list[dict[str, str]]:
                 digest = hashlib.sha256(path.read_bytes()).hexdigest()
             except OSError:
                 continue
-            evidence.append({"path": path.as_posix(), "kind": "SUPPORTING_ARTIFACT", "digest": digest})
+            evidence.append({"path": path.relative_to(repo).as_posix(), "kind": "SUPPORTING_ARTIFACT", "digest": digest})
     return evidence
 
 
@@ -145,11 +181,15 @@ def _apply_manual(manifest: dict[str, Any]) -> dict[str, Any]:
 
 
 def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_record: dict[str, Any] | None = None, relationship_claims: list[dict[str, Any]] | None = None, source_references: list[dict[str, Any]] | None = None, declared_claims: list[dict[str, Any]] | None = None, observed_times: dict[str, str | None] | None = None) -> dict[str, Any]:
+    repo = repo.resolve()
+    spec_dir = spec_dir.resolve()
     spec_path = spec_dir / "spec.md"
     raw = spec_path.read_bytes()
     digest = hashlib.sha256(raw).hexdigest()
     previous = read_manifest(spec_dir)
     had_manifest = previous is not None
+    if previous is not None:
+        previous = _normalize_manifest_paths(previous, repo)
     if previous is None:
         text = raw.decode("utf-8")
         title = next((line[2:].strip() for line in text.splitlines() if line.startswith("# ")), spec_dir.name)
@@ -173,7 +213,7 @@ def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_
             "next_action": "Reconcile requirements and invalidate only affected evidence.",
         }
         previous["reconciliation"]["reconciled_at"] = utc_now()
-    evidence = [{"path": spec_path.relative_to(repo).as_posix(), "kind": "NORMATIVE_SPEC", "digest": digest}] + _supporting_evidence(spec_dir)
+    evidence = [{"path": spec_path.relative_to(repo).as_posix(), "kind": "NORMATIVE_SPEC", "digest": digest}] + _supporting_evidence(spec_dir, repo)
     reconciled_at = previous["reconciliation"].get("reconciled_at") or utc_now()
     source_references = source_references or []
     declared_claims = declared_claims if declared_claims is not None else collect_declared_claims(spec_dir, repo)
@@ -193,6 +233,7 @@ def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_
         "active_references": source_references[:500], "declared_claims": declared_claims[:200], "deployment_reality": "UNVERIFIED", "evidence": evidence[:100],
     }
     duplicate_ids = []
+    duplicate_revisions = []
     try:
         global_inventory = None if inventory_record is not None else inventory(repo)
     except (OSError, ValueError, FileNotFoundError):
@@ -200,7 +241,13 @@ def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_
     own = inventory_record or next((record for record in global_inventory["records"] if record.get("path") == spec_dir.relative_to(repo).as_posix()), None)
     if own:
         duplicate_ids = own.get("relationships", {}).get("duplicate_ids", [])
-    conflicts = [{"kind": "DUPLICATE_SPEC_ID", "paths": duplicate_ids}] if duplicate_ids else []
+        duplicate_revisions = own.get("relationships", {}).get("duplicate_revisions", [])
+    own_path = spec_dir.relative_to(repo).as_posix()
+    conflicts = []
+    if duplicate_ids:
+        conflicts.append({"kind": "DUPLICATE_SPEC_ID", "paths": sorted({own_path, *duplicate_ids})})
+    if duplicate_revisions:
+        conflicts.append({"kind": "DUPLICATE_SPEC_REVISION", "paths": sorted({own_path, *duplicate_revisions})})
     manual = previous.get("manual_decisions", {})
     if not manual.get("authority"):
         previous["authority"] = {"status": "AUTHORITY_CONFLICT" if conflicts else "UNRESOLVED", "confidence": "LOW" if conflicts else "UNRESOLVED", "predecessors": [], "successors": [], "claims": relationship_claims or [], "conflicts": conflicts, "evidence": evidence[:20]}
@@ -215,11 +262,12 @@ def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_
     previous["reconciliation"].update({"mode": "AUTOMATED_CONSERVATIVE", "confidence": "LOW" if evidence or source_references or declared_claims else "UNRESOLVED", "sources": evidence[:100] + [{"kind": "SOURCE_REFERENCE", **ref} for ref in source_references[:100]] + [{"kind": "AUTHOR_DECLARED_CLAIM", **claim} for claim in declared_claims[:100]], "inferred_fields": ["authority.status", "disposition.value", "continuation_assessment.decision"], "unproven_fields": ["current relevance", "implementation equivalence", "deployment reality", "acceptance"], "reconciled_at": reconciled_at})
     previous["lifecycle"]["updated_at"] = previous["reconciliation"]["reconciled_at"]
     _apply_manual(previous)
-    ledger = extract_requirements(spec_path, previous["identity"]["spec_id"], digest)
+    ledger = extract_requirements(spec_path, previous["identity"]["spec_id"], digest, repo=repo)
     ledger_path = handoff_dir(spec_dir) / "requirement-ledger.json"
     old_ledger = None
     if ledger_path.exists():
         old_ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+        old_ledger = _normalize_manifest_paths(old_ledger, repo)
         if old_ledger.get("spec_digest") == digest:
             ledger["generation"] = old_ledger.get("generation", 0)
             saved_requirements = previous.get("manual_decisions", {}).get("requirements", {})

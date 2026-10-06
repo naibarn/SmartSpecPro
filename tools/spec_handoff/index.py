@@ -58,8 +58,10 @@ def _record_view(repo: Path, record: dict[str, Any]) -> dict[str, Any]:
         if record.get("configured_root") == "specs/security" and manifest.get("continuation_assessment", {}).get("decision") == "RECONCILIATION_REQUIRED":
             base["next_action"] = "Map each security requirement to current implementation and regression tests; assess current exposure and retain unresolved status where exact coverage or fresh verification is missing."
         return base
-    not_spec = record["record_kind"] in {"PLANNING_ARTIFACT", "PROJECT_REQUIREMENTS", "COLLECTION_ENTRY_NO_SPEC"}
-    if not_spec:
+    not_spec = record["record_kind"] in {"PLANNING_ARTIFACT", "PROJECT_REQUIREMENTS", "COLLECTION_ENTRY_NO_SPEC", "DUPLICATE_SPEC_COPY"}
+    if record["record_kind"] == "DUPLICATE_SPEC_COPY":
+        next_action = "Keep this identical nested copy visible as an inventory record; canonical handoff belongs to the matching ancestor Spec."
+    elif not_spec:
         next_action = "This record is an inventory item, not a canonical Spec handoff."
     elif record.get("record_kind") in {"MALFORMED_CANDIDATE", "INVALID_SPEC"}:
         next_action = "Keep this configured-root candidate visible as malformed; locate its normative spec.md or record why it is intentionally absent before initializing a handoff."
