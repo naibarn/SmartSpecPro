@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
     "expected_spec_digest": "2644ef4760166af90d8f6efa8478c1ac8ae859427a690c32a0763d1303a026de"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 1,
+  "generation": 2,
   "identity": {
     "canonical_path": "specs/feature/291-Local-Agentic-Model-Runtime-Capability-Resolution/spec.md",
     "digest": "2644ef4760166af90d8f6efa8478c1ac8ae859427a690c32a0763d1303a026de",
@@ -95,10 +95,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "integrated": true,
+    "integrated_at": "2026-10-06T04:36:24Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
@@ -182,7 +182,7 @@
     "unresolved": 71
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T04:28:00.047840Z",
+  "updated_at": "2026-10-06T04:37:58.749130Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
