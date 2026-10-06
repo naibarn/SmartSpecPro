@@ -4018,3 +4018,28 @@ R1.7 cumulative audit count: **74 independent passes**.
 
 > **Mission Control may correlate many truths, but it may not manufacture causality, authority or completion from correlation.** Every material relationship, readiness decision, bulk action and historical answer must retain its derivation, generation, authorization and evidence boundary.
 
+# 60. P0 Workspace Convergence Operational Projection
+
+SPEC-293 owns workspace identity, role, session ownership, recovery, canonical
+convergence, and retirement policy. Mission Control MUST consume its
+machine-readable authority and receipts; it MUST NOT infer canonical authority
+from folder labels, branch names, GitHub main alone, or the number of existing
+worktrees. SPEC-295 remains the authority for release/runtime/migration truth.
+
+For each project/repository, the workspace surface shows canonical ref and SHA;
+canonical user workspace identity and SHA; `SYNCED`, `BEHIND_CANONICAL`,
+`DIRTY`, `RECOVERY_PENDING`, `DIVERGED`, or `UNKNOWN_AUTHORITY`; active agent
+and session counts from live owner/lease evidence; integration state; and
+worktree counts grouped as active, retireable, recovery, stale, and unknown.
+Dirty files, existing worktrees, branches, and active sessions are separate
+facts. Stale/missing registry or provider evidence produces `UNKNOWN` rather
+than a false inactive or synchronized state.
+
+Safe actions include sync workspace safely, inspect changes, recover work,
+integrate completed work, open canonical workspace, retire a stale worktree,
+and verify project convergence. Each action MUST call SPEC-293's resolver and
+enforce its ownership, recovery, authorization, and dry-run rules. User-visible
+completion is disabled while canonical convergence or required worktree
+retirement is pending. Mission Control may show SPEC-295's compact deployment
+summary and deep-link to its production operations surface; it does not execute
+deployment or migration actions as a substitute authority.

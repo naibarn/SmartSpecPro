@@ -2175,3 +2175,31 @@ R1.2 cumulative audit count: **36 independent passes**.
 
 > **Production safety depends on immutable artifact identity, recoverable state, compatible configuration/data evolution and truthful telemetry semantics — not merely successful deploy commands.** SPEC-295 must be able to explain what is running, what data/config it expects, how it can be recovered, and which external/provider constraints still make promotion unsafe.
 
+# 62. P0 Source-to-Production Convergence Receipt
+
+SPEC-293 owns source/workspace identity and canonical convergence. SPEC-295
+consumes its verified integrated source receipt and continues the chain through
+`SOURCE_SHA` → immutable `BUILD_ARTIFACT_DIGEST` → required/applied migration
+state → deployment release → runtime revision(s) → health evidence →
+`PRODUCTION_CONVERGED`. A Git merge, tag, build label, successful deploy command,
+or one healthy instance is insufficient evidence by itself.
+
+The convergence record binds project/repository, integrated SHA and authority
+receipt to artifact digest, target/environment, deployment ID, migration group
+and per-target outcomes, runtime product/instance revisions, rollout state,
+health evidence, actor and timestamp. It supports Workers, Containers,
+Workflows, Queues and multiple runtime instances, plus staged rollout and
+rollback. Every required instance and migration target must reach the intended
+revision/state; partial rollout, stale container, migration lag, unknown
+inventory, or rollback-in-progress remains pending/degraded and cannot be
+reported as `PRODUCTION_CONVERGED`. Rollback is a new source/artifact/runtime
+transition with its own receipt, not deletion of prior history.
+
+`DEVELOPMENT_COMPLETE` is owned by the lifecycle contract and requires
+integrated/canonical-verified source, canonical-user-or-managed-workspace
+convergence, settled worktrees and required checks. `RELEASE_COMPLETE` requires
+artifact provenance, migrations settled, deployment and all required runtime
+instances converged with health evidence. `PROJECT_CONVERGED` requires both for
+the selected release target. SPEC-294 displays a bounded projection of this
+state; production mutation remains within the registered deployment and
+migration authorities.

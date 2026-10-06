@@ -14,6 +14,8 @@ import type {
 } from "./spec224DevelopmentRunContracts";
 
 const FINAL_EVIDENCE_REF = /^evidence:final[-:][A-Za-z0-9_./:@#-]{1,181}$/;
+const WORKSPACE_CONVERGENCE_REF = /^evidence:workspace-convergence:[A-Za-z0-9_./:@#-]{1,181}$/;
+const WORKTREE_RETIREMENT_REF = /^evidence:worktree-retirement:[A-Za-z0-9_./:@#-]{1,181}$/;
 
 export type Spec224FinalVerifyInput = {
   runId: string;
@@ -23,6 +25,8 @@ export type Spec224FinalVerifyInput = {
   expectedFencingVersion: number;
   idempotencyKey: string;
   finalEvidenceRef: string;
+  workspaceConvergenceEvidenceRef: string;
+  worktreeRetirementEvidenceRef: string;
   /** Optional until every canonical caller can provide the live tuple. */
   provenance?: Spec224VerificationProvenance;
 };
@@ -62,6 +66,12 @@ export function createSpec224FinalVerifyService(
       input: Spec224FinalVerifyInput
     ): Promise<Spec224FinalVerifyResult> {
       const finalEvidenceRef = assertFinalEvidenceRef(input.finalEvidenceRef);
+      if (!WORKSPACE_CONVERGENCE_REF.test(input.workspaceConvergenceEvidenceRef)) {
+        throw new Error("WORKSPACE_CONVERGENCE_EVIDENCE_INVALID");
+      }
+      if (!WORKTREE_RETIREMENT_REF.test(input.worktreeRetirementEvidenceRef)) {
+        throw new Error("WORKTREE_RETIREMENT_EVIDENCE_INVALID");
+      }
       const record = await runs.get(input);
       const isDuplicateCompletion = record.run.state === "COMPLETED";
       if (record.run.state !== "FINAL_VERIFY" && !isDuplicateCompletion) {
@@ -107,7 +117,11 @@ export function createSpec224FinalVerifyService(
             action: "final_verify_completed",
             finalEvidenceRef,
           },
-          evidenceRefs: [finalEvidenceRef],
+          evidenceRefs: [
+            finalEvidenceRef,
+            input.workspaceConvergenceEvidenceRef,
+            input.worktreeRetirementEvidenceRef,
+          ],
         },
       });
       return {

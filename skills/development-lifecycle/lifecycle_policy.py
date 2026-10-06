@@ -193,12 +193,22 @@ def outcome_complete(
     acceptance_required: bool = False,
     accepted: bool = False,
     authority_resolved: bool = False,
+    canonical_verified: bool = False,
+    user_workspace_converged: bool = False,
+    worktree_lifecycle_settled: bool = False,
 ) -> bool:
-    """Require an integrated outcome, fresh proof, closed predicates, and no task regressions."""
+    """Require fresh closure proof and settled canonical workspace lifecycle."""
     rows = list(requirements)
     if not authority_resolved or not rows or remaining_requirements(rows):
         return False
-    if not integrated or not required_verification_fresh or not task_regressions_clear:
+    if (
+        not integrated
+        or not required_verification_fresh
+        or not task_regressions_clear
+        or not canonical_verified
+        or not user_workspace_converged
+        or not worktree_lifecycle_settled
+    ):
         return False
     if deployment_required and not deployed:
         return False
@@ -239,6 +249,13 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
     if event in {"section_checkpoint_missing_evidence", "all_sections_checkpointed_with_requirement_failure"}:
         requirements = facts.get("requirements", [])
         closed = bool(requirements) and not remaining_requirements(requirements)
+        workspace_settled = (
+            facts.get("canonical_verified") is True
+            and facts.get("user_workspace_converged") is True
+            and facts.get("worktree_lifecycle_settled") is True
+        )
+        if not workspace_settled:
+            return "CANONICAL_CONVERGENCE_PENDING"
         return "COMPLETE" if closed and facts.get("required_evidence", True) else "VALIDATION_PENDING"
     if event == "unrelated_dirty_session_worktree":
         return "PRESERVE_AND_CONTINUE" if not facts.get("ownership_overlap") else "RECONCILE_OWNERSHIP"

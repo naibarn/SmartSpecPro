@@ -380,6 +380,8 @@ class TestInferSessionState:
             }],
             "integrated": True, "required_verification_fresh": True,
             "task_regressions_clear": True, "authority_resolved": True,
+            "canonical_verified": True, "user_workspace_converged": True,
+            "worktree_lifecycle_settled": True,
         }
         (mock_implementation_dir / "deep_implement_config.json").write_text(json.dumps(config))
         closed = infer_session_state(mock_sections_dir, mock_implementation_dir, mock_git_repo)

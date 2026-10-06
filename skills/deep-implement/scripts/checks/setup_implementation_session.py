@@ -488,6 +488,9 @@ def infer_session_state(
         acceptance_required=outcome.get("acceptance_required", False),
         accepted=outcome.get("accepted", False),
         authority_resolved=outcome.get("authority_resolved", False),
+        canonical_verified=outcome.get("canonical_verified", False),
+        user_workspace_converged=outcome.get("user_workspace_converged", False),
+        worktree_lifecycle_settled=outcome.get("worktree_lifecycle_settled", False),
     )
 
     if len(checkpointed) >= len(all_sections) and all_sections:

@@ -2,5 +2,6 @@
 repository_id = "smartspecpro"
 remote = "origin"
 canonical_ref = "refs/heads/main"
+canonical_user_workspace = "/home/dev/projects/SmartSpecPro"
 source_root = "~/.cache/codex/canonical-sources"
 build_target = "smartspec-web"

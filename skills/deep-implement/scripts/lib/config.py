@@ -159,6 +159,9 @@ def update_outcome_state(implementation_dir: Path, outcome: dict[str, Any]) -> s
         acceptance_required=outcome.get("acceptance_required", False),
         accepted=outcome.get("accepted", False),
         authority_resolved=outcome.get("authority_resolved", False),
+        canonical_verified=outcome.get("canonical_verified", False),
+        user_workspace_converged=outcome.get("user_workspace_converged", False),
+        worktree_lifecycle_settled=outcome.get("worktree_lifecycle_settled", False),
     )
     config["outcome"] = outcome
     config["outcome_state"] = "COMPLETE" if complete else "VALIDATION_PENDING"

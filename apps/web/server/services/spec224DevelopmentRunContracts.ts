@@ -330,6 +330,13 @@ export function transitionDevelopmentRun(
   ) {
     throw new DevelopmentRunContractError("FINAL_VERIFY_EVIDENCE_REQUIRED");
   }
+  if (
+    nextState === "COMPLETED" &&
+    (!run.evidenceRefs.some(refValue => /^evidence:workspace-convergence:[A-Za-z0-9_./:@#-]{1,181}$/.test(refValue)) ||
+      !run.evidenceRefs.some(refValue => /^evidence:worktree-retirement:[A-Za-z0-9_./:@#-]{1,181}$/.test(refValue)))
+  ) {
+    throw new DevelopmentRunContractError("WORKSPACE_CONVERGENCE_EVIDENCE_REQUIRED");
+  }
   const isNewPhase = ![
     "RECOVERY",
     "WAITING_HUMAN_DECISION",
