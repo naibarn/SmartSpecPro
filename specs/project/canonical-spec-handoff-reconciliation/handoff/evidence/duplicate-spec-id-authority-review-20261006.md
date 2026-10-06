@@ -32,6 +32,7 @@
 ## Validation and remaining work
 
 - Baseline evidence reported by the prior canonical import workunit: `index --check` PASS, `validate --all` PASS, 72 `spec_handoff` tests PASS, skill audit 330 tests PASS, and 40-case scenario matrix PASS. These checks predate this review and are not evidence for any new authority decision.
+- During this review, `spec-handoff inventory --output` failed with `UnboundLocalError` from a local `_atomic_write` import shadowing the inventory writer. The CLI import is now aliased and a regression test covers output-file generation; the focused CLI tests pass (2/2) and inventory output succeeds with 459 records. This is a scoped tooling repair, not an inventory change.
 - This pass made no inventory-affecting change, so no post-change generated projection was produced.
 - Before renumbering, implement or identify the authoritative alias/provenance representation, dynamically verify the next free ID, update only semantic references, regenerate inventory/relationships/Handoffs, then run the requested uniqueness, dependency, graph, Handoff, framework, skill, and scenario gates.
 - Group-level human decisions are still required for IDs 000, 014, 045, 059, and 164. For 031, the owner is supported but the collision migration is pending. For 058, current active authority is supported but historical relocation/alias bookkeeping is pending. For 162, the combined artifact can be reclassified once the repository's supported non-canonical evidence location is selected.
