@@ -1968,6 +1968,70 @@ export function UniversalControlPlanePanel({
                         </p>
                       )}
                     </section>
+                    <section
+                      className="mt-3"
+                      aria-label="Workspace source status"
+                    >
+                      <h5 className="text-xs font-medium text-slate-700">
+                        Workspace status
+                      </h5>
+                      {runner.workspaces?.length ? (
+                        <ul className="mt-1 space-y-1.5">
+                          {runner.workspaces.map(workspace => (
+                            <li
+                              key={`workspace-${workspace.workspaceId}`}
+                              className="rounded-lg border border-slate-200 bg-white px-2 py-2"
+                            >
+                              <span className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="min-w-0 truncate text-xs font-medium text-slate-700">
+                                  {workspace.displayName ?? workspace.workspaceId}
+                                </span>
+                                <span className="flex flex-wrap items-center gap-1.5">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] text-amber-800"
+                                  >
+                                    Authority unknown
+                                  </Badge>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      "text-[10px]",
+                                      workspace.dirty === true
+                                        ? "border-amber-300 text-amber-800"
+                                        : workspace.dirty === false
+                                          ? "border-emerald-300 text-emerald-800"
+                                          : "text-slate-600"
+                                    )}
+                                  >
+                                    {workspace.dirty === true
+                                      ? "Dirty"
+                                      : workspace.dirty === false
+                                        ? "Clean"
+                                        : "Git status unavailable"}
+                                  </Badge>
+                                </span>
+                              </span>
+                              <span className="mt-1 block break-all font-mono text-[10px] text-slate-500">
+                                {workspace.gitHead
+                                  ? `HEAD ${workspace.gitHead.slice(0, 12)}`
+                                  : "HEAD unavailable"}
+                                {workspace.gitBranch
+                                  ? ` · ${workspace.gitBranch}`
+                                  : " · branch unavailable"}
+                              </span>
+                              <span className="mt-1 block text-[10px] text-slate-500">
+                                Runner snapshot has no canonical SHA; clean does not mean synced.
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-1 text-xs text-slate-500">
+                          Git status is unavailable for these workspaces. Authority and canonical sync are unverified.
+                        </p>
+                      )}
+                    </section>
                     <ul className="mt-2 space-y-1.5 text-xs">
                       {runner.toolInventory.map(tool => (
                         (() => {

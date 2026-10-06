@@ -556,6 +556,15 @@ describe("UniversalControlPlanePanel", () => {
             toolCount: 6,
             capabilityCount: 3,
             workspaceIds: ["ws-story-app-1a2b3c4d"],
+            workspaces: [
+              {
+                workspaceId: "ws-story-app-1a2b3c4d",
+                displayName: "Storyboard app",
+                gitHead: "a".repeat(40),
+                gitBranch: "feature/storyboard",
+                dirty: true,
+              },
+            ],
             toolInventory: [
               {
                 id: "codex-cli",
@@ -613,13 +622,17 @@ describe("UniversalControlPlanePanel", () => {
     expect(screen.getByText("video.render")).toBeInTheDocument();
     expect(screen.getByText("Mac Runner")).toBeInTheDocument();
     expect(screen.getByText(/Studio Worker/)).toBeInTheDocument();
-    expect(screen.getByText("ws-story-app-1a2b3c4d")).toBeInTheDocument();
     expect(screen.getByText("Media MCP")).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: "Expand runner Mac Runner" })
     );
+    expect(screen.getByText("ws-story-app-1a2b3c4d")).toBeInTheDocument();
     expect(screen.getByText("Codex CLI · 1.2.3")).toBeInTheDocument();
     expect(screen.getByText("code.edit · codex-cli")).toBeInTheDocument();
+    expect(screen.getByText("Authority unknown")).toBeInTheDocument();
+    expect(screen.getByText("Dirty")).toBeInTheDocument();
+    expect(screen.getByText(/HEAD aaaaaaaaaaaa · feature\/storyboard/)).toBeInTheDocument();
+    expect(screen.getByText("Runner snapshot has no canonical SHA; clean does not mean synced.")).toBeInTheDocument();
     expect(
       screen.getByText(
         "แสดงเฉพาะชื่อและสถานะ ไม่ส่งตำแหน่งโฟลเดอร์หรือข้อมูลเข้าสู่ระบบ"
