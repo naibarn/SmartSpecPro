@@ -526,6 +526,19 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(source).toContain("enhancedReadinessFrameKey,");
   });
 
+  it("rechecks Enhanced readiness when shot-local character identity overrides are saved", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    const frameKey = source.slice(
+      source.indexOf("const enhancedReadinessFrameKey = useMemo("),
+      source.indexOf("const enhancedReadinessShotNumbers = useMemo(")
+    );
+    expect(frameKey).toContain("frame.characterDescriptionOverrides");
+    expect(source).toContain("enhancedReadinessFrameKey,");
+  });
+
   it("does not probe Enhanced readiness before a shot has an approved Start frame", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),

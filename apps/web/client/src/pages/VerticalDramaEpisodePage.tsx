@@ -9036,7 +9036,7 @@ function EpisodeWorkspaceShell({
       (episodeDetailQuery.data?.startFramePlan?.frames ?? [])
         .map(
           frame =>
-            `${frame.shotNumber}:${frame.approvedMediaAssetId ?? ""}:${frame.approvedStopFrameAssetId ?? ""}:${frame.castPositionLock?.assetId ?? ""}:${(frame.castPositionLock?.orderedCharacterRefs ?? []).join(",")}:${frame.castPositionLock?.confirmedAt ?? ""}`
+            `${frame.shotNumber}:${frame.approvedMediaAssetId ?? ""}:${frame.approvedStopFrameAssetId ?? ""}:${frame.castPositionLock?.assetId ?? ""}:${(frame.castPositionLock?.orderedCharacterRefs ?? []).join(",")}:${frame.castPositionLock?.confirmedAt ?? ""}:${JSON.stringify(Object.entries(frame.characterDescriptionOverrides ?? {}).sort(([left], [right]) => left.localeCompare(right)))}`
         )
         .join("|"),
     [episodeDetailQuery.data?.startFramePlan?.frames]

@@ -344,6 +344,55 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         self.assertNotIn("แม่ on viewer-left", prompt)
         self.assertIn("ลูก on viewer-right", prompt)
 
+    def test_compact_grok_prompt_uses_custom_identity_for_speaker_and_observed_state(self):
+        payload = {
+            "nativeAudioEnabled": True,
+            "videoPromptMaxChars": 4096,
+            "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
+            "shot": {
+                "shotNumber": 6,
+                "description": "A child and a woman talk in the rain",
+                "durationSeconds": 8.0,
+                "verifiedCastPositions": [
+                    {"characterKey": "child", "name": "ภาคิน", "position": "viewer-left"},
+                    {"characterKey": "woman", "name": "พิมพ์ชนก", "position": "viewer-right"},
+                    {"characterKey": "thir", "name": "ธีร์", "position": "viewer-center-left"},
+                    {"characterKey": "phum", "name": "ภูมิ", "position": "viewer-center-right"},
+                ],
+                "characterDescriptionOverrides": {
+                    "child": "เด็กใส่เสื้อสีเทา",
+                    "woman": "ผู้หญิงผมยาว",
+                },
+            },
+            "dialogue": [
+                {"characterKey": "child", "speakerId": "child", "speaker": "ภาคิน", "position": "viewer-left", "lineTh": "ถ้าเป็นฝาแฝด ทำไมเราอยู่คนละบ้าน"},
+                {"characterKey": "woman", "speakerId": "woman", "speaker": "พิมพ์ชนก", "position": "viewer-right", "lineTh": "แม่ยังไม่มีคำตอบทั้งหมด"},
+            ],
+        }
+        observed = {
+            "characters": [
+                {"characterId": "child", "screenPosition": "viewer-left", "pose": "standing"},
+                {"characterId": "woman", "screenPosition": "viewer-right", "pose": "standing"},
+            ]
+        }
+
+        prompt = _terminal_prompt(
+            payload,
+            {"actions": ["They speak while rain falls"]},
+            observed_start_state=observed,
+        )
+
+        self.assertIn("child identified by เด็กใส่เสื้อสีเทา", prompt)
+        self.assertIn("woman identified by ผู้หญิงผมยาว", prompt)
+        self.assertIn('Line 1 ONLY (child identified by เด็กใส่เสื้อสีเทา):', prompt)
+        self.assertIn('Line 2 ONLY (woman identified by ผู้หญิงผมยาว):', prompt)
+        self.assertNotIn("L1=child@viewer-left", prompt)
+        self.assertNotIn("L2=woman@viewer-right", prompt)
+        self.assertNotIn("Line 1 ONLY (child @ viewer-left)", prompt)
+        self.assertNotIn("Line 2 ONLY (woman @ viewer-right)", prompt)
+        self.assertNotIn("MANDATORY CAST POSITION LOCK", prompt)
+        self.assertIn("custom identity override", prompt)
+
     def test_terminal_prompt_keeps_dialogue_speaker_offscreen_when_not_in_observed_frame(self):
         payload = {
             "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
