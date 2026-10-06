@@ -3882,6 +3882,36 @@
       "confidence": "LOW",
       "declared_claim_count": 1,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "288"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/289-Adaptive-Capability-Routing-Backend-Health-Agent-Reach-Integration",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/289-Adaptive-Capability-Routing-Backend-Health-Agent-Reach-Integration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "289"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/290-Longdo-Map-Migration-Google-Maps-Decommission",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/290-Longdo-Map-Migration-Google-Maps-Decommission",
@@ -3921,6 +3951,51 @@
         "TEST": 0
       },
       "spec_id": "292"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "293"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "294"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "295"
     },
     {
       "authority": "UNRESOLVED",
@@ -4751,21 +4826,6 @@
         "TEST": 0
       },
       "spec_id": "277"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 0,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract",
-      "priority": "R5_NO_DIRECT_EVIDENCE",
-      "record_key": "canonical:specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 0,
-        "TEST": 0
-      },
-      "spec_id": "288"
     },
     {
       "authority": "UNRESOLVED",
