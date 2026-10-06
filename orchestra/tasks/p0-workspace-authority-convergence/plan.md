@@ -34,7 +34,7 @@ See `test-design.md`. Run the focused red tests before implementation. Do not ru
 ```text
 orchestra_id: p0_workspace_authority_convergence
 purpose: implement shared development workspace authority
-iteration: 0/12
+iteration: 1/12
 tool_call_batches: tracked by progress entries; exact host count unavailable
 estimated_cost_usd: unknown; conservative local-only estimate <= 0.50
 dispatch_waves: 1/6 (read-only scout completed)
@@ -43,12 +43,14 @@ parallel_writers: 0/2
 repair_rounds: 0/5
 stop_conditions: safe checkpoint integrated; complete closure remains dependent on runtime receipt adapters and full regression matrix
 stop_reason: partial implementation checkpoint
+```
 
 ## Current handoff
 
-- Workspace: `/home/dev/projects/SmartSpecPro`, branch `codex/p0-workspace-authority-convergence-20261007`, base/head `d75831b6db9e9a19850f68a2c5625ea9b6fb0de3` before this delta. It is dirty by this task and must not be converged while these changes are uncommitted.
-- `origin/main` advanced from the brief's baseline `b62f61ac...` to `d75831b6...` (PR #92) before resolver verification; task branch includes the latest SHA.
-- Next WorkUnit: WU-5 — run final focused gates, update Spec Handoff through `tools.spec_handoff` after integration, promote the safe checkpoint, then run resolver convergence on the registered canonical workspace. Continue WU-3 receipts and WU-4 behavioral matrix as separate follow-up if not closed before integration.
-- Known test limitation: one existing Spec-224 resource-verification idempotency test fails with `RUN_IDEMPOTENCY_CONFLICT` before any completion logic; 31 other targeted Vitest cases pass.
-- Mission Control UI, distributed cross-host registry, DB/artifact/runtime receipt verification, production convergence, concurrency/race stress and full 30-case execution are not implemented/proven in this checkpoint.
-```
+- PR #93 merged normally as `392b41dbaadcee6bfb4497735d451db8b553aef7`; implementation commit `b85542829abe4d119f7e31afc04d1cb5d1947a67` is reachable from `origin/main`.
+- `/home/dev/projects/SmartSpecPro` was fast-forwarded to `main` at `392b41dbaadcee6bfb4497735d451db8b553aef7`; resolver confirmed SHA parity before the Handoff metadata follow-up edits.
+- The shared Spec Handoff writer reconciled SPEC-293/294/295, regenerated global status/index views, recorded the exact integrated SHA and `PARTIAL_INTEGRATED`, and queued P0-WU-3. Validation passed.
+- P0-WU-3 now binds convergence and retirement receipt fields, repository/project/task identity, receipt IDs, Git SHAs, clean state, ownership state, and timestamps to Spec 224 Final Verify. CLI and lifecycle skill instructions pass the run ID; receipts remain structured evidence without cryptographic signatures or external artifact-source authentication.
+- Focused Spec-224 verification passed 13/13; full two-file run passed 25 tests and retains one unrelated resource-event idempotency failure (`RUN_IDEMPOTENCY_CONFLICT`, before completion logic). Handoff validation/index and 82 framework tests pass; workspace authority/lifecycle Python tests pass 22; skill audit passes 330.
+- P0-WU-4 must execute remaining race and 30-case behavioral coverage. Mission Control UI, distributed cross-host authority, production convergence, and race/stress tests remain unimplemented or unproven.
+- Handoff metadata and WU-3 follow-up branch: `codex/p0-workspace-authority-handoff-20261007`; its commit/PR are pending.

@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+        "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
       }
@@ -21,28 +21,28 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "5a389545896d9152f23749d3fc1710d6c80f3a43",
-    "expected_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a"
+    "expected_canonical_sha": "392b41dbaadcee6bfb4497735d451db8b553aef7",
+    "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "Produce and bind workspace convergence/retirement receipts in every final-verification caller; run the remaining P0 race and regression scenarios.",
+    "next_ready_workunit": "P0-WU-3",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "P0-WU-3",
     "waiting_predicate": null
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
+    "confidence": "HIGH",
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
+        "digest": "392b41dbaadcee6bfb4497735d451db8b553aef7",
+        "kind": "INTEGRATION",
+        "path": "https://github.com/naibarn/SmartSpecPro/pull/93"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "next_action": "Continue P0-WU-3: produce and bind durable canonical-convergence and worktree-retirement receipts; then execute remaining race and 30-case regression coverage.",
+    "rationale": "P0 workspace authority is partially integrated. Runtime receipt producers/binding, full 30-scenario execution, and Mission Control/production adapters remain open.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -63,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+        "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
       }
@@ -71,16 +71,16 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-    "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+    "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
     "metadata": {
       "implementation_last_touched_at": null,
       "last_evidence_at": "2026-10-06T09:28:58.193296Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-10-06T16:35:35+07:00",
+      "spec_last_changed_at": "2026-10-07T00:34:05+07:00"
     },
     "revision": "1.4",
     "slug": "293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
@@ -96,15 +96,43 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "5a389545896d9152f23749d3fc1710d6c80f3a43",
+    "canonical_sha": "392b41dbaadcee6bfb4497735d451db8b553aef7",
     "integrated": true,
-    "integrated_at": "2026-10-06T09:36:21Z"
+    "integrated_at": "2026-10-06T17:53:47Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
-    "state_evidence": [],
-    "updated_at": "2026-10-06T09:28:58.193296Z"
+    "current_state": "PARTIAL_INTEGRATED",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/pull/93",
+      "git:392b41dbaadcee6bfb4497735d451db8b553aef7"
+    ],
+    "updated_at": "2026-10-06T17:53:47Z"
+  },
+  "manual_decisions": {
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "392b41dbaadcee6bfb4497735d451db8b553aef7",
+          "kind": "INTEGRATION",
+          "path": "https://github.com/naibarn/SmartSpecPro/pull/93"
+        }
+      ],
+      "next_action": "Continue P0-WU-3: produce and bind durable canonical-convergence and worktree-retirement receipts; then execute remaining race and 30-case regression coverage.",
+      "rationale": "P0 workspace authority is partially integrated. Runtime receipt producers/binding, full 30-scenario execution, and Mission Control/production adapters remain open.",
+      "residual_requirements": []
+    },
+    "lifecycle": {
+      "current_state": "PARTIAL_INTEGRATED",
+      "previous_state": "DISCOVERING",
+      "state_evidence": [
+        "https://github.com/naibarn/SmartSpecPro/pull/93",
+        "git:392b41dbaadcee6bfb4497735d451db8b553aef7"
+      ],
+      "updated_at": "2026-10-06T17:53:47Z"
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -117,7 +145,7 @@
     "reconciled_at": "2026-10-06T09:28:58.193296Z",
     "sources": [
       {
-        "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+        "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
       },
@@ -129,11 +157,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-        "source_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+        "source_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
         "value": "PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -155,14 +188,14 @@
         "excerpt": "**Status:** PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery",
         "line": 4,
         "source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-        "source_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+        "source_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
         "value": "PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+        "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
       }
@@ -178,11 +211,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 228,
-    "unresolved": 228
+    "total": 235,
+    "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T09:37:09.849266Z",
+  "updated_at": "2026-10-06T17:57:12.095041Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

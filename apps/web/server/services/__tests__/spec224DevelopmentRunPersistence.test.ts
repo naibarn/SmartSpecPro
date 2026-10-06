@@ -515,6 +515,40 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     };
   }
 
+  function finalVerifyLifecycleOutput(run: ReturnType<typeof finalVerifyRun>) {
+    return {
+      evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"],
+      workspaceConvergenceReceipt: {
+        receipt_id: "workspace-convergence:receipt-test",
+        project_id: "project-224",
+        repository_id: "smartspecpro",
+        workspace_id: "canonical-user-workspace",
+        task_id: run.runId,
+        workspace_role: "CANONICAL_USER_WORKSPACE",
+        result: "USER_WORKSPACE_CONVERGED",
+        dirty: false,
+        integrated_sha: "1".repeat(40),
+        canonical_sha: "2".repeat(40),
+        canonical_user_workspace_sha: "2".repeat(40),
+        verified_at: "2026-10-07T00:00:00.000Z",
+      },
+      worktreeRetirementReceipt: {
+        receipt_id: "worktree-retirement:receipt-test",
+        project_id: "project-224",
+        repository_id: "smartspecpro",
+        workspace_id: "task-worktree-224",
+        task_id: run.runId,
+        workspace_role: "TASK_WORKTREE",
+        result: "WORKTREE_RETIRED",
+        integration_verified: true,
+        owner_state: "NO_ACTIVE_SESSION",
+        workspace_sha: "2".repeat(40),
+        canonical_sha: "2".repeat(40),
+        retired_at: "2026-10-07T00:00:00.000Z",
+      },
+    };
+  }
+
   function finalVerifyGraph() {
     const sourceArtifactDigest = "c".repeat(64);
     const digest = "b".repeat(64);
@@ -724,7 +758,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       { run, revision: 0, events: [] },
       {
         status: "succeeded",
-        output: { evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"] },
+        output: finalVerifyLifecycleOutput(run),
         resultRef: "result:final-worker",
       }
     );
@@ -765,7 +799,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       { run, revision: 0, events: [] },
       {
         status: "succeeded",
-        output: { evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"] },
+        output: finalVerifyLifecycleOutput(run),
       }
     );
 
@@ -789,7 +823,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       { run, revision: 0, events: [] },
       {
         status: "succeeded",
-        output: { evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"] },
+        output: finalVerifyLifecycleOutput(run),
       }
     );
     await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
@@ -830,7 +864,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       { run, revision: 0, events: [] },
       {
         status: "succeeded",
-        output: { evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"] },
+        output: finalVerifyLifecycleOutput(run),
         resultRef: "result:final-worker",
       }
     );
@@ -857,6 +891,33 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     ).toHaveLength(1);
   });
 
+  it("waits for owner review when lifecycle receipts belong to another run", async () => {
+    const run = finalVerifyRun();
+    const output = finalVerifyLifecycleOutput(run);
+    output.workspaceConvergenceReceipt.task_id = "another-run";
+    const adapter = memoryAdapter(
+      { run, revision: 0, events: [] },
+      { status: "succeeded", output }
+    );
+    await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
+
+    const result = await createDevelopmentRunService(adapter).reconcile({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+    });
+
+    expect(result.action).toBe("WAIT");
+    expect(result.run.state).toBe("WAITING_HUMAN_DECISION");
+    expect(result.reason).toBe("workspace_lifecycle_receipt_invalid");
+    expect(result.run.events.at(-1)).toMatchObject({
+      type: "DECISION_REQUIRED",
+      payload: {
+        errorCode: "WORKSPACE_LIFECYCLE_RECEIPT_BINDING_MISMATCH",
+      },
+    });
+  });
+
   it("rejects a stale terminal provenance tuple through the existing repair path", async () => {
     const run = finalVerifyRun();
     const adapter = memoryAdapter(
@@ -864,7 +925,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       {
         status: "succeeded",
         output: {
-          evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"],
+          ...finalVerifyLifecycleOutput(run),
           verificationProvenance: {
             ...finalVerifyProvenance,
             specDigest: "f".repeat(64),
@@ -907,7 +968,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       {
         status: "succeeded",
         output: {
-          evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"],
+          ...finalVerifyLifecycleOutput(run),
           verificationProvenance: {
             ...finalVerifyProvenance,
             candidateSha: "not-a-sha",
@@ -939,7 +1000,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       {
         status: "succeeded",
         output: {
-          evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"],
+          ...finalVerifyLifecycleOutput(run),
           verificationProvenance: finalVerifyProvenance,
         },
       }

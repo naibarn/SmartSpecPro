@@ -66,6 +66,74 @@ export type DevelopmentRun = {
   metadata?: Record<string, unknown>;
 };
 
+type WorkspaceLifecycleReceipt = Record<string, unknown>;
+
+function isGitObjectId(value: unknown): value is string {
+  return typeof value === "string" && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(value);
+}
+
+function receiptIdRef(value: unknown, prefix: string): string | null {
+  if (typeof value !== "string" || !/^[A-Za-z0-9_./:@#-]{1,181}$/.test(value)) return null;
+  const id = value.startsWith(`${prefix}:`) ? value.slice(prefix.length + 1) : value;
+  return `evidence:${prefix}:${id}`;
+}
+
+/** Validate final receipts as bound lifecycle evidence, not marker strings. */
+export function workspaceLifecycleEvidenceErrorCode(
+  run: DevelopmentRun,
+  convergence: WorkspaceLifecycleReceipt,
+  retirement: WorkspaceLifecycleReceipt,
+  evidenceRefs: string[]
+): string | null {
+  const convergenceRef = receiptIdRef(convergence.receipt_id, "workspace-convergence");
+  const retirementRef = receiptIdRef(retirement.receipt_id, "worktree-retirement");
+  if (!convergenceRef || !retirementRef || !evidenceRefs.includes(convergenceRef) || !evidenceRefs.includes(retirementRef)) {
+    return "WORKSPACE_LIFECYCLE_RECEIPT_REF_MISMATCH";
+  }
+  const requiredStrings = ["project_id", "repository_id", "workspace_id", "task_id"];
+  if (requiredStrings.some(key => typeof convergence[key] !== "string" || !convergence[key])) {
+    return "WORKSPACE_CONVERGENCE_RECEIPT_INVALID";
+  }
+  if (requiredStrings.some(key => typeof retirement[key] !== "string" || !retirement[key])) {
+    return "WORKTREE_RETIREMENT_RECEIPT_INVALID";
+  }
+  const expectedRepositoryId = run.repositoryRef.replace(/^repo:/, "");
+  const expectedProjectId = typeof run.metadata?.projectId === "string" ? run.metadata.projectId : null;
+  if (
+    convergence.project_id !== retirement.project_id ||
+    convergence.repository_id !== retirement.repository_id ||
+    convergence.repository_id !== expectedRepositoryId ||
+    (expectedProjectId !== null && convergence.project_id !== expectedProjectId) ||
+    convergence.task_id !== run.runId || retirement.task_id !== run.runId
+  ) {
+    return "WORKSPACE_LIFECYCLE_RECEIPT_BINDING_MISMATCH";
+  }
+  if (
+    convergence.workspace_role !== "CANONICAL_USER_WORKSPACE" ||
+    convergence.result !== "USER_WORKSPACE_CONVERGED" ||
+    convergence.dirty !== false ||
+    (typeof run.metadata?.canonicalRef === "string" && convergence.canonical_ref !== run.metadata.canonicalRef) ||
+    !isGitObjectId(convergence.integrated_sha) ||
+    !isGitObjectId(convergence.canonical_sha) ||
+    convergence.canonical_user_workspace_sha !== convergence.canonical_sha ||
+    !Number.isFinite(Date.parse(String(convergence.verified_at)))
+  ) {
+    return "WORKSPACE_CONVERGENCE_RECEIPT_INVALID";
+  }
+  if (
+    !["TASK_WORKTREE", "SESSION_WORKTREE", "INTEGRATION_WORKTREE"].includes(String(retirement.workspace_role)) ||
+    retirement.result !== "WORKTREE_RETIRED" ||
+    retirement.integration_verified !== true ||
+    retirement.owner_state === "ACTIVE_SESSION" ||
+    !isGitObjectId(retirement.workspace_sha) ||
+    retirement.canonical_sha !== convergence.canonical_sha ||
+    !Number.isFinite(Date.parse(String(retirement.retired_at)))
+  ) {
+    return "WORKTREE_RETIREMENT_RECEIPT_INVALID";
+  }
+  return null;
+}
+
 export type DevelopmentEventType =
   | "RUN_CREATED"
   | "PHASE_STARTED"

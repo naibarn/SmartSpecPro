@@ -113416,7 +113416,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "5a389545896d9152f23749d3fc1710d6c80f3a43",
+      "canonical_sha": "392b41dbaadcee6bfb4497735d451db8b553aef7",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -113651,6 +113651,13 @@
         "requirement REQ-54C0618A0757 is OPEN",
         "requirement REQ-1D9A42DBB7C0 is OPEN",
         "requirement REQ-A62B544C4300 is OPEN",
+        "requirement REQ-022B110FA38C is OPEN",
+        "requirement REQ-795882ED5177 is OPEN",
+        "requirement REQ-48082918A788 is OPEN",
+        "requirement REQ-BB398981FC8F is OPEN",
+        "requirement REQ-9E75E9387EEE is OPEN",
+        "requirement REQ-2DB561EFF1DF is OPEN",
+        "requirement REQ-A62D3617ADE8 is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -113669,7 +113676,7 @@
           "excerpt": "**Status:** PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery",
           "line": 4,
           "source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-          "source_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+          "source_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
           "value": "PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery"
         }
       ],
@@ -113682,18 +113689,18 @@
           "excerpt": "**Status:** PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery",
           "line": 4,
           "source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-          "source_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+          "source_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
           "value": "PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.193296Z",
-      "lifecycle": "DISCOVERING",
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "lifecycle": "PARTIAL_INTEGRATED",
+      "next_action": "Continue P0-WU-3: produce and bind durable canonical-convergence and worktree-retirement receipts; then execute remaining race and 30-case regression coverage.",
       "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
       "primary_blocker": null,
       "problem": null,
@@ -113718,14 +113725,14 @@
             "excerpt": "**Status:** PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery",
             "line": 4,
             "source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-            "source_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+            "source_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
             "value": "PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+            "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
           }
@@ -113736,18 +113743,18 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 228,
+        "open": 235,
         "pass": 0,
-        "total": 228
+        "total": 235
       },
       "review_priority": "R4_STATUS_CLAIM",
       "revision": "1.4",
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
-      "spec_created_at": null,
+      "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_id": "293",
-      "spec_last_changed_at": null,
+      "spec_last_changed_at": "2026-10-07T00:34:05+07:00",
       "spec_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
       "successors": [],
       "title": "SPEC-293 — SmartAIHub Unified Git Workspace & Repository Federation",
@@ -113757,7 +113764,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "5a389545896d9152f23749d3fc1710d6c80f3a43",
+      "canonical_sha": "392b41dbaadcee6bfb4497735d451db8b553aef7",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -114252,6 +114259,10 @@
         "requirement REQ-2D0DF087DE99 is OPEN",
         "requirement REQ-5361402FDDAD is OPEN",
         "requirement REQ-EC12C503F258 is OPEN",
+        "requirement REQ-6D2DCF0A14A1 is OPEN",
+        "requirement REQ-2E3B7B92D593 is OPEN",
+        "requirement REQ-835297DD5101 is OPEN",
+        "requirement REQ-C09F23CC6CEF is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -114270,7 +114281,7 @@
           "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
           "line": 4,
           "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-          "source_digest": "d09d97058d4c9134b2001509b910af67b16d87b9b2cdd4d0d1b31c33c241d298",
+          "source_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
           "value": "Proposed / Additive implementation-ready specification"
         }
       ],
@@ -114283,56 +114294,31 @@
           "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
           "line": 4,
           "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-          "source_digest": "d09d97058d4c9134b2001509b910af67b16d87b9b2cdd4d0d1b31c33c241d298",
+          "source_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
           "value": "Proposed / Additive implementation-ready specification"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "d09d97058d4c9134b2001509b910af67b16d87b9b2cdd4d0d1b31c33c241d298",
+      "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.211822Z",
-      "lifecycle": "DISCOVERING",
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "lifecycle": "PARTIAL_INTEGRATED",
+      "next_action": "Continue P0-WU-3: produce and bind durable canonical-convergence and worktree-retirement receipts; then execute remaining race and 30-case regression coverage.",
       "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "primary_blocker": null,
       "problem": null,
       "record_key": "canonical:specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "record_kind": "CANONICAL_SPEC",
-      "relationship_claims": [
-        {
-          "confidence": "LOW",
-          "direction": "RELATIONSHIP_CANDIDATE",
-          "predecessor_spec_id": "294",
-          "referenced_spec_id": "228",
-          "referencing_spec_id": "294",
-          "relation_text": "successor",
-          "requirement_ids": [],
-          "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L3636",
-          "source_digest": "d09d97058d4c9134b2001509b910af67b16d87b9b2cdd4d0d1b31c33c241d298",
-          "successor_spec_id": null
-        },
-        {
-          "confidence": "LOW",
-          "direction": "RELATIONSHIP_CANDIDATE",
-          "predecessor_spec_id": "294",
-          "referenced_spec_id": "238",
-          "referencing_spec_id": "294",
-          "relation_text": "successor",
-          "requirement_ids": [],
-          "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L3636",
-          "source_digest": "d09d97058d4c9134b2001509b910af67b16d87b9b2cdd4d0d1b31c33c241d298",
-          "successor_spec_id": null
-        }
-      ],
+      "relationship_claims": [],
       "relationships": {
         "duplicate_ids": [],
         "duplicate_revisions": []
       },
       "relevance_assessment": {
         "active_references": [],
-        "conflict_duplication_risk": "REVIEW_REQUIRED",
+        "conflict_duplication_risk": "UNASSESSED",
         "current_architecture_fit": "UNASSESSED",
         "current_product_relevance": "UNASSESSED",
         "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -114344,14 +114330,14 @@
             "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
             "line": 4,
             "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-            "source_digest": "d09d97058d4c9134b2001509b910af67b16d87b9b2cdd4d0d1b31c33c241d298",
+            "source_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
             "value": "Proposed / Additive implementation-ready specification"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "d09d97058d4c9134b2001509b910af67b16d87b9b2cdd4d0d1b31c33c241d298",
+            "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
           }
@@ -114359,21 +114345,21 @@
         "implementation_equivalence": "UNASSESSED",
         "residual_requirements": [],
         "security_data_compliance_obligations": "REVIEW_REQUIRED",
-        "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+        "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 488,
+        "open": 492,
         "pass": 0,
-        "total": 488
+        "total": 492
       },
       "review_priority": "R4_STATUS_CLAIM",
       "revision": "1.7",
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
-      "spec_created_at": null,
+      "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_id": "294",
-      "spec_last_changed_at": null,
+      "spec_last_changed_at": "2026-10-07T00:34:05+07:00",
       "spec_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
       "successors": [],
       "title": "SPEC-294 — SmartAIHub Development Mission Control & Conversational Project Operations",
@@ -114383,7 +114369,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "5a389545896d9152f23749d3fc1710d6c80f3a43",
+      "canonical_sha": "392b41dbaadcee6bfb4497735d451db8b553aef7",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -114551,6 +114537,10 @@
         "requirement REQ-883C6E21946E is OPEN",
         "requirement REQ-3E0BB15A1579 is OPEN",
         "requirement REQ-8E771B83AF27 is OPEN",
+        "requirement REQ-8A66550B8C25 is OPEN",
+        "requirement REQ-289E741CA161 is OPEN",
+        "requirement REQ-0FC45C88EE18 is OPEN",
+        "requirement REQ-A045F9189BD3 is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -114569,7 +114559,7 @@
           "excerpt": "**Status:** Proposed / Additive / Implementation-ready candidate",
           "line": 4,
           "source": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-          "source_digest": "bb1ca0046957653609a9af95230551ce546f1da2c775bae50f95d2bc79fc82a5",
+          "source_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
           "value": "Proposed / Additive / Implementation-ready candidate"
         }
       ],
@@ -114582,18 +114572,18 @@
           "excerpt": "**Status:** Proposed / Additive / Implementation-ready candidate",
           "line": 4,
           "source": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-          "source_digest": "bb1ca0046957653609a9af95230551ce546f1da2c775bae50f95d2bc79fc82a5",
+          "source_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
           "value": "Proposed / Additive / Implementation-ready candidate"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "bb1ca0046957653609a9af95230551ce546f1da2c775bae50f95d2bc79fc82a5",
+      "digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.246992Z",
-      "lifecycle": "DISCOVERING",
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "lifecycle": "PARTIAL_INTEGRATED",
+      "next_action": "Continue P0-WU-3: produce and bind durable canonical-convergence and worktree-retirement receipts; then execute remaining race and 30-case regression coverage.",
       "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
       "primary_blocker": null,
       "problem": null,
@@ -114618,14 +114608,14 @@
             "excerpt": "**Status:** Proposed / Additive / Implementation-ready candidate",
             "line": 4,
             "source": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-            "source_digest": "bb1ca0046957653609a9af95230551ce546f1da2c775bae50f95d2bc79fc82a5",
+            "source_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
             "value": "Proposed / Additive / Implementation-ready candidate"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "bb1ca0046957653609a9af95230551ce546f1da2c775bae50f95d2bc79fc82a5",
+            "digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
           }
@@ -114636,18 +114626,18 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 161,
+        "open": 165,
         "pass": 0,
-        "total": 161
+        "total": 165
       },
       "review_priority": "R4_STATUS_CLAIM",
       "revision": "1.2",
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
-      "spec_created_at": null,
+      "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_id": "295",
-      "spec_last_changed_at": null,
+      "spec_last_changed_at": "2026-10-07T00:34:05+07:00",
       "spec_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
       "successors": [],
       "title": "SPEC-295 — SmartAIHub Unified Production Environment, Release, Deployment, Data Migration & Runtime Operations Fabric",

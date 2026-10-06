@@ -54,8 +54,12 @@ python3 scripts/development-lifecycle/workspace_authority.py verify --repository
 After promotion, request safe convergence of the registered user workspace:
 
 ```bash
-python3 scripts/development-lifecycle/workspace_authority.py converge --repository <repository-root> --integrated-sha <integrated-sha>
+python3 scripts/development-lifecycle/workspace_authority.py converge --repository <repository-root> --integrated-sha <integrated-sha> [--task-id <development-run-id>]
 ```
+
+When this convergence is evidence for Spec 224 Final Verify, pass that run's
+exact ID with `--task-id`; register its task worktree with the same task ID so
+the convergence and retirement receipts bind to one run.
 
 The resolver only fast-forwards a clean workspace after checking its explicit
 role, repository identity, intended local commits, owner lease, and the latest

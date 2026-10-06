@@ -2,11 +2,11 @@
 # 294 — SPEC-294 — SmartAIHub Development Mission Control & Conversational Project Operations
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
-- Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 488 unresolved of 488
-- Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 3
+- Lifecycle: `PARTIAL_INTEGRATED`
+- Continuation: `RECONCILIATION_REQUIRED` (HIGH)
+- Requirements: 0 pass / 492 unresolved of 492
+- Next action: Continue P0-WU-3: produce and bind durable canonical-convergence and worktree-retirement receipts; then execute remaining race and 30-case regression coverage.
+- Manifest generation: 5
 
 ## Source-declared status and relationship claims
 

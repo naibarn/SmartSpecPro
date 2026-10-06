@@ -710,6 +710,7 @@ def converge_canonical_workspace(
     policy_path: Path | None = None,
     *,
     integrated_sha: str | None = None,
+    task_id: str | None = None,
     max_ref_refreshes: int = 3,
 ) -> dict[str, Any]:
     repo = _repo_root(repo)
@@ -768,6 +769,8 @@ def converge_canonical_workspace(
             "receipt_id": f"workspace-convergence:{uuid.uuid4()}",
             "project_id": policy["project_id"],
             "repository_id": policy["repository_id"],
+            "task_id": task_id,
+            "session_id": os.environ.get("CODEX_SESSION_ID") or os.environ.get("CLAUDE_SESSION_ID"),
             "workspace_id": registered["workspace_id"],
             "workspace_role": "CANONICAL_USER_WORKSPACE",
             "workspace_location": str(target_root),
@@ -967,7 +970,7 @@ def _cli() -> int:
             result = register_workspace(repo, args.policy, args.workspace, role=args.role, task_id=args.task_id, owner_session_id=args.session_id, owner_pid=args.owner_pid, owner_lease_seconds=args.owner_lease_seconds if args.session_id or args.owner_pid else None)
             result["status"] = "WORKSPACE_REGISTERED"
         elif args.action == "converge":
-            result = converge_canonical_workspace(repo, args.policy, integrated_sha=args.integrated_sha)
+            result = converge_canonical_workspace(repo, args.policy, integrated_sha=args.integrated_sha, task_id=args.task_id)
         elif args.action == "verify":
             result = verify_canonical_convergence(repo, args.policy, integrated_sha=args.integrated_sha, task_workspace_id=args.workspace_id)
         elif args.action == "preserve":

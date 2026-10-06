@@ -43,6 +43,7 @@ import {
   buildDevelopmentHarnessJob,
   recordDevelopmentEvent,
   transitionDevelopmentRun,
+  workspaceLifecycleEvidenceErrorCode,
   type DevelopmentEvent,
   type DevelopmentEventType,
   type DevelopmentRun,
@@ -1149,6 +1150,36 @@ export function createDevelopmentRunService(
                 reason: "workspace_convergence_or_retirement_evidence_missing",
               };
             }
+            const convergenceReceipt = job.output?.workspaceConvergenceReceipt;
+            const retirementReceipt = job.output?.worktreeRetirementReceipt;
+            const lifecycleEvidenceError =
+              typeof convergenceReceipt === "object" && convergenceReceipt !== null &&
+              typeof retirementReceipt === "object" && retirementReceipt !== null
+                ? workspaceLifecycleEvidenceErrorCode(
+                    record.run,
+                    convergenceReceipt as Record<string, unknown>,
+                    retirementReceipt as Record<string, unknown>,
+                    evidenceRefs
+                  )
+                : "WORKSPACE_LIFECYCLE_RECEIPT_CONTENT_MISSING";
+            if (lifecycleEvidenceError) {
+              const paused = await applyTransition(tx, record, scope, {
+                idempotencyKey: `reconcile:${record.run.workerJobId}:final-verify:workspace-receipt-invalid`,
+                nextState: "WAITING_HUMAN_DECISION",
+                eventType: "DECISION_REQUIRED",
+                payload: {
+                  reason: "workspace_lifecycle_receipt_invalid",
+                  errorCode: lifecycleEvidenceError,
+                  workerJobId: record.run.workerJobId,
+                },
+              });
+              return {
+                action: "WAIT",
+                run: paused.run,
+                revision: paused.revision,
+                reason: "workspace_lifecycle_receipt_invalid",
+              };
+            }
             let closureErrorCode: string | null = null;
             try {
               const provenanceErrorCode = finalVerifyProvenanceErrorCode(
@@ -1206,6 +1237,8 @@ export function createDevelopmentRunService(
                 source: "worker_job",
                 workerJobId: record.run.workerJobId,
                 resultRef: job.resultRef ?? null,
+                workspaceConvergenceReceipt: convergenceReceipt,
+                worktreeRetirementReceipt: retirementReceipt,
               },
               evidenceRefs,
             });
