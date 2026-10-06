@@ -678,6 +678,66 @@ def _local_commit_classification(repo: Path, head: str, target: str) -> dict[str
     }
 
 
+def _patch_id(repo: Path, base: str, head: str) -> str | None:
+    diff = subprocess.run(
+        ["git", "-C", str(repo), "diff", "--no-ext-diff", "--binary", base, head],
+        capture_output=True,
+    )
+    if diff.returncode:
+        raise WorkspaceAuthorityError("STASH_PATCH_READ_FAILED")
+    identified = subprocess.run(
+        ["git", "patch-id", "--stable"], input=diff.stdout, capture_output=True
+    )
+    if identified.returncode:
+        raise WorkspaceAuthorityError("STASH_PATCH_CLASSIFICATION_FAILED")
+    fields = identified.stdout.decode("ascii", errors="replace").split()
+    return fields[0] if fields else None
+
+
+def _classify_stashes(repo: Path, target: str) -> list[dict[str, str]]:
+    stash_output = str(_git(repo, "stash", "list", "--format=%H") or "").strip()
+    stash_commits = [line.strip() for line in stash_output.splitlines() if line.strip()]
+    if not stash_commits:
+        return []
+    history_count = int(str(_git(repo, "rev-list", "--no-merges", "--count", target)).strip())
+    history = subprocess.run(
+        ["git", "-C", str(repo), "log", "--no-merges", "--max-count=5000", "-p", target],
+        capture_output=True,
+    )
+    if history.returncode:
+        raise WorkspaceAuthorityError("STASH_CANONICAL_HISTORY_READ_FAILED")
+    identified = subprocess.run(
+        ["git", "patch-id", "--stable"], input=history.stdout, capture_output=True
+    )
+    if identified.returncode:
+        raise WorkspaceAuthorityError("STASH_PATCH_CLASSIFICATION_FAILED")
+    canonical_patch_ids = {
+        line.split()[0]
+        for line in identified.stdout.decode("ascii", errors="replace").splitlines()
+        if line.split()
+    }
+    history_truncated = history_count > 5000
+
+    classifications: list[dict[str, str]] = []
+    for stash_commit in stash_commits:
+        parents = str(_git(repo, "show", "-s", "--format=%P", stash_commit)).split()
+        if not parents:
+            classifications.append({"stash_commit": stash_commit, "state": "UNCLASSIFIED_INVALID_STASH"})
+            continue
+        parent = parents[0]
+        patch_id = _patch_id(repo, parent, stash_commit)
+        if not patch_id:
+            state = "UNCLASSIFIED_EMPTY_PATCH"
+        elif patch_id in canonical_patch_ids:
+            state = "PATCH_EQUIVALENT_IN_CANONICAL"
+        elif history_truncated:
+            state = "UNCLASSIFIED_HISTORY_BOUND"
+        else:
+            state = "UNIQUE_OR_UNPROVEN_STASH"
+        classifications.append({"stash_commit": stash_commit, "state": state})
+    return classifications
+
+
 def _preserve_local_commits(repo: Path, policy: dict[str, Any], workspace: dict[str, Any], target: str) -> str | None:
     commits = _local_commit_classification(repo, workspace["head_sha"], target)
     if not commits["unique_commits"]:
@@ -900,14 +960,14 @@ def retire_completed_worktree(
     ignored = bytes(_git(path, "ls-files", "--others", "--ignored", "--exclude-standard", "-z", binary=True))
     if ignored:
         return {"status": "RETIREMENT_BLOCKED_IGNORED_CONTENT", "workspace_id": workspace_id, "ignored_path_count": len([item for item in ignored.split(b"\0") if item])}
-    stash_output = str(_git(path, "stash", "list", "--format=%H", check=False) or "").strip()
-    if stash_output:
+    canonical_sha = _fetch_canonical(path, policy)
+    stash_classification = _classify_stashes(path, canonical_sha)
+    if stash_classification:
         return {
             "status": "RETIREMENT_BLOCKED_STASH_PRESENT",
             "workspace_id": workspace_id,
-            "stash_commits": [line.strip() for line in stash_output.splitlines() if line.strip()],
+            "stash_classification": stash_classification,
         }
-    canonical_sha = _fetch_canonical(path, policy)
     classification = _local_commit_classification(path, facts["head_sha"], canonical_sha)
     if classification["unique_commits"]:
         bundle = _preserve_local_commits(path, policy, {**workspace, **facts}, canonical_sha)

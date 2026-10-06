@@ -93,7 +93,7 @@
       "name": "stash-already-integrated",
       "proof_kind": "LOCAL_EXECUTABLE",
       "assert": "stash content is classified; resolver never drops stash",
-      "test_name": "test_workspace_retirement_blocks_stash_and_missing_unproven_workspace"
+      "test_name": "test_retirement_classifies_integrated_stash_without_dropping_it"
     },
     {
       "number": 14,
@@ -167,43 +167,50 @@
       "number": 23,
       "name": "multiple-repositories-in-one-project",
       "proof_kind": "CONTRACT_SIMULATION",
-      "assert": "authority key includes project and repository identity"
+      "assert": "authority key includes project and repository identity",
+      "test_name": "test_project_source_projection_tracks_each_repository_identity"
     },
     {
       "number": 24,
       "name": "one-project-repository-behind-another",
       "proof_kind": "CONTRACT_SIMULATION",
-      "assert": "convergence is evaluated per repository target"
+      "assert": "convergence is evaluated per repository target",
+      "test_name": "test_project_source_projection_does_not_share_canonical_sha_across_repositories"
     },
     {
       "number": 25,
       "name": "deployment-behind-source",
       "proof_kind": "CONTRACT_SIMULATION",
-      "assert": "development convergence does not claim release convergence"
+      "assert": "development convergence does not claim release convergence",
+      "test_name": "test_development_completion_does_not_claim_production_convergence"
     },
     {
       "number": 26,
       "name": "migration-behind-deployment",
       "proof_kind": "CONTRACT_SIMULATION",
-      "assert": "release receipt retains required/applied migration mismatch"
+      "assert": "release receipt retains required/applied migration mismatch",
+      "test_name": "test_production_convergence_requires_applied_migrations"
     },
     {
       "number": 27,
       "name": "partial-Cloudflare-rollout",
       "proof_kind": "CONTRACT_SIMULATION",
-      "assert": "partial instances cannot be production converged"
+      "assert": "partial instances cannot be production converged",
+      "test_name": "test_partial_runtime_rollout_blocks_production_convergence"
     },
     {
       "number": 28,
       "name": "stale-container-instance",
       "proof_kind": "CONTRACT_SIMULATION",
-      "assert": "stale runtime revision remains visible and blocks release convergence"
+      "assert": "stale runtime revision remains visible and blocks release convergence",
+      "test_name": "test_stale_container_revision_blocks_production_convergence"
     },
     {
       "number": 29,
       "name": "rollback",
       "proof_kind": "CONTRACT_SIMULATION",
-      "assert": "rollback is a new verified convergence target with lineage"
+      "assert": "rollback is a new verified convergence target with lineage",
+      "test_name": "test_rollback_requires_lineage_and_converges_as_a_new_release_target"
     },
     {
       "number": 30,

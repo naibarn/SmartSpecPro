@@ -85,11 +85,20 @@ class CrossSkillContractTests(unittest.TestCase):
             "evidence": ["tests/r1.log"],
             "evidence_fresh": True,
         }
-        kwargs = dict(integrated=True, required_verification_fresh=True, authority_resolved=True, task_regressions_clear=True)
+        kwargs = dict(
+            integrated=True,
+            required_verification_fresh=True,
+            authority_resolved=True,
+            task_regressions_clear=True,
+            canonical_verified=True,
+            user_workspace_converged=True,
+            worktree_lifecycle_settled=True,
+        )
         self.assertTrue(lifecycle_policy.outcome_complete([requirement], **kwargs))
         self.assertFalse(lifecycle_policy.outcome_complete([dict(requirement, evidence=[])], **kwargs))
         self.assertFalse(lifecycle_policy.outcome_complete([dict(requirement, completion_predicate_satisfied=False)], **kwargs))
         self.assertFalse(lifecycle_policy.outcome_complete([requirement], **dict(kwargs, task_regressions_clear=False)))
+        self.assertFalse(lifecycle_policy.outcome_complete([requirement], **dict(kwargs, user_workspace_converged=False)))
 
     def test_ten_downstream_scenarios_use_the_shared_lifecycle_kernel(self):
         fixture = json.loads((ROOT / "skills/development-lifecycle/deep-workflow-scenarios.json").read_text())

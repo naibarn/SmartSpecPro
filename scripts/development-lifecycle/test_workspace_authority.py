@@ -18,6 +18,14 @@ authority = importlib.util.module_from_spec(AUTHORITY_SPEC)
 sys.modules[AUTHORITY_SPEC.name] = authority
 AUTHORITY_SPEC.loader.exec_module(authority)
 
+CONVERGENCE_PATH = Path(__file__).with_name("convergence_contract.py")
+CONVERGENCE_SPEC = importlib.util.spec_from_file_location("convergence_contract", CONVERGENCE_PATH)
+if CONVERGENCE_SPEC is None or CONVERGENCE_SPEC.loader is None:
+    raise ImportError("convergence contract module is unavailable")
+convergence_contract = importlib.util.module_from_spec(CONVERGENCE_SPEC)
+sys.modules[CONVERGENCE_SPEC.name] = convergence_contract
+CONVERGENCE_SPEC.loader.exec_module(convergence_contract)
+
 
 def git(cwd: Path, *args: str) -> str:
     result = subprocess.run(["git", "-C", str(cwd), *args], text=True, capture_output=True)
@@ -139,6 +147,24 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(facts["session_state"], "STALE_CLOSED_SESSION")
         self.assertEqual(facts["workspace_id"], workspace["workspace_id"])
 
+        task = self.root / "ended-session-worktree"
+        git(self.canonical, "worktree", "add", "-b", "task/ended-session", str(task), "HEAD")
+        task_workspace = authority.register_workspace(
+            self.canonical,
+            self.policy,
+            task,
+            role="TASK_WORKTREE",
+            task_id="ended-session-task",
+            owner_session_id="ended-session",
+            owner_pid=2_000_000_001,
+            owner_lease_seconds=300,
+        )
+        project = authority.resolve_project_authority(self.canonical, self.policy)
+        task_state = next(row for row in project["workspaces"] if row["workspace_id"] == task_workspace["workspace_id"])
+        self.assertEqual(task_state["session_state"], "STALE_CLOSED_SESSION")
+        self.assertEqual(project["active_sessions"], 0)
+        self.assertTrue(task.exists())
+
     def test_zero_session_closeout_keeps_dirty_workspaces_visible(self) -> None:
         for repetition in range(3):
             with self.subTest(repetition=repetition + 1):
@@ -156,6 +182,118 @@ class WorkspaceAuthorityTests(unittest.TestCase):
                 self.assertEqual(project["workspace_count"], 1)
                 self.assertTrue(project["workspaces"][0]["dirty"])
                 self.assertEqual(project["workspaces"][0]["session_state"], "NO_ACTIVE_SESSION")
+
+    def test_project_source_projection_tracks_each_repository_identity(self) -> None:
+        result = convergence_contract.evaluate_repository_sources(
+            "project-a",
+            [
+                {"repository_id": "repo-a", "canonical_sha": "a1", "workspace_sha": "a1", "dirty": False},
+                {"repository_id": "repo-b", "canonical_sha": "b2", "workspace_sha": "b1", "dirty": False},
+            ],
+        )
+        self.assertEqual(result["status"], "SOURCE_CONVERGENCE_PENDING")
+        self.assertEqual([row["state"] for row in result["repositories"]], ["SYNCED", "BEHIND_OR_DIVERGED"])
+        self.assertEqual({row["project_id"] for row in result["repositories"]}, {"project-a"})
+
+    def test_project_source_projection_does_not_share_canonical_sha_across_repositories(self) -> None:
+        result = convergence_contract.evaluate_repository_sources(
+            "project-a",
+            [
+                {"repository_id": "frontend", "canonical_sha": "front", "workspace_sha": "front", "dirty": False},
+                {"repository_id": "backend", "canonical_sha": "back", "workspace_sha": "back", "dirty": False},
+            ],
+        )
+        self.assertEqual(result["status"], "SOURCE_CONVERGED")
+        self.assertEqual(result["repository_count"], 2)
+        with self.assertRaisesRegex(ValueError, "REPOSITORY_ID_MISSING_OR_DUPLICATE"):
+            convergence_contract.evaluate_repository_sources(
+                "project-a",
+                [
+                    {"repository_id": "same", "canonical_sha": "x", "workspace_sha": "x"},
+                    {"repository_id": "same", "canonical_sha": "y", "workspace_sha": "y"},
+                ],
+            )
+
+    def test_development_completion_does_not_claim_production_convergence(self) -> None:
+        development = convergence_contract.evaluate_development_completion(
+            {
+                "integrated": True,
+                "canonical_verified": True,
+                "user_workspace_converged": True,
+                "worktree_lifecycle_settled": True,
+                "required_tests_passed": True,
+            }
+        )
+        production = convergence_contract.evaluate_production_convergence({"source_sha": "abc"})
+        self.assertEqual(development["status"], "DEVELOPMENT_COMPLETE")
+        self.assertEqual(production["status"], "PRODUCTION_CONVERGENCE_PENDING")
+
+    def test_production_convergence_requires_applied_migrations(self) -> None:
+        release = self.production_release_facts()
+        release["required_migrations"] = ["migration-1", "migration-2"]
+        release["migration_evidence"] = [{"migration_id": "migration-1", "state": "APPLIED_VERIFIED"}]
+        result = convergence_contract.evaluate_production_convergence(release)
+        self.assertEqual(result["status"], "PRODUCTION_CONVERGENCE_PENDING")
+        self.assertIn("REQUIRED_MIGRATIONS_NOT_VERIFIED", result["reasons"])
+
+    def test_partial_runtime_rollout_blocks_production_convergence(self) -> None:
+        release = self.production_release_facts()
+        release["required_targets"] = ["worker-a", "container-b"]
+        result = convergence_contract.evaluate_production_convergence(release)
+        self.assertIn("REQUIRED_RUNTIME_TARGETS_MISSING", result["reasons"])
+
+    def test_stale_container_revision_blocks_production_convergence(self) -> None:
+        release = self.production_release_facts()
+        release["required_targets"] = ["container-a"]
+        release["expected_runtime_revisions"] = {"container-a": "revision-1"}
+        release["runtime_targets"] = [
+            {
+                "target_id": "container-a",
+                "source_sha": "old-sha",
+                "artifact_digest": release["artifact_digest"],
+                "runtime_revision": "revision-old",
+                "health": "HEALTHY",
+            }
+        ]
+        result = convergence_contract.evaluate_production_convergence(release)
+        self.assertIn("RUNTIME_TARGET_STALE:container-a", result["reasons"])
+        self.assertIn("RUNTIME_REVISION_STALE:container-a", result["reasons"])
+
+    def test_rollback_requires_lineage_and_converges_as_a_new_release_target(self) -> None:
+        release = self.production_release_facts()
+        release["release_kind"] = "ROLLBACK"
+        blocked = convergence_contract.evaluate_production_convergence(release)
+        self.assertIn("ROLLBACK_LINEAGE_MISSING", blocked["reasons"])
+        release["rollback"] = {
+            "previous_release_id": "release-current",
+            "rollback_of_release_id": "release-prior",
+        }
+        self.assertEqual(convergence_contract.evaluate_production_convergence(release)["status"], "PRODUCTION_CONVERGED")
+
+    @staticmethod
+    def production_release_facts() -> dict[str, object]:
+        return {
+            "source_sha": "source-1",
+            "artifact_digest": "sha256:artifact-1",
+            "artifact_source_sha": "source-1",
+            "deployment_id": "deployment-1",
+            "deployment_status": "DEPLOYED_VERIFIED",
+            "deployment_source_sha": "source-1",
+            "deployment_artifact_digest": "sha256:artifact-1",
+            "required_migrations": [],
+            "migration_evidence": [],
+            "required_targets": ["worker-a"],
+            "expected_runtime_revisions": {"worker-a": "runtime-1"},
+            "runtime_targets": [
+                {
+                    "target_id": "worker-a",
+                    "source_sha": "source-1",
+                    "artifact_digest": "sha256:artifact-1",
+                    "runtime_revision": "runtime-1",
+                    "health": "HEALTHY",
+                }
+            ],
+        }
 
     def test_live_process_lease_is_active_even_when_workspace_is_clean(self) -> None:
         authority.register_workspace(
@@ -360,16 +498,17 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(git(self.canonical, "status", "--porcelain=v1"), "")
 
     def test_dirty_canonical_workspace_is_snapshotted_and_never_overwritten(self) -> None:
-        original = (self.canonical / "tracked.txt").read_text(encoding="utf-8")
-        (self.canonical / "tracked.txt").write_text("user work\n", encoding="utf-8")
-        before = git(self.canonical, "status", "--porcelain=v1", "--untracked-files=all")
-        result = authority.converge_canonical_workspace(self.canonical, self.policy)
-        self.assertEqual(result["status"], "DIRTY_WORK_PRESERVED")
-        self.assertTrue(Path(result["recovery_receipt"]["recovery_path"]).is_dir())
-        self.assertEqual((self.canonical / "tracked.txt").read_text(encoding="utf-8"), "user work\n")
-        self.assertEqual(git(self.canonical, "status", "--porcelain=v1", "--untracked-files=all"), before)
-        self.assertNotEqual(original, "user work\n")
-        self.assertNotIn("completion_receipt", result)
+        for repetition in range(3):
+            with self.subTest(repetition=repetition + 1):
+                content = f"user work {repetition}\n"
+                (self.canonical / "tracked.txt").write_text(content, encoding="utf-8")
+                before = git(self.canonical, "status", "--porcelain=v1", "--untracked-files=all")
+                result = authority.converge_canonical_workspace(self.canonical, self.policy)
+                self.assertEqual(result["status"], "DIRTY_WORK_PRESERVED")
+                self.assertTrue(Path(result["recovery_receipt"]["recovery_path"]).is_dir())
+                self.assertEqual((self.canonical / "tracked.txt").read_text(encoding="utf-8"), content)
+                self.assertEqual(git(self.canonical, "status", "--porcelain=v1", "--untracked-files=all"), before)
+                self.assertNotIn("completion_receipt", result)
 
     def test_workspace_retirement_is_dry_run_by_default_and_refuses_live_or_dirty_work(self) -> None:
         task = self.root / "task-tree"
@@ -406,13 +545,40 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         git(self.canonical, "worktree", "add", "-b", "task/stash", str(task), "HEAD")
         (task / "tracked.txt").write_text("stashed work\n", encoding="utf-8")
         git(task, "stash", "push", "-m", "keep this work")
+        stash_before = git(task, "stash", "list", "--format=%H")
         workspace = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE")
         result = authority.retire_completed_worktree(self.canonical, self.policy, workspace["workspace_id"], apply=True)
         self.assertEqual(result["status"], "RETIREMENT_BLOCKED_STASH_PRESENT")
+        self.assertEqual(result["stash_classification"][0]["state"], "UNIQUE_OR_UNPROVEN_STASH")
         self.assertTrue(task.exists())
+        self.assertEqual(git(task, "stash", "list", "--format=%H"), stash_before)
         git(self.canonical, "worktree", "remove", "--force", str(task))
         missing = authority.retire_completed_worktree(self.canonical, self.policy, workspace["workspace_id"], apply=True)
         self.assertEqual(missing["status"], "RETIREMENT_BLOCKED_MISSING_WITHOUT_RECOVERY_PROOF")
+
+    def test_retirement_classifies_integrated_stash_without_dropping_it(self) -> None:
+        task = self.root / "task-with-integrated-stash"
+        git(self.canonical, "worktree", "add", "-b", "task/integrated-stash", str(task), "HEAD")
+        (task / "tracked.txt").write_text("integrated stash patch\n", encoding="utf-8")
+        git(task, "stash", "push", "-m", "already integrated")
+        stash_before = git(task, "stash", "list", "--format=%H")
+
+        (self.seed / "tracked.txt").write_text("integrated stash patch\n", encoding="utf-8")
+        git(self.seed, "add", "tracked.txt")
+        git(self.seed, "commit", "-m", "integrated stash patch")
+        git(self.seed, "push", "origin", "main")
+
+        workspace = authority.register_workspace(
+            self.canonical, self.policy, task, role="TASK_WORKTREE", task_id="integrated-stash"
+        )
+        result = authority.retire_completed_worktree(
+            self.canonical, self.policy, workspace["workspace_id"], apply=True
+        )
+
+        self.assertEqual(result["status"], "RETIREMENT_BLOCKED_STASH_PRESENT")
+        self.assertEqual(result["stash_classification"][0]["state"], "PATCH_EQUIVALENT_IN_CANONICAL")
+        self.assertTrue(task.exists())
+        self.assertEqual(git(task, "stash", "list", "--format=%H"), stash_before)
 
     def test_recovery_workspace_is_never_automatically_retired(self) -> None:
         recovery = self.root / "recovery-worktree"
@@ -466,13 +632,14 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual({row["number"] for row in scenarios}, set(range(1, 31)))
         repeated = {row["number"] for row in scenarios if row.get("repetitions", 1) >= 2}
         self.assertTrue({18, 19, 20, 21, 22, 30}.issubset(repeated))
+        repeat_counts = {row["number"]: row["repetitions"] for row in scenarios if "repetitions" in row}
+        self.assertTrue(all(repeat_counts[number] >= count for number, count in {18: 5, 19: 5, 20: 5, 21: 3, 22: 5, 30: 3}.items()))
         self.assertTrue(all(row.get("proof_kind") in {"LOCAL_EXECUTABLE", "CONTRACT_SIMULATION"} for row in scenarios))
-        local_rows = [row for row in scenarios if row["proof_kind"] == "LOCAL_EXECUTABLE"]
         available_tests = {name for name in dir(self) if name.startswith("test_")}
-        self.assertTrue(all(row.get("test_name") in available_tests for row in local_rows))
+        self.assertTrue(all(row.get("test_name") in available_tests for row in scenarios))
         self.assertEqual(
-            {row["number"] for row in local_rows if row.get("test_name")},
-            {row["number"] for row in local_rows},
+            {row["number"] for row in scenarios if row.get("test_name")},
+            set(range(1, 31)),
         )
 
 
