@@ -1,0 +1,497 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "d06c65cc588c6a5084fa109706f29ce5ba54f1519b42ec48cf9b37acd482b09c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/spec.md"
+      },
+      {
+        "digest": "269ea872a5269d4900bfbe24d89cd87800ac1edd4cb1cee8eb63de2b6135777c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
+      },
+      {
+        "digest": "29b8714717e2d19aa96feb765539f4c6285f07b001dcb25eecbcf1d070699fd4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
+      },
+      {
+        "digest": "f47091b8caae3f8af9bc23dbab609690d9d6f10f97543ace2a994c588df952d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "03365d5c1b363a02460e70addca9cc66fbee521a01f77a27c9e86af9e2e28e9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
+      },
+      {
+        "digest": "e625c3c24bc35d3eab5aa9ecebcb328c30df2d470f555b738facc2144a3fd0f0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "2fcba9e311628948777ccadfa7548d3f6568f7c54b8f12cd7ad9f284c502fae6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "5186f51632c4cc31fd7dc6e6f0d75fe6c11df908d90b9a32cb4035dc060b6b05",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
+      },
+      {
+        "digest": "d5be2e699c691ccde2890d4f1d9e8eee4f133448aa8f7b944930a44d1c7f679b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
+      },
+      {
+        "digest": "448be9a4bd4789d2c73b9f1281a549e67cb09bb0a1e649743c16a53d07dea445",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
+      },
+      {
+        "digest": "d674042915117df2cda29225b3702ed697aed62f44e76c6cc1d545b63d7ae9bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
+      },
+      {
+        "digest": "08369eee82efb88cf0aec74198ab5ffb92b31a86d6be13c9a379a6574a0bdf0f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
+      },
+      {
+        "digest": "e03a421e7270e2caff2332d3c056065da3f06765a75741f47dce35fdee99af9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
+      },
+      {
+        "digest": "ade455ec166ada7a21e17bc693ed65ad0221397ed1db076222cfa5403079e850",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "d06c65cc588c6a5084fa109706f29ce5ba54f1519b42ec48cf9b37acd482b09c"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "d06c65cc588c6a5084fa109706f29ce5ba54f1519b42ec48cf9b37acd482b09c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/spec.md"
+      },
+      {
+        "digest": "269ea872a5269d4900bfbe24d89cd87800ac1edd4cb1cee8eb63de2b6135777c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
+      },
+      {
+        "digest": "29b8714717e2d19aa96feb765539f4c6285f07b001dcb25eecbcf1d070699fd4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
+      },
+      {
+        "digest": "f47091b8caae3f8af9bc23dbab609690d9d6f10f97543ace2a994c588df952d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "03365d5c1b363a02460e70addca9cc66fbee521a01f77a27c9e86af9e2e28e9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
+      },
+      {
+        "digest": "e625c3c24bc35d3eab5aa9ecebcb328c30df2d470f555b738facc2144a3fd0f0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "2fcba9e311628948777ccadfa7548d3f6568f7c54b8f12cd7ad9f284c502fae6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "5186f51632c4cc31fd7dc6e6f0d75fe6c11df908d90b9a32cb4035dc060b6b05",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
+      },
+      {
+        "digest": "d5be2e699c691ccde2890d4f1d9e8eee4f133448aa8f7b944930a44d1c7f679b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
+      },
+      {
+        "digest": "448be9a4bd4789d2c73b9f1281a549e67cb09bb0a1e649743c16a53d07dea445",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
+      },
+      {
+        "digest": "d674042915117df2cda29225b3702ed697aed62f44e76c6cc1d545b63d7ae9bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
+      },
+      {
+        "digest": "08369eee82efb88cf0aec74198ab5ffb92b31a86d6be13c9a379a6574a0bdf0f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
+      },
+      {
+        "digest": "e03a421e7270e2caff2332d3c056065da3f06765a75741f47dce35fdee99af9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
+      },
+      {
+        "digest": "ade455ec166ada7a21e17bc693ed65ad0221397ed1db076222cfa5403079e850",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "d06c65cc588c6a5084fa109706f29ce5ba54f1519b42ec48cf9b37acd482b09c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/spec.md"
+      },
+      {
+        "digest": "269ea872a5269d4900bfbe24d89cd87800ac1edd4cb1cee8eb63de2b6135777c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
+      },
+      {
+        "digest": "29b8714717e2d19aa96feb765539f4c6285f07b001dcb25eecbcf1d070699fd4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
+      },
+      {
+        "digest": "f47091b8caae3f8af9bc23dbab609690d9d6f10f97543ace2a994c588df952d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "03365d5c1b363a02460e70addca9cc66fbee521a01f77a27c9e86af9e2e28e9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
+      },
+      {
+        "digest": "e625c3c24bc35d3eab5aa9ecebcb328c30df2d470f555b738facc2144a3fd0f0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "2fcba9e311628948777ccadfa7548d3f6568f7c54b8f12cd7ad9f284c502fae6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "5186f51632c4cc31fd7dc6e6f0d75fe6c11df908d90b9a32cb4035dc060b6b05",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
+      },
+      {
+        "digest": "d5be2e699c691ccde2890d4f1d9e8eee4f133448aa8f7b944930a44d1c7f679b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
+      },
+      {
+        "digest": "448be9a4bd4789d2c73b9f1281a549e67cb09bb0a1e649743c16a53d07dea445",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
+      },
+      {
+        "digest": "d674042915117df2cda29225b3702ed697aed62f44e76c6cc1d545b63d7ae9bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
+      },
+      {
+        "digest": "08369eee82efb88cf0aec74198ab5ffb92b31a86d6be13c9a379a6574a0bdf0f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
+      },
+      {
+        "digest": "e03a421e7270e2caff2332d3c056065da3f06765a75741f47dce35fdee99af9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
+      },
+      {
+        "digest": "ade455ec166ada7a21e17bc693ed65ad0221397ed1db076222cfa5403079e850",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/078-private-personal-finance-ocr-rag/spec.md",
+    "digest": "d06c65cc588c6a5084fa109706f29ce5ba54f1519b42ec48cf9b37acd482b09c",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.827222Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-09T21:04:42+07:00",
+      "spec_last_changed_at": "2026-04-09T21:04:42+07:00"
+    },
+    "revision": "1.0",
+    "slug": "078-private-personal-finance-ocr-rag",
+    "spec_id": "078",
+    "title": "078 - Private Personal Finance with OCR and RAG"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.827222Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.827222Z",
+    "sources": [
+      {
+        "digest": "d06c65cc588c6a5084fa109706f29ce5ba54f1519b42ec48cf9b37acd482b09c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/spec.md"
+      },
+      {
+        "digest": "269ea872a5269d4900bfbe24d89cd87800ac1edd4cb1cee8eb63de2b6135777c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
+      },
+      {
+        "digest": "29b8714717e2d19aa96feb765539f4c6285f07b001dcb25eecbcf1d070699fd4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
+      },
+      {
+        "digest": "f47091b8caae3f8af9bc23dbab609690d9d6f10f97543ace2a994c588df952d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "03365d5c1b363a02460e70addca9cc66fbee521a01f77a27c9e86af9e2e28e9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
+      },
+      {
+        "digest": "e625c3c24bc35d3eab5aa9ecebcb328c30df2d470f555b738facc2144a3fd0f0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "2fcba9e311628948777ccadfa7548d3f6568f7c54b8f12cd7ad9f284c502fae6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "5186f51632c4cc31fd7dc6e6f0d75fe6c11df908d90b9a32cb4035dc060b6b05",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
+      },
+      {
+        "digest": "d5be2e699c691ccde2890d4f1d9e8eee4f133448aa8f7b944930a44d1c7f679b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
+      },
+      {
+        "digest": "448be9a4bd4789d2c73b9f1281a549e67cb09bb0a1e649743c16a53d07dea445",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
+      },
+      {
+        "digest": "d674042915117df2cda29225b3702ed697aed62f44e76c6cc1d545b63d7ae9bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
+      },
+      {
+        "digest": "08369eee82efb88cf0aec74198ab5ffb92b31a86d6be13c9a379a6574a0bdf0f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
+      },
+      {
+        "digest": "e03a421e7270e2caff2332d3c056065da3f06765a75741f47dce35fdee99af9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
+      },
+      {
+        "digest": "ade455ec166ada7a21e17bc693ed65ad0221397ed1db076222cfa5403079e850",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "d06c65cc588c6a5084fa109706f29ce5ba54f1519b42ec48cf9b37acd482b09c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/spec.md"
+      },
+      {
+        "digest": "269ea872a5269d4900bfbe24d89cd87800ac1edd4cb1cee8eb63de2b6135777c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
+      },
+      {
+        "digest": "29b8714717e2d19aa96feb765539f4c6285f07b001dcb25eecbcf1d070699fd4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
+      },
+      {
+        "digest": "f47091b8caae3f8af9bc23dbab609690d9d6f10f97543ace2a994c588df952d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "03365d5c1b363a02460e70addca9cc66fbee521a01f77a27c9e86af9e2e28e9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
+      },
+      {
+        "digest": "e625c3c24bc35d3eab5aa9ecebcb328c30df2d470f555b738facc2144a3fd0f0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "2fcba9e311628948777ccadfa7548d3f6568f7c54b8f12cd7ad9f284c502fae6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "5186f51632c4cc31fd7dc6e6f0d75fe6c11df908d90b9a32cb4035dc060b6b05",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
+      },
+      {
+        "digest": "d5be2e699c691ccde2890d4f1d9e8eee4f133448aa8f7b944930a44d1c7f679b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
+      },
+      {
+        "digest": "448be9a4bd4789d2c73b9f1281a549e67cb09bb0a1e649743c16a53d07dea445",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
+      },
+      {
+        "digest": "d674042915117df2cda29225b3702ed697aed62f44e76c6cc1d545b63d7ae9bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
+      },
+      {
+        "digest": "08369eee82efb88cf0aec74198ab5ffb92b31a86d6be13c9a379a6574a0bdf0f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
+      },
+      {
+        "digest": "e03a421e7270e2caff2332d3c056065da3f06765a75741f47dce35fdee99af9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
+      },
+      {
+        "digest": "ade455ec166ada7a21e17bc693ed65ad0221397ed1db076222cfa5403079e850",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 58,
+    "unresolved": 58
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.827222Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

@@ -1,0 +1,622 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "1034e85b6d91b8dd7833902173194b0f7ecc7f1cc5b90dac73cb65a64fa05ef7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md"
+      },
+      {
+        "digest": "57d5d35f20990179558e97d13a85143ebd168ca42fa23aa34dcb7cc56e3eae88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/claude-plan.md"
+      },
+      {
+        "digest": "fc682004ac011a4c13d03421f3df0e2e7b50893cf4cfe3f24833f674ccb5d07d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/claude-spec.md"
+      },
+      {
+        "digest": "45376960f45d690249277cdc7c096c3714e50d010138a8922924f5dccff369fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "de02e64a367eb33744a2be62210274979f3e29624c6588c3cb7d509716f8a4e5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/implementation/implementation-status.md"
+      },
+      {
+        "digest": "179b94693c3ca0c6e11dc8556367c91adf53a2ca1d66730c216c3e2e2f0400af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "bce1b4c59f69bd662369b6c79c87bc35e1831a3edae57a5e8a48f52255a15a0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "3a3920f6a6b00159b71872f440dc953b2a01eba6ada7b1bd6256021c2c3d2da2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/index.md"
+      },
+      {
+        "digest": "0b4bb538f18a68301647fc0ce31ef8b124d0721fc89fc6df72c06ccb88292ff9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-01-long-form-contracts.md"
+      },
+      {
+        "digest": "7803ece57d8a933b4d8ec5159901468616271b6433c00b3c3a279f70a1e51e34",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-02-reverse-planning-closure.md"
+      },
+      {
+        "digest": "f6acc6f63ddbca3c60b7fd08e04de1d2ac39bea553e08fa4a6b0d6438bd7214c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-03-memory-retrieval-checkpoints.md"
+      },
+      {
+        "digest": "4f53228943f5305e6e8c2a2a8683aeaf9853a1bbab055b59261c2f78cbed8211",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-04-adaptive-cast-guest.md"
+      },
+      {
+        "digest": "b5921d16e0670e7222de0761465f7dd087c41b9bc414b6e91063caf47604cc60",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-05-world-media-capability.md"
+      },
+      {
+        "digest": "79406d1db2a640bc3f973af5cc5103f07b8d6ce89ff83a3cbc09849acf052430",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-06-wardrobe-look-ledger.md"
+      },
+      {
+        "digest": "6b88bfe701f369b68947f6dc9fb87b2efac35b97b7e8680b2674375db6530ee2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-07-block-generation-resume.md"
+      },
+      {
+        "digest": "092fabed6130f512205c5963e7349bfa855e3369aeb16effacab79922e224889",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-08-reconcile-repair-finale.md"
+      },
+      {
+        "digest": "7db67d6cd8a1259a86814d2ac1c806112c9e3483c5c7e6f95286d21f6e8fe43d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-09-router-ui-approval.md"
+      },
+      {
+        "digest": "e635f5cf940e2a7784a40b1e7a84a4ae776629c053e850d81edf82495ae63a61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-10-migration-rollout-observability.md"
+      },
+      {
+        "digest": "62e3c40eb5c3605d7c5443789e66a757886c12542f637d868e9640d36ce2694c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-11-proof-gap-closure.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "1034e85b6d91b8dd7833902173194b0f7ecc7f1cc5b90dac73cb65a64fa05ef7"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "1034e85b6d91b8dd7833902173194b0f7ecc7f1cc5b90dac73cb65a64fa05ef7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md"
+      },
+      {
+        "digest": "57d5d35f20990179558e97d13a85143ebd168ca42fa23aa34dcb7cc56e3eae88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/claude-plan.md"
+      },
+      {
+        "digest": "fc682004ac011a4c13d03421f3df0e2e7b50893cf4cfe3f24833f674ccb5d07d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/claude-spec.md"
+      },
+      {
+        "digest": "45376960f45d690249277cdc7c096c3714e50d010138a8922924f5dccff369fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "de02e64a367eb33744a2be62210274979f3e29624c6588c3cb7d509716f8a4e5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/implementation/implementation-status.md"
+      },
+      {
+        "digest": "179b94693c3ca0c6e11dc8556367c91adf53a2ca1d66730c216c3e2e2f0400af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "bce1b4c59f69bd662369b6c79c87bc35e1831a3edae57a5e8a48f52255a15a0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "3a3920f6a6b00159b71872f440dc953b2a01eba6ada7b1bd6256021c2c3d2da2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/index.md"
+      },
+      {
+        "digest": "0b4bb538f18a68301647fc0ce31ef8b124d0721fc89fc6df72c06ccb88292ff9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-01-long-form-contracts.md"
+      },
+      {
+        "digest": "7803ece57d8a933b4d8ec5159901468616271b6433c00b3c3a279f70a1e51e34",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-02-reverse-planning-closure.md"
+      },
+      {
+        "digest": "f6acc6f63ddbca3c60b7fd08e04de1d2ac39bea553e08fa4a6b0d6438bd7214c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-03-memory-retrieval-checkpoints.md"
+      },
+      {
+        "digest": "4f53228943f5305e6e8c2a2a8683aeaf9853a1bbab055b59261c2f78cbed8211",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-04-adaptive-cast-guest.md"
+      },
+      {
+        "digest": "b5921d16e0670e7222de0761465f7dd087c41b9bc414b6e91063caf47604cc60",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-05-world-media-capability.md"
+      },
+      {
+        "digest": "79406d1db2a640bc3f973af5cc5103f07b8d6ce89ff83a3cbc09849acf052430",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-06-wardrobe-look-ledger.md"
+      },
+      {
+        "digest": "6b88bfe701f369b68947f6dc9fb87b2efac35b97b7e8680b2674375db6530ee2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-07-block-generation-resume.md"
+      },
+      {
+        "digest": "092fabed6130f512205c5963e7349bfa855e3369aeb16effacab79922e224889",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-08-reconcile-repair-finale.md"
+      },
+      {
+        "digest": "7db67d6cd8a1259a86814d2ac1c806112c9e3483c5c7e6f95286d21f6e8fe43d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-09-router-ui-approval.md"
+      },
+      {
+        "digest": "e635f5cf940e2a7784a40b1e7a84a4ae776629c053e850d81edf82495ae63a61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-10-migration-rollout-observability.md"
+      },
+      {
+        "digest": "62e3c40eb5c3605d7c5443789e66a757886c12542f637d868e9640d36ce2694c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-11-proof-gap-closure.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "1034e85b6d91b8dd7833902173194b0f7ecc7f1cc5b90dac73cb65a64fa05ef7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md"
+      },
+      {
+        "digest": "57d5d35f20990179558e97d13a85143ebd168ca42fa23aa34dcb7cc56e3eae88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/claude-plan.md"
+      },
+      {
+        "digest": "fc682004ac011a4c13d03421f3df0e2e7b50893cf4cfe3f24833f674ccb5d07d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/claude-spec.md"
+      },
+      {
+        "digest": "45376960f45d690249277cdc7c096c3714e50d010138a8922924f5dccff369fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "de02e64a367eb33744a2be62210274979f3e29624c6588c3cb7d509716f8a4e5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/implementation/implementation-status.md"
+      },
+      {
+        "digest": "179b94693c3ca0c6e11dc8556367c91adf53a2ca1d66730c216c3e2e2f0400af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "bce1b4c59f69bd662369b6c79c87bc35e1831a3edae57a5e8a48f52255a15a0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "3a3920f6a6b00159b71872f440dc953b2a01eba6ada7b1bd6256021c2c3d2da2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/index.md"
+      },
+      {
+        "digest": "0b4bb538f18a68301647fc0ce31ef8b124d0721fc89fc6df72c06ccb88292ff9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-01-long-form-contracts.md"
+      },
+      {
+        "digest": "7803ece57d8a933b4d8ec5159901468616271b6433c00b3c3a279f70a1e51e34",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-02-reverse-planning-closure.md"
+      },
+      {
+        "digest": "f6acc6f63ddbca3c60b7fd08e04de1d2ac39bea553e08fa4a6b0d6438bd7214c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-03-memory-retrieval-checkpoints.md"
+      },
+      {
+        "digest": "4f53228943f5305e6e8c2a2a8683aeaf9853a1bbab055b59261c2f78cbed8211",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-04-adaptive-cast-guest.md"
+      },
+      {
+        "digest": "b5921d16e0670e7222de0761465f7dd087c41b9bc414b6e91063caf47604cc60",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-05-world-media-capability.md"
+      },
+      {
+        "digest": "79406d1db2a640bc3f973af5cc5103f07b8d6ce89ff83a3cbc09849acf052430",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-06-wardrobe-look-ledger.md"
+      },
+      {
+        "digest": "6b88bfe701f369b68947f6dc9fb87b2efac35b97b7e8680b2674375db6530ee2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-07-block-generation-resume.md"
+      },
+      {
+        "digest": "092fabed6130f512205c5963e7349bfa855e3369aeb16effacab79922e224889",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-08-reconcile-repair-finale.md"
+      },
+      {
+        "digest": "7db67d6cd8a1259a86814d2ac1c806112c9e3483c5c7e6f95286d21f6e8fe43d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-09-router-ui-approval.md"
+      },
+      {
+        "digest": "e635f5cf940e2a7784a40b1e7a84a4ae776629c053e850d81edf82495ae63a61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-10-migration-rollout-observability.md"
+      },
+      {
+        "digest": "62e3c40eb5c3605d7c5443789e66a757886c12542f637d868e9640d36ce2694c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-11-proof-gap-closure.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md",
+    "digest": "1034e85b6d91b8dd7833902173194b0f7ecc7f1cc5b90dac73cb65a64fa05ef7",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.378142Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-08-30T21:05:27+07:00",
+      "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
+    },
+    "revision": null,
+    "slug": "153-vertical-drama-long-form-story-architecture",
+    "spec_id": "153",
+    "title": "Feature 153: Vertical Drama Long-form Story Architecture, Adaptive Cast & Memory Assurance"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.378142Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.378142Z",
+    "sources": [
+      {
+        "digest": "1034e85b6d91b8dd7833902173194b0f7ecc7f1cc5b90dac73cb65a64fa05ef7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md"
+      },
+      {
+        "digest": "57d5d35f20990179558e97d13a85143ebd168ca42fa23aa34dcb7cc56e3eae88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/claude-plan.md"
+      },
+      {
+        "digest": "fc682004ac011a4c13d03421f3df0e2e7b50893cf4cfe3f24833f674ccb5d07d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/claude-spec.md"
+      },
+      {
+        "digest": "45376960f45d690249277cdc7c096c3714e50d010138a8922924f5dccff369fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "de02e64a367eb33744a2be62210274979f3e29624c6588c3cb7d509716f8a4e5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/implementation/implementation-status.md"
+      },
+      {
+        "digest": "179b94693c3ca0c6e11dc8556367c91adf53a2ca1d66730c216c3e2e2f0400af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "bce1b4c59f69bd662369b6c79c87bc35e1831a3edae57a5e8a48f52255a15a0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "3a3920f6a6b00159b71872f440dc953b2a01eba6ada7b1bd6256021c2c3d2da2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/index.md"
+      },
+      {
+        "digest": "0b4bb538f18a68301647fc0ce31ef8b124d0721fc89fc6df72c06ccb88292ff9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-01-long-form-contracts.md"
+      },
+      {
+        "digest": "7803ece57d8a933b4d8ec5159901468616271b6433c00b3c3a279f70a1e51e34",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-02-reverse-planning-closure.md"
+      },
+      {
+        "digest": "f6acc6f63ddbca3c60b7fd08e04de1d2ac39bea553e08fa4a6b0d6438bd7214c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-03-memory-retrieval-checkpoints.md"
+      },
+      {
+        "digest": "4f53228943f5305e6e8c2a2a8683aeaf9853a1bbab055b59261c2f78cbed8211",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-04-adaptive-cast-guest.md"
+      },
+      {
+        "digest": "b5921d16e0670e7222de0761465f7dd087c41b9bc414b6e91063caf47604cc60",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-05-world-media-capability.md"
+      },
+      {
+        "digest": "79406d1db2a640bc3f973af5cc5103f07b8d6ce89ff83a3cbc09849acf052430",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-06-wardrobe-look-ledger.md"
+      },
+      {
+        "digest": "6b88bfe701f369b68947f6dc9fb87b2efac35b97b7e8680b2674375db6530ee2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-07-block-generation-resume.md"
+      },
+      {
+        "digest": "092fabed6130f512205c5963e7349bfa855e3369aeb16effacab79922e224889",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-08-reconcile-repair-finale.md"
+      },
+      {
+        "digest": "7db67d6cd8a1259a86814d2ac1c806112c9e3483c5c7e6f95286d21f6e8fe43d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-09-router-ui-approval.md"
+      },
+      {
+        "digest": "e635f5cf940e2a7784a40b1e7a84a4ae776629c053e850d81edf82495ae63a61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-10-migration-rollout-observability.md"
+      },
+      {
+        "digest": "62e3c40eb5c3605d7c5443789e66a757886c12542f637d868e9640d36ce2694c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-11-proof-gap-closure.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "1034e85b6d91b8dd7833902173194b0f7ecc7f1cc5b90dac73cb65a64fa05ef7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md"
+      },
+      {
+        "digest": "57d5d35f20990179558e97d13a85143ebd168ca42fa23aa34dcb7cc56e3eae88",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/claude-plan.md"
+      },
+      {
+        "digest": "fc682004ac011a4c13d03421f3df0e2e7b50893cf4cfe3f24833f674ccb5d07d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/claude-spec.md"
+      },
+      {
+        "digest": "45376960f45d690249277cdc7c096c3714e50d010138a8922924f5dccff369fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "de02e64a367eb33744a2be62210274979f3e29624c6588c3cb7d509716f8a4e5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/implementation/implementation-status.md"
+      },
+      {
+        "digest": "179b94693c3ca0c6e11dc8556367c91adf53a2ca1d66730c216c3e2e2f0400af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "bce1b4c59f69bd662369b6c79c87bc35e1831a3edae57a5e8a48f52255a15a0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "3a3920f6a6b00159b71872f440dc953b2a01eba6ada7b1bd6256021c2c3d2da2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/index.md"
+      },
+      {
+        "digest": "0b4bb538f18a68301647fc0ce31ef8b124d0721fc89fc6df72c06ccb88292ff9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-01-long-form-contracts.md"
+      },
+      {
+        "digest": "7803ece57d8a933b4d8ec5159901468616271b6433c00b3c3a279f70a1e51e34",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-02-reverse-planning-closure.md"
+      },
+      {
+        "digest": "f6acc6f63ddbca3c60b7fd08e04de1d2ac39bea553e08fa4a6b0d6438bd7214c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-03-memory-retrieval-checkpoints.md"
+      },
+      {
+        "digest": "4f53228943f5305e6e8c2a2a8683aeaf9853a1bbab055b59261c2f78cbed8211",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-04-adaptive-cast-guest.md"
+      },
+      {
+        "digest": "b5921d16e0670e7222de0761465f7dd087c41b9bc414b6e91063caf47604cc60",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-05-world-media-capability.md"
+      },
+      {
+        "digest": "79406d1db2a640bc3f973af5cc5103f07b8d6ce89ff83a3cbc09849acf052430",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-06-wardrobe-look-ledger.md"
+      },
+      {
+        "digest": "6b88bfe701f369b68947f6dc9fb87b2efac35b97b7e8680b2674375db6530ee2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-07-block-generation-resume.md"
+      },
+      {
+        "digest": "092fabed6130f512205c5963e7349bfa855e3369aeb16effacab79922e224889",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-08-reconcile-repair-finale.md"
+      },
+      {
+        "digest": "7db67d6cd8a1259a86814d2ac1c806112c9e3483c5c7e6f95286d21f6e8fe43d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-09-router-ui-approval.md"
+      },
+      {
+        "digest": "e635f5cf940e2a7784a40b1e7a84a4ae776629c053e850d81edf82495ae63a61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-10-migration-rollout-observability.md"
+      },
+      {
+        "digest": "62e3c40eb5c3605d7c5443789e66a757886c12542f637d868e9640d36ce2694c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/153-vertical-drama-long-form-story-architecture/sections/section-11-proof-gap-closure.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 168,
+    "unresolved": 168
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.378142Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

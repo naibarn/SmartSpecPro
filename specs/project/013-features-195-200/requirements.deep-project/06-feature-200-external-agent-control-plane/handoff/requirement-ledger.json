@@ -1,0 +1,27 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_source": "specs/project/013-features-195-200/requirements.deep-project/06-feature-200-external-agent-control-plane/spec.md",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Review normative Spec and extract requirement-level ledger entries.",
+      "requirement_digest": "12964b67d24b6b7b17b9c8e583f183834e8f2bd184458d935cec6a8ee8cc219b",
+      "requirement_id": "UNPARSED-SPEC-AACD834B",
+      "requirement_text": "Normative requirement extraction needs review; no safe structured requirement set was detected.",
+      "source_spec_digest": "12964b67d24b6b7b17b9c8e583f183834e8f2bd184458d935cec6a8ee8cc219b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Manual requirement extraction and mapping review."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "12964b67d24b6b7b17b9c8e583f183834e8f2bd184458d935cec6a8ee8cc219b",
+  "spec_id": "06"
+}

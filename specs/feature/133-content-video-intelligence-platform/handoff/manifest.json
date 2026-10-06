@@ -1,0 +1,522 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/133-content-video-intelligence-platform/spec.md"
+      },
+      {
+        "digest": "c6813eb030acb3c54050c51211187f27be4e731504b743b8edfb8716f5fdc6de",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/claude-plan.md"
+      },
+      {
+        "digest": "90333b19bb0a95b20bccbfa448a34c9de37ecdcd45007d499512a2371ae49be5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/claude-spec.md"
+      },
+      {
+        "digest": "26b706597e5deebec57b3dad22ff0784ff88bf4bca82dda43e48280942b3117c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
+      },
+      {
+        "digest": "8b1ee134a0294d3b4eacaabc20aa0c4bba595bf8842e546145d874d61481a4ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "f6881f93fe5a7b2b44c5feac902b27fb58864fc77cdb212d96f403d38a068ddf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "d35609f39a246cedd8e9668c15057ba9fac6c8719ef9f0c4876695e619eec48c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/index.md"
+      },
+      {
+        "digest": "a2f4f234fe3373d74a4caec00318edba5a7ee574821863a810b1988793bc38ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
+      },
+      {
+        "digest": "69cbb7af47216c48e191fbc51e2176d3e68f8e7c44e88d31865afe4b8e4a76fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
+      },
+      {
+        "digest": "ec28998e46b8061053b5de05172392cea58b875ded1b681712b4bc989e4b6555",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
+      },
+      {
+        "digest": "d52a4708aeedbffd59349465c32f362000a8039ece0146ada6a13bbdc6ce264a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
+      },
+      {
+        "digest": "ad7d26cc938a723ab2ffa94d94485a616f4c039a7b0db0fa99f962467f67c700",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
+      },
+      {
+        "digest": "d596e8fb55c9748e8e6c99183b1668422193abd2a57ffb4b5bd4109180a0d2f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
+      },
+      {
+        "digest": "b651a4700f235c509605bec8497a82891f0bb6166568988482d3126466da5b68",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
+      },
+      {
+        "digest": "0ccc23942b7d16969b03f2e686ecd2fe507ffb811f9f6aa9b15515e7bf777730",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/133-content-video-intelligence-platform/spec.md"
+      },
+      {
+        "digest": "c6813eb030acb3c54050c51211187f27be4e731504b743b8edfb8716f5fdc6de",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/claude-plan.md"
+      },
+      {
+        "digest": "90333b19bb0a95b20bccbfa448a34c9de37ecdcd45007d499512a2371ae49be5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/claude-spec.md"
+      },
+      {
+        "digest": "26b706597e5deebec57b3dad22ff0784ff88bf4bca82dda43e48280942b3117c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
+      },
+      {
+        "digest": "8b1ee134a0294d3b4eacaabc20aa0c4bba595bf8842e546145d874d61481a4ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "f6881f93fe5a7b2b44c5feac902b27fb58864fc77cdb212d96f403d38a068ddf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "d35609f39a246cedd8e9668c15057ba9fac6c8719ef9f0c4876695e619eec48c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/index.md"
+      },
+      {
+        "digest": "a2f4f234fe3373d74a4caec00318edba5a7ee574821863a810b1988793bc38ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
+      },
+      {
+        "digest": "69cbb7af47216c48e191fbc51e2176d3e68f8e7c44e88d31865afe4b8e4a76fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
+      },
+      {
+        "digest": "ec28998e46b8061053b5de05172392cea58b875ded1b681712b4bc989e4b6555",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
+      },
+      {
+        "digest": "d52a4708aeedbffd59349465c32f362000a8039ece0146ada6a13bbdc6ce264a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
+      },
+      {
+        "digest": "ad7d26cc938a723ab2ffa94d94485a616f4c039a7b0db0fa99f962467f67c700",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
+      },
+      {
+        "digest": "d596e8fb55c9748e8e6c99183b1668422193abd2a57ffb4b5bd4109180a0d2f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
+      },
+      {
+        "digest": "b651a4700f235c509605bec8497a82891f0bb6166568988482d3126466da5b68",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
+      },
+      {
+        "digest": "0ccc23942b7d16969b03f2e686ecd2fe507ffb811f9f6aa9b15515e7bf777730",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/133-content-video-intelligence-platform/spec.md"
+      },
+      {
+        "digest": "c6813eb030acb3c54050c51211187f27be4e731504b743b8edfb8716f5fdc6de",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/claude-plan.md"
+      },
+      {
+        "digest": "90333b19bb0a95b20bccbfa448a34c9de37ecdcd45007d499512a2371ae49be5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/claude-spec.md"
+      },
+      {
+        "digest": "26b706597e5deebec57b3dad22ff0784ff88bf4bca82dda43e48280942b3117c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
+      },
+      {
+        "digest": "8b1ee134a0294d3b4eacaabc20aa0c4bba595bf8842e546145d874d61481a4ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "f6881f93fe5a7b2b44c5feac902b27fb58864fc77cdb212d96f403d38a068ddf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "d35609f39a246cedd8e9668c15057ba9fac6c8719ef9f0c4876695e619eec48c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/index.md"
+      },
+      {
+        "digest": "a2f4f234fe3373d74a4caec00318edba5a7ee574821863a810b1988793bc38ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
+      },
+      {
+        "digest": "69cbb7af47216c48e191fbc51e2176d3e68f8e7c44e88d31865afe4b8e4a76fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
+      },
+      {
+        "digest": "ec28998e46b8061053b5de05172392cea58b875ded1b681712b4bc989e4b6555",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
+      },
+      {
+        "digest": "d52a4708aeedbffd59349465c32f362000a8039ece0146ada6a13bbdc6ce264a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
+      },
+      {
+        "digest": "ad7d26cc938a723ab2ffa94d94485a616f4c039a7b0db0fa99f962467f67c700",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
+      },
+      {
+        "digest": "d596e8fb55c9748e8e6c99183b1668422193abd2a57ffb4b5bd4109180a0d2f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
+      },
+      {
+        "digest": "b651a4700f235c509605bec8497a82891f0bb6166568988482d3126466da5b68",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
+      },
+      {
+        "digest": "0ccc23942b7d16969b03f2e686ecd2fe507ffb811f9f6aa9b15515e7bf777730",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/133-content-video-intelligence-platform/spec.md",
+    "digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.237283Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-07-12T21:18:23+07:00",
+      "spec_last_changed_at": "2026-09-13T07:28:45+07:00"
+    },
+    "revision": "0.1",
+    "slug": "133-content-video-intelligence-platform",
+    "spec_id": "133",
+    "title": "Feature 133: Content & Video Intelligence Platform (Remotion Hybrid Composition)"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.237283Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.237283Z",
+    "sources": [
+      {
+        "digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/133-content-video-intelligence-platform/spec.md"
+      },
+      {
+        "digest": "c6813eb030acb3c54050c51211187f27be4e731504b743b8edfb8716f5fdc6de",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/claude-plan.md"
+      },
+      {
+        "digest": "90333b19bb0a95b20bccbfa448a34c9de37ecdcd45007d499512a2371ae49be5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/claude-spec.md"
+      },
+      {
+        "digest": "26b706597e5deebec57b3dad22ff0784ff88bf4bca82dda43e48280942b3117c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
+      },
+      {
+        "digest": "8b1ee134a0294d3b4eacaabc20aa0c4bba595bf8842e546145d874d61481a4ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "f6881f93fe5a7b2b44c5feac902b27fb58864fc77cdb212d96f403d38a068ddf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "d35609f39a246cedd8e9668c15057ba9fac6c8719ef9f0c4876695e619eec48c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/index.md"
+      },
+      {
+        "digest": "a2f4f234fe3373d74a4caec00318edba5a7ee574821863a810b1988793bc38ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
+      },
+      {
+        "digest": "69cbb7af47216c48e191fbc51e2176d3e68f8e7c44e88d31865afe4b8e4a76fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
+      },
+      {
+        "digest": "ec28998e46b8061053b5de05172392cea58b875ded1b681712b4bc989e4b6555",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
+      },
+      {
+        "digest": "d52a4708aeedbffd59349465c32f362000a8039ece0146ada6a13bbdc6ce264a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
+      },
+      {
+        "digest": "ad7d26cc938a723ab2ffa94d94485a616f4c039a7b0db0fa99f962467f67c700",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
+      },
+      {
+        "digest": "d596e8fb55c9748e8e6c99183b1668422193abd2a57ffb4b5bd4109180a0d2f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
+      },
+      {
+        "digest": "b651a4700f235c509605bec8497a82891f0bb6166568988482d3126466da5b68",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
+      },
+      {
+        "digest": "0ccc23942b7d16969b03f2e686ecd2fe507ffb811f9f6aa9b15515e7bf777730",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/133-content-video-intelligence-platform/spec.md"
+      },
+      {
+        "digest": "c6813eb030acb3c54050c51211187f27be4e731504b743b8edfb8716f5fdc6de",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/claude-plan.md"
+      },
+      {
+        "digest": "90333b19bb0a95b20bccbfa448a34c9de37ecdcd45007d499512a2371ae49be5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/claude-spec.md"
+      },
+      {
+        "digest": "26b706597e5deebec57b3dad22ff0784ff88bf4bca82dda43e48280942b3117c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
+      },
+      {
+        "digest": "8b1ee134a0294d3b4eacaabc20aa0c4bba595bf8842e546145d874d61481a4ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "f6881f93fe5a7b2b44c5feac902b27fb58864fc77cdb212d96f403d38a068ddf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "d35609f39a246cedd8e9668c15057ba9fac6c8719ef9f0c4876695e619eec48c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/index.md"
+      },
+      {
+        "digest": "a2f4f234fe3373d74a4caec00318edba5a7ee574821863a810b1988793bc38ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
+      },
+      {
+        "digest": "69cbb7af47216c48e191fbc51e2176d3e68f8e7c44e88d31865afe4b8e4a76fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
+      },
+      {
+        "digest": "ec28998e46b8061053b5de05172392cea58b875ded1b681712b4bc989e4b6555",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
+      },
+      {
+        "digest": "d52a4708aeedbffd59349465c32f362000a8039ece0146ada6a13bbdc6ce264a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
+      },
+      {
+        "digest": "ad7d26cc938a723ab2ffa94d94485a616f4c039a7b0db0fa99f962467f67c700",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
+      },
+      {
+        "digest": "d596e8fb55c9748e8e6c99183b1668422193abd2a57ffb4b5bd4109180a0d2f4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
+      },
+      {
+        "digest": "b651a4700f235c509605bec8497a82891f0bb6166568988482d3126466da5b68",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
+      },
+      {
+        "digest": "0ccc23942b7d16969b03f2e686ecd2fe507ffb811f9f6aa9b15515e7bf777730",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 37,
+    "unresolved": 37
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.237283Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

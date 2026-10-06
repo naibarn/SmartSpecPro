@@ -1,0 +1,404 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "240",
+        "relation_text": "superseded",
+        "requirement_ids": [
+          "R0.4",
+          "R0.5",
+          "R0.6"
+        ],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L17",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "240",
+        "relation_text": "supersede",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "240",
+        "relation_text": "replaces",
+        "requirement_ids": [
+          "R0.5"
+        ],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L983",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "214",
+        "referenced_spec_id": "214",
+        "referencing_spec_id": "240",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L421",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "214",
+        "referenced_spec_id": "214",
+        "referencing_spec_id": "240",
+        "relation_text": "supersede",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "215",
+        "referenced_spec_id": "215",
+        "referencing_spec_id": "240",
+        "relation_text": "merge",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "215",
+        "referenced_spec_id": "215",
+        "referencing_spec_id": "240",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L421",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "217",
+        "referenced_spec_id": "217",
+        "referencing_spec_id": "240",
+        "relation_text": "superseded",
+        "requirement_ids": [
+          "R0.2"
+        ],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L335",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "240",
+        "relation_text": "supersede",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "225",
+        "referenced_spec_id": "225",
+        "referencing_spec_id": "240",
+        "relation_text": "merge",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1126",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "226",
+        "referenced_spec_id": "226",
+        "referencing_spec_id": "240",
+        "relation_text": "merge",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "240",
+        "referenced_spec_id": "240",
+        "referencing_spec_id": "244",
+        "relation_text": "superseded",
+        "requirement_ids": [],
+        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1521",
+        "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
+        "successor_spec_id": "244"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "240",
+        "referenced_spec_id": "240",
+        "referencing_spec_id": "246",
+        "relation_text": "supersede",
+        "requirement_ids": [
+          "R1.1",
+          "R1.2"
+        ],
+        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L16",
+        "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
+        "successor_spec_id": "246"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "240",
+        "referenced_spec_id": "240",
+        "referencing_spec_id": "246",
+        "relation_text": "replace",
+        "requirement_ids": [
+          "R1.2"
+        ],
+        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L213",
+        "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
+        "successor_spec_id": "246"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "240",
+        "referenced_spec_id": "240",
+        "referencing_spec_id": "246",
+        "relation_text": "replace",
+        "requirement_ids": [
+          "R1.1"
+        ],
+        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L24",
+        "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
+        "successor_spec_id": "246"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "240",
+        "referenced_spec_id": "240",
+        "referencing_spec_id": "246",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L301",
+        "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
+        "successor_spec_id": "246"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "240",
+        "referenced_spec_id": "240",
+        "referencing_spec_id": "246",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L339",
+        "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
+        "successor_spec_id": "246"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "251",
+        "referenced_spec_id": "251",
+        "referencing_spec_id": "240",
+        "relation_text": "merge",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md",
+    "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.384178Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-26T09:26:48+07:00",
+      "spec_last_changed_at": "2026-09-28T00:04:37+07:00"
+    },
+    "revision": null,
+    "slug": "240-Agent-Generated UI & Safe Interactive Surfaces",
+    "spec_id": "240",
+    "title": "0. Executive Decision"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.384178Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.384178Z",
+    "sources": [
+      {
+        "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 155,
+    "unresolved": 155
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.384178Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

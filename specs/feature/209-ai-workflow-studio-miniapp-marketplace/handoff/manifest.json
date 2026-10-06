@@ -1,0 +1,1069 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "200",
+        "referenced_spec_id": "200",
+        "referencing_spec_id": "209",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L115",
+        "source_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "successor_spec_id": "209"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "206",
+        "referenced_spec_id": "206",
+        "referencing_spec_id": "209",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L116",
+        "source_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "successor_spec_id": "209"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "207",
+        "referenced_spec_id": "207",
+        "referencing_spec_id": "209",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L117",
+        "source_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "successor_spec_id": "209"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "208",
+        "referenced_spec_id": "208",
+        "referencing_spec_id": "209",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L118",
+        "source_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "successor_spec_id": "209"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "209",
+        "referenced_spec_id": "209",
+        "referencing_spec_id": "211",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L7823",
+        "source_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
+        "successor_spec_id": "211"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "209",
+        "referenced_spec_id": "209",
+        "referencing_spec_id": "212",
+        "relation_text": "superseded",
+        "requirement_ids": [],
+        "source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L66",
+        "source_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
+        "successor_spec_id": "212"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "209",
+        "referenced_spec_id": "209",
+        "referencing_spec_id": "216",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
+        "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "successor_spec_id": "216"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "209",
+        "referenced_spec_id": "209",
+        "referencing_spec_id": "216",
+        "relation_text": "replacing",
+        "requirement_ids": [],
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L54",
+        "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "successor_spec_id": "216"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "209",
+        "referenced_spec_id": "209",
+        "referencing_spec_id": "224",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8683",
+        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "successor_spec_id": "224"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md"
+      },
+      {
+        "digest": "1b9636be4a0a8ae37a579593e091f4d329b3dcbcbbb8e2193cd5a7cfceae18f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/claude-plan.md"
+      },
+      {
+        "digest": "70ae125af2e11e55e1fc242a757ac72fb0aabcf620e1ff70156a2a0f8e7ce3cf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/claude-spec.md"
+      },
+      {
+        "digest": "5daf879102eda5ec3dd43698f23bcaddcb143627bb42e220ffc3eb31cb638100",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/implementation/completion.md"
+      },
+      {
+        "digest": "c00f40bb0f7289c28f75c8da44bec6bc4d8345fdd37c76efddf52e696681fe70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "1dd606315723c88666295483f0aefc3e4e9a19c427c028c76bcc1aeed0fbc61e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
+      },
+      {
+        "digest": "4476f3dafb3813f3997817bc4dda5fdb59829b439f58bc63334c3029878b2a56",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
+      },
+      {
+        "digest": "311179fc469129cd8a9a6d21216f509075dfe1937bc623511c5b7f753ab5b61f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
+      },
+      {
+        "digest": "4105ed726e58ae9333c0e23a29f9fc34d3fdd4bcae36d7ad52c509801f953a30",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
+      },
+      {
+        "digest": "21559e2b5cfd62247bcc10843029525df048c7b6a19a61a3125454afe04ea659",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
+      },
+      {
+        "digest": "fb40713d95ddca28c694a2e396569a64f1304937ae631eb928f83e0c1b59b53c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
+      },
+      {
+        "digest": "4040806ec0e6ed9e9dd514c682a4e0436db61a9d0a469806a19b3ee8b1f30c8d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
+      },
+      {
+        "digest": "eb037d677ec2cf07b8ddf08c6ba420d7bf42448560c23193898b58c3353a6abe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
+      },
+      {
+        "digest": "43a7908361011e5f95134a57756872270ca45d86493acf9ee3af6d97d77f47dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
+      },
+      {
+        "digest": "8fe6798a014ffe9889bd1ae0b9956eda3b9c92b6daad46ce25eeeb6419969a9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
+      },
+      {
+        "digest": "f3087fbf8916d04ef70831d5d1da64c76fcf57c8484e5679e02c92a6cb596404",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
+      },
+      {
+        "digest": "62292d163e8f96ce29861b7afc5a0a9f51162aa878cb72c3948832d0fdcea03f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
+      },
+      {
+        "digest": "c5b59227749c9d5adc45f3f425f381af0d02099a2fb9a67bfadadee5e41d4003",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
+      },
+      {
+        "digest": "90c8254752c3296ef15a4ba1aaeba1c2e3d554de474553de18fae62195fe317a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
+      },
+      {
+        "digest": "c0cb59b99d962205dcea677620243e9ff04df0e116f3a1d2db0d0ab979eaf701",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md"
+      },
+      {
+        "digest": "1b9636be4a0a8ae37a579593e091f4d329b3dcbcbbb8e2193cd5a7cfceae18f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/claude-plan.md"
+      },
+      {
+        "digest": "70ae125af2e11e55e1fc242a757ac72fb0aabcf620e1ff70156a2a0f8e7ce3cf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/claude-spec.md"
+      },
+      {
+        "digest": "5daf879102eda5ec3dd43698f23bcaddcb143627bb42e220ffc3eb31cb638100",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/implementation/completion.md"
+      },
+      {
+        "digest": "c00f40bb0f7289c28f75c8da44bec6bc4d8345fdd37c76efddf52e696681fe70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "1dd606315723c88666295483f0aefc3e4e9a19c427c028c76bcc1aeed0fbc61e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
+      },
+      {
+        "digest": "4476f3dafb3813f3997817bc4dda5fdb59829b439f58bc63334c3029878b2a56",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
+      },
+      {
+        "digest": "311179fc469129cd8a9a6d21216f509075dfe1937bc623511c5b7f753ab5b61f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
+      },
+      {
+        "digest": "4105ed726e58ae9333c0e23a29f9fc34d3fdd4bcae36d7ad52c509801f953a30",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
+      },
+      {
+        "digest": "21559e2b5cfd62247bcc10843029525df048c7b6a19a61a3125454afe04ea659",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
+      },
+      {
+        "digest": "fb40713d95ddca28c694a2e396569a64f1304937ae631eb928f83e0c1b59b53c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
+      },
+      {
+        "digest": "4040806ec0e6ed9e9dd514c682a4e0436db61a9d0a469806a19b3ee8b1f30c8d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
+      },
+      {
+        "digest": "eb037d677ec2cf07b8ddf08c6ba420d7bf42448560c23193898b58c3353a6abe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
+      },
+      {
+        "digest": "43a7908361011e5f95134a57756872270ca45d86493acf9ee3af6d97d77f47dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
+      },
+      {
+        "digest": "8fe6798a014ffe9889bd1ae0b9956eda3b9c92b6daad46ce25eeeb6419969a9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
+      },
+      {
+        "digest": "f3087fbf8916d04ef70831d5d1da64c76fcf57c8484e5679e02c92a6cb596404",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
+      },
+      {
+        "digest": "62292d163e8f96ce29861b7afc5a0a9f51162aa878cb72c3948832d0fdcea03f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
+      },
+      {
+        "digest": "c5b59227749c9d5adc45f3f425f381af0d02099a2fb9a67bfadadee5e41d4003",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
+      },
+      {
+        "digest": "90c8254752c3296ef15a4ba1aaeba1c2e3d554de474553de18fae62195fe317a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
+      },
+      {
+        "digest": "c0cb59b99d962205dcea677620243e9ff04df0e116f3a1d2db0d0ab979eaf701",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
+      },
+      {
+        "excerpt": "\"title\": \"Spec 209 Workflow Studio mockup flow\",",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 76,
+        "path": "apps/web/test-results/production-director/playwright-evidence.json"
+      },
+      {
+        "excerpt": "test.describe(\"Spec 209 Workflow Studio mockup flow\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 49,
+        "path": "apps/web/tests/e2e/workflow-studio-browser.spec.ts"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md"
+      },
+      {
+        "digest": "1b9636be4a0a8ae37a579593e091f4d329b3dcbcbbb8e2193cd5a7cfceae18f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/claude-plan.md"
+      },
+      {
+        "digest": "70ae125af2e11e55e1fc242a757ac72fb0aabcf620e1ff70156a2a0f8e7ce3cf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/claude-spec.md"
+      },
+      {
+        "digest": "5daf879102eda5ec3dd43698f23bcaddcb143627bb42e220ffc3eb31cb638100",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/implementation/completion.md"
+      },
+      {
+        "digest": "c00f40bb0f7289c28f75c8da44bec6bc4d8345fdd37c76efddf52e696681fe70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "1dd606315723c88666295483f0aefc3e4e9a19c427c028c76bcc1aeed0fbc61e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
+      },
+      {
+        "digest": "4476f3dafb3813f3997817bc4dda5fdb59829b439f58bc63334c3029878b2a56",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
+      },
+      {
+        "digest": "311179fc469129cd8a9a6d21216f509075dfe1937bc623511c5b7f753ab5b61f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
+      },
+      {
+        "digest": "4105ed726e58ae9333c0e23a29f9fc34d3fdd4bcae36d7ad52c509801f953a30",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
+      },
+      {
+        "digest": "21559e2b5cfd62247bcc10843029525df048c7b6a19a61a3125454afe04ea659",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
+      },
+      {
+        "digest": "fb40713d95ddca28c694a2e396569a64f1304937ae631eb928f83e0c1b59b53c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
+      },
+      {
+        "digest": "4040806ec0e6ed9e9dd514c682a4e0436db61a9d0a469806a19b3ee8b1f30c8d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
+      },
+      {
+        "digest": "eb037d677ec2cf07b8ddf08c6ba420d7bf42448560c23193898b58c3353a6abe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
+      },
+      {
+        "digest": "43a7908361011e5f95134a57756872270ca45d86493acf9ee3af6d97d77f47dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
+      },
+      {
+        "digest": "8fe6798a014ffe9889bd1ae0b9956eda3b9c92b6daad46ce25eeeb6419969a9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
+      },
+      {
+        "digest": "f3087fbf8916d04ef70831d5d1da64c76fcf57c8484e5679e02c92a6cb596404",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
+      },
+      {
+        "digest": "62292d163e8f96ce29861b7afc5a0a9f51162aa878cb72c3948832d0fdcea03f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
+      },
+      {
+        "digest": "c5b59227749c9d5adc45f3f425f381af0d02099a2fb9a67bfadadee5e41d4003",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
+      },
+      {
+        "digest": "90c8254752c3296ef15a4ba1aaeba1c2e3d554de474553de18fae62195fe317a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
+      },
+      {
+        "digest": "c0cb59b99d962205dcea677620243e9ff04df0e116f3a1d2db0d0ab979eaf701",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md",
+    "digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.910148Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-26T09:26:48+07:00",
+      "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
+    },
+    "revision": "9",
+    "slug": "209-ai-workflow-studio-miniapp-marketplace",
+    "spec_id": "209",
+    "title": "Spec 209 — SmartAIHub AI Workflow Studio"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.910148Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.910148Z",
+    "sources": [
+      {
+        "digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md"
+      },
+      {
+        "digest": "1b9636be4a0a8ae37a579593e091f4d329b3dcbcbbb8e2193cd5a7cfceae18f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/claude-plan.md"
+      },
+      {
+        "digest": "70ae125af2e11e55e1fc242a757ac72fb0aabcf620e1ff70156a2a0f8e7ce3cf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/claude-spec.md"
+      },
+      {
+        "digest": "5daf879102eda5ec3dd43698f23bcaddcb143627bb42e220ffc3eb31cb638100",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/implementation/completion.md"
+      },
+      {
+        "digest": "c00f40bb0f7289c28f75c8da44bec6bc4d8345fdd37c76efddf52e696681fe70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "1dd606315723c88666295483f0aefc3e4e9a19c427c028c76bcc1aeed0fbc61e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
+      },
+      {
+        "digest": "4476f3dafb3813f3997817bc4dda5fdb59829b439f58bc63334c3029878b2a56",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
+      },
+      {
+        "digest": "311179fc469129cd8a9a6d21216f509075dfe1937bc623511c5b7f753ab5b61f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
+      },
+      {
+        "digest": "4105ed726e58ae9333c0e23a29f9fc34d3fdd4bcae36d7ad52c509801f953a30",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
+      },
+      {
+        "digest": "21559e2b5cfd62247bcc10843029525df048c7b6a19a61a3125454afe04ea659",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
+      },
+      {
+        "digest": "fb40713d95ddca28c694a2e396569a64f1304937ae631eb928f83e0c1b59b53c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
+      },
+      {
+        "digest": "4040806ec0e6ed9e9dd514c682a4e0436db61a9d0a469806a19b3ee8b1f30c8d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
+      },
+      {
+        "digest": "eb037d677ec2cf07b8ddf08c6ba420d7bf42448560c23193898b58c3353a6abe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
+      },
+      {
+        "digest": "43a7908361011e5f95134a57756872270ca45d86493acf9ee3af6d97d77f47dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
+      },
+      {
+        "digest": "8fe6798a014ffe9889bd1ae0b9956eda3b9c92b6daad46ce25eeeb6419969a9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
+      },
+      {
+        "digest": "f3087fbf8916d04ef70831d5d1da64c76fcf57c8484e5679e02c92a6cb596404",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
+      },
+      {
+        "digest": "62292d163e8f96ce29861b7afc5a0a9f51162aa878cb72c3948832d0fdcea03f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
+      },
+      {
+        "digest": "c5b59227749c9d5adc45f3f425f381af0d02099a2fb9a67bfadadee5e41d4003",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
+      },
+      {
+        "digest": "90c8254752c3296ef15a4ba1aaeba1c2e3d554de474553de18fae62195fe317a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
+      },
+      {
+        "digest": "c0cb59b99d962205dcea677620243e9ff04df0e116f3a1d2db0d0ab979eaf701",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
+      },
+      {
+        "digest": "dc4714d65b36f8a1e259e4290a4f131eddb7efe1bc5fffc95d4f7f49b40e82ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/release-gate.md"
+      },
+      {
+        "digest": "124d2f0ca2390d7bd55af4e70e2e4019dad3022792b0373100f233c461bdbb79",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "d231ad117a78217af709eea2ff9b30b79a56cca58ab215654a9f444a6d6666ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-plan.md"
+      },
+      {
+        "digest": "b725385426c66150aa3f7d9d10bff18908d2a78a1ee67d97e9a9387c3f4b6a49",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-spec.md"
+      },
+      {
+        "digest": "4074264cbd151fab1a6cdde3cb89e62d64d881eaaf160c9303dbb8fcb1110750",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/completion.md"
+      },
+      {
+        "digest": "18a60294724eb0db05e418761abc8deedac9f1356a17d2a6a8ed873e498abb82",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "b1227d30fb9cbace897cf953142e48db9182adb602f0a5e5c543594c261cd696",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/review.md"
+      },
+      {
+        "digest": "22e44eed65c2fa3d3ff19f987f29515aa71ccacb59e8abbd1d811157a6266086",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/completeness-rounds-10.md"
+      },
+      {
+        "digest": "67adf2d7a770cf94e93b9e876d84e12e3ca2761201c5ce9251fa1855dd98a8f7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/cross-consistency.md"
+      },
+      {
+        "digest": "690183e1bb2d9aaa32e69038dc08f2d0995d1783a9ce6ba1f600528c1f07ae6f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "556cb4c404876d07cde8de8b25843ded7442b2f4d11d10c17fdb088a9617574a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/ui-interaction-gap-audit.md"
+      },
+      {
+        "digest": "a81d8225f9ca0a62fa5c76f367bc9c5ab9114ff08b630888d07b01720b9c6f40",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/index.md"
+      },
+      {
+        "digest": "ba816a947fb67c025b529aea7705a53a705338d8bcb6590beb5fb363ff869430",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-01-run-foundation.md"
+      },
+      {
+        "digest": "5da2d6dd12349380559144c4d262330c2476f28e326c23e605cfc0fa1111e956",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-02-library-marketplace.md"
+      },
+      {
+        "digest": "a82b663ca1cb065463ff93b84625d09403bd629afe0f5841ed6571c390b6d545",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-03-job-admission.md"
+      },
+      {
+        "digest": "23b200b6eb7df18591db8a7f374dc6732aa408fbbd29c7e1abea21c24989d36d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-04-checkpoints-run-modes.md"
+      },
+      {
+        "digest": "546016ef0fc43219010bc785463a49977f839a219cf05f5f2a2d0b3aa9580d5d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-05-run-lifecycle-controls.md"
+      },
+      {
+        "digest": "074b0a7076e57964e6e8e393eb25822117e03da67d41bbc78cf011f3f2e9a87b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-06-results-observability.md"
+      },
+      {
+        "digest": "4f46d3102c93e7eca9c6113044987bbd060b18fbaf9345af75801f2874cc24cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-07-ui-state-integration.md"
+      },
+      {
+        "digest": "eb10453952ec7af380b1e6ae7896744852bb8f6d1f42a22ccfd42a401f6a6175",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-08-economics-release.md"
+      },
+      {
+        "digest": "ef426e71b94577dd835b775c809f312730c2af7c52a5da4dae15a872ffea8381",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/index.md"
+      },
+      {
+        "digest": "462641e98c021eb65a8dd6ffed0694f0b009e388091be3d548923a13d09fde61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/section-01-workflow-domain-access.md"
+      },
+      {
+        "digest": "7f74f739539f3b6013d182115b824ffecd6348b70a1926fc19eac6e5f092d243",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/section-02-ai-builder-compiler.md"
+      },
+      {
+        "digest": "7e8d50a45558eead7fc0fd5e1e7789ad73f071eaacdd88aa4a56be0f3feb64c0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/section-03-builder-canvas-inspector.md"
+      },
+      {
+        "digest": "8d526536870b15dcf936a7582a9677e496ce8475bcdb7a78e14f28af665b1110",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/section-04-subflow-data-binding-runtime.md"
+      },
+      {
+        "digest": "7ab6a3fcf29d00ee9a3acef2cb0a1acd049f6668ea2de6a3f76b9505ed51baee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/section-05-run-mini-app-marketplace.md"
+      },
+      {
+        "digest": "5051c6cd4778facb37f543e5f1475a24633a7718700216e36e59655d7555e9dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/section-06-economics-observability-release.md"
+      },
+      {
+        "excerpt": "\"title\": \"Spec 209 Workflow Studio mockup flow\",",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 76,
+        "path": "apps/web/test-results/production-director/playwright-evidence.json"
+      },
+      {
+        "excerpt": "test.describe(\"Spec 209 Workflow Studio mockup flow\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 49,
+        "path": "apps/web/tests/e2e/workflow-studio-browser.spec.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "\"title\": \"Spec 209 Workflow Studio mockup flow\",",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 76,
+        "path": "apps/web/test-results/production-director/playwright-evidence.json"
+      },
+      {
+        "excerpt": "test.describe(\"Spec 209 Workflow Studio mockup flow\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 49,
+        "path": "apps/web/tests/e2e/workflow-studio-browser.spec.ts"
+      }
+    ],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md"
+      },
+      {
+        "digest": "1b9636be4a0a8ae37a579593e091f4d329b3dcbcbbb8e2193cd5a7cfceae18f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/claude-plan.md"
+      },
+      {
+        "digest": "70ae125af2e11e55e1fc242a757ac72fb0aabcf620e1ff70156a2a0f8e7ce3cf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/claude-spec.md"
+      },
+      {
+        "digest": "5daf879102eda5ec3dd43698f23bcaddcb143627bb42e220ffc3eb31cb638100",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/implementation/completion.md"
+      },
+      {
+        "digest": "c00f40bb0f7289c28f75c8da44bec6bc4d8345fdd37c76efddf52e696681fe70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "1dd606315723c88666295483f0aefc3e4e9a19c427c028c76bcc1aeed0fbc61e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
+      },
+      {
+        "digest": "4476f3dafb3813f3997817bc4dda5fdb59829b439f58bc63334c3029878b2a56",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
+      },
+      {
+        "digest": "311179fc469129cd8a9a6d21216f509075dfe1937bc623511c5b7f753ab5b61f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
+      },
+      {
+        "digest": "4105ed726e58ae9333c0e23a29f9fc34d3fdd4bcae36d7ad52c509801f953a30",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
+      },
+      {
+        "digest": "21559e2b5cfd62247bcc10843029525df048c7b6a19a61a3125454afe04ea659",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
+      },
+      {
+        "digest": "fb40713d95ddca28c694a2e396569a64f1304937ae631eb928f83e0c1b59b53c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
+      },
+      {
+        "digest": "4040806ec0e6ed9e9dd514c682a4e0436db61a9d0a469806a19b3ee8b1f30c8d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
+      },
+      {
+        "digest": "eb037d677ec2cf07b8ddf08c6ba420d7bf42448560c23193898b58c3353a6abe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
+      },
+      {
+        "digest": "43a7908361011e5f95134a57756872270ca45d86493acf9ee3af6d97d77f47dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
+      },
+      {
+        "digest": "8fe6798a014ffe9889bd1ae0b9956eda3b9c92b6daad46ce25eeeb6419969a9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
+      },
+      {
+        "digest": "f3087fbf8916d04ef70831d5d1da64c76fcf57c8484e5679e02c92a6cb596404",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
+      },
+      {
+        "digest": "62292d163e8f96ce29861b7afc5a0a9f51162aa878cb72c3948832d0fdcea03f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
+      },
+      {
+        "digest": "c5b59227749c9d5adc45f3f425f381af0d02099a2fb9a67bfadadee5e41d4003",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
+      },
+      {
+        "digest": "90c8254752c3296ef15a4ba1aaeba1c2e3d554de474553de18fae62195fe317a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
+      },
+      {
+        "digest": "c0cb59b99d962205dcea677620243e9ff04df0e116f3a1d2db0d0ab979eaf701",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
+      },
+      {
+        "digest": "dc4714d65b36f8a1e259e4290a4f131eddb7efe1bc5fffc95d4f7f49b40e82ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/release-gate.md"
+      },
+      {
+        "digest": "124d2f0ca2390d7bd55af4e70e2e4019dad3022792b0373100f233c461bdbb79",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "d231ad117a78217af709eea2ff9b30b79a56cca58ab215654a9f444a6d6666ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-plan.md"
+      },
+      {
+        "digest": "b725385426c66150aa3f7d9d10bff18908d2a78a1ee67d97e9a9387c3f4b6a49",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/claude-spec.md"
+      },
+      {
+        "digest": "4074264cbd151fab1a6cdde3cb89e62d64d881eaaf160c9303dbb8fcb1110750",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/completion.md"
+      },
+      {
+        "digest": "18a60294724eb0db05e418761abc8deedac9f1356a17d2a6a8ed873e498abb82",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "b1227d30fb9cbace897cf953142e48db9182adb602f0a5e5c543594c261cd696",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation/review.md"
+      },
+      {
+        "digest": "22e44eed65c2fa3d3ff19f987f29515aa71ccacb59e8abbd1d811157a6266086",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/completeness-rounds-10.md"
+      },
+      {
+        "digest": "67adf2d7a770cf94e93b9e876d84e12e3ca2761201c5ce9251fa1855dd98a8f7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/cross-consistency.md"
+      },
+      {
+        "digest": "690183e1bb2d9aaa32e69038dc08f2d0995d1783a9ce6ba1f600528c1f07ae6f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "556cb4c404876d07cde8de8b25843ded7442b2f4d11d10c17fdb088a9617574a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/reviews/ui-interaction-gap-audit.md"
+      },
+      {
+        "digest": "a81d8225f9ca0a62fa5c76f367bc9c5ab9114ff08b630888d07b01720b9c6f40",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/index.md"
+      },
+      {
+        "digest": "ba816a947fb67c025b529aea7705a53a705338d8bcb6590beb5fb363ff869430",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-01-run-foundation.md"
+      },
+      {
+        "digest": "5da2d6dd12349380559144c4d262330c2476f28e326c23e605cfc0fa1111e956",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-02-library-marketplace.md"
+      },
+      {
+        "digest": "a82b663ca1cb065463ff93b84625d09403bd629afe0f5841ed6571c390b6d545",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-03-job-admission.md"
+      },
+      {
+        "digest": "23b200b6eb7df18591db8a7f374dc6732aa408fbbd29c7e1abea21c24989d36d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-04-checkpoints-run-modes.md"
+      },
+      {
+        "digest": "546016ef0fc43219010bc785463a49977f839a219cf05f5f2a2d0b3aa9580d5d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-05-run-lifecycle-controls.md"
+      },
+      {
+        "digest": "074b0a7076e57964e6e8e393eb25822117e03da67d41bbc78cf011f3f2e9a87b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-06-results-observability.md"
+      },
+      {
+        "digest": "4f46d3102c93e7eca9c6113044987bbd060b18fbaf9345af75801f2874cc24cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-07-ui-state-integration.md"
+      },
+      {
+        "digest": "eb10453952ec7af380b1e6ae7896744852bb8f6d1f42a22ccfd42a401f6a6175",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections/section-08-economics-release.md"
+      },
+      {
+        "digest": "ef426e71b94577dd835b775c809f312730c2af7c52a5da4dae15a872ffea8381",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/index.md"
+      },
+      {
+        "digest": "462641e98c021eb65a8dd6ffed0694f0b009e388091be3d548923a13d09fde61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/section-01-workflow-domain-access.md"
+      },
+      {
+        "digest": "7f74f739539f3b6013d182115b824ffecd6348b70a1926fc19eac6e5f092d243",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/section-02-ai-builder-compiler.md"
+      },
+      {
+        "digest": "7e8d50a45558eead7fc0fd5e1e7789ad73f071eaacdd88aa4a56be0f3feb64c0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/section-03-builder-canvas-inspector.md"
+      },
+      {
+        "digest": "8d526536870b15dcf936a7582a9677e496ce8475bcdb7a78e14f28af665b1110",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/section-04-subflow-data-binding-runtime.md"
+      },
+      {
+        "digest": "7ab6a3fcf29d00ee9a3acef2cb0a1acd049f6668ea2de6a3f76b9505ed51baee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/section-05-run-mini-app-marketplace.md"
+      },
+      {
+        "digest": "5051c6cd4778facb37f543e5f1475a24633a7718700216e36e59655d7555e9dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections/section-06-economics-observability-release.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 938,
+    "unresolved": 938
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.910148Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

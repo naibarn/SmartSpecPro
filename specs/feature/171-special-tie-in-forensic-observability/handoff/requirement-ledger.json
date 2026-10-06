@@ -1,0 +1,52 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/171-special-tie-in-forensic-observability/spec.md#L6"
+      ],
+      "authority_source": "specs/feature/171-special-tie-in-forensic-observability/spec.md#L6",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "45d2a1e81cf9418cab0fcd8154850c894af84dbc5b62b3ab4368f8662588a69f",
+      "requirement_id": "REQ-FC069AD0ABB9",
+      "requirement_text": "ID. Admins must be able to reconstruct the selected skill/version/input, the raw",
+      "source_spec_digest": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/171-special-tie-in-forensic-observability/spec.md#L47"
+      ],
+      "authority_source": "specs/feature/171-special-tie-in-forensic-observability/spec.md#L47",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ffb538a76dcb7220dc286d043c27eaab5dc62dd3e447d7e50aae9a3bbc559ec1",
+      "requirement_id": "REQ-CD02A9F13350",
+      "requirement_text": "9. Event-write failures must not change generation success/failure or billing",
+      "source_spec_digest": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+  "spec_id": "171"
+}

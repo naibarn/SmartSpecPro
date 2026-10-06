@@ -1,0 +1,572 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "9e64ce8daf88bc163d3ff58b613376aa332fd698a25990c7efd232aa0de6c0d8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/spec.md"
+      },
+      {
+        "digest": "5c5e2fa13c1f981bc4a587ac5fc1d20be3fe737c7b828d9869837dea12e6e922",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/claude-plan.md"
+      },
+      {
+        "digest": "c0f5322b4ac5b032a82dff1ef9b1e9005f2f9db8a448ba1e86e1348881a7eceb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/claude-spec.md"
+      },
+      {
+        "digest": "891cb2b3c7f3c25ffc18081cbfd907c43edb445dfe9c06f95c3b2cbbdb3197b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/commit-plan.md"
+      },
+      {
+        "digest": "07097d903fb373b0ae10396419246024766361426f87ebf575fced1b328abfdd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "57faf308a8d831888ecc3ae7ee5714b69ad6e3a72ecd6adf75be92927543bf75",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/typecheck-blockers.md"
+      },
+      {
+        "digest": "8d4ca83061200e5fb1a6eff5b283a5a8649fb5703075b343b98e0a4691efdd39",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "3d14c65d9c9d0c15235c2f4b851e21bcae5912089037d082ac459a29416f4e86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "87a3ec718887ec8e7667297710f58c353aeaf8d4121c0cd3063a7e9457d9bd03",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/index.md"
+      },
+      {
+        "digest": "9b5828f7025b77348fb048df1bae5d8491db2f5dd2e4a30f2e0426d32848ef19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-01-shared-contracts-and-persistence.md"
+      },
+      {
+        "digest": "454922cf172d0bf39418fd46b4a1a06daf8b0a301bd59fe6a94bfceaa4b60b9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-02-intake-and-playbook-drafting.md"
+      },
+      {
+        "digest": "4da8b39768518a1ff50e6809889dca4d9fbe3818e6ce3950f7c811654aa391b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-03-workpack-compiler-and-routing.md"
+      },
+      {
+        "digest": "8c0f72d9bdfbdc86515242b20cab3a25b02a6056a77ed4dc607c72a357cfca51",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-04-simulation-replay-and-exceptions.md"
+      },
+      {
+        "digest": "96d0798d2c25f1a45425c262be7d45dbb6dc65e5ca2dff9b7babf418b7aaa2af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-05-connector-mapping-and-boundary-control.md"
+      },
+      {
+        "digest": "32fa2929c3d16bce3ac11e4389458ffe175da893426b35984404fc8452008cc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-06-learning-benchmarks-and-promotion.md"
+      },
+      {
+        "digest": "9ee149feddab78474e962d89f8e32252b81fa5ef7b8579e3db955660ea8ab277",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-07-control-plane-ui-surfaces.md"
+      },
+      {
+        "digest": "2fdf99d12f17f9e8209a4d9e12ac484c7ec46212bda8912c71aacdb7a2eeb891",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-08-telemetry-rollout-and-gating.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "9e64ce8daf88bc163d3ff58b613376aa332fd698a25990c7efd232aa0de6c0d8"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "9e64ce8daf88bc163d3ff58b613376aa332fd698a25990c7efd232aa0de6c0d8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/spec.md"
+      },
+      {
+        "digest": "5c5e2fa13c1f981bc4a587ac5fc1d20be3fe737c7b828d9869837dea12e6e922",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/claude-plan.md"
+      },
+      {
+        "digest": "c0f5322b4ac5b032a82dff1ef9b1e9005f2f9db8a448ba1e86e1348881a7eceb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/claude-spec.md"
+      },
+      {
+        "digest": "891cb2b3c7f3c25ffc18081cbfd907c43edb445dfe9c06f95c3b2cbbdb3197b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/commit-plan.md"
+      },
+      {
+        "digest": "07097d903fb373b0ae10396419246024766361426f87ebf575fced1b328abfdd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "57faf308a8d831888ecc3ae7ee5714b69ad6e3a72ecd6adf75be92927543bf75",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/typecheck-blockers.md"
+      },
+      {
+        "digest": "8d4ca83061200e5fb1a6eff5b283a5a8649fb5703075b343b98e0a4691efdd39",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "3d14c65d9c9d0c15235c2f4b851e21bcae5912089037d082ac459a29416f4e86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "87a3ec718887ec8e7667297710f58c353aeaf8d4121c0cd3063a7e9457d9bd03",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/index.md"
+      },
+      {
+        "digest": "9b5828f7025b77348fb048df1bae5d8491db2f5dd2e4a30f2e0426d32848ef19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-01-shared-contracts-and-persistence.md"
+      },
+      {
+        "digest": "454922cf172d0bf39418fd46b4a1a06daf8b0a301bd59fe6a94bfceaa4b60b9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-02-intake-and-playbook-drafting.md"
+      },
+      {
+        "digest": "4da8b39768518a1ff50e6809889dca4d9fbe3818e6ce3950f7c811654aa391b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-03-workpack-compiler-and-routing.md"
+      },
+      {
+        "digest": "8c0f72d9bdfbdc86515242b20cab3a25b02a6056a77ed4dc607c72a357cfca51",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-04-simulation-replay-and-exceptions.md"
+      },
+      {
+        "digest": "96d0798d2c25f1a45425c262be7d45dbb6dc65e5ca2dff9b7babf418b7aaa2af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-05-connector-mapping-and-boundary-control.md"
+      },
+      {
+        "digest": "32fa2929c3d16bce3ac11e4389458ffe175da893426b35984404fc8452008cc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-06-learning-benchmarks-and-promotion.md"
+      },
+      {
+        "digest": "9ee149feddab78474e962d89f8e32252b81fa5ef7b8579e3db955660ea8ab277",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-07-control-plane-ui-surfaces.md"
+      },
+      {
+        "digest": "2fdf99d12f17f9e8209a4d9e12ac484c7ec46212bda8912c71aacdb7a2eeb891",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-08-telemetry-rollout-and-gating.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "9e64ce8daf88bc163d3ff58b613376aa332fd698a25990c7efd232aa0de6c0d8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/spec.md"
+      },
+      {
+        "digest": "5c5e2fa13c1f981bc4a587ac5fc1d20be3fe737c7b828d9869837dea12e6e922",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/claude-plan.md"
+      },
+      {
+        "digest": "c0f5322b4ac5b032a82dff1ef9b1e9005f2f9db8a448ba1e86e1348881a7eceb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/claude-spec.md"
+      },
+      {
+        "digest": "891cb2b3c7f3c25ffc18081cbfd907c43edb445dfe9c06f95c3b2cbbdb3197b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/commit-plan.md"
+      },
+      {
+        "digest": "07097d903fb373b0ae10396419246024766361426f87ebf575fced1b328abfdd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "57faf308a8d831888ecc3ae7ee5714b69ad6e3a72ecd6adf75be92927543bf75",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/typecheck-blockers.md"
+      },
+      {
+        "digest": "8d4ca83061200e5fb1a6eff5b283a5a8649fb5703075b343b98e0a4691efdd39",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "3d14c65d9c9d0c15235c2f4b851e21bcae5912089037d082ac459a29416f4e86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "87a3ec718887ec8e7667297710f58c353aeaf8d4121c0cd3063a7e9457d9bd03",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/index.md"
+      },
+      {
+        "digest": "9b5828f7025b77348fb048df1bae5d8491db2f5dd2e4a30f2e0426d32848ef19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-01-shared-contracts-and-persistence.md"
+      },
+      {
+        "digest": "454922cf172d0bf39418fd46b4a1a06daf8b0a301bd59fe6a94bfceaa4b60b9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-02-intake-and-playbook-drafting.md"
+      },
+      {
+        "digest": "4da8b39768518a1ff50e6809889dca4d9fbe3818e6ce3950f7c811654aa391b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-03-workpack-compiler-and-routing.md"
+      },
+      {
+        "digest": "8c0f72d9bdfbdc86515242b20cab3a25b02a6056a77ed4dc607c72a357cfca51",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-04-simulation-replay-and-exceptions.md"
+      },
+      {
+        "digest": "96d0798d2c25f1a45425c262be7d45dbb6dc65e5ca2dff9b7babf418b7aaa2af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-05-connector-mapping-and-boundary-control.md"
+      },
+      {
+        "digest": "32fa2929c3d16bce3ac11e4389458ffe175da893426b35984404fc8452008cc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-06-learning-benchmarks-and-promotion.md"
+      },
+      {
+        "digest": "9ee149feddab78474e962d89f8e32252b81fa5ef7b8579e3db955660ea8ab277",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-07-control-plane-ui-surfaces.md"
+      },
+      {
+        "digest": "2fdf99d12f17f9e8209a4d9e12ac484c7ec46212bda8912c71aacdb7a2eeb891",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-08-telemetry-rollout-and-gating.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/079-autonomous-work-transformation-platform/spec.md",
+    "digest": "9e64ce8daf88bc163d3ff58b613376aa332fd698a25990c7efd232aa0de6c0d8",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.832393Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-10T06:51:23+07:00",
+      "spec_last_changed_at": "2026-04-10T06:51:23+07:00"
+    },
+    "revision": "1.1",
+    "slug": "079-autonomous-work-transformation-platform",
+    "spec_id": "079",
+    "title": "079 - Autonomous Work Transformation Platform"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.832393Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.832393Z",
+    "sources": [
+      {
+        "digest": "9e64ce8daf88bc163d3ff58b613376aa332fd698a25990c7efd232aa0de6c0d8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/spec.md"
+      },
+      {
+        "digest": "5c5e2fa13c1f981bc4a587ac5fc1d20be3fe737c7b828d9869837dea12e6e922",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/claude-plan.md"
+      },
+      {
+        "digest": "c0f5322b4ac5b032a82dff1ef9b1e9005f2f9db8a448ba1e86e1348881a7eceb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/claude-spec.md"
+      },
+      {
+        "digest": "891cb2b3c7f3c25ffc18081cbfd907c43edb445dfe9c06f95c3b2cbbdb3197b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/commit-plan.md"
+      },
+      {
+        "digest": "07097d903fb373b0ae10396419246024766361426f87ebf575fced1b328abfdd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "57faf308a8d831888ecc3ae7ee5714b69ad6e3a72ecd6adf75be92927543bf75",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/typecheck-blockers.md"
+      },
+      {
+        "digest": "8d4ca83061200e5fb1a6eff5b283a5a8649fb5703075b343b98e0a4691efdd39",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "3d14c65d9c9d0c15235c2f4b851e21bcae5912089037d082ac459a29416f4e86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "87a3ec718887ec8e7667297710f58c353aeaf8d4121c0cd3063a7e9457d9bd03",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/index.md"
+      },
+      {
+        "digest": "9b5828f7025b77348fb048df1bae5d8491db2f5dd2e4a30f2e0426d32848ef19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-01-shared-contracts-and-persistence.md"
+      },
+      {
+        "digest": "454922cf172d0bf39418fd46b4a1a06daf8b0a301bd59fe6a94bfceaa4b60b9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-02-intake-and-playbook-drafting.md"
+      },
+      {
+        "digest": "4da8b39768518a1ff50e6809889dca4d9fbe3818e6ce3950f7c811654aa391b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-03-workpack-compiler-and-routing.md"
+      },
+      {
+        "digest": "8c0f72d9bdfbdc86515242b20cab3a25b02a6056a77ed4dc607c72a357cfca51",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-04-simulation-replay-and-exceptions.md"
+      },
+      {
+        "digest": "96d0798d2c25f1a45425c262be7d45dbb6dc65e5ca2dff9b7babf418b7aaa2af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-05-connector-mapping-and-boundary-control.md"
+      },
+      {
+        "digest": "32fa2929c3d16bce3ac11e4389458ffe175da893426b35984404fc8452008cc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-06-learning-benchmarks-and-promotion.md"
+      },
+      {
+        "digest": "9ee149feddab78474e962d89f8e32252b81fa5ef7b8579e3db955660ea8ab277",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-07-control-plane-ui-surfaces.md"
+      },
+      {
+        "digest": "2fdf99d12f17f9e8209a4d9e12ac484c7ec46212bda8912c71aacdb7a2eeb891",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-08-telemetry-rollout-and-gating.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "9e64ce8daf88bc163d3ff58b613376aa332fd698a25990c7efd232aa0de6c0d8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/spec.md"
+      },
+      {
+        "digest": "5c5e2fa13c1f981bc4a587ac5fc1d20be3fe737c7b828d9869837dea12e6e922",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/claude-plan.md"
+      },
+      {
+        "digest": "c0f5322b4ac5b032a82dff1ef9b1e9005f2f9db8a448ba1e86e1348881a7eceb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/claude-spec.md"
+      },
+      {
+        "digest": "891cb2b3c7f3c25ffc18081cbfd907c43edb445dfe9c06f95c3b2cbbdb3197b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/commit-plan.md"
+      },
+      {
+        "digest": "07097d903fb373b0ae10396419246024766361426f87ebf575fced1b328abfdd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "57faf308a8d831888ecc3ae7ee5714b69ad6e3a72ecd6adf75be92927543bf75",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/implementation/typecheck-blockers.md"
+      },
+      {
+        "digest": "8d4ca83061200e5fb1a6eff5b283a5a8649fb5703075b343b98e0a4691efdd39",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/reviews/section-cross-consistency-review.md"
+      },
+      {
+        "digest": "3d14c65d9c9d0c15235c2f4b851e21bcae5912089037d082ac459a29416f4e86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "87a3ec718887ec8e7667297710f58c353aeaf8d4121c0cd3063a7e9457d9bd03",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/index.md"
+      },
+      {
+        "digest": "9b5828f7025b77348fb048df1bae5d8491db2f5dd2e4a30f2e0426d32848ef19",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-01-shared-contracts-and-persistence.md"
+      },
+      {
+        "digest": "454922cf172d0bf39418fd46b4a1a06daf8b0a301bd59fe6a94bfceaa4b60b9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-02-intake-and-playbook-drafting.md"
+      },
+      {
+        "digest": "4da8b39768518a1ff50e6809889dca4d9fbe3818e6ce3950f7c811654aa391b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-03-workpack-compiler-and-routing.md"
+      },
+      {
+        "digest": "8c0f72d9bdfbdc86515242b20cab3a25b02a6056a77ed4dc607c72a357cfca51",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-04-simulation-replay-and-exceptions.md"
+      },
+      {
+        "digest": "96d0798d2c25f1a45425c262be7d45dbb6dc65e5ca2dff9b7babf418b7aaa2af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-05-connector-mapping-and-boundary-control.md"
+      },
+      {
+        "digest": "32fa2929c3d16bce3ac11e4389458ffe175da893426b35984404fc8452008cc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-06-learning-benchmarks-and-promotion.md"
+      },
+      {
+        "digest": "9ee149feddab78474e962d89f8e32252b81fa5ef7b8579e3db955660ea8ab277",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-07-control-plane-ui-surfaces.md"
+      },
+      {
+        "digest": "2fdf99d12f17f9e8209a4d9e12ac484c7ec46212bda8912c71aacdb7a2eeb891",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-08-telemetry-rollout-and-gating.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 203,
+    "unresolved": 203
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.832393Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

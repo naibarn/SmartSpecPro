@@ -1,0 +1,597 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "e7e591d29f668247eebf08b251dbc5c6b8092cce4002b5fde9fb7a687dc4510f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md"
+      },
+      {
+        "digest": "68e2013233d7427b1c335c3ed292fe4581f6727d3d699d2b306fa1efc4431664",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/claude-plan.md"
+      },
+      {
+        "digest": "2d749a12e7d8b43f4e56be3a5e404c6078bc78ee56a2e45c24f3a5d78867c61d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "13989866b29a7549371f110e6bc1273fcbd1a463e9d8f0ef2f4675fa66142fda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/implementation/implementation-summary.md"
+      },
+      {
+        "digest": "41a61b03ca81736d44b35c42af4d8014ac728fb40a1ab1842bc1b697102c02eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/deep-plan-self-review-round-1.md"
+      },
+      {
+        "digest": "97da03e507b34501c7a81a75a5ed7362056ac1f9ae6608728ffaae8b0c7d5af7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/deep-plan-spec-completeness-review-round-2.md"
+      },
+      {
+        "digest": "68a2934bf62067ef755f1ba9670be269c0ef0d992ee3398798e7deb5de0ca415",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/open-question-decision-log.md"
+      },
+      {
+        "digest": "2a32313f55d5e26c883b34895bab90c6269ff6881df96c834065a72685c9277f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/spec-to-plan-traceability-matrix.md"
+      },
+      {
+        "digest": "d16c3148eb78ad1dd49f517e420289ee9394c7799a384858b5fa522a5402ae99",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/index.md"
+      },
+      {
+        "digest": "25bd86d6639d8950b81bfe254ca641f7e6fb1ea01afbb594922066092f6e6d18",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-01-shared-creative-contracts-and-registry.md"
+      },
+      {
+        "digest": "20039f6e666cc95ffcdef5ce5401fed6bfbf6b557776c28e180416895a8ce9ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-02-storyboard-review-persistence-and-provenance.md"
+      },
+      {
+        "digest": "d0cdca245136b70bb76d8c6305340852be743f328c37fd3fc9349b7020a739c5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-03-runtime-api-feature-access-and-credit-gates.md"
+      },
+      {
+        "digest": "5d2a8a962089da0bffbd619ea325cf063ceb14e172ab6a63384459efb79d5edd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-04-preview-and-editable-ux.md"
+      },
+      {
+        "digest": "3fac5dbfda5a9d924801205da57a9c2edd82d58e3e6b1c8d9f1d52c52c76e177",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-05-composition-builder-timeline-and-fallback.md"
+      },
+      {
+        "digest": "0c01f6494f6e916089997111cd4f696cfa1da0e00872b981098c2d9aad0e7b28",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-06-render-worker-and-output-projection.md"
+      },
+      {
+        "digest": "f34f32a9ae0d0c013d55a8dadfe5f472a1e5bff772f43ee25a4d90b1c38a8356",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-07-library-history-video-editor-handoff.md"
+      },
+      {
+        "digest": "060e35bc953bbdd40e5e875c071ec93a4ed74142a2899acaa0c34cf4b3d3ba1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-08-observability-cleanup-retention-operator.md"
+      },
+      {
+        "digest": "5ead99871118d8b81fca8ba341712cac4b487e386e6389bceed1f884d9d19b0d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-09-fixtures-e2e-rollout-gates.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "e7e591d29f668247eebf08b251dbc5c6b8092cce4002b5fde9fb7a687dc4510f"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "e7e591d29f668247eebf08b251dbc5c6b8092cce4002b5fde9fb7a687dc4510f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md"
+      },
+      {
+        "digest": "68e2013233d7427b1c335c3ed292fe4581f6727d3d699d2b306fa1efc4431664",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/claude-plan.md"
+      },
+      {
+        "digest": "2d749a12e7d8b43f4e56be3a5e404c6078bc78ee56a2e45c24f3a5d78867c61d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "13989866b29a7549371f110e6bc1273fcbd1a463e9d8f0ef2f4675fa66142fda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/implementation/implementation-summary.md"
+      },
+      {
+        "digest": "41a61b03ca81736d44b35c42af4d8014ac728fb40a1ab1842bc1b697102c02eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/deep-plan-self-review-round-1.md"
+      },
+      {
+        "digest": "97da03e507b34501c7a81a75a5ed7362056ac1f9ae6608728ffaae8b0c7d5af7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/deep-plan-spec-completeness-review-round-2.md"
+      },
+      {
+        "digest": "68a2934bf62067ef755f1ba9670be269c0ef0d992ee3398798e7deb5de0ca415",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/open-question-decision-log.md"
+      },
+      {
+        "digest": "2a32313f55d5e26c883b34895bab90c6269ff6881df96c834065a72685c9277f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/spec-to-plan-traceability-matrix.md"
+      },
+      {
+        "digest": "d16c3148eb78ad1dd49f517e420289ee9394c7799a384858b5fa522a5402ae99",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/index.md"
+      },
+      {
+        "digest": "25bd86d6639d8950b81bfe254ca641f7e6fb1ea01afbb594922066092f6e6d18",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-01-shared-creative-contracts-and-registry.md"
+      },
+      {
+        "digest": "20039f6e666cc95ffcdef5ce5401fed6bfbf6b557776c28e180416895a8ce9ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-02-storyboard-review-persistence-and-provenance.md"
+      },
+      {
+        "digest": "d0cdca245136b70bb76d8c6305340852be743f328c37fd3fc9349b7020a739c5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-03-runtime-api-feature-access-and-credit-gates.md"
+      },
+      {
+        "digest": "5d2a8a962089da0bffbd619ea325cf063ceb14e172ab6a63384459efb79d5edd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-04-preview-and-editable-ux.md"
+      },
+      {
+        "digest": "3fac5dbfda5a9d924801205da57a9c2edd82d58e3e6b1c8d9f1d52c52c76e177",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-05-composition-builder-timeline-and-fallback.md"
+      },
+      {
+        "digest": "0c01f6494f6e916089997111cd4f696cfa1da0e00872b981098c2d9aad0e7b28",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-06-render-worker-and-output-projection.md"
+      },
+      {
+        "digest": "f34f32a9ae0d0c013d55a8dadfe5f472a1e5bff772f43ee25a4d90b1c38a8356",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-07-library-history-video-editor-handoff.md"
+      },
+      {
+        "digest": "060e35bc953bbdd40e5e875c071ec93a4ed74142a2899acaa0c34cf4b3d3ba1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-08-observability-cleanup-retention-operator.md"
+      },
+      {
+        "digest": "5ead99871118d8b81fca8ba341712cac4b487e386e6389bceed1f884d9d19b0d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-09-fixtures-e2e-rollout-gates.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "e7e591d29f668247eebf08b251dbc5c6b8092cce4002b5fde9fb7a687dc4510f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md"
+      },
+      {
+        "digest": "68e2013233d7427b1c335c3ed292fe4581f6727d3d699d2b306fa1efc4431664",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/claude-plan.md"
+      },
+      {
+        "digest": "2d749a12e7d8b43f4e56be3a5e404c6078bc78ee56a2e45c24f3a5d78867c61d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "13989866b29a7549371f110e6bc1273fcbd1a463e9d8f0ef2f4675fa66142fda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/implementation/implementation-summary.md"
+      },
+      {
+        "digest": "41a61b03ca81736d44b35c42af4d8014ac728fb40a1ab1842bc1b697102c02eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/deep-plan-self-review-round-1.md"
+      },
+      {
+        "digest": "97da03e507b34501c7a81a75a5ed7362056ac1f9ae6608728ffaae8b0c7d5af7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/deep-plan-spec-completeness-review-round-2.md"
+      },
+      {
+        "digest": "68a2934bf62067ef755f1ba9670be269c0ef0d992ee3398798e7deb5de0ca415",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/open-question-decision-log.md"
+      },
+      {
+        "digest": "2a32313f55d5e26c883b34895bab90c6269ff6881df96c834065a72685c9277f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/spec-to-plan-traceability-matrix.md"
+      },
+      {
+        "digest": "d16c3148eb78ad1dd49f517e420289ee9394c7799a384858b5fa522a5402ae99",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/index.md"
+      },
+      {
+        "digest": "25bd86d6639d8950b81bfe254ca641f7e6fb1ea01afbb594922066092f6e6d18",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-01-shared-creative-contracts-and-registry.md"
+      },
+      {
+        "digest": "20039f6e666cc95ffcdef5ce5401fed6bfbf6b557776c28e180416895a8ce9ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-02-storyboard-review-persistence-and-provenance.md"
+      },
+      {
+        "digest": "d0cdca245136b70bb76d8c6305340852be743f328c37fd3fc9349b7020a739c5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-03-runtime-api-feature-access-and-credit-gates.md"
+      },
+      {
+        "digest": "5d2a8a962089da0bffbd619ea325cf063ceb14e172ab6a63384459efb79d5edd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-04-preview-and-editable-ux.md"
+      },
+      {
+        "digest": "3fac5dbfda5a9d924801205da57a9c2edd82d58e3e6b1c8d9f1d52c52c76e177",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-05-composition-builder-timeline-and-fallback.md"
+      },
+      {
+        "digest": "0c01f6494f6e916089997111cd4f696cfa1da0e00872b981098c2d9aad0e7b28",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-06-render-worker-and-output-projection.md"
+      },
+      {
+        "digest": "f34f32a9ae0d0c013d55a8dadfe5f472a1e5bff772f43ee25a4d90b1c38a8356",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-07-library-history-video-editor-handoff.md"
+      },
+      {
+        "digest": "060e35bc953bbdd40e5e875c071ec93a4ed74142a2899acaa0c34cf4b3d3ba1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-08-observability-cleanup-retention-operator.md"
+      },
+      {
+        "digest": "5ead99871118d8b81fca8ba341712cac4b487e386e6389bceed1f884d9d19b0d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-09-fixtures-e2e-rollout-gates.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md",
+    "digest": "e7e591d29f668247eebf08b251dbc5c6b8092cce4002b5fde9fb7a687dc4510f",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.116797Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-06-13T02:13:39+07:00",
+      "spec_last_changed_at": "2026-06-14T06:44:49+07:00"
+    },
+    "revision": "1.0.0",
+    "slug": "120-hyperframes-creative-systems-overlay-audio-presets",
+    "spec_id": "120",
+    "title": "Feature 120: HyperFrames Creative Systems Overlay, Subtitle, Audio, And SFX Presets"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.116797Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.116797Z",
+    "sources": [
+      {
+        "digest": "e7e591d29f668247eebf08b251dbc5c6b8092cce4002b5fde9fb7a687dc4510f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md"
+      },
+      {
+        "digest": "68e2013233d7427b1c335c3ed292fe4581f6727d3d699d2b306fa1efc4431664",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/claude-plan.md"
+      },
+      {
+        "digest": "2d749a12e7d8b43f4e56be3a5e404c6078bc78ee56a2e45c24f3a5d78867c61d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "13989866b29a7549371f110e6bc1273fcbd1a463e9d8f0ef2f4675fa66142fda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/implementation/implementation-summary.md"
+      },
+      {
+        "digest": "41a61b03ca81736d44b35c42af4d8014ac728fb40a1ab1842bc1b697102c02eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/deep-plan-self-review-round-1.md"
+      },
+      {
+        "digest": "97da03e507b34501c7a81a75a5ed7362056ac1f9ae6608728ffaae8b0c7d5af7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/deep-plan-spec-completeness-review-round-2.md"
+      },
+      {
+        "digest": "68a2934bf62067ef755f1ba9670be269c0ef0d992ee3398798e7deb5de0ca415",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/open-question-decision-log.md"
+      },
+      {
+        "digest": "2a32313f55d5e26c883b34895bab90c6269ff6881df96c834065a72685c9277f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/spec-to-plan-traceability-matrix.md"
+      },
+      {
+        "digest": "d16c3148eb78ad1dd49f517e420289ee9394c7799a384858b5fa522a5402ae99",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/index.md"
+      },
+      {
+        "digest": "25bd86d6639d8950b81bfe254ca641f7e6fb1ea01afbb594922066092f6e6d18",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-01-shared-creative-contracts-and-registry.md"
+      },
+      {
+        "digest": "20039f6e666cc95ffcdef5ce5401fed6bfbf6b557776c28e180416895a8ce9ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-02-storyboard-review-persistence-and-provenance.md"
+      },
+      {
+        "digest": "d0cdca245136b70bb76d8c6305340852be743f328c37fd3fc9349b7020a739c5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-03-runtime-api-feature-access-and-credit-gates.md"
+      },
+      {
+        "digest": "5d2a8a962089da0bffbd619ea325cf063ceb14e172ab6a63384459efb79d5edd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-04-preview-and-editable-ux.md"
+      },
+      {
+        "digest": "3fac5dbfda5a9d924801205da57a9c2edd82d58e3e6b1c8d9f1d52c52c76e177",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-05-composition-builder-timeline-and-fallback.md"
+      },
+      {
+        "digest": "0c01f6494f6e916089997111cd4f696cfa1da0e00872b981098c2d9aad0e7b28",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-06-render-worker-and-output-projection.md"
+      },
+      {
+        "digest": "f34f32a9ae0d0c013d55a8dadfe5f472a1e5bff772f43ee25a4d90b1c38a8356",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-07-library-history-video-editor-handoff.md"
+      },
+      {
+        "digest": "060e35bc953bbdd40e5e875c071ec93a4ed74142a2899acaa0c34cf4b3d3ba1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-08-observability-cleanup-retention-operator.md"
+      },
+      {
+        "digest": "5ead99871118d8b81fca8ba341712cac4b487e386e6389bceed1f884d9d19b0d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-09-fixtures-e2e-rollout-gates.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "e7e591d29f668247eebf08b251dbc5c6b8092cce4002b5fde9fb7a687dc4510f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md"
+      },
+      {
+        "digest": "68e2013233d7427b1c335c3ed292fe4581f6727d3d699d2b306fa1efc4431664",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/claude-plan.md"
+      },
+      {
+        "digest": "2d749a12e7d8b43f4e56be3a5e404c6078bc78ee56a2e45c24f3a5d78867c61d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "13989866b29a7549371f110e6bc1273fcbd1a463e9d8f0ef2f4675fa66142fda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/implementation/implementation-summary.md"
+      },
+      {
+        "digest": "41a61b03ca81736d44b35c42af4d8014ac728fb40a1ab1842bc1b697102c02eb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/deep-plan-self-review-round-1.md"
+      },
+      {
+        "digest": "97da03e507b34501c7a81a75a5ed7362056ac1f9ae6608728ffaae8b0c7d5af7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/deep-plan-spec-completeness-review-round-2.md"
+      },
+      {
+        "digest": "68a2934bf62067ef755f1ba9670be269c0ef0d992ee3398798e7deb5de0ca415",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/open-question-decision-log.md"
+      },
+      {
+        "digest": "2a32313f55d5e26c883b34895bab90c6269ff6881df96c834065a72685c9277f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/spec-to-plan-traceability-matrix.md"
+      },
+      {
+        "digest": "d16c3148eb78ad1dd49f517e420289ee9394c7799a384858b5fa522a5402ae99",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/index.md"
+      },
+      {
+        "digest": "25bd86d6639d8950b81bfe254ca641f7e6fb1ea01afbb594922066092f6e6d18",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-01-shared-creative-contracts-and-registry.md"
+      },
+      {
+        "digest": "20039f6e666cc95ffcdef5ce5401fed6bfbf6b557776c28e180416895a8ce9ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-02-storyboard-review-persistence-and-provenance.md"
+      },
+      {
+        "digest": "d0cdca245136b70bb76d8c6305340852be743f328c37fd3fc9349b7020a739c5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-03-runtime-api-feature-access-and-credit-gates.md"
+      },
+      {
+        "digest": "5d2a8a962089da0bffbd619ea325cf063ceb14e172ab6a63384459efb79d5edd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-04-preview-and-editable-ux.md"
+      },
+      {
+        "digest": "3fac5dbfda5a9d924801205da57a9c2edd82d58e3e6b1c8d9f1d52c52c76e177",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-05-composition-builder-timeline-and-fallback.md"
+      },
+      {
+        "digest": "0c01f6494f6e916089997111cd4f696cfa1da0e00872b981098c2d9aad0e7b28",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-06-render-worker-and-output-projection.md"
+      },
+      {
+        "digest": "f34f32a9ae0d0c013d55a8dadfe5f472a1e5bff772f43ee25a4d90b1c38a8356",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-07-library-history-video-editor-handoff.md"
+      },
+      {
+        "digest": "060e35bc953bbdd40e5e875c071ec93a4ed74142a2899acaa0c34cf4b3d3ba1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-08-observability-cleanup-retention-operator.md"
+      },
+      {
+        "digest": "5ead99871118d8b81fca8ba341712cac4b487e386e6389bceed1f884d9d19b0d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections/section-09-fixtures-e2e-rollout-gates.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 324,
+    "unresolved": 324
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.116797Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

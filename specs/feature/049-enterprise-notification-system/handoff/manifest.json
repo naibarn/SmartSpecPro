@@ -1,0 +1,647 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "7f5e7d5c34b517ab50ac842b2ce85459d88febd2a4251738b3fa680fa351c95f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/049-enterprise-notification-system/spec.md"
+      },
+      {
+        "digest": "1285379ffd259898132eb1acacef898fdca4fe2dc5856cf686a598c09fc19c1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/claude-plan.md"
+      },
+      {
+        "digest": "fffcba78df9714ece7e0224fada2c722ed5ee5a14f82beea23e7a0bd480449ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/claude-spec.md"
+      },
+      {
+        "digest": "a1a20fa0f65d652aebc5fab7e54d74498b0863c30e779e343e37740208f38626",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "aa6b15f76786a73dbfdba896b70c5f2c0adeaa7a6605b04ec08b14e3b8aca5c5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/implementation/usage.md"
+      },
+      {
+        "digest": "dfe589eb2d262e161df0210d2b0f450ca3a8d8bf2951d2451c2d53d5b0c49d3e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "3027149f75c0719761b7d7a4f0bfdaef6201dd857472979c6f48c5ebbbf38fc4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/index.md"
+      },
+      {
+        "digest": "4ab2119e19d2de4c605d3a2f58db735a44af4247f455704515d637e288b33910",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-01-phase4-schema-migration.md"
+      },
+      {
+        "digest": "0e04ecc4c72db82a6a7241513b46da0018e0671e0e547bf3c1ed4ca2a46e4d9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-02-phase4-dedup-service.md"
+      },
+      {
+        "digest": "9fbf10d8fc3d7ae55185b287522a5c6fd560db5851f4192203bb8f917eebd45a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-03-phase4-frontend-sse.md"
+      },
+      {
+        "digest": "3206f3010c7df2433f87790b91772b67c0d8e536bea44935daaa865331ad2f28",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-04-phase5-schema-preferences.md"
+      },
+      {
+        "digest": "e66ed54cc33fc1d0f44b7ce4f453b72e7e38bb17d8959b7a6ede6a60ebb747ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-05-phase5-preference-delivery.md"
+      },
+      {
+        "digest": "125846b6fd1baca594c45a5534f51be1797827e8d67652c6858b918fef57d0ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-06-phase5-escalation-job.md"
+      },
+      {
+        "digest": "1834011970e6eb75dea4b875d517332e26c179ffe62db1e8a93d19f40896bd55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-07-phase5-frontend-settings.md"
+      },
+      {
+        "digest": "ee0d8905c50744ce0ac0fcb5a2e0b8c9ef167530ff876ab64cc590133686a8d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-08-phase6-unified-query.md"
+      },
+      {
+        "digest": "c3e06637bdd429cc0af6a40cb76bdae164594b2183f73c98ba22a8b07b9a603a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-09-phase6-admin-dashboard.md"
+      },
+      {
+        "digest": "372d881e877036c9bc131f73715e489842be563f16dabe628177796e87b7b795",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-10-phase7-email-delivery.md"
+      },
+      {
+        "digest": "f79972df23fecbcaaf0bff9f69b65dc044991dbb05a47a135fca9a336e57c381",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-11-phase7-webhook-delivery.md"
+      },
+      {
+        "digest": "c54a973db4b89e8754cfb15f209d82842f851698dffe7ab6af35e353263f63a9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-12-phase7-templates-retention.md"
+      },
+      {
+        "digest": "e9844f26525c609de2ed4ee760711b17d4791d0e250e039da60c0ea0edb07b4b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-13-feature-flags-i18n.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "7f5e7d5c34b517ab50ac842b2ce85459d88febd2a4251738b3fa680fa351c95f"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "7f5e7d5c34b517ab50ac842b2ce85459d88febd2a4251738b3fa680fa351c95f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/049-enterprise-notification-system/spec.md"
+      },
+      {
+        "digest": "1285379ffd259898132eb1acacef898fdca4fe2dc5856cf686a598c09fc19c1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/claude-plan.md"
+      },
+      {
+        "digest": "fffcba78df9714ece7e0224fada2c722ed5ee5a14f82beea23e7a0bd480449ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/claude-spec.md"
+      },
+      {
+        "digest": "a1a20fa0f65d652aebc5fab7e54d74498b0863c30e779e343e37740208f38626",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "aa6b15f76786a73dbfdba896b70c5f2c0adeaa7a6605b04ec08b14e3b8aca5c5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/implementation/usage.md"
+      },
+      {
+        "digest": "dfe589eb2d262e161df0210d2b0f450ca3a8d8bf2951d2451c2d53d5b0c49d3e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "3027149f75c0719761b7d7a4f0bfdaef6201dd857472979c6f48c5ebbbf38fc4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/index.md"
+      },
+      {
+        "digest": "4ab2119e19d2de4c605d3a2f58db735a44af4247f455704515d637e288b33910",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-01-phase4-schema-migration.md"
+      },
+      {
+        "digest": "0e04ecc4c72db82a6a7241513b46da0018e0671e0e547bf3c1ed4ca2a46e4d9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-02-phase4-dedup-service.md"
+      },
+      {
+        "digest": "9fbf10d8fc3d7ae55185b287522a5c6fd560db5851f4192203bb8f917eebd45a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-03-phase4-frontend-sse.md"
+      },
+      {
+        "digest": "3206f3010c7df2433f87790b91772b67c0d8e536bea44935daaa865331ad2f28",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-04-phase5-schema-preferences.md"
+      },
+      {
+        "digest": "e66ed54cc33fc1d0f44b7ce4f453b72e7e38bb17d8959b7a6ede6a60ebb747ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-05-phase5-preference-delivery.md"
+      },
+      {
+        "digest": "125846b6fd1baca594c45a5534f51be1797827e8d67652c6858b918fef57d0ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-06-phase5-escalation-job.md"
+      },
+      {
+        "digest": "1834011970e6eb75dea4b875d517332e26c179ffe62db1e8a93d19f40896bd55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-07-phase5-frontend-settings.md"
+      },
+      {
+        "digest": "ee0d8905c50744ce0ac0fcb5a2e0b8c9ef167530ff876ab64cc590133686a8d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-08-phase6-unified-query.md"
+      },
+      {
+        "digest": "c3e06637bdd429cc0af6a40cb76bdae164594b2183f73c98ba22a8b07b9a603a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-09-phase6-admin-dashboard.md"
+      },
+      {
+        "digest": "372d881e877036c9bc131f73715e489842be563f16dabe628177796e87b7b795",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-10-phase7-email-delivery.md"
+      },
+      {
+        "digest": "f79972df23fecbcaaf0bff9f69b65dc044991dbb05a47a135fca9a336e57c381",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-11-phase7-webhook-delivery.md"
+      },
+      {
+        "digest": "c54a973db4b89e8754cfb15f209d82842f851698dffe7ab6af35e353263f63a9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-12-phase7-templates-retention.md"
+      },
+      {
+        "digest": "e9844f26525c609de2ed4ee760711b17d4791d0e250e039da60c0ea0edb07b4b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-13-feature-flags-i18n.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "7f5e7d5c34b517ab50ac842b2ce85459d88febd2a4251738b3fa680fa351c95f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/049-enterprise-notification-system/spec.md"
+      },
+      {
+        "digest": "1285379ffd259898132eb1acacef898fdca4fe2dc5856cf686a598c09fc19c1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/claude-plan.md"
+      },
+      {
+        "digest": "fffcba78df9714ece7e0224fada2c722ed5ee5a14f82beea23e7a0bd480449ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/claude-spec.md"
+      },
+      {
+        "digest": "a1a20fa0f65d652aebc5fab7e54d74498b0863c30e779e343e37740208f38626",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "aa6b15f76786a73dbfdba896b70c5f2c0adeaa7a6605b04ec08b14e3b8aca5c5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/implementation/usage.md"
+      },
+      {
+        "digest": "dfe589eb2d262e161df0210d2b0f450ca3a8d8bf2951d2451c2d53d5b0c49d3e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "3027149f75c0719761b7d7a4f0bfdaef6201dd857472979c6f48c5ebbbf38fc4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/index.md"
+      },
+      {
+        "digest": "4ab2119e19d2de4c605d3a2f58db735a44af4247f455704515d637e288b33910",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-01-phase4-schema-migration.md"
+      },
+      {
+        "digest": "0e04ecc4c72db82a6a7241513b46da0018e0671e0e547bf3c1ed4ca2a46e4d9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-02-phase4-dedup-service.md"
+      },
+      {
+        "digest": "9fbf10d8fc3d7ae55185b287522a5c6fd560db5851f4192203bb8f917eebd45a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-03-phase4-frontend-sse.md"
+      },
+      {
+        "digest": "3206f3010c7df2433f87790b91772b67c0d8e536bea44935daaa865331ad2f28",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-04-phase5-schema-preferences.md"
+      },
+      {
+        "digest": "e66ed54cc33fc1d0f44b7ce4f453b72e7e38bb17d8959b7a6ede6a60ebb747ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-05-phase5-preference-delivery.md"
+      },
+      {
+        "digest": "125846b6fd1baca594c45a5534f51be1797827e8d67652c6858b918fef57d0ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-06-phase5-escalation-job.md"
+      },
+      {
+        "digest": "1834011970e6eb75dea4b875d517332e26c179ffe62db1e8a93d19f40896bd55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-07-phase5-frontend-settings.md"
+      },
+      {
+        "digest": "ee0d8905c50744ce0ac0fcb5a2e0b8c9ef167530ff876ab64cc590133686a8d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-08-phase6-unified-query.md"
+      },
+      {
+        "digest": "c3e06637bdd429cc0af6a40cb76bdae164594b2183f73c98ba22a8b07b9a603a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-09-phase6-admin-dashboard.md"
+      },
+      {
+        "digest": "372d881e877036c9bc131f73715e489842be563f16dabe628177796e87b7b795",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-10-phase7-email-delivery.md"
+      },
+      {
+        "digest": "f79972df23fecbcaaf0bff9f69b65dc044991dbb05a47a135fca9a336e57c381",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-11-phase7-webhook-delivery.md"
+      },
+      {
+        "digest": "c54a973db4b89e8754cfb15f209d82842f851698dffe7ab6af35e353263f63a9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-12-phase7-templates-retention.md"
+      },
+      {
+        "digest": "e9844f26525c609de2ed4ee760711b17d4791d0e250e039da60c0ea0edb07b4b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-13-feature-flags-i18n.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/049-enterprise-notification-system/spec.md",
+    "digest": "7f5e7d5c34b517ab50ac842b2ce85459d88febd2a4251738b3fa680fa351c95f",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.642961Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-03-22T10:13:38+07:00",
+      "spec_last_changed_at": "2026-03-22T10:13:38+07:00"
+    },
+    "revision": null,
+    "slug": "049-enterprise-notification-system",
+    "spec_id": "049",
+    "title": "Feature 049: Enterprise Notification System"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.642961Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.642961Z",
+    "sources": [
+      {
+        "digest": "7f5e7d5c34b517ab50ac842b2ce85459d88febd2a4251738b3fa680fa351c95f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/049-enterprise-notification-system/spec.md"
+      },
+      {
+        "digest": "1285379ffd259898132eb1acacef898fdca4fe2dc5856cf686a598c09fc19c1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/claude-plan.md"
+      },
+      {
+        "digest": "fffcba78df9714ece7e0224fada2c722ed5ee5a14f82beea23e7a0bd480449ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/claude-spec.md"
+      },
+      {
+        "digest": "a1a20fa0f65d652aebc5fab7e54d74498b0863c30e779e343e37740208f38626",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "aa6b15f76786a73dbfdba896b70c5f2c0adeaa7a6605b04ec08b14e3b8aca5c5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/implementation/usage.md"
+      },
+      {
+        "digest": "dfe589eb2d262e161df0210d2b0f450ca3a8d8bf2951d2451c2d53d5b0c49d3e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "3027149f75c0719761b7d7a4f0bfdaef6201dd857472979c6f48c5ebbbf38fc4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/index.md"
+      },
+      {
+        "digest": "4ab2119e19d2de4c605d3a2f58db735a44af4247f455704515d637e288b33910",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-01-phase4-schema-migration.md"
+      },
+      {
+        "digest": "0e04ecc4c72db82a6a7241513b46da0018e0671e0e547bf3c1ed4ca2a46e4d9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-02-phase4-dedup-service.md"
+      },
+      {
+        "digest": "9fbf10d8fc3d7ae55185b287522a5c6fd560db5851f4192203bb8f917eebd45a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-03-phase4-frontend-sse.md"
+      },
+      {
+        "digest": "3206f3010c7df2433f87790b91772b67c0d8e536bea44935daaa865331ad2f28",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-04-phase5-schema-preferences.md"
+      },
+      {
+        "digest": "e66ed54cc33fc1d0f44b7ce4f453b72e7e38bb17d8959b7a6ede6a60ebb747ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-05-phase5-preference-delivery.md"
+      },
+      {
+        "digest": "125846b6fd1baca594c45a5534f51be1797827e8d67652c6858b918fef57d0ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-06-phase5-escalation-job.md"
+      },
+      {
+        "digest": "1834011970e6eb75dea4b875d517332e26c179ffe62db1e8a93d19f40896bd55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-07-phase5-frontend-settings.md"
+      },
+      {
+        "digest": "ee0d8905c50744ce0ac0fcb5a2e0b8c9ef167530ff876ab64cc590133686a8d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-08-phase6-unified-query.md"
+      },
+      {
+        "digest": "c3e06637bdd429cc0af6a40cb76bdae164594b2183f73c98ba22a8b07b9a603a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-09-phase6-admin-dashboard.md"
+      },
+      {
+        "digest": "372d881e877036c9bc131f73715e489842be563f16dabe628177796e87b7b795",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-10-phase7-email-delivery.md"
+      },
+      {
+        "digest": "f79972df23fecbcaaf0bff9f69b65dc044991dbb05a47a135fca9a336e57c381",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-11-phase7-webhook-delivery.md"
+      },
+      {
+        "digest": "c54a973db4b89e8754cfb15f209d82842f851698dffe7ab6af35e353263f63a9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-12-phase7-templates-retention.md"
+      },
+      {
+        "digest": "e9844f26525c609de2ed4ee760711b17d4791d0e250e039da60c0ea0edb07b4b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-13-feature-flags-i18n.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "7f5e7d5c34b517ab50ac842b2ce85459d88febd2a4251738b3fa680fa351c95f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/049-enterprise-notification-system/spec.md"
+      },
+      {
+        "digest": "1285379ffd259898132eb1acacef898fdca4fe2dc5856cf686a598c09fc19c1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/claude-plan.md"
+      },
+      {
+        "digest": "fffcba78df9714ece7e0224fada2c722ed5ee5a14f82beea23e7a0bd480449ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/claude-spec.md"
+      },
+      {
+        "digest": "a1a20fa0f65d652aebc5fab7e54d74498b0863c30e779e343e37740208f38626",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "aa6b15f76786a73dbfdba896b70c5f2c0adeaa7a6605b04ec08b14e3b8aca5c5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/implementation/usage.md"
+      },
+      {
+        "digest": "dfe589eb2d262e161df0210d2b0f450ca3a8d8bf2951d2451c2d53d5b0c49d3e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "3027149f75c0719761b7d7a4f0bfdaef6201dd857472979c6f48c5ebbbf38fc4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/index.md"
+      },
+      {
+        "digest": "4ab2119e19d2de4c605d3a2f58db735a44af4247f455704515d637e288b33910",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-01-phase4-schema-migration.md"
+      },
+      {
+        "digest": "0e04ecc4c72db82a6a7241513b46da0018e0671e0e547bf3c1ed4ca2a46e4d9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-02-phase4-dedup-service.md"
+      },
+      {
+        "digest": "9fbf10d8fc3d7ae55185b287522a5c6fd560db5851f4192203bb8f917eebd45a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-03-phase4-frontend-sse.md"
+      },
+      {
+        "digest": "3206f3010c7df2433f87790b91772b67c0d8e536bea44935daaa865331ad2f28",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-04-phase5-schema-preferences.md"
+      },
+      {
+        "digest": "e66ed54cc33fc1d0f44b7ce4f453b72e7e38bb17d8959b7a6ede6a60ebb747ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-05-phase5-preference-delivery.md"
+      },
+      {
+        "digest": "125846b6fd1baca594c45a5534f51be1797827e8d67652c6858b918fef57d0ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-06-phase5-escalation-job.md"
+      },
+      {
+        "digest": "1834011970e6eb75dea4b875d517332e26c179ffe62db1e8a93d19f40896bd55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-07-phase5-frontend-settings.md"
+      },
+      {
+        "digest": "ee0d8905c50744ce0ac0fcb5a2e0b8c9ef167530ff876ab64cc590133686a8d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-08-phase6-unified-query.md"
+      },
+      {
+        "digest": "c3e06637bdd429cc0af6a40cb76bdae164594b2183f73c98ba22a8b07b9a603a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-09-phase6-admin-dashboard.md"
+      },
+      {
+        "digest": "372d881e877036c9bc131f73715e489842be563f16dabe628177796e87b7b795",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-10-phase7-email-delivery.md"
+      },
+      {
+        "digest": "f79972df23fecbcaaf0bff9f69b65dc044991dbb05a47a135fca9a336e57c381",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-11-phase7-webhook-delivery.md"
+      },
+      {
+        "digest": "c54a973db4b89e8754cfb15f209d82842f851698dffe7ab6af35e353263f63a9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-12-phase7-templates-retention.md"
+      },
+      {
+        "digest": "e9844f26525c609de2ed4ee760711b17d4791d0e250e039da60c0ea0edb07b4b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/049-enterprise-notification-system/sections/section-13-feature-flags-i18n.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 14,
+    "unresolved": 14
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.642961Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

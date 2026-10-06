@@ -1,0 +1,547 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md"
+      },
+      {
+        "digest": "7e6d6893926c687b910385cbdf0537d94bcf5a63d798b7d0de5fa55f1d4148c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-plan.md"
+      },
+      {
+        "digest": "63ec44be79edc67d76937888a7f1f4020ec49e59dfb3f04ecf648ff75397018c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-spec.md"
+      },
+      {
+        "digest": "150d1498c708c1f0801b75bdc74ec79e717e1bb5cbffd666ab9d27d718f1975f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "472f097e5f197b622227ab2a1c2a6ec65972fa1368d58f42e6c44e73a85c9162",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/plan-to-spec-traceability-review.md"
+      },
+      {
+        "digest": "8e07e0af5080f3e0800233e49d865399261495d29727a1d97b1d3b0589ae5ab1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "234eebed44edf1bda9701205607b610d877a731f28de4658d0254eaad8537240",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/index.md"
+      },
+      {
+        "digest": "a570e0292f16f423960208887820fbddc6a82d06512980db2a1de3b7fce35c62",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-01-contracts-flags-routing-fixtures.md"
+      },
+      {
+        "digest": "c7872294a3308b27b562e915712b07b191dc055d518b33e1464af03539bf3a7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-02-durable-persistence-migration.md"
+      },
+      {
+        "digest": "ce491f5628efc0324fe4ca448bdbd5742d59f16d579123f392dab8e2ba314af8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-03-neutral-router-runtime-coordinator.md"
+      },
+      {
+        "digest": "9b30e5c484d57b289aa816e7f567843fcdb1353c68936ce026376cd562f32d98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-04-python-sdk-hybrid-stage-support.md"
+      },
+      {
+        "digest": "3b3595eb7802106ae853b2bdcc1f3afb97938f6295bff9c3c085f1ca8823b42f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-05-stage-runner-integration.md"
+      },
+      {
+        "digest": "040a6a3acf9f9e387d46bbf448010ffbedd312db2dc35e0b96dd6bf527e2cac9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-06-chat-routing-and-card-ui.md"
+      },
+      {
+        "digest": "1d161875b675ffa78c0ad37e1fa36ff1f19aa342b177009b4df7c1921d11bae0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-07-neutral-hybrid-workspace-ui.md"
+      },
+      {
+        "digest": "5d798bf4d00c62556310b3b009ad2fd3f0a5d93dde0821c32e0992ecae70187a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-08-commit-approval-retry-cancel.md"
+      },
+      {
+        "digest": "9db19bb8203a6290caa1fd7f692da475707c38321a374009dd81a48a9a8545ed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-09-replay-rollout-operator-gates.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md"
+      },
+      {
+        "digest": "7e6d6893926c687b910385cbdf0537d94bcf5a63d798b7d0de5fa55f1d4148c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-plan.md"
+      },
+      {
+        "digest": "63ec44be79edc67d76937888a7f1f4020ec49e59dfb3f04ecf648ff75397018c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-spec.md"
+      },
+      {
+        "digest": "150d1498c708c1f0801b75bdc74ec79e717e1bb5cbffd666ab9d27d718f1975f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "472f097e5f197b622227ab2a1c2a6ec65972fa1368d58f42e6c44e73a85c9162",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/plan-to-spec-traceability-review.md"
+      },
+      {
+        "digest": "8e07e0af5080f3e0800233e49d865399261495d29727a1d97b1d3b0589ae5ab1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "234eebed44edf1bda9701205607b610d877a731f28de4658d0254eaad8537240",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/index.md"
+      },
+      {
+        "digest": "a570e0292f16f423960208887820fbddc6a82d06512980db2a1de3b7fce35c62",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-01-contracts-flags-routing-fixtures.md"
+      },
+      {
+        "digest": "c7872294a3308b27b562e915712b07b191dc055d518b33e1464af03539bf3a7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-02-durable-persistence-migration.md"
+      },
+      {
+        "digest": "ce491f5628efc0324fe4ca448bdbd5742d59f16d579123f392dab8e2ba314af8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-03-neutral-router-runtime-coordinator.md"
+      },
+      {
+        "digest": "9b30e5c484d57b289aa816e7f567843fcdb1353c68936ce026376cd562f32d98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-04-python-sdk-hybrid-stage-support.md"
+      },
+      {
+        "digest": "3b3595eb7802106ae853b2bdcc1f3afb97938f6295bff9c3c085f1ca8823b42f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-05-stage-runner-integration.md"
+      },
+      {
+        "digest": "040a6a3acf9f9e387d46bbf448010ffbedd312db2dc35e0b96dd6bf527e2cac9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-06-chat-routing-and-card-ui.md"
+      },
+      {
+        "digest": "1d161875b675ffa78c0ad37e1fa36ff1f19aa342b177009b4df7c1921d11bae0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-07-neutral-hybrid-workspace-ui.md"
+      },
+      {
+        "digest": "5d798bf4d00c62556310b3b009ad2fd3f0a5d93dde0821c32e0992ecae70187a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-08-commit-approval-retry-cancel.md"
+      },
+      {
+        "digest": "9db19bb8203a6290caa1fd7f692da475707c38321a374009dd81a48a9a8545ed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-09-replay-rollout-operator-gates.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md"
+      },
+      {
+        "digest": "7e6d6893926c687b910385cbdf0537d94bcf5a63d798b7d0de5fa55f1d4148c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-plan.md"
+      },
+      {
+        "digest": "63ec44be79edc67d76937888a7f1f4020ec49e59dfb3f04ecf648ff75397018c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-spec.md"
+      },
+      {
+        "digest": "150d1498c708c1f0801b75bdc74ec79e717e1bb5cbffd666ab9d27d718f1975f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "472f097e5f197b622227ab2a1c2a6ec65972fa1368d58f42e6c44e73a85c9162",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/plan-to-spec-traceability-review.md"
+      },
+      {
+        "digest": "8e07e0af5080f3e0800233e49d865399261495d29727a1d97b1d3b0589ae5ab1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "234eebed44edf1bda9701205607b610d877a731f28de4658d0254eaad8537240",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/index.md"
+      },
+      {
+        "digest": "a570e0292f16f423960208887820fbddc6a82d06512980db2a1de3b7fce35c62",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-01-contracts-flags-routing-fixtures.md"
+      },
+      {
+        "digest": "c7872294a3308b27b562e915712b07b191dc055d518b33e1464af03539bf3a7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-02-durable-persistence-migration.md"
+      },
+      {
+        "digest": "ce491f5628efc0324fe4ca448bdbd5742d59f16d579123f392dab8e2ba314af8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-03-neutral-router-runtime-coordinator.md"
+      },
+      {
+        "digest": "9b30e5c484d57b289aa816e7f567843fcdb1353c68936ce026376cd562f32d98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-04-python-sdk-hybrid-stage-support.md"
+      },
+      {
+        "digest": "3b3595eb7802106ae853b2bdcc1f3afb97938f6295bff9c3c085f1ca8823b42f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-05-stage-runner-integration.md"
+      },
+      {
+        "digest": "040a6a3acf9f9e387d46bbf448010ffbedd312db2dc35e0b96dd6bf527e2cac9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-06-chat-routing-and-card-ui.md"
+      },
+      {
+        "digest": "1d161875b675ffa78c0ad37e1fa36ff1f19aa342b177009b4df7c1921d11bae0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-07-neutral-hybrid-workspace-ui.md"
+      },
+      {
+        "digest": "5d798bf4d00c62556310b3b009ad2fd3f0a5d93dde0821c32e0992ecae70187a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-08-commit-approval-retry-cancel.md"
+      },
+      {
+        "digest": "9db19bb8203a6290caa1fd7f692da475707c38321a374009dd81a48a9a8545ed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-09-replay-rollout-operator-gates.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md",
+    "digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.205889Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-07-04T00:17:21+07:00",
+      "spec_last_changed_at": "2026-08-18T16:13:25+07:00"
+    },
+    "revision": "0.1",
+    "slug": "130-hybrid-flow-openai-agents-sdk-runtime",
+    "spec_id": "130",
+    "title": "Feature 130: Hybrid Flow OpenAI Agents SDK Runtime"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.205889Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.205889Z",
+    "sources": [
+      {
+        "digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md"
+      },
+      {
+        "digest": "7e6d6893926c687b910385cbdf0537d94bcf5a63d798b7d0de5fa55f1d4148c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-plan.md"
+      },
+      {
+        "digest": "63ec44be79edc67d76937888a7f1f4020ec49e59dfb3f04ecf648ff75397018c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-spec.md"
+      },
+      {
+        "digest": "150d1498c708c1f0801b75bdc74ec79e717e1bb5cbffd666ab9d27d718f1975f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "472f097e5f197b622227ab2a1c2a6ec65972fa1368d58f42e6c44e73a85c9162",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/plan-to-spec-traceability-review.md"
+      },
+      {
+        "digest": "8e07e0af5080f3e0800233e49d865399261495d29727a1d97b1d3b0589ae5ab1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "234eebed44edf1bda9701205607b610d877a731f28de4658d0254eaad8537240",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/index.md"
+      },
+      {
+        "digest": "a570e0292f16f423960208887820fbddc6a82d06512980db2a1de3b7fce35c62",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-01-contracts-flags-routing-fixtures.md"
+      },
+      {
+        "digest": "c7872294a3308b27b562e915712b07b191dc055d518b33e1464af03539bf3a7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-02-durable-persistence-migration.md"
+      },
+      {
+        "digest": "ce491f5628efc0324fe4ca448bdbd5742d59f16d579123f392dab8e2ba314af8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-03-neutral-router-runtime-coordinator.md"
+      },
+      {
+        "digest": "9b30e5c484d57b289aa816e7f567843fcdb1353c68936ce026376cd562f32d98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-04-python-sdk-hybrid-stage-support.md"
+      },
+      {
+        "digest": "3b3595eb7802106ae853b2bdcc1f3afb97938f6295bff9c3c085f1ca8823b42f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-05-stage-runner-integration.md"
+      },
+      {
+        "digest": "040a6a3acf9f9e387d46bbf448010ffbedd312db2dc35e0b96dd6bf527e2cac9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-06-chat-routing-and-card-ui.md"
+      },
+      {
+        "digest": "1d161875b675ffa78c0ad37e1fa36ff1f19aa342b177009b4df7c1921d11bae0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-07-neutral-hybrid-workspace-ui.md"
+      },
+      {
+        "digest": "5d798bf4d00c62556310b3b009ad2fd3f0a5d93dde0821c32e0992ecae70187a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-08-commit-approval-retry-cancel.md"
+      },
+      {
+        "digest": "9db19bb8203a6290caa1fd7f692da475707c38321a374009dd81a48a9a8545ed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-09-replay-rollout-operator-gates.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md"
+      },
+      {
+        "digest": "7e6d6893926c687b910385cbdf0537d94bcf5a63d798b7d0de5fa55f1d4148c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-plan.md"
+      },
+      {
+        "digest": "63ec44be79edc67d76937888a7f1f4020ec49e59dfb3f04ecf648ff75397018c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/claude-spec.md"
+      },
+      {
+        "digest": "150d1498c708c1f0801b75bdc74ec79e717e1bb5cbffd666ab9d27d718f1975f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "472f097e5f197b622227ab2a1c2a6ec65972fa1368d58f42e6c44e73a85c9162",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/plan-to-spec-traceability-review.md"
+      },
+      {
+        "digest": "8e07e0af5080f3e0800233e49d865399261495d29727a1d97b1d3b0589ae5ab1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "234eebed44edf1bda9701205607b610d877a731f28de4658d0254eaad8537240",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/index.md"
+      },
+      {
+        "digest": "a570e0292f16f423960208887820fbddc6a82d06512980db2a1de3b7fce35c62",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-01-contracts-flags-routing-fixtures.md"
+      },
+      {
+        "digest": "c7872294a3308b27b562e915712b07b191dc055d518b33e1464af03539bf3a7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-02-durable-persistence-migration.md"
+      },
+      {
+        "digest": "ce491f5628efc0324fe4ca448bdbd5742d59f16d579123f392dab8e2ba314af8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-03-neutral-router-runtime-coordinator.md"
+      },
+      {
+        "digest": "9b30e5c484d57b289aa816e7f567843fcdb1353c68936ce026376cd562f32d98",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-04-python-sdk-hybrid-stage-support.md"
+      },
+      {
+        "digest": "3b3595eb7802106ae853b2bdcc1f3afb97938f6295bff9c3c085f1ca8823b42f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-05-stage-runner-integration.md"
+      },
+      {
+        "digest": "040a6a3acf9f9e387d46bbf448010ffbedd312db2dc35e0b96dd6bf527e2cac9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-06-chat-routing-and-card-ui.md"
+      },
+      {
+        "digest": "1d161875b675ffa78c0ad37e1fa36ff1f19aa342b177009b4df7c1921d11bae0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-07-neutral-hybrid-workspace-ui.md"
+      },
+      {
+        "digest": "5d798bf4d00c62556310b3b009ad2fd3f0a5d93dde0821c32e0992ecae70187a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-08-commit-approval-retry-cancel.md"
+      },
+      {
+        "digest": "9db19bb8203a6290caa1fd7f692da475707c38321a374009dd81a48a9a8545ed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections/section-09-replay-rollout-operator-gates.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 186,
+    "unresolved": 186
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.205889Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

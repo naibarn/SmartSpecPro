@@ -1,0 +1,228 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/010-GoogleDriveScope/spec.md#L38"
+      ],
+      "authority_source": "specs/feature/010-GoogleDriveScope/spec.md#L38",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d607da42de88086118d6938e98ae755013be28dfa3d068df3987dc021ff8dd71",
+      "requirement_id": "REQ-11A621D47F44",
+      "requirement_text": "Users currently must manually upload every file into the Document Library before it can be searched, referenced by the AI, or edited. Word and Excel files are read-only — no in-app editing is possible. Users with large collections in Google Drive must duplicate their data to use it within SmartSpecPro.",
+      "source_spec_digest": "d88a74f52eb569797a749b3ac86cc0553abc91bcc8a90ae1d781ad2634fc6bc3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/010-GoogleDriveScope/spec.md#L176"
+      ],
+      "authority_source": "specs/feature/010-GoogleDriveScope/spec.md#L176",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d7f2d29a66172174b873edab065f3fa034bba9aa314ba03db4241d1828cd87ee",
+      "requirement_id": "REQ-D59FDD24B5B0",
+      "requirement_text": "New scopes required:",
+      "source_spec_digest": "d88a74f52eb569797a749b3ac86cc0553abc91bcc8a90ae1d781ad2634fc6bc3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/010-GoogleDriveScope/spec.md#L1749"
+      ],
+      "authority_source": "specs/feature/010-GoogleDriveScope/spec.md#L1749",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b0fe51137fc3a455ac430b8ee9dec83757650abf9a89f6547cac40fff8a91745",
+      "requirement_id": "REQ-34EF130D2CED",
+      "requirement_text": "| Scope | Google Classification | Verification Required |",
+      "source_spec_digest": "d88a74f52eb569797a749b3ac86cc0553abc91bcc8a90ae1d781ad2634fc6bc3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/010-GoogleDriveScope/spec.md#L1751"
+      ],
+      "authority_source": "specs/feature/010-GoogleDriveScope/spec.md#L1751",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "58a186d2b94f75f275657948695040b5d6e8e1efd9e06e54562fb82d99ee0ddb",
+      "requirement_id": "REQ-093CA1ABAC2E",
+      "requirement_text": "| `drive.file` | Non-sensitive | Basic verification |",
+      "source_spec_digest": "d88a74f52eb569797a749b3ac86cc0553abc91bcc8a90ae1d781ad2634fc6bc3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/010-GoogleDriveScope/spec.md#L1752"
+      ],
+      "authority_source": "specs/feature/010-GoogleDriveScope/spec.md#L1752",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c1a8af55c83bc5d78a2f15e9fa7d5ae4f5a09890a8b712781613c2e2f2809eb4",
+      "requirement_id": "REQ-6633D92715EE",
+      "requirement_text": "| `drive.readonly` | Restricted | Security assessment by third-party auditor |",
+      "source_spec_digest": "d88a74f52eb569797a749b3ac86cc0553abc91bcc8a90ae1d781ad2634fc6bc3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/010-GoogleDriveScope/spec.md#L1753"
+      ],
+      "authority_source": "specs/feature/010-GoogleDriveScope/spec.md#L1753",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "65a5257a41cb28adfd3f370b4563ff410d747578ce1acca27b177db2e11f4183",
+      "requirement_id": "REQ-EB2E8BA720CC",
+      "requirement_text": "| `documents.readonly` | Sensitive | OAuth consent screen verification |",
+      "source_spec_digest": "d88a74f52eb569797a749b3ac86cc0553abc91bcc8a90ae1d781ad2634fc6bc3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/010-GoogleDriveScope/spec.md#L1754"
+      ],
+      "authority_source": "specs/feature/010-GoogleDriveScope/spec.md#L1754",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "cfc481ded768d890d36d2181277e34704157d2cf7702a376223fcf2f050c1e53",
+      "requirement_id": "REQ-967FCAAE9D8C",
+      "requirement_text": "| `spreadsheets.readonly` | Sensitive | OAuth consent screen verification |",
+      "source_spec_digest": "d88a74f52eb569797a749b3ac86cc0553abc91bcc8a90ae1d781ad2634fc6bc3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/010-GoogleDriveScope/spec.md#L1758"
+      ],
+      "authority_source": "specs/feature/010-GoogleDriveScope/spec.md#L1758",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "279c012c6a37e4c6bf4169b8b88640c9f0a30de92c2523c0bbe88a32b1135b32",
+      "requirement_id": "REQ-A0D2A4FF97AB",
+      "requirement_text": "**Alternative:** Start with `drive.file` only (non-sensitive, no audit required). This limits file access to files the user explicitly opens through the app, but avoids the verification requirement. Add `drive.readonly` later when verification is complete.",
+      "source_spec_digest": "d88a74f52eb569797a749b3ac86cc0553abc91bcc8a90ae1d781ad2634fc6bc3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/010-GoogleDriveScope/spec.md#L1810"
+      ],
+      "authority_source": "specs/feature/010-GoogleDriveScope/spec.md#L1810",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8448b66664e932ff7e880665b9293bbc6d28c83a26aeb1d0215650348ebcb2c2",
+      "requirement_id": "REQ-D8B6EAF4DBC3",
+      "requirement_text": "Precondition: File must have source_url (not a virtual reference)",
+      "source_spec_digest": "d88a74f52eb569797a749b3ac86cc0553abc91bcc8a90ae1d781ad2634fc6bc3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/010-GoogleDriveScope/spec.md#L2548"
+      ],
+      "authority_source": "specs/feature/010-GoogleDriveScope/spec.md#L2548",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8abed7e59e6b906435e4f061b1a6bddde88fe7e435484cc7eb0291679117b958",
+      "requirement_id": "REQ-6260BF1CCC6B",
+      "requirement_text": "- [ ] HTTPS required for webhook endpoint",
+      "source_spec_digest": "d88a74f52eb569797a749b3ac86cc0553abc91bcc8a90ae1d781ad2634fc6bc3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "d88a74f52eb569797a749b3ac86cc0553abc91bcc8a90ae1d781ad2634fc6bc3",
+  "spec_id": "010"
+}

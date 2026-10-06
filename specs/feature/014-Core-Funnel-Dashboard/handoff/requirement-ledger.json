@@ -1,0 +1,52 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/014-Core-Funnel-Dashboard/spec.md#L117"
+      ],
+      "authority_source": "specs/feature/014-Core-Funnel-Dashboard/spec.md#L117",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c9eb0fdd147c8a407d4acb9a356ef88f74fcb1291e16e58ee02dc2196f09ab9f",
+      "requirement_id": "REQ-F5772188489C",
+      "requirement_text": "These indexes are **required** for funnel query performance:",
+      "source_spec_digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/014-Core-Funnel-Dashboard/spec.md#L343"
+      ],
+      "authority_source": "specs/feature/014-Core-Funnel-Dashboard/spec.md#L343",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "10b818c3806c611de90f12011deff1be191da3a0b372fcdbbdd4c027540307ff",
+      "requirement_id": "REQ-B153770170A4",
+      "requirement_text": "engagement_time_msec: 1, // required for GA4",
+      "source_spec_digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
+  "spec_id": "014"
+}

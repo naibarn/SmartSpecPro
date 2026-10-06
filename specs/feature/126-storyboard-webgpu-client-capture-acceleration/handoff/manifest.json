@@ -1,0 +1,322 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md"
+      },
+      {
+        "digest": "3db8c29439c16e8e32bc1e536bcc38b34d069eb4c6d8804c155e088c5904f766",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "49e4ccb4eaf2e8cb1ec69791679ba008422a3908f1978ba6f6883febc9399980",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
+      },
+      {
+        "digest": "05267d092c830e53fee7252d702f57685ebd25851a7f6d7b607316872741bb36",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
+      },
+      {
+        "digest": "f38614b58a5b164e87b6e19adcacaa1c921e56aa0d8f0854cfd748ab10eb1ec7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
+      },
+      {
+        "digest": "af53581e2f4824b4a704c3107de439345dd62743f09bd95099a89a347ddc0001",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
+      },
+      {
+        "digest": "390c41c31a3c6029020a26bc1daaeb6c7253c43e20d85b2dff05efccb70a94b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md"
+      },
+      {
+        "digest": "3db8c29439c16e8e32bc1e536bcc38b34d069eb4c6d8804c155e088c5904f766",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "49e4ccb4eaf2e8cb1ec69791679ba008422a3908f1978ba6f6883febc9399980",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
+      },
+      {
+        "digest": "05267d092c830e53fee7252d702f57685ebd25851a7f6d7b607316872741bb36",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
+      },
+      {
+        "digest": "f38614b58a5b164e87b6e19adcacaa1c921e56aa0d8f0854cfd748ab10eb1ec7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
+      },
+      {
+        "digest": "af53581e2f4824b4a704c3107de439345dd62743f09bd95099a89a347ddc0001",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
+      },
+      {
+        "digest": "390c41c31a3c6029020a26bc1daaeb6c7253c43e20d85b2dff05efccb70a94b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md"
+      },
+      {
+        "digest": "3db8c29439c16e8e32bc1e536bcc38b34d069eb4c6d8804c155e088c5904f766",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "49e4ccb4eaf2e8cb1ec69791679ba008422a3908f1978ba6f6883febc9399980",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
+      },
+      {
+        "digest": "05267d092c830e53fee7252d702f57685ebd25851a7f6d7b607316872741bb36",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
+      },
+      {
+        "digest": "f38614b58a5b164e87b6e19adcacaa1c921e56aa0d8f0854cfd748ab10eb1ec7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
+      },
+      {
+        "digest": "af53581e2f4824b4a704c3107de439345dd62743f09bd95099a89a347ddc0001",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
+      },
+      {
+        "digest": "390c41c31a3c6029020a26bc1daaeb6c7253c43e20d85b2dff05efccb70a94b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md",
+    "digest": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.170697Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-07-01T06:59:16+07:00",
+      "spec_last_changed_at": "2026-07-01T06:59:16+07:00"
+    },
+    "revision": "0.1.0",
+    "slug": "126-storyboard-webgpu-client-capture-acceleration",
+    "spec_id": "126",
+    "title": "Feature 126: Storyboard WebGPU Client Capture Acceleration"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.170697Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.170697Z",
+    "sources": [
+      {
+        "digest": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md"
+      },
+      {
+        "digest": "3db8c29439c16e8e32bc1e536bcc38b34d069eb4c6d8804c155e088c5904f766",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "49e4ccb4eaf2e8cb1ec69791679ba008422a3908f1978ba6f6883febc9399980",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
+      },
+      {
+        "digest": "05267d092c830e53fee7252d702f57685ebd25851a7f6d7b607316872741bb36",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
+      },
+      {
+        "digest": "f38614b58a5b164e87b6e19adcacaa1c921e56aa0d8f0854cfd748ab10eb1ec7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
+      },
+      {
+        "digest": "af53581e2f4824b4a704c3107de439345dd62743f09bd95099a89a347ddc0001",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
+      },
+      {
+        "digest": "390c41c31a3c6029020a26bc1daaeb6c7253c43e20d85b2dff05efccb70a94b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md"
+      },
+      {
+        "digest": "3db8c29439c16e8e32bc1e536bcc38b34d069eb4c6d8804c155e088c5904f766",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "49e4ccb4eaf2e8cb1ec69791679ba008422a3908f1978ba6f6883febc9399980",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
+      },
+      {
+        "digest": "05267d092c830e53fee7252d702f57685ebd25851a7f6d7b607316872741bb36",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
+      },
+      {
+        "digest": "f38614b58a5b164e87b6e19adcacaa1c921e56aa0d8f0854cfd748ab10eb1ec7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
+      },
+      {
+        "digest": "af53581e2f4824b4a704c3107de439345dd62743f09bd95099a89a347ddc0001",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
+      },
+      {
+        "digest": "390c41c31a3c6029020a26bc1daaeb6c7253c43e20d85b2dff05efccb70a94b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 18,
+    "unresolved": 18
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.170697Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

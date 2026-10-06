@@ -1,0 +1,572 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/024-ImportPresentations/spec.md"
+      },
+      {
+        "digest": "3f5321d7fcc71a5d4d317022fff029c4f7e8a038e7ae5ffe46a4250da751d65a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/claude-plan.md"
+      },
+      {
+        "digest": "6ea345668ef502ec3cfd6a59ed892081076775d82755216deb4883f4421c9443",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/claude-spec.md"
+      },
+      {
+        "digest": "b070be3d150dee3147c4a6d8d6a975585fc059bfef0252878dcfe24a42a31050",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d24083867d24b7bdb8c92b2d59d03f112fe66ec3ea08b0db19274f6a08ce3d34",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/implementation/usage.md"
+      },
+      {
+        "digest": "0604a11ea64e2829b1b2377c5a7163a230c82e2714f83157d3a1a17600f50d55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/reviews/opus-review.md"
+      },
+      {
+        "digest": "67589b93b18b7d82f8ab38d3353c71901f91422b3c74d6d79614aa285f3eac5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/index.md"
+      },
+      {
+        "digest": "ffcc19b79f139d24cd1e7ef8f4bf1438fca2fa0e0d6cddcd9a44d708657726e7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-01-db-migration.md"
+      },
+      {
+        "digest": "83b427e5c579b8d3fe920fa285e4e6f526649623fc1b987b68f7819b556f28d3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-02-pptx-importer.md"
+      },
+      {
+        "digest": "7700113b4920b2e7348ca432f53727739ea2121d31de33cf23e69aa5e981ef0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-03-gslides-importer.md"
+      },
+      {
+        "digest": "200644f74681b0a00f3799069f201a5ab9817798c54de2f6f96ec98109363c2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-04-celery-fastapi.md"
+      },
+      {
+        "digest": "065e44308420ef08be964ba738e93ffebb3d8b8ff7635d241ef8534fdadf8b2e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-05-trpc-router.md"
+      },
+      {
+        "digest": "d7716e43b756b518ee68e7849b96a3472307b4e4a0efa45659b6d58d8a332c72",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-06-service-callback.md"
+      },
+      {
+        "digest": "d949c46c71db94fb958a02a637cd005a4450f244945588ef789156c5a0f38860",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-07-import-dialog.md"
+      },
+      {
+        "digest": "5bcffbd333fa4d8e200e1315e16c851a44db312253ae2f57a54292bccd1b20ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-08-editor-integration.md"
+      },
+      {
+        "digest": "cc3222276d8d7e1420d651bb141d8f0d7e50c21962cde399f54bc8f33c08014b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-09-tests.md"
+      },
+      {
+        "digest": "2b71f3f4a426598800ee656b42a9d5c47f33a85dcd47aea1f31ca5d23bf7de94",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-10-security-qa.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/024-ImportPresentations/spec.md"
+      },
+      {
+        "digest": "3f5321d7fcc71a5d4d317022fff029c4f7e8a038e7ae5ffe46a4250da751d65a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/claude-plan.md"
+      },
+      {
+        "digest": "6ea345668ef502ec3cfd6a59ed892081076775d82755216deb4883f4421c9443",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/claude-spec.md"
+      },
+      {
+        "digest": "b070be3d150dee3147c4a6d8d6a975585fc059bfef0252878dcfe24a42a31050",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d24083867d24b7bdb8c92b2d59d03f112fe66ec3ea08b0db19274f6a08ce3d34",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/implementation/usage.md"
+      },
+      {
+        "digest": "0604a11ea64e2829b1b2377c5a7163a230c82e2714f83157d3a1a17600f50d55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/reviews/opus-review.md"
+      },
+      {
+        "digest": "67589b93b18b7d82f8ab38d3353c71901f91422b3c74d6d79614aa285f3eac5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/index.md"
+      },
+      {
+        "digest": "ffcc19b79f139d24cd1e7ef8f4bf1438fca2fa0e0d6cddcd9a44d708657726e7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-01-db-migration.md"
+      },
+      {
+        "digest": "83b427e5c579b8d3fe920fa285e4e6f526649623fc1b987b68f7819b556f28d3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-02-pptx-importer.md"
+      },
+      {
+        "digest": "7700113b4920b2e7348ca432f53727739ea2121d31de33cf23e69aa5e981ef0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-03-gslides-importer.md"
+      },
+      {
+        "digest": "200644f74681b0a00f3799069f201a5ab9817798c54de2f6f96ec98109363c2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-04-celery-fastapi.md"
+      },
+      {
+        "digest": "065e44308420ef08be964ba738e93ffebb3d8b8ff7635d241ef8534fdadf8b2e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-05-trpc-router.md"
+      },
+      {
+        "digest": "d7716e43b756b518ee68e7849b96a3472307b4e4a0efa45659b6d58d8a332c72",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-06-service-callback.md"
+      },
+      {
+        "digest": "d949c46c71db94fb958a02a637cd005a4450f244945588ef789156c5a0f38860",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-07-import-dialog.md"
+      },
+      {
+        "digest": "5bcffbd333fa4d8e200e1315e16c851a44db312253ae2f57a54292bccd1b20ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-08-editor-integration.md"
+      },
+      {
+        "digest": "cc3222276d8d7e1420d651bb141d8f0d7e50c21962cde399f54bc8f33c08014b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-09-tests.md"
+      },
+      {
+        "digest": "2b71f3f4a426598800ee656b42a9d5c47f33a85dcd47aea1f31ca5d23bf7de94",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-10-security-qa.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/024-ImportPresentations/spec.md"
+      },
+      {
+        "digest": "3f5321d7fcc71a5d4d317022fff029c4f7e8a038e7ae5ffe46a4250da751d65a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/claude-plan.md"
+      },
+      {
+        "digest": "6ea345668ef502ec3cfd6a59ed892081076775d82755216deb4883f4421c9443",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/claude-spec.md"
+      },
+      {
+        "digest": "b070be3d150dee3147c4a6d8d6a975585fc059bfef0252878dcfe24a42a31050",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d24083867d24b7bdb8c92b2d59d03f112fe66ec3ea08b0db19274f6a08ce3d34",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/implementation/usage.md"
+      },
+      {
+        "digest": "0604a11ea64e2829b1b2377c5a7163a230c82e2714f83157d3a1a17600f50d55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/reviews/opus-review.md"
+      },
+      {
+        "digest": "67589b93b18b7d82f8ab38d3353c71901f91422b3c74d6d79614aa285f3eac5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/index.md"
+      },
+      {
+        "digest": "ffcc19b79f139d24cd1e7ef8f4bf1438fca2fa0e0d6cddcd9a44d708657726e7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-01-db-migration.md"
+      },
+      {
+        "digest": "83b427e5c579b8d3fe920fa285e4e6f526649623fc1b987b68f7819b556f28d3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-02-pptx-importer.md"
+      },
+      {
+        "digest": "7700113b4920b2e7348ca432f53727739ea2121d31de33cf23e69aa5e981ef0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-03-gslides-importer.md"
+      },
+      {
+        "digest": "200644f74681b0a00f3799069f201a5ab9817798c54de2f6f96ec98109363c2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-04-celery-fastapi.md"
+      },
+      {
+        "digest": "065e44308420ef08be964ba738e93ffebb3d8b8ff7635d241ef8534fdadf8b2e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-05-trpc-router.md"
+      },
+      {
+        "digest": "d7716e43b756b518ee68e7849b96a3472307b4e4a0efa45659b6d58d8a332c72",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-06-service-callback.md"
+      },
+      {
+        "digest": "d949c46c71db94fb958a02a637cd005a4450f244945588ef789156c5a0f38860",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-07-import-dialog.md"
+      },
+      {
+        "digest": "5bcffbd333fa4d8e200e1315e16c851a44db312253ae2f57a54292bccd1b20ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-08-editor-integration.md"
+      },
+      {
+        "digest": "cc3222276d8d7e1420d651bb141d8f0d7e50c21962cde399f54bc8f33c08014b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-09-tests.md"
+      },
+      {
+        "digest": "2b71f3f4a426598800ee656b42a9d5c47f33a85dcd47aea1f31ca5d23bf7de94",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-10-security-qa.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/024-ImportPresentations/spec.md",
+    "digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.476610Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-02-28T15:37:20+07:00",
+      "spec_last_changed_at": "2026-02-28T15:37:20+07:00"
+    },
+    "revision": null,
+    "slug": "024-ImportPresentations",
+    "spec_id": "024",
+    "title": "Feature 024: Import Presentations from Google Slides & PowerPoint"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.476610Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.476610Z",
+    "sources": [
+      {
+        "digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/024-ImportPresentations/spec.md"
+      },
+      {
+        "digest": "3f5321d7fcc71a5d4d317022fff029c4f7e8a038e7ae5ffe46a4250da751d65a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/claude-plan.md"
+      },
+      {
+        "digest": "6ea345668ef502ec3cfd6a59ed892081076775d82755216deb4883f4421c9443",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/claude-spec.md"
+      },
+      {
+        "digest": "b070be3d150dee3147c4a6d8d6a975585fc059bfef0252878dcfe24a42a31050",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d24083867d24b7bdb8c92b2d59d03f112fe66ec3ea08b0db19274f6a08ce3d34",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/implementation/usage.md"
+      },
+      {
+        "digest": "0604a11ea64e2829b1b2377c5a7163a230c82e2714f83157d3a1a17600f50d55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/reviews/opus-review.md"
+      },
+      {
+        "digest": "67589b93b18b7d82f8ab38d3353c71901f91422b3c74d6d79614aa285f3eac5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/index.md"
+      },
+      {
+        "digest": "ffcc19b79f139d24cd1e7ef8f4bf1438fca2fa0e0d6cddcd9a44d708657726e7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-01-db-migration.md"
+      },
+      {
+        "digest": "83b427e5c579b8d3fe920fa285e4e6f526649623fc1b987b68f7819b556f28d3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-02-pptx-importer.md"
+      },
+      {
+        "digest": "7700113b4920b2e7348ca432f53727739ea2121d31de33cf23e69aa5e981ef0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-03-gslides-importer.md"
+      },
+      {
+        "digest": "200644f74681b0a00f3799069f201a5ab9817798c54de2f6f96ec98109363c2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-04-celery-fastapi.md"
+      },
+      {
+        "digest": "065e44308420ef08be964ba738e93ffebb3d8b8ff7635d241ef8534fdadf8b2e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-05-trpc-router.md"
+      },
+      {
+        "digest": "d7716e43b756b518ee68e7849b96a3472307b4e4a0efa45659b6d58d8a332c72",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-06-service-callback.md"
+      },
+      {
+        "digest": "d949c46c71db94fb958a02a637cd005a4450f244945588ef789156c5a0f38860",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-07-import-dialog.md"
+      },
+      {
+        "digest": "5bcffbd333fa4d8e200e1315e16c851a44db312253ae2f57a54292bccd1b20ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-08-editor-integration.md"
+      },
+      {
+        "digest": "cc3222276d8d7e1420d651bb141d8f0d7e50c21962cde399f54bc8f33c08014b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-09-tests.md"
+      },
+      {
+        "digest": "2b71f3f4a426598800ee656b42a9d5c47f33a85dcd47aea1f31ca5d23bf7de94",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-10-security-qa.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/024-ImportPresentations/spec.md"
+      },
+      {
+        "digest": "3f5321d7fcc71a5d4d317022fff029c4f7e8a038e7ae5ffe46a4250da751d65a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/claude-plan.md"
+      },
+      {
+        "digest": "6ea345668ef502ec3cfd6a59ed892081076775d82755216deb4883f4421c9443",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/claude-spec.md"
+      },
+      {
+        "digest": "b070be3d150dee3147c4a6d8d6a975585fc059bfef0252878dcfe24a42a31050",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d24083867d24b7bdb8c92b2d59d03f112fe66ec3ea08b0db19274f6a08ce3d34",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/implementation/usage.md"
+      },
+      {
+        "digest": "0604a11ea64e2829b1b2377c5a7163a230c82e2714f83157d3a1a17600f50d55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/reviews/opus-review.md"
+      },
+      {
+        "digest": "67589b93b18b7d82f8ab38d3353c71901f91422b3c74d6d79614aa285f3eac5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/index.md"
+      },
+      {
+        "digest": "ffcc19b79f139d24cd1e7ef8f4bf1438fca2fa0e0d6cddcd9a44d708657726e7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-01-db-migration.md"
+      },
+      {
+        "digest": "83b427e5c579b8d3fe920fa285e4e6f526649623fc1b987b68f7819b556f28d3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-02-pptx-importer.md"
+      },
+      {
+        "digest": "7700113b4920b2e7348ca432f53727739ea2121d31de33cf23e69aa5e981ef0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-03-gslides-importer.md"
+      },
+      {
+        "digest": "200644f74681b0a00f3799069f201a5ab9817798c54de2f6f96ec98109363c2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-04-celery-fastapi.md"
+      },
+      {
+        "digest": "065e44308420ef08be964ba738e93ffebb3d8b8ff7635d241ef8534fdadf8b2e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-05-trpc-router.md"
+      },
+      {
+        "digest": "d7716e43b756b518ee68e7849b96a3472307b4e4a0efa45659b6d58d8a332c72",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-06-service-callback.md"
+      },
+      {
+        "digest": "d949c46c71db94fb958a02a637cd005a4450f244945588ef789156c5a0f38860",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-07-import-dialog.md"
+      },
+      {
+        "digest": "5bcffbd333fa4d8e200e1315e16c851a44db312253ae2f57a54292bccd1b20ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-08-editor-integration.md"
+      },
+      {
+        "digest": "cc3222276d8d7e1420d651bb141d8f0d7e50c21962cde399f54bc8f33c08014b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-09-tests.md"
+      },
+      {
+        "digest": "2b71f3f4a426598800ee656b42a9d5c47f33a85dcd47aea1f31ca5d23bf7de94",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/024-ImportPresentations/sections/section-10-security-qa.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 12,
+    "unresolved": 12
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.476610Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

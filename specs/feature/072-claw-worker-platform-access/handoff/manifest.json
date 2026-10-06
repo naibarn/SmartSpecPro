@@ -1,0 +1,522 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/072-claw-worker-platform-access/spec.md"
+      },
+      {
+        "digest": "eac196208110c08061fa43c3e507db5b66d1ddfe567219ca83278f1cacc4709c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/claude-plan.md"
+      },
+      {
+        "digest": "f0b95b59b5dafe616ed0842d7ba85b78e67d85124c67d958472944574b5b73d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/claude-spec.md"
+      },
+      {
+        "digest": "63c1d22ab74bf90194968e09068e2ca055baa232374ccc645ea79c4dfbe4628e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "a7ea085170f06c6a1cba5044035bf571f8b34facdf5cdc2208abacb129b25a66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "5e94dd4c8f76302482c37a48bf86bd7d023d03c386a02242157fcb43d58b252a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "39c435f2013e9209831eabe38144f1d922ea32f2da6d50d1867df1742746abd1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/index.md"
+      },
+      {
+        "digest": "c40e98b6acef60015dc47dc6fe5739f83d4eff97bb0895f8fe23692763c63a6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
+      },
+      {
+        "digest": "78e65406d9f71324270119fc501dcdb5a8d91e2c6662cf16ff8df7ab709ed8fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
+      },
+      {
+        "digest": "65b1736c334f461d001b4d1df8117cc8be38c855c8f956d256a0f9d44e9c1df7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
+      },
+      {
+        "digest": "06892d30f71cd892ad51e073c7a35941a5369b251609605bf9f7bf139ae7027e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
+      },
+      {
+        "digest": "96a1644a32fb0fd8f8a0e780c6995c76b2af71bf2b8d64753381d2fc14b865ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
+      },
+      {
+        "digest": "6c11b8a3f8d2cb99d798cc09d8c0c7a7a6f9db8640093b359ef7a4cf1d0c3c46",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
+      },
+      {
+        "digest": "29752edaca969f8c9bed80ae5b89de99da6cf1c5dbaec14d48d69cc09bcfa885",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
+      },
+      {
+        "digest": "c9811b6ce7c1a909b254a41e4af8c50a48ef45d30cf43aa65295ce0fb7ed452e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/072-claw-worker-platform-access/spec.md"
+      },
+      {
+        "digest": "eac196208110c08061fa43c3e507db5b66d1ddfe567219ca83278f1cacc4709c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/claude-plan.md"
+      },
+      {
+        "digest": "f0b95b59b5dafe616ed0842d7ba85b78e67d85124c67d958472944574b5b73d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/claude-spec.md"
+      },
+      {
+        "digest": "63c1d22ab74bf90194968e09068e2ca055baa232374ccc645ea79c4dfbe4628e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "a7ea085170f06c6a1cba5044035bf571f8b34facdf5cdc2208abacb129b25a66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "5e94dd4c8f76302482c37a48bf86bd7d023d03c386a02242157fcb43d58b252a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "39c435f2013e9209831eabe38144f1d922ea32f2da6d50d1867df1742746abd1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/index.md"
+      },
+      {
+        "digest": "c40e98b6acef60015dc47dc6fe5739f83d4eff97bb0895f8fe23692763c63a6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
+      },
+      {
+        "digest": "78e65406d9f71324270119fc501dcdb5a8d91e2c6662cf16ff8df7ab709ed8fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
+      },
+      {
+        "digest": "65b1736c334f461d001b4d1df8117cc8be38c855c8f956d256a0f9d44e9c1df7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
+      },
+      {
+        "digest": "06892d30f71cd892ad51e073c7a35941a5369b251609605bf9f7bf139ae7027e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
+      },
+      {
+        "digest": "96a1644a32fb0fd8f8a0e780c6995c76b2af71bf2b8d64753381d2fc14b865ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
+      },
+      {
+        "digest": "6c11b8a3f8d2cb99d798cc09d8c0c7a7a6f9db8640093b359ef7a4cf1d0c3c46",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
+      },
+      {
+        "digest": "29752edaca969f8c9bed80ae5b89de99da6cf1c5dbaec14d48d69cc09bcfa885",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
+      },
+      {
+        "digest": "c9811b6ce7c1a909b254a41e4af8c50a48ef45d30cf43aa65295ce0fb7ed452e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/072-claw-worker-platform-access/spec.md"
+      },
+      {
+        "digest": "eac196208110c08061fa43c3e507db5b66d1ddfe567219ca83278f1cacc4709c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/claude-plan.md"
+      },
+      {
+        "digest": "f0b95b59b5dafe616ed0842d7ba85b78e67d85124c67d958472944574b5b73d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/claude-spec.md"
+      },
+      {
+        "digest": "63c1d22ab74bf90194968e09068e2ca055baa232374ccc645ea79c4dfbe4628e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "a7ea085170f06c6a1cba5044035bf571f8b34facdf5cdc2208abacb129b25a66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "5e94dd4c8f76302482c37a48bf86bd7d023d03c386a02242157fcb43d58b252a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "39c435f2013e9209831eabe38144f1d922ea32f2da6d50d1867df1742746abd1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/index.md"
+      },
+      {
+        "digest": "c40e98b6acef60015dc47dc6fe5739f83d4eff97bb0895f8fe23692763c63a6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
+      },
+      {
+        "digest": "78e65406d9f71324270119fc501dcdb5a8d91e2c6662cf16ff8df7ab709ed8fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
+      },
+      {
+        "digest": "65b1736c334f461d001b4d1df8117cc8be38c855c8f956d256a0f9d44e9c1df7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
+      },
+      {
+        "digest": "06892d30f71cd892ad51e073c7a35941a5369b251609605bf9f7bf139ae7027e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
+      },
+      {
+        "digest": "96a1644a32fb0fd8f8a0e780c6995c76b2af71bf2b8d64753381d2fc14b865ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
+      },
+      {
+        "digest": "6c11b8a3f8d2cb99d798cc09d8c0c7a7a6f9db8640093b359ef7a4cf1d0c3c46",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
+      },
+      {
+        "digest": "29752edaca969f8c9bed80ae5b89de99da6cf1c5dbaec14d48d69cc09bcfa885",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
+      },
+      {
+        "digest": "c9811b6ce7c1a909b254a41e4af8c50a48ef45d30cf43aa65295ce0fb7ed452e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/072-claw-worker-platform-access/spec.md",
+    "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.791672Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-08T19:28:50+07:00",
+      "spec_last_changed_at": "2026-04-08T19:28:50+07:00"
+    },
+    "revision": "1.0",
+    "slug": "072-claw-worker-platform-access",
+    "spec_id": "072",
+    "title": "072 - Claw Worker Platform Access"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.791672Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.791672Z",
+    "sources": [
+      {
+        "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/072-claw-worker-platform-access/spec.md"
+      },
+      {
+        "digest": "eac196208110c08061fa43c3e507db5b66d1ddfe567219ca83278f1cacc4709c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/claude-plan.md"
+      },
+      {
+        "digest": "f0b95b59b5dafe616ed0842d7ba85b78e67d85124c67d958472944574b5b73d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/claude-spec.md"
+      },
+      {
+        "digest": "63c1d22ab74bf90194968e09068e2ca055baa232374ccc645ea79c4dfbe4628e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "a7ea085170f06c6a1cba5044035bf571f8b34facdf5cdc2208abacb129b25a66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "5e94dd4c8f76302482c37a48bf86bd7d023d03c386a02242157fcb43d58b252a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "39c435f2013e9209831eabe38144f1d922ea32f2da6d50d1867df1742746abd1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/index.md"
+      },
+      {
+        "digest": "c40e98b6acef60015dc47dc6fe5739f83d4eff97bb0895f8fe23692763c63a6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
+      },
+      {
+        "digest": "78e65406d9f71324270119fc501dcdb5a8d91e2c6662cf16ff8df7ab709ed8fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
+      },
+      {
+        "digest": "65b1736c334f461d001b4d1df8117cc8be38c855c8f956d256a0f9d44e9c1df7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
+      },
+      {
+        "digest": "06892d30f71cd892ad51e073c7a35941a5369b251609605bf9f7bf139ae7027e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
+      },
+      {
+        "digest": "96a1644a32fb0fd8f8a0e780c6995c76b2af71bf2b8d64753381d2fc14b865ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
+      },
+      {
+        "digest": "6c11b8a3f8d2cb99d798cc09d8c0c7a7a6f9db8640093b359ef7a4cf1d0c3c46",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
+      },
+      {
+        "digest": "29752edaca969f8c9bed80ae5b89de99da6cf1c5dbaec14d48d69cc09bcfa885",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
+      },
+      {
+        "digest": "c9811b6ce7c1a909b254a41e4af8c50a48ef45d30cf43aa65295ce0fb7ed452e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/072-claw-worker-platform-access/spec.md"
+      },
+      {
+        "digest": "eac196208110c08061fa43c3e507db5b66d1ddfe567219ca83278f1cacc4709c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/claude-plan.md"
+      },
+      {
+        "digest": "f0b95b59b5dafe616ed0842d7ba85b78e67d85124c67d958472944574b5b73d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/claude-spec.md"
+      },
+      {
+        "digest": "63c1d22ab74bf90194968e09068e2ca055baa232374ccc645ea79c4dfbe4628e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "a7ea085170f06c6a1cba5044035bf571f8b34facdf5cdc2208abacb129b25a66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "5e94dd4c8f76302482c37a48bf86bd7d023d03c386a02242157fcb43d58b252a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "39c435f2013e9209831eabe38144f1d922ea32f2da6d50d1867df1742746abd1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/index.md"
+      },
+      {
+        "digest": "c40e98b6acef60015dc47dc6fe5739f83d4eff97bb0895f8fe23692763c63a6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-01-contracts-and-persistence.md"
+      },
+      {
+        "digest": "78e65406d9f71324270119fc501dcdb5a8d91e2c6662cf16ff8df7ab709ed8fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-02-delegated-session-and-auth-foundation.md"
+      },
+      {
+        "digest": "65b1736c334f461d001b4d1df8117cc8be38c855c8f956d256a0f9d44e9c1df7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-03-http-platform-route-enforcement.md"
+      },
+      {
+        "digest": "06892d30f71cd892ad51e073c7a35941a5369b251609605bf9f7bf139ae7027e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-04-delegated-billing-and-budget-propagation.md"
+      },
+      {
+        "digest": "96a1644a32fb0fd8f8a0e780c6995c76b2af71bf2b8d64753381d2fc14b865ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-05-callbacks-and-result-publication.md"
+      },
+      {
+        "digest": "6c11b8a3f8d2cb99d798cc09d8c0c7a7a6f9db8640093b359ef7a4cf1d0c3c46",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-06-runtime-aware-bound-worker-expansion.md"
+      },
+      {
+        "digest": "29752edaca969f8c9bed80ae5b89de99da6cf1c5dbaec14d48d69cc09bcfa885",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-07-mcp-selection-security-and-ops.md"
+      },
+      {
+        "digest": "c9811b6ce7c1a909b254a41e4af8c50a48ef45d30cf43aa65295ce0fb7ed452e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 155,
+    "unresolved": 155
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.791672Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

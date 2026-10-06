@@ -1,0 +1,522 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md"
+      },
+      {
+        "digest": "9186bde940116c888df788396810dd2c15ff4c70e0e203f01299a1b5597dcb29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/claude-plan.md"
+      },
+      {
+        "digest": "72c139da4ebd1d64a10e153bb37e6c1f59dc9f1ceab4bbf39e85a9a3bdf45c38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/claude-spec.md"
+      },
+      {
+        "digest": "c7148e4c7983b4af433da13031c26fc970e4643584ecc4292e653f43d8c6053f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/implementation/acceptance-matrix.md"
+      },
+      {
+        "digest": "8acc430821bf38895673ca4b5fcd6de2cdcb292c1b24bf7c2a7dec3cfd666bfa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ad18b65025eec63ae02b68d8914d79e1142699928cf6615d3ce40e09bbb97acb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/index.md"
+      },
+      {
+        "digest": "417654ed8d0c845c8fae98c9ca45f9dea90e1e32c31260ec7ee322ff68471ce5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-01-contracts-evidence.md"
+      },
+      {
+        "digest": "a699ea87f6b282fde804e804370716478c3de1f3beee72bec754a3a9cfb056e2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-02-schema-credit.md"
+      },
+      {
+        "digest": "6690fe5109124514028d1266860ab2ffcd95f9d731abe5ae7308a5cbb398fdda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-03-runtime-state.md"
+      },
+      {
+        "digest": "35d021a639c393d6c5a7c7009cfdb1ab3c24ebf58966de6f24a0976bc83e026a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-04-validation-repair.md"
+      },
+      {
+        "digest": "49427510ae5a46097e493abb1e1507ed2834e4275c394eb978731761c19fe0a5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-05-server-integration.md"
+      },
+      {
+        "digest": "0a581a7c3dbda992f0af1bef3034e4f5eabb4a12da0fdcf07d42e8e397ee0774",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-06-ui-recovery.md"
+      },
+      {
+        "digest": "c624d633db53b311fc10ea36478460d36c440fc18de4b531bb677eaf5229d16d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-07-agents-adapter.md"
+      },
+      {
+        "digest": "4ea8e4859eb27c0097f27515ba4d25b29a60bbdc965cc616ebf2296c11d788ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-08-rollout-observability.md"
+      },
+      {
+        "digest": "49351a32a30f31b368c9c7c756eaf6eb45e32aea1c76ca7c5c8c94b16294c8b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-09-proof-gap-closure.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md"
+      },
+      {
+        "digest": "9186bde940116c888df788396810dd2c15ff4c70e0e203f01299a1b5597dcb29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/claude-plan.md"
+      },
+      {
+        "digest": "72c139da4ebd1d64a10e153bb37e6c1f59dc9f1ceab4bbf39e85a9a3bdf45c38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/claude-spec.md"
+      },
+      {
+        "digest": "c7148e4c7983b4af433da13031c26fc970e4643584ecc4292e653f43d8c6053f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/implementation/acceptance-matrix.md"
+      },
+      {
+        "digest": "8acc430821bf38895673ca4b5fcd6de2cdcb292c1b24bf7c2a7dec3cfd666bfa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ad18b65025eec63ae02b68d8914d79e1142699928cf6615d3ce40e09bbb97acb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/index.md"
+      },
+      {
+        "digest": "417654ed8d0c845c8fae98c9ca45f9dea90e1e32c31260ec7ee322ff68471ce5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-01-contracts-evidence.md"
+      },
+      {
+        "digest": "a699ea87f6b282fde804e804370716478c3de1f3beee72bec754a3a9cfb056e2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-02-schema-credit.md"
+      },
+      {
+        "digest": "6690fe5109124514028d1266860ab2ffcd95f9d731abe5ae7308a5cbb398fdda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-03-runtime-state.md"
+      },
+      {
+        "digest": "35d021a639c393d6c5a7c7009cfdb1ab3c24ebf58966de6f24a0976bc83e026a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-04-validation-repair.md"
+      },
+      {
+        "digest": "49427510ae5a46097e493abb1e1507ed2834e4275c394eb978731761c19fe0a5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-05-server-integration.md"
+      },
+      {
+        "digest": "0a581a7c3dbda992f0af1bef3034e4f5eabb4a12da0fdcf07d42e8e397ee0774",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-06-ui-recovery.md"
+      },
+      {
+        "digest": "c624d633db53b311fc10ea36478460d36c440fc18de4b531bb677eaf5229d16d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-07-agents-adapter.md"
+      },
+      {
+        "digest": "4ea8e4859eb27c0097f27515ba4d25b29a60bbdc965cc616ebf2296c11d788ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-08-rollout-observability.md"
+      },
+      {
+        "digest": "49351a32a30f31b368c9c7c756eaf6eb45e32aea1c76ca7c5c8c94b16294c8b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-09-proof-gap-closure.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md"
+      },
+      {
+        "digest": "9186bde940116c888df788396810dd2c15ff4c70e0e203f01299a1b5597dcb29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/claude-plan.md"
+      },
+      {
+        "digest": "72c139da4ebd1d64a10e153bb37e6c1f59dc9f1ceab4bbf39e85a9a3bdf45c38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/claude-spec.md"
+      },
+      {
+        "digest": "c7148e4c7983b4af433da13031c26fc970e4643584ecc4292e653f43d8c6053f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/implementation/acceptance-matrix.md"
+      },
+      {
+        "digest": "8acc430821bf38895673ca4b5fcd6de2cdcb292c1b24bf7c2a7dec3cfd666bfa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ad18b65025eec63ae02b68d8914d79e1142699928cf6615d3ce40e09bbb97acb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/index.md"
+      },
+      {
+        "digest": "417654ed8d0c845c8fae98c9ca45f9dea90e1e32c31260ec7ee322ff68471ce5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-01-contracts-evidence.md"
+      },
+      {
+        "digest": "a699ea87f6b282fde804e804370716478c3de1f3beee72bec754a3a9cfb056e2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-02-schema-credit.md"
+      },
+      {
+        "digest": "6690fe5109124514028d1266860ab2ffcd95f9d731abe5ae7308a5cbb398fdda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-03-runtime-state.md"
+      },
+      {
+        "digest": "35d021a639c393d6c5a7c7009cfdb1ab3c24ebf58966de6f24a0976bc83e026a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-04-validation-repair.md"
+      },
+      {
+        "digest": "49427510ae5a46097e493abb1e1507ed2834e4275c394eb978731761c19fe0a5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-05-server-integration.md"
+      },
+      {
+        "digest": "0a581a7c3dbda992f0af1bef3034e4f5eabb4a12da0fdcf07d42e8e397ee0774",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-06-ui-recovery.md"
+      },
+      {
+        "digest": "c624d633db53b311fc10ea36478460d36c440fc18de4b531bb677eaf5229d16d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-07-agents-adapter.md"
+      },
+      {
+        "digest": "4ea8e4859eb27c0097f27515ba4d25b29a60bbdc965cc616ebf2296c11d788ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-08-rollout-observability.md"
+      },
+      {
+        "digest": "49351a32a30f31b368c9c7c756eaf6eb45e32aea1c76ca7c5c8c94b16294c8b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-09-proof-gap-closure.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md",
+    "digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.369137Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-08-30T21:05:27+07:00",
+      "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
+    },
+    "revision": null,
+    "slug": "152-vertical-drama-story-generation-assurance-orchestra",
+    "spec_id": "152",
+    "title": "Feature 152: Vertical Drama Story Generation Assurance Orchestra"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.369137Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.369137Z",
+    "sources": [
+      {
+        "digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md"
+      },
+      {
+        "digest": "9186bde940116c888df788396810dd2c15ff4c70e0e203f01299a1b5597dcb29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/claude-plan.md"
+      },
+      {
+        "digest": "72c139da4ebd1d64a10e153bb37e6c1f59dc9f1ceab4bbf39e85a9a3bdf45c38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/claude-spec.md"
+      },
+      {
+        "digest": "c7148e4c7983b4af433da13031c26fc970e4643584ecc4292e653f43d8c6053f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/implementation/acceptance-matrix.md"
+      },
+      {
+        "digest": "8acc430821bf38895673ca4b5fcd6de2cdcb292c1b24bf7c2a7dec3cfd666bfa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ad18b65025eec63ae02b68d8914d79e1142699928cf6615d3ce40e09bbb97acb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/index.md"
+      },
+      {
+        "digest": "417654ed8d0c845c8fae98c9ca45f9dea90e1e32c31260ec7ee322ff68471ce5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-01-contracts-evidence.md"
+      },
+      {
+        "digest": "a699ea87f6b282fde804e804370716478c3de1f3beee72bec754a3a9cfb056e2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-02-schema-credit.md"
+      },
+      {
+        "digest": "6690fe5109124514028d1266860ab2ffcd95f9d731abe5ae7308a5cbb398fdda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-03-runtime-state.md"
+      },
+      {
+        "digest": "35d021a639c393d6c5a7c7009cfdb1ab3c24ebf58966de6f24a0976bc83e026a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-04-validation-repair.md"
+      },
+      {
+        "digest": "49427510ae5a46097e493abb1e1507ed2834e4275c394eb978731761c19fe0a5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-05-server-integration.md"
+      },
+      {
+        "digest": "0a581a7c3dbda992f0af1bef3034e4f5eabb4a12da0fdcf07d42e8e397ee0774",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-06-ui-recovery.md"
+      },
+      {
+        "digest": "c624d633db53b311fc10ea36478460d36c440fc18de4b531bb677eaf5229d16d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-07-agents-adapter.md"
+      },
+      {
+        "digest": "4ea8e4859eb27c0097f27515ba4d25b29a60bbdc965cc616ebf2296c11d788ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-08-rollout-observability.md"
+      },
+      {
+        "digest": "49351a32a30f31b368c9c7c756eaf6eb45e32aea1c76ca7c5c8c94b16294c8b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-09-proof-gap-closure.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md"
+      },
+      {
+        "digest": "9186bde940116c888df788396810dd2c15ff4c70e0e203f01299a1b5597dcb29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/claude-plan.md"
+      },
+      {
+        "digest": "72c139da4ebd1d64a10e153bb37e6c1f59dc9f1ceab4bbf39e85a9a3bdf45c38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/claude-spec.md"
+      },
+      {
+        "digest": "c7148e4c7983b4af433da13031c26fc970e4643584ecc4292e653f43d8c6053f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/implementation/acceptance-matrix.md"
+      },
+      {
+        "digest": "8acc430821bf38895673ca4b5fcd6de2cdcb292c1b24bf7c2a7dec3cfd666bfa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ad18b65025eec63ae02b68d8914d79e1142699928cf6615d3ce40e09bbb97acb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/index.md"
+      },
+      {
+        "digest": "417654ed8d0c845c8fae98c9ca45f9dea90e1e32c31260ec7ee322ff68471ce5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-01-contracts-evidence.md"
+      },
+      {
+        "digest": "a699ea87f6b282fde804e804370716478c3de1f3beee72bec754a3a9cfb056e2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-02-schema-credit.md"
+      },
+      {
+        "digest": "6690fe5109124514028d1266860ab2ffcd95f9d731abe5ae7308a5cbb398fdda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-03-runtime-state.md"
+      },
+      {
+        "digest": "35d021a639c393d6c5a7c7009cfdb1ab3c24ebf58966de6f24a0976bc83e026a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-04-validation-repair.md"
+      },
+      {
+        "digest": "49427510ae5a46097e493abb1e1507ed2834e4275c394eb978731761c19fe0a5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-05-server-integration.md"
+      },
+      {
+        "digest": "0a581a7c3dbda992f0af1bef3034e4f5eabb4a12da0fdcf07d42e8e397ee0774",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-06-ui-recovery.md"
+      },
+      {
+        "digest": "c624d633db53b311fc10ea36478460d36c440fc18de4b531bb677eaf5229d16d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-07-agents-adapter.md"
+      },
+      {
+        "digest": "4ea8e4859eb27c0097f27515ba4d25b29a60bbdc965cc616ebf2296c11d788ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-08-rollout-observability.md"
+      },
+      {
+        "digest": "49351a32a30f31b368c9c7c756eaf6eb45e32aea1c76ca7c5c8c94b16294c8b3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections/section-09-proof-gap-closure.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 153,
+    "unresolved": 153
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.369137Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

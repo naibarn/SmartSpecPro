@@ -1,0 +1,27 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_source": "specs/feature/056-agency-memory-vector-rag/spec.md",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Review normative Spec and extract requirement-level ledger entries.",
+      "requirement_digest": "22e2e5d62aa0442ccbe369a8fa97594bad4fa8cf6561b998719f4048be4cabb8",
+      "requirement_id": "UNPARSED-SPEC-B86E34F4",
+      "requirement_text": "Normative requirement extraction needs review; no safe structured requirement set was detected.",
+      "source_spec_digest": "22e2e5d62aa0442ccbe369a8fa97594bad4fa8cf6561b998719f4048be4cabb8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Manual requirement extraction and mapping review."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "22e2e5d62aa0442ccbe369a8fa97594bad4fa8cf6561b998719f4048be4cabb8",
+  "spec_id": "056"
+}

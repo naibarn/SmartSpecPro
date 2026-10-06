@@ -1,0 +1,184 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/095-work-os-automation-fabric/spec.md#L21"
+      ],
+      "authority_source": "specs/feature/095-work-os-automation-fabric/spec.md#L21",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c905b6e4e9f5c7d62c229af4d7faf3443fcd824a6801d311368396e1bf3cdd87",
+      "requirement_id": "REQ-9C5E522443A8",
+      "requirement_text": "The solution must support three operating modes:",
+      "source_spec_digest": "21c2cfe5216762329fa3af18c942b146c2048589bd53649a902e8032199ab033",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/095-work-os-automation-fabric/spec.md#L36"
+      ],
+      "authority_source": "specs/feature/095-work-os-automation-fabric/spec.md#L36",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f54a46bb39696bb4993f121bfcf2d7de29ecd2a6e364c5edbdc8a0d16ed422e3",
+      "requirement_id": "REQ-B666F577A9B2",
+      "requirement_text": "- pause for human approval when required",
+      "source_spec_digest": "21c2cfe5216762329fa3af18c942b146c2048589bd53649a902e8032199ab033",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/095-work-os-automation-fabric/spec.md#L103"
+      ],
+      "authority_source": "specs/feature/095-work-os-automation-fabric/spec.md#L103",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "43cdc1ccfe85523c1e2e26c649910ea5174a169c2b15ab03d5dfbb5194e38c14",
+      "requirement_id": "REQ-09FCE68D739A",
+      "requirement_text": "- Every run step must have a declared execution surface and a declared risk level.",
+      "source_spec_digest": "21c2cfe5216762329fa3af18c942b146c2048589bd53649a902e8032199ab033",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/095-work-os-automation-fabric/spec.md#L104"
+      ],
+      "authority_source": "specs/feature/095-work-os-automation-fabric/spec.md#L104",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5a095745e9bb697ca9fb9c902fa1cc2f01f327eaf46eb196e9791c3d3da4d7f0",
+      "requirement_id": "REQ-38DCCEDD5324",
+      "requirement_text": "- Browser/external actions must stay behind the existing Automation Copilot feature flag, policy gate, and credit gate.",
+      "source_spec_digest": "21c2cfe5216762329fa3af18c942b146c2048589bd53649a902e8032199ab033",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/095-work-os-automation-fabric/spec.md#L105"
+      ],
+      "authority_source": "specs/feature/095-work-os-automation-fabric/spec.md#L105",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "58128c281b3ee18b09a6e1c6fd19e4bef6cf6623f2aa8a832c6ddbc68a3bcf64",
+      "requirement_id": "REQ-1F14C00D6678",
+      "requirement_text": "- Work OS must remain the only place that can authorize ownership, approval, SLA, exception, and final outcome transitions.",
+      "source_spec_digest": "21c2cfe5216762329fa3af18c942b146c2048589bd53649a902e8032199ab033",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/095-work-os-automation-fabric/spec.md#L106"
+      ],
+      "authority_source": "specs/feature/095-work-os-automation-fabric/spec.md#L106",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5f101b404a015e644bd46b4935b69ff30672cc2094e4f2144264a44c2b633f97",
+      "requirement_id": "REQ-43EC8957519A",
+      "requirement_text": "- Human approval must be mandatory for publish, external side effects, destructive actions, and any step marked high risk by policy.",
+      "source_spec_digest": "21c2cfe5216762329fa3af18c942b146c2048589bd53649a902e8032199ab033",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/095-work-os-automation-fabric/spec.md#L107"
+      ],
+      "authority_source": "specs/feature/095-work-os-automation-fabric/spec.md#L107",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b68837191d65218b1856b746ad4beeee9f13d7071b09743622f9478bcaa8de42",
+      "requirement_id": "REQ-2D1BA0D48662",
+      "requirement_text": "- Intermediate content from external sources must be treated as untrusted input, not as instructions.",
+      "source_spec_digest": "21c2cfe5216762329fa3af18c942b146c2048589bd53649a902e8032199ab033",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/095-work-os-automation-fabric/spec.md#L108"
+      ],
+      "authority_source": "specs/feature/095-work-os-automation-fabric/spec.md#L108",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "794ebe1da368d06fd2ad4e779090a06801d25a645ea6b260d407a60b628592a0",
+      "requirement_id": "REQ-392AA3E6A0D8",
+      "requirement_text": "- Retry and resume must be idempotent or guarded by dedupe keys so that reruns do not create duplicate side effects.",
+      "source_spec_digest": "21c2cfe5216762329fa3af18c942b146c2048589bd53649a902e8032199ab033",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "21c2cfe5216762329fa3af18c942b146c2048589bd53649a902e8032199ab033",
+  "spec_id": "095"
+}

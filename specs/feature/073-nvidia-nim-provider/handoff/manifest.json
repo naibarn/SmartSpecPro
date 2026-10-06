@@ -1,0 +1,547 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "b239b236c7e91bdf0fa942e3a3d9422c584630f73cd756e59857329f23159853",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/073-nvidia-nim-provider/spec.md"
+      },
+      {
+        "digest": "945004f670101708bff2253535930a75ae29007b8eed46216d8c2c4da2eb638a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/claude-plan.md"
+      },
+      {
+        "digest": "a5adbab55c8712a069e744f3a0d79511a6b95de0b9fad641ec6abc1c65d25d57",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/claude-spec.md"
+      },
+      {
+        "digest": "d38709ba06e06d94fb0450593529c03bf3b3320877f2972af98a4912ac420b41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "6e376beaa45f4a7083f602b87fd6bd495521dcf641304db29f4ff3538a064383",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/implementation/rollout-checklist.md"
+      },
+      {
+        "digest": "885560dc4d22b5561a543292f0f1fe0a24c3738112691d5880b27c4771ff6a46",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/plan-completeness-round-2.md"
+      },
+      {
+        "digest": "339a51b9eb20b50bc38b77bb3d23067eb56ce5a1e152d7243d24b60a21f4269e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "9dc831f314d84032245518eb0b9707bca8d9aef480be71e5e83fa1b8196c5623",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "39292de57dc8b6b2c55459f10ac0677911d0e35e4b6c0518cf62189021c97795",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/index.md"
+      },
+      {
+        "digest": "96b05ce2a1837a1af64b711499cb1d3ae4adcab009dca74129bc72c0275a8b60",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-01-shared-catalog-contracts.md"
+      },
+      {
+        "digest": "1d546c3aded1883720e57a76f7785ae1de26fddfb8306476eeeee4405541af41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-02-nvidia-provider-sync.md"
+      },
+      {
+        "digest": "53c95e8aff34efb44b8ee8a441ee3b6cb902d5445331dac7242d89fb6c7fb9ed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-03-admin-catalog-and-mutation-safety.md"
+      },
+      {
+        "digest": "a91ad6a78f1d7209b1dae5a016a14081e5f66b703555637355e48e931d7dc90f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-04-runtime-auto-selection-gating.md"
+      },
+      {
+        "digest": "5a5776030941efa9c08e1f8c5f502084464f2d2a218cf059faddc2b49d7fbe23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-05-chat-routing-and-provider-integration.md"
+      },
+      {
+        "digest": "65d41333d3eae119e90afb0d16eb48d7f1d3f47ee266d6c9bc9b8c272afcfbfe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-06-python-internal-embeddings.md"
+      },
+      {
+        "digest": "d82f68a1ab5b8c018ca243e0af91eade12c9a43059f5a764d9f13ef3ad49bac1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-07-verification-and-rollout.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "b239b236c7e91bdf0fa942e3a3d9422c584630f73cd756e59857329f23159853"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "b239b236c7e91bdf0fa942e3a3d9422c584630f73cd756e59857329f23159853",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/073-nvidia-nim-provider/spec.md"
+      },
+      {
+        "digest": "945004f670101708bff2253535930a75ae29007b8eed46216d8c2c4da2eb638a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/claude-plan.md"
+      },
+      {
+        "digest": "a5adbab55c8712a069e744f3a0d79511a6b95de0b9fad641ec6abc1c65d25d57",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/claude-spec.md"
+      },
+      {
+        "digest": "d38709ba06e06d94fb0450593529c03bf3b3320877f2972af98a4912ac420b41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "6e376beaa45f4a7083f602b87fd6bd495521dcf641304db29f4ff3538a064383",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/implementation/rollout-checklist.md"
+      },
+      {
+        "digest": "885560dc4d22b5561a543292f0f1fe0a24c3738112691d5880b27c4771ff6a46",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/plan-completeness-round-2.md"
+      },
+      {
+        "digest": "339a51b9eb20b50bc38b77bb3d23067eb56ce5a1e152d7243d24b60a21f4269e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "9dc831f314d84032245518eb0b9707bca8d9aef480be71e5e83fa1b8196c5623",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "39292de57dc8b6b2c55459f10ac0677911d0e35e4b6c0518cf62189021c97795",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/index.md"
+      },
+      {
+        "digest": "96b05ce2a1837a1af64b711499cb1d3ae4adcab009dca74129bc72c0275a8b60",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-01-shared-catalog-contracts.md"
+      },
+      {
+        "digest": "1d546c3aded1883720e57a76f7785ae1de26fddfb8306476eeeee4405541af41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-02-nvidia-provider-sync.md"
+      },
+      {
+        "digest": "53c95e8aff34efb44b8ee8a441ee3b6cb902d5445331dac7242d89fb6c7fb9ed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-03-admin-catalog-and-mutation-safety.md"
+      },
+      {
+        "digest": "a91ad6a78f1d7209b1dae5a016a14081e5f66b703555637355e48e931d7dc90f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-04-runtime-auto-selection-gating.md"
+      },
+      {
+        "digest": "5a5776030941efa9c08e1f8c5f502084464f2d2a218cf059faddc2b49d7fbe23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-05-chat-routing-and-provider-integration.md"
+      },
+      {
+        "digest": "65d41333d3eae119e90afb0d16eb48d7f1d3f47ee266d6c9bc9b8c272afcfbfe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-06-python-internal-embeddings.md"
+      },
+      {
+        "digest": "d82f68a1ab5b8c018ca243e0af91eade12c9a43059f5a764d9f13ef3ad49bac1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-07-verification-and-rollout.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "b239b236c7e91bdf0fa942e3a3d9422c584630f73cd756e59857329f23159853",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/073-nvidia-nim-provider/spec.md"
+      },
+      {
+        "digest": "945004f670101708bff2253535930a75ae29007b8eed46216d8c2c4da2eb638a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/claude-plan.md"
+      },
+      {
+        "digest": "a5adbab55c8712a069e744f3a0d79511a6b95de0b9fad641ec6abc1c65d25d57",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/claude-spec.md"
+      },
+      {
+        "digest": "d38709ba06e06d94fb0450593529c03bf3b3320877f2972af98a4912ac420b41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "6e376beaa45f4a7083f602b87fd6bd495521dcf641304db29f4ff3538a064383",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/implementation/rollout-checklist.md"
+      },
+      {
+        "digest": "885560dc4d22b5561a543292f0f1fe0a24c3738112691d5880b27c4771ff6a46",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/plan-completeness-round-2.md"
+      },
+      {
+        "digest": "339a51b9eb20b50bc38b77bb3d23067eb56ce5a1e152d7243d24b60a21f4269e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "9dc831f314d84032245518eb0b9707bca8d9aef480be71e5e83fa1b8196c5623",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "39292de57dc8b6b2c55459f10ac0677911d0e35e4b6c0518cf62189021c97795",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/index.md"
+      },
+      {
+        "digest": "96b05ce2a1837a1af64b711499cb1d3ae4adcab009dca74129bc72c0275a8b60",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-01-shared-catalog-contracts.md"
+      },
+      {
+        "digest": "1d546c3aded1883720e57a76f7785ae1de26fddfb8306476eeeee4405541af41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-02-nvidia-provider-sync.md"
+      },
+      {
+        "digest": "53c95e8aff34efb44b8ee8a441ee3b6cb902d5445331dac7242d89fb6c7fb9ed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-03-admin-catalog-and-mutation-safety.md"
+      },
+      {
+        "digest": "a91ad6a78f1d7209b1dae5a016a14081e5f66b703555637355e48e931d7dc90f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-04-runtime-auto-selection-gating.md"
+      },
+      {
+        "digest": "5a5776030941efa9c08e1f8c5f502084464f2d2a218cf059faddc2b49d7fbe23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-05-chat-routing-and-provider-integration.md"
+      },
+      {
+        "digest": "65d41333d3eae119e90afb0d16eb48d7f1d3f47ee266d6c9bc9b8c272afcfbfe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-06-python-internal-embeddings.md"
+      },
+      {
+        "digest": "d82f68a1ab5b8c018ca243e0af91eade12c9a43059f5a764d9f13ef3ad49bac1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-07-verification-and-rollout.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/073-nvidia-nim-provider/spec.md",
+    "digest": "b239b236c7e91bdf0fa942e3a3d9422c584630f73cd756e59857329f23159853",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.798957Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-08T19:35:37+07:00",
+      "spec_last_changed_at": "2026-04-08T19:35:37+07:00"
+    },
+    "revision": "1.0",
+    "slug": "073-nvidia-nim-provider",
+    "spec_id": "073",
+    "title": "073 - NVIDIA NIM Hosted Provider and Multi-Surface Model Catalog"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.798957Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.798957Z",
+    "sources": [
+      {
+        "digest": "b239b236c7e91bdf0fa942e3a3d9422c584630f73cd756e59857329f23159853",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/073-nvidia-nim-provider/spec.md"
+      },
+      {
+        "digest": "945004f670101708bff2253535930a75ae29007b8eed46216d8c2c4da2eb638a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/claude-plan.md"
+      },
+      {
+        "digest": "a5adbab55c8712a069e744f3a0d79511a6b95de0b9fad641ec6abc1c65d25d57",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/claude-spec.md"
+      },
+      {
+        "digest": "d38709ba06e06d94fb0450593529c03bf3b3320877f2972af98a4912ac420b41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "6e376beaa45f4a7083f602b87fd6bd495521dcf641304db29f4ff3538a064383",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/implementation/rollout-checklist.md"
+      },
+      {
+        "digest": "885560dc4d22b5561a543292f0f1fe0a24c3738112691d5880b27c4771ff6a46",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/plan-completeness-round-2.md"
+      },
+      {
+        "digest": "339a51b9eb20b50bc38b77bb3d23067eb56ce5a1e152d7243d24b60a21f4269e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "9dc831f314d84032245518eb0b9707bca8d9aef480be71e5e83fa1b8196c5623",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "39292de57dc8b6b2c55459f10ac0677911d0e35e4b6c0518cf62189021c97795",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/index.md"
+      },
+      {
+        "digest": "96b05ce2a1837a1af64b711499cb1d3ae4adcab009dca74129bc72c0275a8b60",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-01-shared-catalog-contracts.md"
+      },
+      {
+        "digest": "1d546c3aded1883720e57a76f7785ae1de26fddfb8306476eeeee4405541af41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-02-nvidia-provider-sync.md"
+      },
+      {
+        "digest": "53c95e8aff34efb44b8ee8a441ee3b6cb902d5445331dac7242d89fb6c7fb9ed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-03-admin-catalog-and-mutation-safety.md"
+      },
+      {
+        "digest": "a91ad6a78f1d7209b1dae5a016a14081e5f66b703555637355e48e931d7dc90f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-04-runtime-auto-selection-gating.md"
+      },
+      {
+        "digest": "5a5776030941efa9c08e1f8c5f502084464f2d2a218cf059faddc2b49d7fbe23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-05-chat-routing-and-provider-integration.md"
+      },
+      {
+        "digest": "65d41333d3eae119e90afb0d16eb48d7f1d3f47ee266d6c9bc9b8c272afcfbfe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-06-python-internal-embeddings.md"
+      },
+      {
+        "digest": "d82f68a1ab5b8c018ca243e0af91eade12c9a43059f5a764d9f13ef3ad49bac1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-07-verification-and-rollout.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "b239b236c7e91bdf0fa942e3a3d9422c584630f73cd756e59857329f23159853",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/073-nvidia-nim-provider/spec.md"
+      },
+      {
+        "digest": "945004f670101708bff2253535930a75ae29007b8eed46216d8c2c4da2eb638a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/claude-plan.md"
+      },
+      {
+        "digest": "a5adbab55c8712a069e744f3a0d79511a6b95de0b9fad641ec6abc1c65d25d57",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/claude-spec.md"
+      },
+      {
+        "digest": "d38709ba06e06d94fb0450593529c03bf3b3320877f2972af98a4912ac420b41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "6e376beaa45f4a7083f602b87fd6bd495521dcf641304db29f4ff3538a064383",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/implementation/rollout-checklist.md"
+      },
+      {
+        "digest": "885560dc4d22b5561a543292f0f1fe0a24c3738112691d5880b27c4771ff6a46",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/plan-completeness-round-2.md"
+      },
+      {
+        "digest": "339a51b9eb20b50bc38b77bb3d23067eb56ce5a1e152d7243d24b60a21f4269e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/section-cross-consistency.md"
+      },
+      {
+        "digest": "9dc831f314d84032245518eb0b9707bca8d9aef480be71e5e83fa1b8196c5623",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "39292de57dc8b6b2c55459f10ac0677911d0e35e4b6c0518cf62189021c97795",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/index.md"
+      },
+      {
+        "digest": "96b05ce2a1837a1af64b711499cb1d3ae4adcab009dca74129bc72c0275a8b60",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-01-shared-catalog-contracts.md"
+      },
+      {
+        "digest": "1d546c3aded1883720e57a76f7785ae1de26fddfb8306476eeeee4405541af41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-02-nvidia-provider-sync.md"
+      },
+      {
+        "digest": "53c95e8aff34efb44b8ee8a441ee3b6cb902d5445331dac7242d89fb6c7fb9ed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-03-admin-catalog-and-mutation-safety.md"
+      },
+      {
+        "digest": "a91ad6a78f1d7209b1dae5a016a14081e5f66b703555637355e48e931d7dc90f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-04-runtime-auto-selection-gating.md"
+      },
+      {
+        "digest": "5a5776030941efa9c08e1f8c5f502084464f2d2a218cf059faddc2b49d7fbe23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-05-chat-routing-and-provider-integration.md"
+      },
+      {
+        "digest": "65d41333d3eae119e90afb0d16eb48d7f1d3f47ee266d6c9bc9b8c272afcfbfe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-06-python-internal-embeddings.md"
+      },
+      {
+        "digest": "d82f68a1ab5b8c018ca243e0af91eade12c9a43059f5a764d9f13ef3ad49bac1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/073-nvidia-nim-provider/sections/section-07-verification-and-rollout.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 37,
+    "unresolved": 37
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.798957Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

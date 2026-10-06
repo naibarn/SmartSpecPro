@@ -1,0 +1,180 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "LOW",
+    "conflicts": [
+      {
+        "kind": "DUPLICATE_SPEC_ID",
+        "paths": [
+          "specs/project/013-features-195-200/requirements.deep-project/05-feature-199-external-mcp-gateway",
+          "specs/project/canonical-spec-handoff-reconciliation/05-workflow-lifecycle-integration"
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "digest": "aae626e2caa9a5f5d7bd6f5ccb0e8a54844c61370a5f6c9b616a7e8598e50dd4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/05-recurring-execution-and-notifications/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "AUTHORITY_CONFLICT",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "aae626e2caa9a5f5d7bd6f5ccb0e8a54844c61370a5f6c9b616a7e8598e50dd4"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "aae626e2caa9a5f5d7bd6f5ccb0e8a54844c61370a5f6c9b616a7e8598e50dd4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/05-recurring-execution-and-notifications/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "aae626e2caa9a5f5d7bd6f5ccb0e8a54844c61370a5f6c9b616a7e8598e50dd4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/05-recurring-execution-and-notifications/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/05-recurring-execution-and-notifications/spec.md",
+    "digest": "aae626e2caa9a5f5d7bd6f5ccb0e8a54844c61370a5f6c9b616a7e8598e50dd4",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.783918Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-03-15T13:32:30+07:00",
+      "spec_last_changed_at": "2026-03-15T13:32:30+07:00"
+    },
+    "revision": null,
+    "slug": "05-recurring-execution-and-notifications",
+    "spec_id": "05",
+    "title": "Spec: Recurring Execution and Notifications"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.783918Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.783918Z",
+    "sources": [
+      {
+        "digest": "aae626e2caa9a5f5d7bd6f5ccb0e8a54844c61370a5f6c9b616a7e8598e50dd4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/05-recurring-execution-and-notifications/spec.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "aae626e2caa9a5f5d7bd6f5ccb0e8a54844c61370a5f6c9b616a7e8598e50dd4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/05-recurring-execution-and-notifications/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 1,
+    "unresolved": 1
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.783918Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

@@ -1,0 +1,647 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "f732b39e3395edf9f4ed63f8ec20be974815619a5a273243ac7b31475a4e732f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/spec.md"
+      },
+      {
+        "digest": "c138afbd29fe6335ce2d1f20197d18a6b870ce5a02ae138aa0707efa1870714a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/claude-plan.md"
+      },
+      {
+        "digest": "84255598d7f8b1173fc44eefbb8e9f8bb377f853829e3c24ba1e971a2194171f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/claude-spec.md"
+      },
+      {
+        "digest": "94b61781ad057ec2006987dc92557004d48998931e87ca68c81494aa7f5c68d3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/completeness-audit-2026-05-21.md"
+      },
+      {
+        "digest": "bef757957517eadd1e07a96c11787858419ad0d6e739c58ff7adc4e8b60e51b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ed73a41904ff674b373173b1665a346bbec21402060039d2b9d69f75517d1667",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/implementation-summary.md"
+      },
+      {
+        "digest": "8b6eb68958e25376966a0c5f7f86a1257abfe36216ef2b92052505212387fe30",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/reviews/plan-completeness-review.md"
+      },
+      {
+        "digest": "c5f4b377f0637bf1a37cfe3803e96393c68bd974353c8938255583f6d765e301",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "b4db619bcc1d418c3da639c417bcb0db8ca1b9742e56d6309b7b95fe754dafca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/index.md"
+      },
+      {
+        "digest": "27631f9717b8484a6664a89d610d3058c9ed647ba7947a43b97f6314c785648d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-01-validation-and-metadata-foundation.md"
+      },
+      {
+        "digest": "e4c1e40e198e913378110096071d9c0728442725eef8439f8f7b2a84aa0e982a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-02-provider-assets-data-and-api.md"
+      },
+      {
+        "digest": "54b934d166b10fb6836c271b27c178220b2e6d626494cb106aca153952e57c86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-03-kie-provider-asset-contract.md"
+      },
+      {
+        "digest": "f9fda3526cae862549d4eae74bfea0da132812a6d7d4d41c0223be9df84409c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-04-gemini-omni-skill-packages.md"
+      },
+      {
+        "digest": "a70f0293dadb3dfd49852f2aefffa4aded5fd2622deaa82eaa532a8e1c2f79d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-05-admin-presets-seeds-and-pricing.md"
+      },
+      {
+        "digest": "f9ffce2b12702a62499d118f202df02ae49af192734154b0274fcb006acf9216",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-06-media-studio-gemini-omni-ux.md"
+      },
+      {
+        "digest": "4120f765cc1028cccbfb1f9a6a52e18188d51b1e08b5df25a4bafb972ca7a231",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-07-generation-qa-learning-orchestration.md"
+      },
+      {
+        "digest": "6e892519b3f6544e9cf7667ce8feee5d8921caa6a9b1f376a89971160c8b54c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-08-rollout-verification-and-regression.md"
+      },
+      {
+        "digest": "568a5482a54109b679f37f981519d69416638697c9957e056f27f19ae1261a8f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-09-media-studio-production-director.md"
+      },
+      {
+        "digest": "b0d37215c7eca47545ae7c7f580a0b1d36b0951d3c145f77e031697761f1c460",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-10-cross-modal-asset-orchestration.md"
+      },
+      {
+        "digest": "046e3c0667ad1db2c91d3148d1f4263665305a1f433c1884ec609bf1b4cd2c26",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-11-production-quality-loop-and-final-render.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "f732b39e3395edf9f4ed63f8ec20be974815619a5a273243ac7b31475a4e732f"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "f732b39e3395edf9f4ed63f8ec20be974815619a5a273243ac7b31475a4e732f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/spec.md"
+      },
+      {
+        "digest": "c138afbd29fe6335ce2d1f20197d18a6b870ce5a02ae138aa0707efa1870714a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/claude-plan.md"
+      },
+      {
+        "digest": "84255598d7f8b1173fc44eefbb8e9f8bb377f853829e3c24ba1e971a2194171f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/claude-spec.md"
+      },
+      {
+        "digest": "94b61781ad057ec2006987dc92557004d48998931e87ca68c81494aa7f5c68d3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/completeness-audit-2026-05-21.md"
+      },
+      {
+        "digest": "bef757957517eadd1e07a96c11787858419ad0d6e739c58ff7adc4e8b60e51b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ed73a41904ff674b373173b1665a346bbec21402060039d2b9d69f75517d1667",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/implementation-summary.md"
+      },
+      {
+        "digest": "8b6eb68958e25376966a0c5f7f86a1257abfe36216ef2b92052505212387fe30",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/reviews/plan-completeness-review.md"
+      },
+      {
+        "digest": "c5f4b377f0637bf1a37cfe3803e96393c68bd974353c8938255583f6d765e301",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "b4db619bcc1d418c3da639c417bcb0db8ca1b9742e56d6309b7b95fe754dafca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/index.md"
+      },
+      {
+        "digest": "27631f9717b8484a6664a89d610d3058c9ed647ba7947a43b97f6314c785648d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-01-validation-and-metadata-foundation.md"
+      },
+      {
+        "digest": "e4c1e40e198e913378110096071d9c0728442725eef8439f8f7b2a84aa0e982a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-02-provider-assets-data-and-api.md"
+      },
+      {
+        "digest": "54b934d166b10fb6836c271b27c178220b2e6d626494cb106aca153952e57c86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-03-kie-provider-asset-contract.md"
+      },
+      {
+        "digest": "f9fda3526cae862549d4eae74bfea0da132812a6d7d4d41c0223be9df84409c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-04-gemini-omni-skill-packages.md"
+      },
+      {
+        "digest": "a70f0293dadb3dfd49852f2aefffa4aded5fd2622deaa82eaa532a8e1c2f79d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-05-admin-presets-seeds-and-pricing.md"
+      },
+      {
+        "digest": "f9ffce2b12702a62499d118f202df02ae49af192734154b0274fcb006acf9216",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-06-media-studio-gemini-omni-ux.md"
+      },
+      {
+        "digest": "4120f765cc1028cccbfb1f9a6a52e18188d51b1e08b5df25a4bafb972ca7a231",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-07-generation-qa-learning-orchestration.md"
+      },
+      {
+        "digest": "6e892519b3f6544e9cf7667ce8feee5d8921caa6a9b1f376a89971160c8b54c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-08-rollout-verification-and-regression.md"
+      },
+      {
+        "digest": "568a5482a54109b679f37f981519d69416638697c9957e056f27f19ae1261a8f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-09-media-studio-production-director.md"
+      },
+      {
+        "digest": "b0d37215c7eca47545ae7c7f580a0b1d36b0951d3c145f77e031697761f1c460",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-10-cross-modal-asset-orchestration.md"
+      },
+      {
+        "digest": "046e3c0667ad1db2c91d3148d1f4263665305a1f433c1884ec609bf1b4cd2c26",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-11-production-quality-loop-and-final-render.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "f732b39e3395edf9f4ed63f8ec20be974815619a5a273243ac7b31475a4e732f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/spec.md"
+      },
+      {
+        "digest": "c138afbd29fe6335ce2d1f20197d18a6b870ce5a02ae138aa0707efa1870714a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/claude-plan.md"
+      },
+      {
+        "digest": "84255598d7f8b1173fc44eefbb8e9f8bb377f853829e3c24ba1e971a2194171f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/claude-spec.md"
+      },
+      {
+        "digest": "94b61781ad057ec2006987dc92557004d48998931e87ca68c81494aa7f5c68d3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/completeness-audit-2026-05-21.md"
+      },
+      {
+        "digest": "bef757957517eadd1e07a96c11787858419ad0d6e739c58ff7adc4e8b60e51b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ed73a41904ff674b373173b1665a346bbec21402060039d2b9d69f75517d1667",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/implementation-summary.md"
+      },
+      {
+        "digest": "8b6eb68958e25376966a0c5f7f86a1257abfe36216ef2b92052505212387fe30",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/reviews/plan-completeness-review.md"
+      },
+      {
+        "digest": "c5f4b377f0637bf1a37cfe3803e96393c68bd974353c8938255583f6d765e301",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "b4db619bcc1d418c3da639c417bcb0db8ca1b9742e56d6309b7b95fe754dafca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/index.md"
+      },
+      {
+        "digest": "27631f9717b8484a6664a89d610d3058c9ed647ba7947a43b97f6314c785648d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-01-validation-and-metadata-foundation.md"
+      },
+      {
+        "digest": "e4c1e40e198e913378110096071d9c0728442725eef8439f8f7b2a84aa0e982a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-02-provider-assets-data-and-api.md"
+      },
+      {
+        "digest": "54b934d166b10fb6836c271b27c178220b2e6d626494cb106aca153952e57c86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-03-kie-provider-asset-contract.md"
+      },
+      {
+        "digest": "f9fda3526cae862549d4eae74bfea0da132812a6d7d4d41c0223be9df84409c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-04-gemini-omni-skill-packages.md"
+      },
+      {
+        "digest": "a70f0293dadb3dfd49852f2aefffa4aded5fd2622deaa82eaa532a8e1c2f79d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-05-admin-presets-seeds-and-pricing.md"
+      },
+      {
+        "digest": "f9ffce2b12702a62499d118f202df02ae49af192734154b0274fcb006acf9216",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-06-media-studio-gemini-omni-ux.md"
+      },
+      {
+        "digest": "4120f765cc1028cccbfb1f9a6a52e18188d51b1e08b5df25a4bafb972ca7a231",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-07-generation-qa-learning-orchestration.md"
+      },
+      {
+        "digest": "6e892519b3f6544e9cf7667ce8feee5d8921caa6a9b1f376a89971160c8b54c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-08-rollout-verification-and-regression.md"
+      },
+      {
+        "digest": "568a5482a54109b679f37f981519d69416638697c9957e056f27f19ae1261a8f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-09-media-studio-production-director.md"
+      },
+      {
+        "digest": "b0d37215c7eca47545ae7c7f580a0b1d36b0951d3c145f77e031697761f1c460",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-10-cross-modal-asset-orchestration.md"
+      },
+      {
+        "digest": "046e3c0667ad1db2c91d3148d1f4263665305a1f433c1884ec609bf1b4cd2c26",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-11-production-quality-loop-and-final-render.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/114-gemini-omni-suite-media-assets/spec.md",
+    "digest": "f732b39e3395edf9f4ed63f8ec20be974815619a5a273243ac7b31475a4e732f",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.038332Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-05-21T19:24:03+07:00",
+      "spec_last_changed_at": "2026-05-22T17:05:07+07:00"
+    },
+    "revision": null,
+    "slug": "114-gemini-omni-suite-media-assets",
+    "spec_id": "114",
+    "title": "Gemini Omni Suite Media Assets"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.038332Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.038332Z",
+    "sources": [
+      {
+        "digest": "f732b39e3395edf9f4ed63f8ec20be974815619a5a273243ac7b31475a4e732f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/spec.md"
+      },
+      {
+        "digest": "c138afbd29fe6335ce2d1f20197d18a6b870ce5a02ae138aa0707efa1870714a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/claude-plan.md"
+      },
+      {
+        "digest": "84255598d7f8b1173fc44eefbb8e9f8bb377f853829e3c24ba1e971a2194171f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/claude-spec.md"
+      },
+      {
+        "digest": "94b61781ad057ec2006987dc92557004d48998931e87ca68c81494aa7f5c68d3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/completeness-audit-2026-05-21.md"
+      },
+      {
+        "digest": "bef757957517eadd1e07a96c11787858419ad0d6e739c58ff7adc4e8b60e51b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ed73a41904ff674b373173b1665a346bbec21402060039d2b9d69f75517d1667",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/implementation-summary.md"
+      },
+      {
+        "digest": "8b6eb68958e25376966a0c5f7f86a1257abfe36216ef2b92052505212387fe30",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/reviews/plan-completeness-review.md"
+      },
+      {
+        "digest": "c5f4b377f0637bf1a37cfe3803e96393c68bd974353c8938255583f6d765e301",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "b4db619bcc1d418c3da639c417bcb0db8ca1b9742e56d6309b7b95fe754dafca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/index.md"
+      },
+      {
+        "digest": "27631f9717b8484a6664a89d610d3058c9ed647ba7947a43b97f6314c785648d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-01-validation-and-metadata-foundation.md"
+      },
+      {
+        "digest": "e4c1e40e198e913378110096071d9c0728442725eef8439f8f7b2a84aa0e982a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-02-provider-assets-data-and-api.md"
+      },
+      {
+        "digest": "54b934d166b10fb6836c271b27c178220b2e6d626494cb106aca153952e57c86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-03-kie-provider-asset-contract.md"
+      },
+      {
+        "digest": "f9fda3526cae862549d4eae74bfea0da132812a6d7d4d41c0223be9df84409c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-04-gemini-omni-skill-packages.md"
+      },
+      {
+        "digest": "a70f0293dadb3dfd49852f2aefffa4aded5fd2622deaa82eaa532a8e1c2f79d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-05-admin-presets-seeds-and-pricing.md"
+      },
+      {
+        "digest": "f9ffce2b12702a62499d118f202df02ae49af192734154b0274fcb006acf9216",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-06-media-studio-gemini-omni-ux.md"
+      },
+      {
+        "digest": "4120f765cc1028cccbfb1f9a6a52e18188d51b1e08b5df25a4bafb972ca7a231",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-07-generation-qa-learning-orchestration.md"
+      },
+      {
+        "digest": "6e892519b3f6544e9cf7667ce8feee5d8921caa6a9b1f376a89971160c8b54c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-08-rollout-verification-and-regression.md"
+      },
+      {
+        "digest": "568a5482a54109b679f37f981519d69416638697c9957e056f27f19ae1261a8f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-09-media-studio-production-director.md"
+      },
+      {
+        "digest": "b0d37215c7eca47545ae7c7f580a0b1d36b0951d3c145f77e031697761f1c460",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-10-cross-modal-asset-orchestration.md"
+      },
+      {
+        "digest": "046e3c0667ad1db2c91d3148d1f4263665305a1f433c1884ec609bf1b4cd2c26",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-11-production-quality-loop-and-final-render.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "f732b39e3395edf9f4ed63f8ec20be974815619a5a273243ac7b31475a4e732f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/spec.md"
+      },
+      {
+        "digest": "c138afbd29fe6335ce2d1f20197d18a6b870ce5a02ae138aa0707efa1870714a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/claude-plan.md"
+      },
+      {
+        "digest": "84255598d7f8b1173fc44eefbb8e9f8bb377f853829e3c24ba1e971a2194171f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/claude-spec.md"
+      },
+      {
+        "digest": "94b61781ad057ec2006987dc92557004d48998931e87ca68c81494aa7f5c68d3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/completeness-audit-2026-05-21.md"
+      },
+      {
+        "digest": "bef757957517eadd1e07a96c11787858419ad0d6e739c58ff7adc4e8b60e51b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ed73a41904ff674b373173b1665a346bbec21402060039d2b9d69f75517d1667",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/implementation/implementation-summary.md"
+      },
+      {
+        "digest": "8b6eb68958e25376966a0c5f7f86a1257abfe36216ef2b92052505212387fe30",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/reviews/plan-completeness-review.md"
+      },
+      {
+        "digest": "c5f4b377f0637bf1a37cfe3803e96393c68bd974353c8938255583f6d765e301",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "b4db619bcc1d418c3da639c417bcb0db8ca1b9742e56d6309b7b95fe754dafca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/index.md"
+      },
+      {
+        "digest": "27631f9717b8484a6664a89d610d3058c9ed647ba7947a43b97f6314c785648d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-01-validation-and-metadata-foundation.md"
+      },
+      {
+        "digest": "e4c1e40e198e913378110096071d9c0728442725eef8439f8f7b2a84aa0e982a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-02-provider-assets-data-and-api.md"
+      },
+      {
+        "digest": "54b934d166b10fb6836c271b27c178220b2e6d626494cb106aca153952e57c86",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-03-kie-provider-asset-contract.md"
+      },
+      {
+        "digest": "f9fda3526cae862549d4eae74bfea0da132812a6d7d4d41c0223be9df84409c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-04-gemini-omni-skill-packages.md"
+      },
+      {
+        "digest": "a70f0293dadb3dfd49852f2aefffa4aded5fd2622deaa82eaa532a8e1c2f79d8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-05-admin-presets-seeds-and-pricing.md"
+      },
+      {
+        "digest": "f9ffce2b12702a62499d118f202df02ae49af192734154b0274fcb006acf9216",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-06-media-studio-gemini-omni-ux.md"
+      },
+      {
+        "digest": "4120f765cc1028cccbfb1f9a6a52e18188d51b1e08b5df25a4bafb972ca7a231",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-07-generation-qa-learning-orchestration.md"
+      },
+      {
+        "digest": "6e892519b3f6544e9cf7667ce8feee5d8921caa6a9b1f376a89971160c8b54c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-08-rollout-verification-and-regression.md"
+      },
+      {
+        "digest": "568a5482a54109b679f37f981519d69416638697c9957e056f27f19ae1261a8f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-09-media-studio-production-director.md"
+      },
+      {
+        "digest": "b0d37215c7eca47545ae7c7f580a0b1d36b0951d3c145f77e031697761f1c460",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-10-cross-modal-asset-orchestration.md"
+      },
+      {
+        "digest": "046e3c0667ad1db2c91d3148d1f4263665305a1f433c1884ec609bf1b4cd2c26",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/114-gemini-omni-suite-media-assets/sections/section-11-production-quality-loop-and-final-render.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 719,
+    "unresolved": 719
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.038332Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

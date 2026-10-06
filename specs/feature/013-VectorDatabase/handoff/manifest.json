@@ -1,0 +1,647 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/013-VectorDatabase/spec.md"
+      },
+      {
+        "digest": "65bc70d896c331735b0cceffab5ddfa7f38b149de593d94a2efd2a2cca04494e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "a947b1690058cbf3527d2a486256b48b970ec2702b48ef1b24eadc0c19a174d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "6b18070677ddb97534fb53cbe568611304c019e1b1119362c09ca429c1705f0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-01-review.md"
+      },
+      {
+        "digest": "fbec701c0f8c5551c25332d8d739f8efb0d2b722156d2455c0b37dcc07148d13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-02-review.md"
+      },
+      {
+        "digest": "3a49d6ef8f1197e0681a023fefde5ab66b563ae6d71d3c094a5b6ad2af9d519a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-03-review.md"
+      },
+      {
+        "digest": "f8d92d6a0fc3526d8bc883f66783db0b9c0525c1dfbd99cae08876e57231f707",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-04-review.md"
+      },
+      {
+        "digest": "650ea28215fc87d560afc7173ae914124fc12cca73f1859e43ff99ea8f96814a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-05-review.md"
+      },
+      {
+        "digest": "1bec8782b3adac6e1fc5dfedaa36408885bcb9eca03f09601ab820e960799683",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-06-review.md"
+      },
+      {
+        "digest": "a834de3d97157dbef8eacf1b7790ce1076aba611cce3af52fa60b5c1b2cf9a9a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-07-review.md"
+      },
+      {
+        "digest": "d0366cd0b47b6288c4e1f22ee16c8a33487abf8f7ea2e31c294de26168e458ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-08-review.md"
+      },
+      {
+        "digest": "37fc9671adf83a38cd49a7ea97803b45fe3d05ce7b0840205d54b77522d32cad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/index.md"
+      },
+      {
+        "digest": "930fde6f108eaae9bacdb571615004986212ee4f3cc3c6478530d4bdca1c627d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-01-provider-abstraction-foundation.md"
+      },
+      {
+        "digest": "de148ae945d535639c776e5f9fe27a70cc979a56ca42968b6d45f289d237db29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-02-api-enqueue-hooks-and-job-contract.md"
+      },
+      {
+        "digest": "2b44f279d5d5dbfb167098770a39bf36163402adb21b888b28230a0b4ea1f5a5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-03-worker-dispatch-idempotency-and-retries.md"
+      },
+      {
+        "digest": "44921c7c216fd1c44b681f182e1e36ebbb91d9534dc3d3ad10e9319b1b1bbe9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-04-pgvector-migration-and-tenant-rls.md"
+      },
+      {
+        "digest": "755d4d4fcb84fa4b0cf5c303db34c54f74eac266b924dad6ef8077d7f2f2b192",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-05-backfill-reindex-and-consistency.md"
+      },
+      {
+        "digest": "3769d4b4fc19deed330e0febcd767208339f94866dfed8454d2ed051dc9aa411",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-06-staged-cutover-and-rollback-governance.md"
+      },
+      {
+        "digest": "e86be461e95dc7f1efabc0f315f82264b3f5f18444136661aaa34399a896a50f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-07-observability-admin-and-alerting.md"
+      },
+      {
+        "digest": "aa6a6868e6e0dee3903977698a115fa2a157ea139b931c0ada54703db81b1ac6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-08-end-to-end-validation-and-rollout.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/013-VectorDatabase/spec.md"
+      },
+      {
+        "digest": "65bc70d896c331735b0cceffab5ddfa7f38b149de593d94a2efd2a2cca04494e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "a947b1690058cbf3527d2a486256b48b970ec2702b48ef1b24eadc0c19a174d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "6b18070677ddb97534fb53cbe568611304c019e1b1119362c09ca429c1705f0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-01-review.md"
+      },
+      {
+        "digest": "fbec701c0f8c5551c25332d8d739f8efb0d2b722156d2455c0b37dcc07148d13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-02-review.md"
+      },
+      {
+        "digest": "3a49d6ef8f1197e0681a023fefde5ab66b563ae6d71d3c094a5b6ad2af9d519a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-03-review.md"
+      },
+      {
+        "digest": "f8d92d6a0fc3526d8bc883f66783db0b9c0525c1dfbd99cae08876e57231f707",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-04-review.md"
+      },
+      {
+        "digest": "650ea28215fc87d560afc7173ae914124fc12cca73f1859e43ff99ea8f96814a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-05-review.md"
+      },
+      {
+        "digest": "1bec8782b3adac6e1fc5dfedaa36408885bcb9eca03f09601ab820e960799683",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-06-review.md"
+      },
+      {
+        "digest": "a834de3d97157dbef8eacf1b7790ce1076aba611cce3af52fa60b5c1b2cf9a9a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-07-review.md"
+      },
+      {
+        "digest": "d0366cd0b47b6288c4e1f22ee16c8a33487abf8f7ea2e31c294de26168e458ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-08-review.md"
+      },
+      {
+        "digest": "37fc9671adf83a38cd49a7ea97803b45fe3d05ce7b0840205d54b77522d32cad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/index.md"
+      },
+      {
+        "digest": "930fde6f108eaae9bacdb571615004986212ee4f3cc3c6478530d4bdca1c627d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-01-provider-abstraction-foundation.md"
+      },
+      {
+        "digest": "de148ae945d535639c776e5f9fe27a70cc979a56ca42968b6d45f289d237db29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-02-api-enqueue-hooks-and-job-contract.md"
+      },
+      {
+        "digest": "2b44f279d5d5dbfb167098770a39bf36163402adb21b888b28230a0b4ea1f5a5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-03-worker-dispatch-idempotency-and-retries.md"
+      },
+      {
+        "digest": "44921c7c216fd1c44b681f182e1e36ebbb91d9534dc3d3ad10e9319b1b1bbe9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-04-pgvector-migration-and-tenant-rls.md"
+      },
+      {
+        "digest": "755d4d4fcb84fa4b0cf5c303db34c54f74eac266b924dad6ef8077d7f2f2b192",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-05-backfill-reindex-and-consistency.md"
+      },
+      {
+        "digest": "3769d4b4fc19deed330e0febcd767208339f94866dfed8454d2ed051dc9aa411",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-06-staged-cutover-and-rollback-governance.md"
+      },
+      {
+        "digest": "e86be461e95dc7f1efabc0f315f82264b3f5f18444136661aaa34399a896a50f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-07-observability-admin-and-alerting.md"
+      },
+      {
+        "digest": "aa6a6868e6e0dee3903977698a115fa2a157ea139b931c0ada54703db81b1ac6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-08-end-to-end-validation-and-rollout.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/013-VectorDatabase/spec.md"
+      },
+      {
+        "digest": "65bc70d896c331735b0cceffab5ddfa7f38b149de593d94a2efd2a2cca04494e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "a947b1690058cbf3527d2a486256b48b970ec2702b48ef1b24eadc0c19a174d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "6b18070677ddb97534fb53cbe568611304c019e1b1119362c09ca429c1705f0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-01-review.md"
+      },
+      {
+        "digest": "fbec701c0f8c5551c25332d8d739f8efb0d2b722156d2455c0b37dcc07148d13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-02-review.md"
+      },
+      {
+        "digest": "3a49d6ef8f1197e0681a023fefde5ab66b563ae6d71d3c094a5b6ad2af9d519a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-03-review.md"
+      },
+      {
+        "digest": "f8d92d6a0fc3526d8bc883f66783db0b9c0525c1dfbd99cae08876e57231f707",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-04-review.md"
+      },
+      {
+        "digest": "650ea28215fc87d560afc7173ae914124fc12cca73f1859e43ff99ea8f96814a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-05-review.md"
+      },
+      {
+        "digest": "1bec8782b3adac6e1fc5dfedaa36408885bcb9eca03f09601ab820e960799683",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-06-review.md"
+      },
+      {
+        "digest": "a834de3d97157dbef8eacf1b7790ce1076aba611cce3af52fa60b5c1b2cf9a9a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-07-review.md"
+      },
+      {
+        "digest": "d0366cd0b47b6288c4e1f22ee16c8a33487abf8f7ea2e31c294de26168e458ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-08-review.md"
+      },
+      {
+        "digest": "37fc9671adf83a38cd49a7ea97803b45fe3d05ce7b0840205d54b77522d32cad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/index.md"
+      },
+      {
+        "digest": "930fde6f108eaae9bacdb571615004986212ee4f3cc3c6478530d4bdca1c627d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-01-provider-abstraction-foundation.md"
+      },
+      {
+        "digest": "de148ae945d535639c776e5f9fe27a70cc979a56ca42968b6d45f289d237db29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-02-api-enqueue-hooks-and-job-contract.md"
+      },
+      {
+        "digest": "2b44f279d5d5dbfb167098770a39bf36163402adb21b888b28230a0b4ea1f5a5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-03-worker-dispatch-idempotency-and-retries.md"
+      },
+      {
+        "digest": "44921c7c216fd1c44b681f182e1e36ebbb91d9534dc3d3ad10e9319b1b1bbe9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-04-pgvector-migration-and-tenant-rls.md"
+      },
+      {
+        "digest": "755d4d4fcb84fa4b0cf5c303db34c54f74eac266b924dad6ef8077d7f2f2b192",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-05-backfill-reindex-and-consistency.md"
+      },
+      {
+        "digest": "3769d4b4fc19deed330e0febcd767208339f94866dfed8454d2ed051dc9aa411",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-06-staged-cutover-and-rollback-governance.md"
+      },
+      {
+        "digest": "e86be461e95dc7f1efabc0f315f82264b3f5f18444136661aaa34399a896a50f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-07-observability-admin-and-alerting.md"
+      },
+      {
+        "digest": "aa6a6868e6e0dee3903977698a115fa2a157ea139b931c0ada54703db81b1ac6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-08-end-to-end-validation-and-rollout.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/013-VectorDatabase/spec.md",
+    "digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.421175Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-02-16T01:15:49+07:00",
+      "spec_last_changed_at": "2026-02-16T01:15:49+07:00"
+    },
+    "revision": null,
+    "slug": "013-VectorDatabase",
+    "spec_id": "013",
+    "title": "013 — Vector Database: Production-Ready Multi-Provider Search"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.421175Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.421175Z",
+    "sources": [
+      {
+        "digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/013-VectorDatabase/spec.md"
+      },
+      {
+        "digest": "65bc70d896c331735b0cceffab5ddfa7f38b149de593d94a2efd2a2cca04494e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "a947b1690058cbf3527d2a486256b48b970ec2702b48ef1b24eadc0c19a174d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "6b18070677ddb97534fb53cbe568611304c019e1b1119362c09ca429c1705f0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-01-review.md"
+      },
+      {
+        "digest": "fbec701c0f8c5551c25332d8d739f8efb0d2b722156d2455c0b37dcc07148d13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-02-review.md"
+      },
+      {
+        "digest": "3a49d6ef8f1197e0681a023fefde5ab66b563ae6d71d3c094a5b6ad2af9d519a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-03-review.md"
+      },
+      {
+        "digest": "f8d92d6a0fc3526d8bc883f66783db0b9c0525c1dfbd99cae08876e57231f707",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-04-review.md"
+      },
+      {
+        "digest": "650ea28215fc87d560afc7173ae914124fc12cca73f1859e43ff99ea8f96814a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-05-review.md"
+      },
+      {
+        "digest": "1bec8782b3adac6e1fc5dfedaa36408885bcb9eca03f09601ab820e960799683",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-06-review.md"
+      },
+      {
+        "digest": "a834de3d97157dbef8eacf1b7790ce1076aba611cce3af52fa60b5c1b2cf9a9a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-07-review.md"
+      },
+      {
+        "digest": "d0366cd0b47b6288c4e1f22ee16c8a33487abf8f7ea2e31c294de26168e458ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-08-review.md"
+      },
+      {
+        "digest": "37fc9671adf83a38cd49a7ea97803b45fe3d05ce7b0840205d54b77522d32cad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/index.md"
+      },
+      {
+        "digest": "930fde6f108eaae9bacdb571615004986212ee4f3cc3c6478530d4bdca1c627d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-01-provider-abstraction-foundation.md"
+      },
+      {
+        "digest": "de148ae945d535639c776e5f9fe27a70cc979a56ca42968b6d45f289d237db29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-02-api-enqueue-hooks-and-job-contract.md"
+      },
+      {
+        "digest": "2b44f279d5d5dbfb167098770a39bf36163402adb21b888b28230a0b4ea1f5a5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-03-worker-dispatch-idempotency-and-retries.md"
+      },
+      {
+        "digest": "44921c7c216fd1c44b681f182e1e36ebbb91d9534dc3d3ad10e9319b1b1bbe9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-04-pgvector-migration-and-tenant-rls.md"
+      },
+      {
+        "digest": "755d4d4fcb84fa4b0cf5c303db34c54f74eac266b924dad6ef8077d7f2f2b192",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-05-backfill-reindex-and-consistency.md"
+      },
+      {
+        "digest": "3769d4b4fc19deed330e0febcd767208339f94866dfed8454d2ed051dc9aa411",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-06-staged-cutover-and-rollback-governance.md"
+      },
+      {
+        "digest": "e86be461e95dc7f1efabc0f315f82264b3f5f18444136661aaa34399a896a50f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-07-observability-admin-and-alerting.md"
+      },
+      {
+        "digest": "aa6a6868e6e0dee3903977698a115fa2a157ea139b931c0ada54703db81b1ac6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-08-end-to-end-validation-and-rollout.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/013-VectorDatabase/spec.md"
+      },
+      {
+        "digest": "65bc70d896c331735b0cceffab5ddfa7f38b149de593d94a2efd2a2cca04494e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "a947b1690058cbf3527d2a486256b48b970ec2702b48ef1b24eadc0c19a174d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "6b18070677ddb97534fb53cbe568611304c019e1b1119362c09ca429c1705f0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-01-review.md"
+      },
+      {
+        "digest": "fbec701c0f8c5551c25332d8d739f8efb0d2b722156d2455c0b37dcc07148d13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-02-review.md"
+      },
+      {
+        "digest": "3a49d6ef8f1197e0681a023fefde5ab66b563ae6d71d3c094a5b6ad2af9d519a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-03-review.md"
+      },
+      {
+        "digest": "f8d92d6a0fc3526d8bc883f66783db0b9c0525c1dfbd99cae08876e57231f707",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-04-review.md"
+      },
+      {
+        "digest": "650ea28215fc87d560afc7173ae914124fc12cca73f1859e43ff99ea8f96814a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-05-review.md"
+      },
+      {
+        "digest": "1bec8782b3adac6e1fc5dfedaa36408885bcb9eca03f09601ab820e960799683",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-06-review.md"
+      },
+      {
+        "digest": "a834de3d97157dbef8eacf1b7790ce1076aba611cce3af52fa60b5c1b2cf9a9a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-07-review.md"
+      },
+      {
+        "digest": "d0366cd0b47b6288c4e1f22ee16c8a33487abf8f7ea2e31c294de26168e458ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/reviews/section-08-review.md"
+      },
+      {
+        "digest": "37fc9671adf83a38cd49a7ea97803b45fe3d05ce7b0840205d54b77522d32cad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/index.md"
+      },
+      {
+        "digest": "930fde6f108eaae9bacdb571615004986212ee4f3cc3c6478530d4bdca1c627d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-01-provider-abstraction-foundation.md"
+      },
+      {
+        "digest": "de148ae945d535639c776e5f9fe27a70cc979a56ca42968b6d45f289d237db29",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-02-api-enqueue-hooks-and-job-contract.md"
+      },
+      {
+        "digest": "2b44f279d5d5dbfb167098770a39bf36163402adb21b888b28230a0b4ea1f5a5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-03-worker-dispatch-idempotency-and-retries.md"
+      },
+      {
+        "digest": "44921c7c216fd1c44b681f182e1e36ebbb91d9534dc3d3ad10e9319b1b1bbe9c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-04-pgvector-migration-and-tenant-rls.md"
+      },
+      {
+        "digest": "755d4d4fcb84fa4b0cf5c303db34c54f74eac266b924dad6ef8077d7f2f2b192",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-05-backfill-reindex-and-consistency.md"
+      },
+      {
+        "digest": "3769d4b4fc19deed330e0febcd767208339f94866dfed8454d2ed051dc9aa411",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-06-staged-cutover-and-rollback-governance.md"
+      },
+      {
+        "digest": "e86be461e95dc7f1efabc0f315f82264b3f5f18444136661aaa34399a896a50f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-07-observability-admin-and-alerting.md"
+      },
+      {
+        "digest": "aa6a6868e6e0dee3903977698a115fa2a157ea139b931c0ada54703db81b1ac6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/013-VectorDatabase/sections/section-08-end-to-end-validation-and-rollout.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 10,
+    "unresolved": 10
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.421175Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

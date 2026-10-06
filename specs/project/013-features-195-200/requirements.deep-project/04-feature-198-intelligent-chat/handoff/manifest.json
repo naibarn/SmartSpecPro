@@ -1,0 +1,244 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "LOW",
+    "conflicts": [
+      {
+        "kind": "DUPLICATE_SPEC_ID",
+        "paths": [
+          "specs/project/012-chat-agency-control-plane/requirements.deep-project/04-agency-flow-composer",
+          "specs/project/canonical-spec-handoff-reconciliation/04-global-views-and-migration"
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "digest": "8ce9ff68997b6d0522d116ebad9cc131ef405b9580891858b0deaa8597569c7e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/project/013-features-195-200/requirements.deep-project/04-feature-198-intelligent-chat/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "AUTHORITY_CONFLICT",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "8ce9ff68997b6d0522d116ebad9cc131ef405b9580891858b0deaa8597569c7e"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "8ce9ff68997b6d0522d116ebad9cc131ef405b9580891858b0deaa8597569c7e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/project/013-features-195-200/requirements.deep-project/04-feature-198-intelligent-chat/spec.md"
+      },
+      {
+        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
+        "identity_ambiguous": true,
+        "kind": "SOURCE",
+        "line": 59,
+        "path": "python-backend/app/models/asset.py"
+      },
+      {
+        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
+        "identity_ambiguous": true,
+        "kind": "SOURCE",
+        "line": 59,
+        "path": "python-backend/app/models/asset.py"
+      },
+      {
+        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
+        "identity_ambiguous": true,
+        "kind": "SOURCE",
+        "line": 59,
+        "path": "python-backend/app/models/asset.py"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "8ce9ff68997b6d0522d116ebad9cc131ef405b9580891858b0deaa8597569c7e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/project/013-features-195-200/requirements.deep-project/04-feature-198-intelligent-chat/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/project/013-features-195-200/requirements.deep-project/04-feature-198-intelligent-chat/spec.md",
+    "digest": "8ce9ff68997b6d0522d116ebad9cc131ef405b9580891858b0deaa8597569c7e",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.807035Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-17T22:45:26+07:00",
+      "spec_last_changed_at": "2026-09-17T22:45:26+07:00"
+    },
+    "revision": null,
+    "slug": "04-feature-198-intelligent-chat",
+    "spec_id": "04",
+    "title": "Feature 198 — Intelligent Chat Planning Spec"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.807035Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.807035Z",
+    "sources": [
+      {
+        "digest": "8ce9ff68997b6d0522d116ebad9cc131ef405b9580891858b0deaa8597569c7e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/project/013-features-195-200/requirements.deep-project/04-feature-198-intelligent-chat/spec.md"
+      },
+      {
+        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
+        "identity_ambiguous": true,
+        "kind": "SOURCE",
+        "line": 59,
+        "path": "python-backend/app/models/asset.py"
+      },
+      {
+        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
+        "identity_ambiguous": true,
+        "kind": "SOURCE",
+        "line": 59,
+        "path": "python-backend/app/models/asset.py"
+      },
+      {
+        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
+        "identity_ambiguous": true,
+        "kind": "SOURCE",
+        "line": 59,
+        "path": "python-backend/app/models/asset.py"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
+        "identity_ambiguous": true,
+        "kind": "SOURCE",
+        "line": 59,
+        "path": "python-backend/app/models/asset.py"
+      },
+      {
+        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
+        "identity_ambiguous": true,
+        "kind": "SOURCE",
+        "line": 59,
+        "path": "python-backend/app/models/asset.py"
+      },
+      {
+        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
+        "identity_ambiguous": true,
+        "kind": "SOURCE",
+        "line": 59,
+        "path": "python-backend/app/models/asset.py"
+      }
+    ],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "8ce9ff68997b6d0522d116ebad9cc131ef405b9580891858b0deaa8597569c7e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/project/013-features-195-200/requirements.deep-project/04-feature-198-intelligent-chat/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 1,
+    "unresolved": 1
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.807035Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

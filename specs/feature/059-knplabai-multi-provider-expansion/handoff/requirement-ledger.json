@@ -1,0 +1,228 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L342"
+      ],
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L342",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c72c66be0a07030d7a0b50479522ba499833ba4c2e2d4199aa0ed923cc7b063b",
+      "requirement_id": "REQ-969E483EC1AD",
+      "requirement_text": "**IMPORTANT — modelId Must Match Existing Rows**:",
+      "source_spec_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L352"
+      ],
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L352",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "91cf1161d09d6b50e87b6dc62d9c0c95bd83dd71573f94087473a7b1edb00adc",
+      "requirement_id": "REQ-6345E6EEC50B",
+      "requirement_text": "**Database Records** (complete with all required columns):",
+      "source_spec_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L359"
+      ],
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L359",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "258d1c3637deb14c38971242db20c057f4be7509748a881a5a8fae70c3b00018",
+      "requirement_id": "REQ-15B845BBDCDF",
+      "requirement_text": "-- Model mappings — MUST include modelName, apiStyle, and ALL 9 capability flags",
+      "source_spec_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L399"
+      ],
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L399",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "de78feb5fa3261e36fa8168fe888bf7c0b2eee0c075e2e3d951b29ea45593720",
+      "requirement_id": "REQ-DAB7E18C7B7E",
+      "requirement_text": "-- FALLBACK models (modelId must match existing primary provider rows)",
+      "source_spec_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L521"
+      ],
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L521",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ec86bae7a540e4c106f4af326ccb32c217846c938708dc41be8bf35740f37bad",
+      "requirement_id": "REQ-AAFF0E2E8F48",
+      "requirement_text": "raise ValueError(\"Prompt must be a string\")",
+      "source_spec_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L782"
+      ],
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L782",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a4942dfd5e045be5bddf2864846139b07d37ae2e34572f0da482b6ae7cc515a3",
+      "requirement_id": "REQ-817DBBB56F89",
+      "requirement_text": "**⚠️ Gemini Auth Verification Required**:",
+      "source_spec_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L879"
+      ],
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L879",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9b85d77ca5e6d39954c4b074bd1019349bf1681a669ce4cb642cb421f138519b",
+      "requirement_id": "REQ-6CC35E9DCAFC",
+      "requirement_text": "raise ValueError(\"image URL must be a string\")",
+      "source_spec_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L905"
+      ],
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L905",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "41c14baab21f37de9eb7a3397d013c83a3f1fe8dd83c31544878e6bb9396445b",
+      "requirement_id": "REQ-798600547D54",
+      "requirement_text": "- ✅ Response Content-Type validation (must be `audio/*`)",
+      "source_spec_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L1035"
+      ],
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L1035",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9cab02069919a0bd4f2a4d0b49de7bdaed420f25a230e017fb3a72993b5ef379",
+      "requirement_id": "REQ-0F42FC8037ED",
+      "requirement_text": "- **⚠️ ACTION REQUIRED**: ตรวจสอบ KNPLabs published rate limits (RPM/day) ก่อน deploy",
+      "source_spec_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L1200"
+      ],
+      "authority_source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md#L1200",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a36eb5ec024cec42327db75a8cc0a897d6ad8c09eb81601efd1a887638f9aa68",
+      "requirement_id": "REQ-300213F467B2",
+      "requirement_text": "| # | Blocker | Action Required | Owner | Status |",
+      "source_spec_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+  "spec_id": "059"
+}

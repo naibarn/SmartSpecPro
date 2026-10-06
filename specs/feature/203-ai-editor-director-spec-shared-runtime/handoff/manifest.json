@@ -1,0 +1,757 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "ab7615746d04cd785163d711aa0736eac2b3816c68b128d3cc25c18ab8016a02",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md"
+      },
+      {
+        "digest": "a94f067dd9dea0801286840cf8a5666c35c78b2c21c6829a9429a5672c0e6e1d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/claude-plan.md"
+      },
+      {
+        "digest": "f11de5c26dadc9c1b46a11c67d19a76a83fcb11db6ebd55e3fd85bd2f240d70c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/claude-spec.md"
+      },
+      {
+        "digest": "08fdea8364bb1a75924499b450ef6d886c90451b3074bc2f3a1581fb436a344e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/15-round-audit-2026-09-18.md"
+      },
+      {
+        "digest": "96e18ee136aecaadb2c02794565812be52d6722a5caa444961c273f03a4e06dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/17-round-audit-2026-09-18.md"
+      },
+      {
+        "digest": "690421c796d959e5b4fd5e3e63494a84da872a0cd899635b7411237e7303ad37",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/follow-up-audit-2026-09-18.md"
+      },
+      {
+        "digest": "2fc7b365916c3ea1635dddb0b86bf9b75b0d78aa2229dc6ba3e1092f32a7e635",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/completion.md"
+      },
+      {
+        "digest": "4e5c3afbdc4c110dbbb9d1efe6939d216fd152ec7dadca75a3dbab0ef8d04947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "861dc0be2f371f0b8459894d4aaeb5964231063b670e34a7550bf00f9b5ba217",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/review.md"
+      },
+      {
+        "digest": "c6084377fa8356a21c84ac373439f52415c41feffd69ce78cd66cf11da5caec7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-01-shared-contracts.md"
+      },
+      {
+        "digest": "46b81d52350f882cd60ff93728477045285727fbeb1db8a26834be02df221e5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-02-project-revisions.md"
+      },
+      {
+        "digest": "244284f2a3d65d56a0cd4746256b425939a92efbf7f9eed1e2a7a1e154b45354",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-03-execution-admission.md"
+      },
+      {
+        "digest": "d5deaa27d6f3c8327a9f5029b4ab75d953a12fe5738acfc1767b109d7d7547ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-04-capability-lifecycle.md"
+      },
+      {
+        "digest": "5fb6f0e769854207bce9de68d5352064dd285b7e5f5041670b7430a18cbce847",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-05-evidence-intent-compiler.md"
+      },
+      {
+        "digest": "5f722f2be271cd3237c2f3e5dd4bef22f29047ebe8b78e7b101b6d04b1c4550b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-06-artifact-qc.md"
+      },
+      {
+        "digest": "a9e2134b114484866bff479a5ee99a0b6aad2e3040b51ee6dcdd36c122e6478c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-07-runtime-adapters.md"
+      },
+      {
+        "digest": "3d875b3bfd9c889195299e421c5430cb0da3b9a960ed79176bcb117056e1f677",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-08-security-observability.md"
+      },
+      {
+        "digest": "868564ccdd768779e077cb2c71add2150b45bc89eb2ead0569f5879d51ae84ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-09-verification-rollout.md"
+      },
+      {
+        "digest": "ede09f52d6f19849de348396422a684902b937cd037f8a1309a59ed9f6a4b261",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "dc6af290e3a202dd4c1271c35e1182e376c2d17258a1503b7bca46de64272e38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/reviews/self-review-round-1.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "ab7615746d04cd785163d711aa0736eac2b3816c68b128d3cc25c18ab8016a02"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "ab7615746d04cd785163d711aa0736eac2b3816c68b128d3cc25c18ab8016a02",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md"
+      },
+      {
+        "digest": "a94f067dd9dea0801286840cf8a5666c35c78b2c21c6829a9429a5672c0e6e1d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/claude-plan.md"
+      },
+      {
+        "digest": "f11de5c26dadc9c1b46a11c67d19a76a83fcb11db6ebd55e3fd85bd2f240d70c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/claude-spec.md"
+      },
+      {
+        "digest": "08fdea8364bb1a75924499b450ef6d886c90451b3074bc2f3a1581fb436a344e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/15-round-audit-2026-09-18.md"
+      },
+      {
+        "digest": "96e18ee136aecaadb2c02794565812be52d6722a5caa444961c273f03a4e06dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/17-round-audit-2026-09-18.md"
+      },
+      {
+        "digest": "690421c796d959e5b4fd5e3e63494a84da872a0cd899635b7411237e7303ad37",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/follow-up-audit-2026-09-18.md"
+      },
+      {
+        "digest": "2fc7b365916c3ea1635dddb0b86bf9b75b0d78aa2229dc6ba3e1092f32a7e635",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/completion.md"
+      },
+      {
+        "digest": "4e5c3afbdc4c110dbbb9d1efe6939d216fd152ec7dadca75a3dbab0ef8d04947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "861dc0be2f371f0b8459894d4aaeb5964231063b670e34a7550bf00f9b5ba217",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/review.md"
+      },
+      {
+        "digest": "c6084377fa8356a21c84ac373439f52415c41feffd69ce78cd66cf11da5caec7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-01-shared-contracts.md"
+      },
+      {
+        "digest": "46b81d52350f882cd60ff93728477045285727fbeb1db8a26834be02df221e5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-02-project-revisions.md"
+      },
+      {
+        "digest": "244284f2a3d65d56a0cd4746256b425939a92efbf7f9eed1e2a7a1e154b45354",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-03-execution-admission.md"
+      },
+      {
+        "digest": "d5deaa27d6f3c8327a9f5029b4ab75d953a12fe5738acfc1767b109d7d7547ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-04-capability-lifecycle.md"
+      },
+      {
+        "digest": "5fb6f0e769854207bce9de68d5352064dd285b7e5f5041670b7430a18cbce847",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-05-evidence-intent-compiler.md"
+      },
+      {
+        "digest": "5f722f2be271cd3237c2f3e5dd4bef22f29047ebe8b78e7b101b6d04b1c4550b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-06-artifact-qc.md"
+      },
+      {
+        "digest": "a9e2134b114484866bff479a5ee99a0b6aad2e3040b51ee6dcdd36c122e6478c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-07-runtime-adapters.md"
+      },
+      {
+        "digest": "3d875b3bfd9c889195299e421c5430cb0da3b9a960ed79176bcb117056e1f677",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-08-security-observability.md"
+      },
+      {
+        "digest": "868564ccdd768779e077cb2c71add2150b45bc89eb2ead0569f5879d51ae84ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-09-verification-rollout.md"
+      },
+      {
+        "digest": "ede09f52d6f19849de348396422a684902b937cd037f8a1309a59ed9f6a4b261",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "dc6af290e3a202dd4c1271c35e1182e376c2d17258a1503b7bca46de64272e38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/reviews/self-review-round-1.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "ab7615746d04cd785163d711aa0736eac2b3816c68b128d3cc25c18ab8016a02",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md"
+      },
+      {
+        "digest": "a94f067dd9dea0801286840cf8a5666c35c78b2c21c6829a9429a5672c0e6e1d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/claude-plan.md"
+      },
+      {
+        "digest": "f11de5c26dadc9c1b46a11c67d19a76a83fcb11db6ebd55e3fd85bd2f240d70c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/claude-spec.md"
+      },
+      {
+        "digest": "08fdea8364bb1a75924499b450ef6d886c90451b3074bc2f3a1581fb436a344e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/15-round-audit-2026-09-18.md"
+      },
+      {
+        "digest": "96e18ee136aecaadb2c02794565812be52d6722a5caa444961c273f03a4e06dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/17-round-audit-2026-09-18.md"
+      },
+      {
+        "digest": "690421c796d959e5b4fd5e3e63494a84da872a0cd899635b7411237e7303ad37",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/follow-up-audit-2026-09-18.md"
+      },
+      {
+        "digest": "2fc7b365916c3ea1635dddb0b86bf9b75b0d78aa2229dc6ba3e1092f32a7e635",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/completion.md"
+      },
+      {
+        "digest": "4e5c3afbdc4c110dbbb9d1efe6939d216fd152ec7dadca75a3dbab0ef8d04947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "861dc0be2f371f0b8459894d4aaeb5964231063b670e34a7550bf00f9b5ba217",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/review.md"
+      },
+      {
+        "digest": "c6084377fa8356a21c84ac373439f52415c41feffd69ce78cd66cf11da5caec7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-01-shared-contracts.md"
+      },
+      {
+        "digest": "46b81d52350f882cd60ff93728477045285727fbeb1db8a26834be02df221e5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-02-project-revisions.md"
+      },
+      {
+        "digest": "244284f2a3d65d56a0cd4746256b425939a92efbf7f9eed1e2a7a1e154b45354",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-03-execution-admission.md"
+      },
+      {
+        "digest": "d5deaa27d6f3c8327a9f5029b4ab75d953a12fe5738acfc1767b109d7d7547ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-04-capability-lifecycle.md"
+      },
+      {
+        "digest": "5fb6f0e769854207bce9de68d5352064dd285b7e5f5041670b7430a18cbce847",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-05-evidence-intent-compiler.md"
+      },
+      {
+        "digest": "5f722f2be271cd3237c2f3e5dd4bef22f29047ebe8b78e7b101b6d04b1c4550b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-06-artifact-qc.md"
+      },
+      {
+        "digest": "a9e2134b114484866bff479a5ee99a0b6aad2e3040b51ee6dcdd36c122e6478c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-07-runtime-adapters.md"
+      },
+      {
+        "digest": "3d875b3bfd9c889195299e421c5430cb0da3b9a960ed79176bcb117056e1f677",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-08-security-observability.md"
+      },
+      {
+        "digest": "868564ccdd768779e077cb2c71add2150b45bc89eb2ead0569f5879d51ae84ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-09-verification-rollout.md"
+      },
+      {
+        "digest": "ede09f52d6f19849de348396422a684902b937cd037f8a1309a59ed9f6a4b261",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "dc6af290e3a202dd4c1271c35e1182e376c2d17258a1503b7bca46de64272e38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/reviews/self-review-round-1.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md",
+    "digest": "ab7615746d04cd785163d711aa0736eac2b3816c68b128d3cc25c18ab8016a02",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.817319Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-18T14:42:46+07:00",
+      "spec_last_changed_at": "2026-09-18T14:42:46+07:00"
+    },
+    "revision": null,
+    "slug": "203-ai-editor-director-spec-shared-runtime",
+    "spec_id": "203",
+    "title": "Spec 203 - SmartAIHub AI Editor Director — Production-Grade Hybrid AI Editing System"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.817319Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.817319Z",
+    "sources": [
+      {
+        "digest": "ab7615746d04cd785163d711aa0736eac2b3816c68b128d3cc25c18ab8016a02",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md"
+      },
+      {
+        "digest": "a94f067dd9dea0801286840cf8a5666c35c78b2c21c6829a9429a5672c0e6e1d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/claude-plan.md"
+      },
+      {
+        "digest": "f11de5c26dadc9c1b46a11c67d19a76a83fcb11db6ebd55e3fd85bd2f240d70c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/claude-spec.md"
+      },
+      {
+        "digest": "08fdea8364bb1a75924499b450ef6d886c90451b3074bc2f3a1581fb436a344e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/15-round-audit-2026-09-18.md"
+      },
+      {
+        "digest": "96e18ee136aecaadb2c02794565812be52d6722a5caa444961c273f03a4e06dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/17-round-audit-2026-09-18.md"
+      },
+      {
+        "digest": "690421c796d959e5b4fd5e3e63494a84da872a0cd899635b7411237e7303ad37",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/follow-up-audit-2026-09-18.md"
+      },
+      {
+        "digest": "2fc7b365916c3ea1635dddb0b86bf9b75b0d78aa2229dc6ba3e1092f32a7e635",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/completion.md"
+      },
+      {
+        "digest": "4e5c3afbdc4c110dbbb9d1efe6939d216fd152ec7dadca75a3dbab0ef8d04947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "861dc0be2f371f0b8459894d4aaeb5964231063b670e34a7550bf00f9b5ba217",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/review.md"
+      },
+      {
+        "digest": "c6084377fa8356a21c84ac373439f52415c41feffd69ce78cd66cf11da5caec7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-01-shared-contracts.md"
+      },
+      {
+        "digest": "46b81d52350f882cd60ff93728477045285727fbeb1db8a26834be02df221e5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-02-project-revisions.md"
+      },
+      {
+        "digest": "244284f2a3d65d56a0cd4746256b425939a92efbf7f9eed1e2a7a1e154b45354",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-03-execution-admission.md"
+      },
+      {
+        "digest": "d5deaa27d6f3c8327a9f5029b4ab75d953a12fe5738acfc1767b109d7d7547ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-04-capability-lifecycle.md"
+      },
+      {
+        "digest": "5fb6f0e769854207bce9de68d5352064dd285b7e5f5041670b7430a18cbce847",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-05-evidence-intent-compiler.md"
+      },
+      {
+        "digest": "5f722f2be271cd3237c2f3e5dd4bef22f29047ebe8b78e7b101b6d04b1c4550b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-06-artifact-qc.md"
+      },
+      {
+        "digest": "a9e2134b114484866bff479a5ee99a0b6aad2e3040b51ee6dcdd36c122e6478c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-07-runtime-adapters.md"
+      },
+      {
+        "digest": "3d875b3bfd9c889195299e421c5430cb0da3b9a960ed79176bcb117056e1f677",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-08-security-observability.md"
+      },
+      {
+        "digest": "868564ccdd768779e077cb2c71add2150b45bc89eb2ead0569f5879d51ae84ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-09-verification-rollout.md"
+      },
+      {
+        "digest": "ede09f52d6f19849de348396422a684902b937cd037f8a1309a59ed9f6a4b261",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "dc6af290e3a202dd4c1271c35e1182e376c2d17258a1503b7bca46de64272e38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "01e4f3a73bf5b289d9412c7240ac07904b5b97db62e344a675e2cc32b98dc2d1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "6d28ccd9caf344b4db52c4450a884db221b0ca1aba182021bcb42ed9fe7ab302",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/index.md"
+      },
+      {
+        "digest": "b8455d1076e84c8abd38c9f9f29a68fbc71f1d02a768d412970fdfb0719f70f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-01-shared-contracts.md"
+      },
+      {
+        "digest": "7ca7b615ad66b31fc7d397958b153d25cdd1cf0585bf62f3d4f10fd4521fbc84",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-02-project-revisions.md"
+      },
+      {
+        "digest": "cbabea3678b04d517af949499fba2161e78f3e17be2bab3c3b72ecf5891149fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-03-execution-admission.md"
+      },
+      {
+        "digest": "f767cd6d5e1f853fac8c577f14d8591535647bedd1100f41914d4eb473a1dbcf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-04-capability-lifecycle.md"
+      },
+      {
+        "digest": "b6b60c4f32b344e70576ca4ba61dc414c7a674bf4c44018172aa95b97af71c6c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-05-evidence-intent-compiler.md"
+      },
+      {
+        "digest": "a544a37c61179620cd6ecfe93eb0c9b078fe93e3249ee3b0c16ab819131c4679",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-06-artifact-qc.md"
+      },
+      {
+        "digest": "d2992089df53f2f35440a923b7d006225e7da5086c809b9888758c91719aa338",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-07-runtime-adapters.md"
+      },
+      {
+        "digest": "a1e00fccf27fba3445862533a13150b2aa8529250ab08cdfc6084a40e9acb9f2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-08-security-observability.md"
+      },
+      {
+        "digest": "6637e3452e7849290122fcd2376bc99d0f8d2897419edc894464a31a9b7f6269",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-09-verification-rollout.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "ab7615746d04cd785163d711aa0736eac2b3816c68b128d3cc25c18ab8016a02",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md"
+      },
+      {
+        "digest": "a94f067dd9dea0801286840cf8a5666c35c78b2c21c6829a9429a5672c0e6e1d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/claude-plan.md"
+      },
+      {
+        "digest": "f11de5c26dadc9c1b46a11c67d19a76a83fcb11db6ebd55e3fd85bd2f240d70c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/claude-spec.md"
+      },
+      {
+        "digest": "08fdea8364bb1a75924499b450ef6d886c90451b3074bc2f3a1581fb436a344e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/15-round-audit-2026-09-18.md"
+      },
+      {
+        "digest": "96e18ee136aecaadb2c02794565812be52d6722a5caa444961c273f03a4e06dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/17-round-audit-2026-09-18.md"
+      },
+      {
+        "digest": "690421c796d959e5b4fd5e3e63494a84da872a0cd899635b7411237e7303ad37",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/audits/follow-up-audit-2026-09-18.md"
+      },
+      {
+        "digest": "2fc7b365916c3ea1635dddb0b86bf9b75b0d78aa2229dc6ba3e1092f32a7e635",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/completion.md"
+      },
+      {
+        "digest": "4e5c3afbdc4c110dbbb9d1efe6939d216fd152ec7dadca75a3dbab0ef8d04947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "861dc0be2f371f0b8459894d4aaeb5964231063b670e34a7550bf00f9b5ba217",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/review.md"
+      },
+      {
+        "digest": "c6084377fa8356a21c84ac373439f52415c41feffd69ce78cd66cf11da5caec7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-01-shared-contracts.md"
+      },
+      {
+        "digest": "46b81d52350f882cd60ff93728477045285727fbeb1db8a26834be02df221e5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-02-project-revisions.md"
+      },
+      {
+        "digest": "244284f2a3d65d56a0cd4746256b425939a92efbf7f9eed1e2a7a1e154b45354",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-03-execution-admission.md"
+      },
+      {
+        "digest": "d5deaa27d6f3c8327a9f5029b4ab75d953a12fe5738acfc1767b109d7d7547ba",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-04-capability-lifecycle.md"
+      },
+      {
+        "digest": "5fb6f0e769854207bce9de68d5352064dd285b7e5f5041670b7430a18cbce847",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-05-evidence-intent-compiler.md"
+      },
+      {
+        "digest": "5f722f2be271cd3237c2f3e5dd4bef22f29047ebe8b78e7b101b6d04b1c4550b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-06-artifact-qc.md"
+      },
+      {
+        "digest": "a9e2134b114484866bff479a5ee99a0b6aad2e3040b51ee6dcdd36c122e6478c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-07-runtime-adapters.md"
+      },
+      {
+        "digest": "3d875b3bfd9c889195299e421c5430cb0da3b9a960ed79176bcb117056e1f677",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-08-security-observability.md"
+      },
+      {
+        "digest": "868564ccdd768779e077cb2c71add2150b45bc89eb2ead0569f5879d51ae84ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/implementation/section-09-verification-rollout.md"
+      },
+      {
+        "digest": "ede09f52d6f19849de348396422a684902b937cd037f8a1309a59ed9f6a4b261",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/reviews/section-cross-consistency-round-1.md"
+      },
+      {
+        "digest": "dc6af290e3a202dd4c1271c35e1182e376c2d17258a1503b7bca46de64272e38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "01e4f3a73bf5b289d9412c7240ac07904b5b97db62e344a675e2cc32b98dc2d1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "6d28ccd9caf344b4db52c4450a884db221b0ca1aba182021bcb42ed9fe7ab302",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/index.md"
+      },
+      {
+        "digest": "b8455d1076e84c8abd38c9f9f29a68fbc71f1d02a768d412970fdfb0719f70f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-01-shared-contracts.md"
+      },
+      {
+        "digest": "7ca7b615ad66b31fc7d397958b153d25cdd1cf0585bf62f3d4f10fd4521fbc84",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-02-project-revisions.md"
+      },
+      {
+        "digest": "cbabea3678b04d517af949499fba2161e78f3e17be2bab3c3b72ecf5891149fa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-03-execution-admission.md"
+      },
+      {
+        "digest": "f767cd6d5e1f853fac8c577f14d8591535647bedd1100f41914d4eb473a1dbcf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-04-capability-lifecycle.md"
+      },
+      {
+        "digest": "b6b60c4f32b344e70576ca4ba61dc414c7a674bf4c44018172aa95b97af71c6c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-05-evidence-intent-compiler.md"
+      },
+      {
+        "digest": "a544a37c61179620cd6ecfe93eb0c9b078fe93e3249ee3b0c16ab819131c4679",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-06-artifact-qc.md"
+      },
+      {
+        "digest": "d2992089df53f2f35440a923b7d006225e7da5086c809b9888758c91719aa338",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-07-runtime-adapters.md"
+      },
+      {
+        "digest": "a1e00fccf27fba3445862533a13150b2aa8529250ab08cdfc6084a40e9acb9f2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-08-security-observability.md"
+      },
+      {
+        "digest": "6637e3452e7849290122fcd2376bc99d0f8d2897419edc894464a31a9b7f6269",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/sections/section-09-verification-rollout.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 66,
+    "unresolved": 66
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.817319Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

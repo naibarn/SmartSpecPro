@@ -1,0 +1,647 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "b6a4f9a7fc1d19ca37b47b4aa5b70f489b0dd8c899df534dae624b51216e72aa",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/030-PresentationEditAdditional/spec.md"
+      },
+      {
+        "digest": "096347f2989c15d81003be576c629f403ca5371486f3b60cfacbec3dc3b2e6ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "8a259b6b22b80c3d0912c42ae2e36e6762757627d18e36b2bd4bed35cf95cf17",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "7ca2ad48fc084aa33926a9e049f6b389ab5b9e75be5d0eaebecd9f68936c3b07",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-01-review.md"
+      },
+      {
+        "digest": "a8e9ea1e20b92208b2b3bc7fbd27cb2f34f74131edd733c9da88afeb7a41deb5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-02-review.md"
+      },
+      {
+        "digest": "e995bc084d6f1393f9cc8e28f50964ffd2008d4cb7935bd5f8afaff56727294e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-03-review.md"
+      },
+      {
+        "digest": "84ecb94011b2c6bbf5c06822f14f6d2b61aa2e05b628090246ca647bdbaec354",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-04-review.md"
+      },
+      {
+        "digest": "978962dee87cc0dd0605719f39c958a8c0d31ad2b3ac571943f841dcbe5cd187",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-05-review.md"
+      },
+      {
+        "digest": "a6ab7cd870e82da5f202edd50999761fc62879211d900c444932fc98ab940d70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-06-review.md"
+      },
+      {
+        "digest": "af6fab27a58b8aba1202294da087e91e4fdb39f37e892cf6572054e52ce21386",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-07-review.md"
+      },
+      {
+        "digest": "7a23e7a3b3dfa8213eb73f490c515eb1e3d7344767ee878e882587fea7d23619",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-08-review.md"
+      },
+      {
+        "digest": "7d5d0e21f0da42ecbebb2941ca72afdff8ffe42f10f9b804df31a6e6f37822ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/index.md"
+      },
+      {
+        "digest": "f9a4b16e1b787acbf9e740b7e141a29d9850bbf424173f2fe82ef173c5c46395",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-01-foundation-guardrails.md"
+      },
+      {
+        "digest": "78116eeee6e1362f149ab5d88ef8de2cb8a0e42864d5ba2ddb8ecdfbd7254a83",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-02-stream-a-auto-layout.md"
+      },
+      {
+        "digest": "f7706afe989a14572a6450a61f223f4331d46f63adadb4fc4ad056d30bbec672",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-03-stream-b-svg-parity.md"
+      },
+      {
+        "digest": "5099fdb234192caa47af21631f34cd6986ec91967d18aae31854ddbde27ea381",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-04-stream-c-video-hardening.md"
+      },
+      {
+        "digest": "44eeeb2466b9e323654d64e0961fb08d13f195b61f33b54cba1869b12b974e91",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-05-stream-d-ready-gate-worker.md"
+      },
+      {
+        "digest": "41028c87ce4ce2b60a794ac6fbd268d2fc35fcb45d218a7b04736cac3717df7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-06-stream-e-warning-contract.md"
+      },
+      {
+        "digest": "64c32a91574267a9bcc1072733f990dac1b37e1485798e7ff4454943308caf03",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-07-stream-f-rollout-runbook.md"
+      },
+      {
+        "digest": "9bdcbd24e5f94aef16d35c1c0b20045aed1db0d9316983457ecf6f97e64f3efd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-08-system-integration-release-gates.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "b6a4f9a7fc1d19ca37b47b4aa5b70f489b0dd8c899df534dae624b51216e72aa"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "b6a4f9a7fc1d19ca37b47b4aa5b70f489b0dd8c899df534dae624b51216e72aa",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/030-PresentationEditAdditional/spec.md"
+      },
+      {
+        "digest": "096347f2989c15d81003be576c629f403ca5371486f3b60cfacbec3dc3b2e6ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "8a259b6b22b80c3d0912c42ae2e36e6762757627d18e36b2bd4bed35cf95cf17",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "7ca2ad48fc084aa33926a9e049f6b389ab5b9e75be5d0eaebecd9f68936c3b07",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-01-review.md"
+      },
+      {
+        "digest": "a8e9ea1e20b92208b2b3bc7fbd27cb2f34f74131edd733c9da88afeb7a41deb5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-02-review.md"
+      },
+      {
+        "digest": "e995bc084d6f1393f9cc8e28f50964ffd2008d4cb7935bd5f8afaff56727294e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-03-review.md"
+      },
+      {
+        "digest": "84ecb94011b2c6bbf5c06822f14f6d2b61aa2e05b628090246ca647bdbaec354",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-04-review.md"
+      },
+      {
+        "digest": "978962dee87cc0dd0605719f39c958a8c0d31ad2b3ac571943f841dcbe5cd187",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-05-review.md"
+      },
+      {
+        "digest": "a6ab7cd870e82da5f202edd50999761fc62879211d900c444932fc98ab940d70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-06-review.md"
+      },
+      {
+        "digest": "af6fab27a58b8aba1202294da087e91e4fdb39f37e892cf6572054e52ce21386",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-07-review.md"
+      },
+      {
+        "digest": "7a23e7a3b3dfa8213eb73f490c515eb1e3d7344767ee878e882587fea7d23619",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-08-review.md"
+      },
+      {
+        "digest": "7d5d0e21f0da42ecbebb2941ca72afdff8ffe42f10f9b804df31a6e6f37822ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/index.md"
+      },
+      {
+        "digest": "f9a4b16e1b787acbf9e740b7e141a29d9850bbf424173f2fe82ef173c5c46395",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-01-foundation-guardrails.md"
+      },
+      {
+        "digest": "78116eeee6e1362f149ab5d88ef8de2cb8a0e42864d5ba2ddb8ecdfbd7254a83",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-02-stream-a-auto-layout.md"
+      },
+      {
+        "digest": "f7706afe989a14572a6450a61f223f4331d46f63adadb4fc4ad056d30bbec672",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-03-stream-b-svg-parity.md"
+      },
+      {
+        "digest": "5099fdb234192caa47af21631f34cd6986ec91967d18aae31854ddbde27ea381",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-04-stream-c-video-hardening.md"
+      },
+      {
+        "digest": "44eeeb2466b9e323654d64e0961fb08d13f195b61f33b54cba1869b12b974e91",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-05-stream-d-ready-gate-worker.md"
+      },
+      {
+        "digest": "41028c87ce4ce2b60a794ac6fbd268d2fc35fcb45d218a7b04736cac3717df7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-06-stream-e-warning-contract.md"
+      },
+      {
+        "digest": "64c32a91574267a9bcc1072733f990dac1b37e1485798e7ff4454943308caf03",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-07-stream-f-rollout-runbook.md"
+      },
+      {
+        "digest": "9bdcbd24e5f94aef16d35c1c0b20045aed1db0d9316983457ecf6f97e64f3efd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-08-system-integration-release-gates.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "b6a4f9a7fc1d19ca37b47b4aa5b70f489b0dd8c899df534dae624b51216e72aa",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/030-PresentationEditAdditional/spec.md"
+      },
+      {
+        "digest": "096347f2989c15d81003be576c629f403ca5371486f3b60cfacbec3dc3b2e6ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "8a259b6b22b80c3d0912c42ae2e36e6762757627d18e36b2bd4bed35cf95cf17",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "7ca2ad48fc084aa33926a9e049f6b389ab5b9e75be5d0eaebecd9f68936c3b07",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-01-review.md"
+      },
+      {
+        "digest": "a8e9ea1e20b92208b2b3bc7fbd27cb2f34f74131edd733c9da88afeb7a41deb5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-02-review.md"
+      },
+      {
+        "digest": "e995bc084d6f1393f9cc8e28f50964ffd2008d4cb7935bd5f8afaff56727294e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-03-review.md"
+      },
+      {
+        "digest": "84ecb94011b2c6bbf5c06822f14f6d2b61aa2e05b628090246ca647bdbaec354",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-04-review.md"
+      },
+      {
+        "digest": "978962dee87cc0dd0605719f39c958a8c0d31ad2b3ac571943f841dcbe5cd187",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-05-review.md"
+      },
+      {
+        "digest": "a6ab7cd870e82da5f202edd50999761fc62879211d900c444932fc98ab940d70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-06-review.md"
+      },
+      {
+        "digest": "af6fab27a58b8aba1202294da087e91e4fdb39f37e892cf6572054e52ce21386",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-07-review.md"
+      },
+      {
+        "digest": "7a23e7a3b3dfa8213eb73f490c515eb1e3d7344767ee878e882587fea7d23619",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-08-review.md"
+      },
+      {
+        "digest": "7d5d0e21f0da42ecbebb2941ca72afdff8ffe42f10f9b804df31a6e6f37822ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/index.md"
+      },
+      {
+        "digest": "f9a4b16e1b787acbf9e740b7e141a29d9850bbf424173f2fe82ef173c5c46395",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-01-foundation-guardrails.md"
+      },
+      {
+        "digest": "78116eeee6e1362f149ab5d88ef8de2cb8a0e42864d5ba2ddb8ecdfbd7254a83",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-02-stream-a-auto-layout.md"
+      },
+      {
+        "digest": "f7706afe989a14572a6450a61f223f4331d46f63adadb4fc4ad056d30bbec672",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-03-stream-b-svg-parity.md"
+      },
+      {
+        "digest": "5099fdb234192caa47af21631f34cd6986ec91967d18aae31854ddbde27ea381",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-04-stream-c-video-hardening.md"
+      },
+      {
+        "digest": "44eeeb2466b9e323654d64e0961fb08d13f195b61f33b54cba1869b12b974e91",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-05-stream-d-ready-gate-worker.md"
+      },
+      {
+        "digest": "41028c87ce4ce2b60a794ac6fbd268d2fc35fcb45d218a7b04736cac3717df7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-06-stream-e-warning-contract.md"
+      },
+      {
+        "digest": "64c32a91574267a9bcc1072733f990dac1b37e1485798e7ff4454943308caf03",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-07-stream-f-rollout-runbook.md"
+      },
+      {
+        "digest": "9bdcbd24e5f94aef16d35c1c0b20045aed1db0d9316983457ecf6f97e64f3efd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-08-system-integration-release-gates.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/030-PresentationEditAdditional/spec.md",
+    "digest": "b6a4f9a7fc1d19ca37b47b4aa5b70f489b0dd8c899df534dae624b51216e72aa",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.504526Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-03-03T23:42:46+07:00",
+      "spec_last_changed_at": "2026-03-03T23:42:46+07:00"
+    },
+    "revision": null,
+    "slug": "030-PresentationEditAdditional",
+    "spec_id": "030",
+    "title": "Feature Spec: 030-PresentationEditAdditional"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.504526Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.504526Z",
+    "sources": [
+      {
+        "digest": "b6a4f9a7fc1d19ca37b47b4aa5b70f489b0dd8c899df534dae624b51216e72aa",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/030-PresentationEditAdditional/spec.md"
+      },
+      {
+        "digest": "096347f2989c15d81003be576c629f403ca5371486f3b60cfacbec3dc3b2e6ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "8a259b6b22b80c3d0912c42ae2e36e6762757627d18e36b2bd4bed35cf95cf17",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "7ca2ad48fc084aa33926a9e049f6b389ab5b9e75be5d0eaebecd9f68936c3b07",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-01-review.md"
+      },
+      {
+        "digest": "a8e9ea1e20b92208b2b3bc7fbd27cb2f34f74131edd733c9da88afeb7a41deb5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-02-review.md"
+      },
+      {
+        "digest": "e995bc084d6f1393f9cc8e28f50964ffd2008d4cb7935bd5f8afaff56727294e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-03-review.md"
+      },
+      {
+        "digest": "84ecb94011b2c6bbf5c06822f14f6d2b61aa2e05b628090246ca647bdbaec354",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-04-review.md"
+      },
+      {
+        "digest": "978962dee87cc0dd0605719f39c958a8c0d31ad2b3ac571943f841dcbe5cd187",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-05-review.md"
+      },
+      {
+        "digest": "a6ab7cd870e82da5f202edd50999761fc62879211d900c444932fc98ab940d70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-06-review.md"
+      },
+      {
+        "digest": "af6fab27a58b8aba1202294da087e91e4fdb39f37e892cf6572054e52ce21386",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-07-review.md"
+      },
+      {
+        "digest": "7a23e7a3b3dfa8213eb73f490c515eb1e3d7344767ee878e882587fea7d23619",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-08-review.md"
+      },
+      {
+        "digest": "7d5d0e21f0da42ecbebb2941ca72afdff8ffe42f10f9b804df31a6e6f37822ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/index.md"
+      },
+      {
+        "digest": "f9a4b16e1b787acbf9e740b7e141a29d9850bbf424173f2fe82ef173c5c46395",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-01-foundation-guardrails.md"
+      },
+      {
+        "digest": "78116eeee6e1362f149ab5d88ef8de2cb8a0e42864d5ba2ddb8ecdfbd7254a83",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-02-stream-a-auto-layout.md"
+      },
+      {
+        "digest": "f7706afe989a14572a6450a61f223f4331d46f63adadb4fc4ad056d30bbec672",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-03-stream-b-svg-parity.md"
+      },
+      {
+        "digest": "5099fdb234192caa47af21631f34cd6986ec91967d18aae31854ddbde27ea381",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-04-stream-c-video-hardening.md"
+      },
+      {
+        "digest": "44eeeb2466b9e323654d64e0961fb08d13f195b61f33b54cba1869b12b974e91",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-05-stream-d-ready-gate-worker.md"
+      },
+      {
+        "digest": "41028c87ce4ce2b60a794ac6fbd268d2fc35fcb45d218a7b04736cac3717df7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-06-stream-e-warning-contract.md"
+      },
+      {
+        "digest": "64c32a91574267a9bcc1072733f990dac1b37e1485798e7ff4454943308caf03",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-07-stream-f-rollout-runbook.md"
+      },
+      {
+        "digest": "9bdcbd24e5f94aef16d35c1c0b20045aed1db0d9316983457ecf6f97e64f3efd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-08-system-integration-release-gates.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "b6a4f9a7fc1d19ca37b47b4aa5b70f489b0dd8c899df534dae624b51216e72aa",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/030-PresentationEditAdditional/spec.md"
+      },
+      {
+        "digest": "096347f2989c15d81003be576c629f403ca5371486f3b60cfacbec3dc3b2e6ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/iteration-1-self-review.md"
+      },
+      {
+        "digest": "8a259b6b22b80c3d0912c42ae2e36e6762757627d18e36b2bd4bed35cf95cf17",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/iteration-1-summary.md"
+      },
+      {
+        "digest": "7ca2ad48fc084aa33926a9e049f6b389ab5b9e75be5d0eaebecd9f68936c3b07",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-01-review.md"
+      },
+      {
+        "digest": "a8e9ea1e20b92208b2b3bc7fbd27cb2f34f74131edd733c9da88afeb7a41deb5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-02-review.md"
+      },
+      {
+        "digest": "e995bc084d6f1393f9cc8e28f50964ffd2008d4cb7935bd5f8afaff56727294e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-03-review.md"
+      },
+      {
+        "digest": "84ecb94011b2c6bbf5c06822f14f6d2b61aa2e05b628090246ca647bdbaec354",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-04-review.md"
+      },
+      {
+        "digest": "978962dee87cc0dd0605719f39c958a8c0d31ad2b3ac571943f841dcbe5cd187",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-05-review.md"
+      },
+      {
+        "digest": "a6ab7cd870e82da5f202edd50999761fc62879211d900c444932fc98ab940d70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-06-review.md"
+      },
+      {
+        "digest": "af6fab27a58b8aba1202294da087e91e4fdb39f37e892cf6572054e52ce21386",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-07-review.md"
+      },
+      {
+        "digest": "7a23e7a3b3dfa8213eb73f490c515eb1e3d7344767ee878e882587fea7d23619",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/reviews/section-08-review.md"
+      },
+      {
+        "digest": "7d5d0e21f0da42ecbebb2941ca72afdff8ffe42f10f9b804df31a6e6f37822ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/index.md"
+      },
+      {
+        "digest": "f9a4b16e1b787acbf9e740b7e141a29d9850bbf424173f2fe82ef173c5c46395",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-01-foundation-guardrails.md"
+      },
+      {
+        "digest": "78116eeee6e1362f149ab5d88ef8de2cb8a0e42864d5ba2ddb8ecdfbd7254a83",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-02-stream-a-auto-layout.md"
+      },
+      {
+        "digest": "f7706afe989a14572a6450a61f223f4331d46f63adadb4fc4ad056d30bbec672",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-03-stream-b-svg-parity.md"
+      },
+      {
+        "digest": "5099fdb234192caa47af21631f34cd6986ec91967d18aae31854ddbde27ea381",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-04-stream-c-video-hardening.md"
+      },
+      {
+        "digest": "44eeeb2466b9e323654d64e0961fb08d13f195b61f33b54cba1869b12b974e91",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-05-stream-d-ready-gate-worker.md"
+      },
+      {
+        "digest": "41028c87ce4ce2b60a794ac6fbd268d2fc35fcb45d218a7b04736cac3717df7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-06-stream-e-warning-contract.md"
+      },
+      {
+        "digest": "64c32a91574267a9bcc1072733f990dac1b37e1485798e7ff4454943308caf03",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-07-stream-f-rollout-runbook.md"
+      },
+      {
+        "digest": "9bdcbd24e5f94aef16d35c1c0b20045aed1db0d9316983457ecf6f97e64f3efd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/030-PresentationEditAdditional/sections/section-08-system-integration-release-gates.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 47,
+    "unresolved": 47
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.504526Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

@@ -1,0 +1,544 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/spec.md"
+      },
+      {
+        "digest": "71fed01b6a9fdb4402ee04ea6f27ed0a978b66f6eb4026223a91d82ffdd47e04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/claude-plan.md"
+      },
+      {
+        "digest": "00f13f40496dcb94ea8aa8f2bc147d3d815a38c337e62a90ee539f709762ec4c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/claude-spec.md"
+      },
+      {
+        "digest": "7465b52157ad646769b673c78c86ca1823439a63da46b889f21b91d56281fb0d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3aac97e1cd5fef81edb5fb9e7570fd1abe748129c75341d743b288f2e1a9cbe8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/implementation/usage.md"
+      },
+      {
+        "digest": "a8ac4d1e0c7bb50cd163fe3b936343c7d7a1ccc0c2b450cbe85e44771a3ab23e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/reviews/opus-review.md"
+      },
+      {
+        "digest": "49393381e80dca00b7e27569dffd6f9a2041f7ba67a2c30d9e1b30ea5cbfb002",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/index.md"
+      },
+      {
+        "digest": "f64ade1ab7b91dce76b7812d195111915665f1937ffd3f3e03b983602aff6d53",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-01-db-migration.md"
+      },
+      {
+        "digest": "bff45df450e9f2c3b8e4404e9779b202d718ed1bdc572b3a64ebaddf4f15d6e5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-02-priority-scoring-service.md"
+      },
+      {
+        "digest": "1bc8d531ca69c3af759e53e2bfed2c5004c198efb7fb9f1d06a0e548cb7aacda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-03-capability-aware-selector.md"
+      },
+      {
+        "digest": "07793ebebfb121ac5976f002aaa926e551607339cec9e221e25c7511424cdef8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-04-skill-execution-policy-extension.md"
+      },
+      {
+        "digest": "6be106103828f4279796df9461f7dc91864c9528ccaeb649b817fd1a74370df4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-05-update-model-priority-mutation.md"
+      },
+      {
+        "digest": "61e583f71a88b3d55e8052eb29f0cddd8567c9a6e866cfbb4fd60f84d728ff66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-06-admin-ui-priority-editor.md"
+      },
+      {
+        "digest": "73a6a488f7fde44090fdcd885ff274d2c6e8334680d2dbe576554632abb743bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-07-skill-settings-resolution-preview.md"
+      },
+      {
+        "digest": "6dd67afe046c0365acb2d17557820ceefd7ff3a07a3a48006c02045768a84d72",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-08-zod-validation-and-frontmatter.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/spec.md"
+      },
+      {
+        "digest": "71fed01b6a9fdb4402ee04ea6f27ed0a978b66f6eb4026223a91d82ffdd47e04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/claude-plan.md"
+      },
+      {
+        "digest": "00f13f40496dcb94ea8aa8f2bc147d3d815a38c337e62a90ee539f709762ec4c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/claude-spec.md"
+      },
+      {
+        "digest": "7465b52157ad646769b673c78c86ca1823439a63da46b889f21b91d56281fb0d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3aac97e1cd5fef81edb5fb9e7570fd1abe748129c75341d743b288f2e1a9cbe8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/implementation/usage.md"
+      },
+      {
+        "digest": "a8ac4d1e0c7bb50cd163fe3b936343c7d7a1ccc0c2b450cbe85e44771a3ab23e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/reviews/opus-review.md"
+      },
+      {
+        "digest": "49393381e80dca00b7e27569dffd6f9a2041f7ba67a2c30d9e1b30ea5cbfb002",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/index.md"
+      },
+      {
+        "digest": "f64ade1ab7b91dce76b7812d195111915665f1937ffd3f3e03b983602aff6d53",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-01-db-migration.md"
+      },
+      {
+        "digest": "bff45df450e9f2c3b8e4404e9779b202d718ed1bdc572b3a64ebaddf4f15d6e5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-02-priority-scoring-service.md"
+      },
+      {
+        "digest": "1bc8d531ca69c3af759e53e2bfed2c5004c198efb7fb9f1d06a0e548cb7aacda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-03-capability-aware-selector.md"
+      },
+      {
+        "digest": "07793ebebfb121ac5976f002aaa926e551607339cec9e221e25c7511424cdef8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-04-skill-execution-policy-extension.md"
+      },
+      {
+        "digest": "6be106103828f4279796df9461f7dc91864c9528ccaeb649b817fd1a74370df4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-05-update-model-priority-mutation.md"
+      },
+      {
+        "digest": "61e583f71a88b3d55e8052eb29f0cddd8567c9a6e866cfbb4fd60f84d728ff66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-06-admin-ui-priority-editor.md"
+      },
+      {
+        "digest": "73a6a488f7fde44090fdcd885ff274d2c6e8334680d2dbe576554632abb743bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-07-skill-settings-resolution-preview.md"
+      },
+      {
+        "digest": "6dd67afe046c0365acb2d17557820ceefd7ff3a07a3a48006c02045768a84d72",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-08-zod-validation-and-frontmatter.md"
+      },
+      {
+        "excerpt": "{/* Model Resolution Preview — Spec 041 */}",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11479,
+        "path": "apps/web/client/src/pages/AdminSkills.tsx"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/spec.md"
+      },
+      {
+        "digest": "71fed01b6a9fdb4402ee04ea6f27ed0a978b66f6eb4026223a91d82ffdd47e04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/claude-plan.md"
+      },
+      {
+        "digest": "00f13f40496dcb94ea8aa8f2bc147d3d815a38c337e62a90ee539f709762ec4c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/claude-spec.md"
+      },
+      {
+        "digest": "7465b52157ad646769b673c78c86ca1823439a63da46b889f21b91d56281fb0d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3aac97e1cd5fef81edb5fb9e7570fd1abe748129c75341d743b288f2e1a9cbe8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/implementation/usage.md"
+      },
+      {
+        "digest": "a8ac4d1e0c7bb50cd163fe3b936343c7d7a1ccc0c2b450cbe85e44771a3ab23e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/reviews/opus-review.md"
+      },
+      {
+        "digest": "49393381e80dca00b7e27569dffd6f9a2041f7ba67a2c30d9e1b30ea5cbfb002",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/index.md"
+      },
+      {
+        "digest": "f64ade1ab7b91dce76b7812d195111915665f1937ffd3f3e03b983602aff6d53",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-01-db-migration.md"
+      },
+      {
+        "digest": "bff45df450e9f2c3b8e4404e9779b202d718ed1bdc572b3a64ebaddf4f15d6e5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-02-priority-scoring-service.md"
+      },
+      {
+        "digest": "1bc8d531ca69c3af759e53e2bfed2c5004c198efb7fb9f1d06a0e548cb7aacda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-03-capability-aware-selector.md"
+      },
+      {
+        "digest": "07793ebebfb121ac5976f002aaa926e551607339cec9e221e25c7511424cdef8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-04-skill-execution-policy-extension.md"
+      },
+      {
+        "digest": "6be106103828f4279796df9461f7dc91864c9528ccaeb649b817fd1a74370df4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-05-update-model-priority-mutation.md"
+      },
+      {
+        "digest": "61e583f71a88b3d55e8052eb29f0cddd8567c9a6e866cfbb4fd60f84d728ff66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-06-admin-ui-priority-editor.md"
+      },
+      {
+        "digest": "73a6a488f7fde44090fdcd885ff274d2c6e8334680d2dbe576554632abb743bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-07-skill-settings-resolution-preview.md"
+      },
+      {
+        "digest": "6dd67afe046c0365acb2d17557820ceefd7ff3a07a3a48006c02045768a84d72",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-08-zod-validation-and-frontmatter.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/041-IntelligentSkillModelSelection/spec.md",
+    "digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.591469Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-03-15T13:32:30+07:00",
+      "spec_last_changed_at": "2026-03-15T13:32:30+07:00"
+    },
+    "revision": null,
+    "slug": "041-IntelligentSkillModelSelection",
+    "spec_id": "041",
+    "title": "Feature 041: Intelligent Skill Model Selection"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.591469Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.591469Z",
+    "sources": [
+      {
+        "digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/spec.md"
+      },
+      {
+        "digest": "71fed01b6a9fdb4402ee04ea6f27ed0a978b66f6eb4026223a91d82ffdd47e04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/claude-plan.md"
+      },
+      {
+        "digest": "00f13f40496dcb94ea8aa8f2bc147d3d815a38c337e62a90ee539f709762ec4c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/claude-spec.md"
+      },
+      {
+        "digest": "7465b52157ad646769b673c78c86ca1823439a63da46b889f21b91d56281fb0d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3aac97e1cd5fef81edb5fb9e7570fd1abe748129c75341d743b288f2e1a9cbe8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/implementation/usage.md"
+      },
+      {
+        "digest": "a8ac4d1e0c7bb50cd163fe3b936343c7d7a1ccc0c2b450cbe85e44771a3ab23e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/reviews/opus-review.md"
+      },
+      {
+        "digest": "49393381e80dca00b7e27569dffd6f9a2041f7ba67a2c30d9e1b30ea5cbfb002",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/index.md"
+      },
+      {
+        "digest": "f64ade1ab7b91dce76b7812d195111915665f1937ffd3f3e03b983602aff6d53",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-01-db-migration.md"
+      },
+      {
+        "digest": "bff45df450e9f2c3b8e4404e9779b202d718ed1bdc572b3a64ebaddf4f15d6e5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-02-priority-scoring-service.md"
+      },
+      {
+        "digest": "1bc8d531ca69c3af759e53e2bfed2c5004c198efb7fb9f1d06a0e548cb7aacda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-03-capability-aware-selector.md"
+      },
+      {
+        "digest": "07793ebebfb121ac5976f002aaa926e551607339cec9e221e25c7511424cdef8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-04-skill-execution-policy-extension.md"
+      },
+      {
+        "digest": "6be106103828f4279796df9461f7dc91864c9528ccaeb649b817fd1a74370df4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-05-update-model-priority-mutation.md"
+      },
+      {
+        "digest": "61e583f71a88b3d55e8052eb29f0cddd8567c9a6e866cfbb4fd60f84d728ff66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-06-admin-ui-priority-editor.md"
+      },
+      {
+        "digest": "73a6a488f7fde44090fdcd885ff274d2c6e8334680d2dbe576554632abb743bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-07-skill-settings-resolution-preview.md"
+      },
+      {
+        "digest": "6dd67afe046c0365acb2d17557820ceefd7ff3a07a3a48006c02045768a84d72",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-08-zod-validation-and-frontmatter.md"
+      },
+      {
+        "excerpt": "{/* Model Resolution Preview — Spec 041 */}",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11479,
+        "path": "apps/web/client/src/pages/AdminSkills.tsx"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "{/* Model Resolution Preview — Spec 041 */}",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11479,
+        "path": "apps/web/client/src/pages/AdminSkills.tsx"
+      }
+    ],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "d1dbdaa437361059d0e0e50eec162ce740a054f829c8721f10eb5f02715c0a2a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/spec.md"
+      },
+      {
+        "digest": "71fed01b6a9fdb4402ee04ea6f27ed0a978b66f6eb4026223a91d82ffdd47e04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/claude-plan.md"
+      },
+      {
+        "digest": "00f13f40496dcb94ea8aa8f2bc147d3d815a38c337e62a90ee539f709762ec4c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/claude-spec.md"
+      },
+      {
+        "digest": "7465b52157ad646769b673c78c86ca1823439a63da46b889f21b91d56281fb0d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3aac97e1cd5fef81edb5fb9e7570fd1abe748129c75341d743b288f2e1a9cbe8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/implementation/usage.md"
+      },
+      {
+        "digest": "a8ac4d1e0c7bb50cd163fe3b936343c7d7a1ccc0c2b450cbe85e44771a3ab23e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/reviews/opus-review.md"
+      },
+      {
+        "digest": "49393381e80dca00b7e27569dffd6f9a2041f7ba67a2c30d9e1b30ea5cbfb002",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/index.md"
+      },
+      {
+        "digest": "f64ade1ab7b91dce76b7812d195111915665f1937ffd3f3e03b983602aff6d53",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-01-db-migration.md"
+      },
+      {
+        "digest": "bff45df450e9f2c3b8e4404e9779b202d718ed1bdc572b3a64ebaddf4f15d6e5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-02-priority-scoring-service.md"
+      },
+      {
+        "digest": "1bc8d531ca69c3af759e53e2bfed2c5004c198efb7fb9f1d06a0e548cb7aacda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-03-capability-aware-selector.md"
+      },
+      {
+        "digest": "07793ebebfb121ac5976f002aaa926e551607339cec9e221e25c7511424cdef8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-04-skill-execution-policy-extension.md"
+      },
+      {
+        "digest": "6be106103828f4279796df9461f7dc91864c9528ccaeb649b817fd1a74370df4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-05-update-model-priority-mutation.md"
+      },
+      {
+        "digest": "61e583f71a88b3d55e8052eb29f0cddd8567c9a6e866cfbb4fd60f84d728ff66",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-06-admin-ui-priority-editor.md"
+      },
+      {
+        "digest": "73a6a488f7fde44090fdcd885ff274d2c6e8334680d2dbe576554632abb743bf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-07-skill-settings-resolution-preview.md"
+      },
+      {
+        "digest": "6dd67afe046c0365acb2d17557820ceefd7ff3a07a3a48006c02045768a84d72",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/041-IntelligentSkillModelSelection/sections/section-08-zod-validation-and-frontmatter.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 5,
+    "unresolved": 5
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.591469Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

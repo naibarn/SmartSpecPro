@@ -1,0 +1,286 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "220",
+        "referenced_spec_id": "220",
+        "referencing_spec_id": "237",
+        "relation_text": "supersedes",
+        "requirement_ids": [],
+        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L383",
+        "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "successor_spec_id": "237"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "236",
+        "referenced_spec_id": "236",
+        "referencing_spec_id": "237",
+        "relation_text": "supersede",
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R3"
+        ],
+        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L415",
+        "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "successor_spec_id": "237"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "236",
+        "referenced_spec_id": "236",
+        "referencing_spec_id": "237",
+        "relation_text": "supersede",
+        "requirement_ids": [],
+        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L522",
+        "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "successor_spec_id": "237"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "237",
+        "referenced_spec_id": "237",
+        "referencing_spec_id": "247",
+        "relation_text": "replaceable",
+        "requirement_ids": [],
+        "source": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L94",
+        "source_digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
+        "successor_spec_id": "247"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "247",
+        "referenced_spec_id": "247",
+        "referencing_spec_id": "237",
+        "relation_text": "supersede",
+        "requirement_ids": [],
+        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L522",
+        "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "successor_spec_id": "237"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "247",
+        "referenced_spec_id": "247",
+        "referencing_spec_id": "237",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L623",
+        "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "successor_spec_id": "237"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "247",
+        "referenced_spec_id": "247",
+        "referencing_spec_id": "237",
+        "relation_text": "replaces",
+        "requirement_ids": [
+          "R1.9",
+          "R3.4"
+        ],
+        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L669",
+        "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "successor_spec_id": "237"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md"
+      },
+      {
+        "excerpt": "<p>Durable Objects ยังไม่มี binding ใน Worker release ปัจจุบัน; เตรียม handoff สำหรับ voice WebSocket/revocation ตาม Spec 237/242 ก่อนประกาศ class/namespace และเพิ่ม binding</p>",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 788,
+        "path": "apps/web/client/src/components/admin/InfrastructureSettingsPanel.tsx"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md",
+    "digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.358807Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": "3.5",
+    "slug": "237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host",
+    "spec_id": "237",
+    "title": "Spec 237 — Realtime Multimodal Agent: Shared Voice, Camera, Screen & Live Co-host"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.358807Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.358807Z",
+    "sources": [
+      {
+        "digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md"
+      },
+      {
+        "excerpt": "<p>Durable Objects ยังไม่มี binding ใน Worker release ปัจจุบัน; เตรียม handoff สำหรับ voice WebSocket/revocation ตาม Spec 237/242 ก่อนประกาศ class/namespace และเพิ่ม binding</p>",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 788,
+        "path": "apps/web/client/src/components/admin/InfrastructureSettingsPanel.tsx"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "<p>Durable Objects ยังไม่มี binding ใน Worker release ปัจจุบัน; เตรียม handoff สำหรับ voice WebSocket/revocation ตาม Spec 237/242 ก่อนประกาศ class/namespace และเพิ่ม binding</p>",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 788,
+        "path": "apps/web/client/src/components/admin/InfrastructureSettingsPanel.tsx"
+      }
+    ],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 37,
+    "unresolved": 37
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.358807Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

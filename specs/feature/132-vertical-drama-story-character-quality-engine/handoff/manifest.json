@@ -1,0 +1,1111 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md"
+      },
+      {
+        "digest": "e4c484a46776a3d3eef4d9aeb1134416f022e7060ab1dfadb28563ca71b22ac3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/claude-plan.md"
+      },
+      {
+        "digest": "d40c75c1246a9463b7c776e91f905be3ca49e42665d2d4ad2daf2cda9f834bed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/reviews/completeness-audit-vs-spec-round-2.md"
+      },
+      {
+        "digest": "319b43c6fbbaf537161fbdc093aea287ccf13cdb5216ad45d08944ac41af787a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "5728c78b4fce7baa6eed87853005a75d27ec8ad2efe56b31409fae0b5120db4f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/index.md"
+      },
+      {
+        "digest": "015e2ca186b4a5325f1e7d854d89d74cbd52fabb4c8770a76dfd9acfefdcbee3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-01-shared-criteria-and-flags.md"
+      },
+      {
+        "digest": "3db1984e11dbcabb68606626b4084de04f5858f8734289e80febc94fd161a53e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-02-user-premise-preset-mix.md"
+      },
+      {
+        "digest": "dfde92104565a19f05e2bb36062f62163388cee433a439e2dafaadf1bf571c7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-03-ledgers-and-story-state.md"
+      },
+      {
+        "digest": "7bfe07552855051d1d07a2afa8c95c1b39eb2dcc4d5a82e60685ea461182b00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-04-scene-contracts.md"
+      },
+      {
+        "digest": "f90f9efef65696d9543dae1ecc73a2d4f80c40487d5e21545d22f47b0f23e5cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-05-dialogue-rules-and-speech-profiles.md"
+      },
+      {
+        "digest": "7ad29c7a8932074aa6ad0037955ba1d6119328322b7f1eb6bc2aa748b187260a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-06-multipass-qc-and-scorecard-v3.md"
+      },
+      {
+        "digest": "002f92d713b4135f77dde486c341435bea45ad1f26239b22aaf79db9d7874b6a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-07-targeted-revision-engine.md"
+      },
+      {
+        "digest": "ffe6efbdcbc32f5a78bc60766395ede1d861c4d5d4579cacb16fc81fcdbaa4f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-08-character-personality-and-visual-bible.md"
+      },
+      {
+        "digest": "e17589ea96ab88d42883eb3dbcee72a93ceac6d833827bd24703ba9df67b4d81",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-09-character-image-qc-and-cast-contrast.md"
+      },
+      {
+        "digest": "917baf8564722f872a2fb2225fbf8250fd57524982a72be4af9a75b5fbc72529",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-10-camera-angle-grid-quality.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md"
+      },
+      {
+        "digest": "e4c484a46776a3d3eef4d9aeb1134416f022e7060ab1dfadb28563ca71b22ac3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/claude-plan.md"
+      },
+      {
+        "digest": "d40c75c1246a9463b7c776e91f905be3ca49e42665d2d4ad2daf2cda9f834bed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/reviews/completeness-audit-vs-spec-round-2.md"
+      },
+      {
+        "digest": "319b43c6fbbaf537161fbdc093aea287ccf13cdb5216ad45d08944ac41af787a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "5728c78b4fce7baa6eed87853005a75d27ec8ad2efe56b31409fae0b5120db4f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/index.md"
+      },
+      {
+        "digest": "015e2ca186b4a5325f1e7d854d89d74cbd52fabb4c8770a76dfd9acfefdcbee3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-01-shared-criteria-and-flags.md"
+      },
+      {
+        "digest": "3db1984e11dbcabb68606626b4084de04f5858f8734289e80febc94fd161a53e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-02-user-premise-preset-mix.md"
+      },
+      {
+        "digest": "dfde92104565a19f05e2bb36062f62163388cee433a439e2dafaadf1bf571c7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-03-ledgers-and-story-state.md"
+      },
+      {
+        "digest": "7bfe07552855051d1d07a2afa8c95c1b39eb2dcc4d5a82e60685ea461182b00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-04-scene-contracts.md"
+      },
+      {
+        "digest": "f90f9efef65696d9543dae1ecc73a2d4f80c40487d5e21545d22f47b0f23e5cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-05-dialogue-rules-and-speech-profiles.md"
+      },
+      {
+        "digest": "7ad29c7a8932074aa6ad0037955ba1d6119328322b7f1eb6bc2aa748b187260a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-06-multipass-qc-and-scorecard-v3.md"
+      },
+      {
+        "digest": "002f92d713b4135f77dde486c341435bea45ad1f26239b22aaf79db9d7874b6a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-07-targeted-revision-engine.md"
+      },
+      {
+        "digest": "ffe6efbdcbc32f5a78bc60766395ede1d861c4d5d4579cacb16fc81fcdbaa4f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-08-character-personality-and-visual-bible.md"
+      },
+      {
+        "digest": "e17589ea96ab88d42883eb3dbcee72a93ceac6d833827bd24703ba9df67b4d81",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-09-character-image-qc-and-cast-contrast.md"
+      },
+      {
+        "digest": "917baf8564722f872a2fb2225fbf8250fd57524982a72be4af9a75b5fbc72529",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-10-camera-angle-grid-quality.md"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaUserPremise\", label: \"User Premise\", description: \"User-defined premise field + premise-primary preset synthesis (spec 132 §4)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 193,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaQualityLedgers\", label: \"Quality Ledgers\", description: \"Evidence/activation/threat/consequence/thread/world-rule ledgers + story state (spec 132 §5)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 194,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaSceneContracts\", label: \"Scene Contracts\", description: \"Per-shot scene contracts in drafts + pipeline validation (spec 132 §6)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 195,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaMultiPassQc\", label: \"Multi-Pass QC v3\", description: \"Dialogue rules v2 + six-pass season critique + scorecard v3 (spec 132 §7-8)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 196,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaTargetedRevisionV2\", label: \"Targeted Revision v2\", description: \"Shot-scoped revision plan + splice repair (spec 132 §9)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 197,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaCharacterProfiles\", label: \"Character Profiles\", description: \"Structured personality + speech/voice profiles per character (spec 132 §7.3, §10.1)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 198,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaCharacterVisualQuality\", label: \"Character Visual Quality\", description: \"Persisted visual bible, expression set, image QC gate, consistency ledger (spec 132 §10.2-10.7)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 199,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaContinuityContracts\", label: \"Continuity Contracts\", description: \"Causal chain map + hook-to-opening enforcement (spec 132 §8.2)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 200,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaAngleGridQuality\", label: \"Angle Grid Quality\", description: \"Structured 9-angle camera schema, diversity/coverage rules, best-angle scoring rubric (spec 132 §19)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 201,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{/* F132F (spec 132 §7.3, added 2026-07-09) — this freeform textarea",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 6154,
+        "path": "apps/web/client/src/components/verticalDramaSeries/CreateSeriesWizard.tsx"
+      },
+      {
+        "excerpt": "/* F132F speech-profile editing form state (spec 132 §7.3, added 2026-07-09)  */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1967,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "/** F132F `verticalDramaCharacterProfiles` (spec 132 §7.3, added 2026-07-09)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2575,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "/** F132F (spec 132 §7.3, added 2026-07-09) — persists the speech-profile",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 3090,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "/** F132F \"prefill from speech profile\" style-hints save (spec 132 §7.3,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 3558,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "/** F132F (spec 132 §7.3, added 2026-07-09) — tolerant parse of the",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 5939,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "{/* F132F `verticalDramaCharacterProfiles` (spec 132 §7.3,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11047,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "* F132F speech-profile \"prefill from speech profile\" suggestion (spec 132",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 128,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard.tsx"
+      },
+      {
+        "excerpt": "/** F132F `verticalDramaCharacterProfiles` (spec 132 §7.3, added",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 194,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard.tsx"
+      },
+      {
+        "excerpt": "*  isn't clobbered by a re-render. Never auto-saved (spec 132 §7.3 hard",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 239,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard.tsx"
+      },
+      {
+        "excerpt": "{/* F132F `verticalDramaCharacterProfiles` (spec 132 §7.3, added",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 480,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard.tsx"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md"
+      },
+      {
+        "digest": "e4c484a46776a3d3eef4d9aeb1134416f022e7060ab1dfadb28563ca71b22ac3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/claude-plan.md"
+      },
+      {
+        "digest": "d40c75c1246a9463b7c776e91f905be3ca49e42665d2d4ad2daf2cda9f834bed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/reviews/completeness-audit-vs-spec-round-2.md"
+      },
+      {
+        "digest": "319b43c6fbbaf537161fbdc093aea287ccf13cdb5216ad45d08944ac41af787a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "5728c78b4fce7baa6eed87853005a75d27ec8ad2efe56b31409fae0b5120db4f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/index.md"
+      },
+      {
+        "digest": "015e2ca186b4a5325f1e7d854d89d74cbd52fabb4c8770a76dfd9acfefdcbee3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-01-shared-criteria-and-flags.md"
+      },
+      {
+        "digest": "3db1984e11dbcabb68606626b4084de04f5858f8734289e80febc94fd161a53e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-02-user-premise-preset-mix.md"
+      },
+      {
+        "digest": "dfde92104565a19f05e2bb36062f62163388cee433a439e2dafaadf1bf571c7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-03-ledgers-and-story-state.md"
+      },
+      {
+        "digest": "7bfe07552855051d1d07a2afa8c95c1b39eb2dcc4d5a82e60685ea461182b00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-04-scene-contracts.md"
+      },
+      {
+        "digest": "f90f9efef65696d9543dae1ecc73a2d4f80c40487d5e21545d22f47b0f23e5cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-05-dialogue-rules-and-speech-profiles.md"
+      },
+      {
+        "digest": "7ad29c7a8932074aa6ad0037955ba1d6119328322b7f1eb6bc2aa748b187260a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-06-multipass-qc-and-scorecard-v3.md"
+      },
+      {
+        "digest": "002f92d713b4135f77dde486c341435bea45ad1f26239b22aaf79db9d7874b6a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-07-targeted-revision-engine.md"
+      },
+      {
+        "digest": "ffe6efbdcbc32f5a78bc60766395ede1d861c4d5d4579cacb16fc81fcdbaa4f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-08-character-personality-and-visual-bible.md"
+      },
+      {
+        "digest": "e17589ea96ab88d42883eb3dbcee72a93ceac6d833827bd24703ba9df67b4d81",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-09-character-image-qc-and-cast-contrast.md"
+      },
+      {
+        "digest": "917baf8564722f872a2fb2225fbf8250fd57524982a72be4af9a75b5fbc72529",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-10-camera-angle-grid-quality.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md",
+    "digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.229684Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-07-10T10:43:32+07:00",
+      "spec_last_changed_at": "2026-07-10T10:43:32+07:00"
+    },
+    "revision": "0.4",
+    "slug": "132-vertical-drama-story-character-quality-engine",
+    "spec_id": "132",
+    "title": "Feature 132: Vertical Drama Story & Character Quality Engine"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.229684Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.229684Z",
+    "sources": [
+      {
+        "digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md"
+      },
+      {
+        "digest": "e4c484a46776a3d3eef4d9aeb1134416f022e7060ab1dfadb28563ca71b22ac3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/claude-plan.md"
+      },
+      {
+        "digest": "d40c75c1246a9463b7c776e91f905be3ca49e42665d2d4ad2daf2cda9f834bed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/reviews/completeness-audit-vs-spec-round-2.md"
+      },
+      {
+        "digest": "319b43c6fbbaf537161fbdc093aea287ccf13cdb5216ad45d08944ac41af787a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "5728c78b4fce7baa6eed87853005a75d27ec8ad2efe56b31409fae0b5120db4f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/index.md"
+      },
+      {
+        "digest": "015e2ca186b4a5325f1e7d854d89d74cbd52fabb4c8770a76dfd9acfefdcbee3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-01-shared-criteria-and-flags.md"
+      },
+      {
+        "digest": "3db1984e11dbcabb68606626b4084de04f5858f8734289e80febc94fd161a53e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-02-user-premise-preset-mix.md"
+      },
+      {
+        "digest": "dfde92104565a19f05e2bb36062f62163388cee433a439e2dafaadf1bf571c7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-03-ledgers-and-story-state.md"
+      },
+      {
+        "digest": "7bfe07552855051d1d07a2afa8c95c1b39eb2dcc4d5a82e60685ea461182b00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-04-scene-contracts.md"
+      },
+      {
+        "digest": "f90f9efef65696d9543dae1ecc73a2d4f80c40487d5e21545d22f47b0f23e5cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-05-dialogue-rules-and-speech-profiles.md"
+      },
+      {
+        "digest": "7ad29c7a8932074aa6ad0037955ba1d6119328322b7f1eb6bc2aa748b187260a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-06-multipass-qc-and-scorecard-v3.md"
+      },
+      {
+        "digest": "002f92d713b4135f77dde486c341435bea45ad1f26239b22aaf79db9d7874b6a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-07-targeted-revision-engine.md"
+      },
+      {
+        "digest": "ffe6efbdcbc32f5a78bc60766395ede1d861c4d5d4579cacb16fc81fcdbaa4f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-08-character-personality-and-visual-bible.md"
+      },
+      {
+        "digest": "e17589ea96ab88d42883eb3dbcee72a93ceac6d833827bd24703ba9df67b4d81",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-09-character-image-qc-and-cast-contrast.md"
+      },
+      {
+        "digest": "917baf8564722f872a2fb2225fbf8250fd57524982a72be4af9a75b5fbc72529",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-10-camera-angle-grid-quality.md"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaUserPremise\", label: \"User Premise\", description: \"User-defined premise field + premise-primary preset synthesis (spec 132 §4)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 193,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaQualityLedgers\", label: \"Quality Ledgers\", description: \"Evidence/activation/threat/consequence/thread/world-rule ledgers + story state (spec 132 §5)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 194,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaSceneContracts\", label: \"Scene Contracts\", description: \"Per-shot scene contracts in drafts + pipeline validation (spec 132 §6)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 195,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaMultiPassQc\", label: \"Multi-Pass QC v3\", description: \"Dialogue rules v2 + six-pass season critique + scorecard v3 (spec 132 §7-8)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 196,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaTargetedRevisionV2\", label: \"Targeted Revision v2\", description: \"Shot-scoped revision plan + splice repair (spec 132 §9)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 197,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaCharacterProfiles\", label: \"Character Profiles\", description: \"Structured personality + speech/voice profiles per character (spec 132 §7.3, §10.1)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 198,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaCharacterVisualQuality\", label: \"Character Visual Quality\", description: \"Persisted visual bible, expression set, image QC gate, consistency ledger (spec 132 §10.2-10.7)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 199,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaContinuityContracts\", label: \"Continuity Contracts\", description: \"Causal chain map + hook-to-opening enforcement (spec 132 §8.2)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 200,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaAngleGridQuality\", label: \"Angle Grid Quality\", description: \"Structured 9-angle camera schema, diversity/coverage rules, best-angle scoring rubric (spec 132 §19)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 201,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{/* F132F (spec 132 §7.3, added 2026-07-09) — this freeform textarea",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 6154,
+        "path": "apps/web/client/src/components/verticalDramaSeries/CreateSeriesWizard.tsx"
+      },
+      {
+        "excerpt": "/* F132F speech-profile editing form state (spec 132 §7.3, added 2026-07-09)  */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1967,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "/** F132F `verticalDramaCharacterProfiles` (spec 132 §7.3, added 2026-07-09)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2575,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "/** F132F (spec 132 §7.3, added 2026-07-09) — persists the speech-profile",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 3090,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "/** F132F \"prefill from speech profile\" style-hints save (spec 132 §7.3,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 3558,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "/** F132F (spec 132 §7.3, added 2026-07-09) — tolerant parse of the",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 5939,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "{/* F132F `verticalDramaCharacterProfiles` (spec 132 §7.3,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11047,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "* F132F speech-profile \"prefill from speech profile\" suggestion (spec 132",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 128,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard.tsx"
+      },
+      {
+        "excerpt": "/** F132F `verticalDramaCharacterProfiles` (spec 132 §7.3, added",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 194,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard.tsx"
+      },
+      {
+        "excerpt": "*  isn't clobbered by a re-render. Never auto-saved (spec 132 §7.3 hard",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 239,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard.tsx"
+      },
+      {
+        "excerpt": "{/* F132F `verticalDramaCharacterProfiles` (spec 132 §7.3, added",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 480,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard.tsx"
+      },
+      {
+        "excerpt": "/* F132F speech-profile-driven style hints (spec 132 §7.3, added           */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 808,
+        "path": "apps/web/client/src/components/verticalDramaSeries/verticalDramaCopy.ts"
+      },
+      {
+        "excerpt": "// F132F (spec 132 §7.3/§10.1, added 2026-07-09) — gates the Characters",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 282,
+        "path": "apps/web/client/src/pages/VerticalDramaSeriesDetailPage.tsx"
+      },
+      {
+        "excerpt": "verticalDramaUserPremise: boolean; // F132A — spec 132 §4 user premise field + premise-primary synthesis (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 239,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaQualityLedgers: boolean; // F132B — spec 132 §5 ledgers + story state + deterministic checks (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 240,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaSceneContracts: boolean; // F132C — spec 132 §6 scene contracts in drafts/pipeline validation (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 241,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaMultiPassQc: boolean; // F132D — spec 132 §7-8 dialogue rules v2 + multi-pass critique + scorecard v3 (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 242,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaTargetedRevisionV2: boolean; // F132E — spec 132 §9 shot-scoped revision + revision plan (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 243,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaCharacterProfiles: boolean; // F132F — spec 132 §7.3/§10.1 structured personality/speech profiles (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 244,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaCharacterVisualQuality: boolean; // F132G — spec 132 §10.2-10.7 persisted bible, expression set, image QC, consistency ledger (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 245,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaContinuityContracts: boolean; // F132H — spec 132 §8.2 causal chain / hook-to-opening enforcement (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 246,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaAngleGridQuality: boolean; // F132I — spec 132 §19 structured 9-angle schema, diversity/coverage rules, best-angle scoring rubric (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 247,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "describe(\"suggestStyleHintsFromSpeechProfile (F132F, spec 132 §7.3)\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 104,
+        "path": "apps/web/client/src/components/verticalDramaSeries/__tests__/VerticalDramaCharacterVoiceCastingCard.pure.test.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "{ key: \"verticalDramaUserPremise\", label: \"User Premise\", description: \"User-defined premise field + premise-primary preset synthesis (spec 132 §4)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 193,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaQualityLedgers\", label: \"Quality Ledgers\", description: \"Evidence/activation/threat/consequence/thread/world-rule ledgers + story state (spec 132 §5)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 194,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaSceneContracts\", label: \"Scene Contracts\", description: \"Per-shot scene contracts in drafts + pipeline validation (spec 132 §6)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 195,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaMultiPassQc\", label: \"Multi-Pass QC v3\", description: \"Dialogue rules v2 + six-pass season critique + scorecard v3 (spec 132 §7-8)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 196,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaTargetedRevisionV2\", label: \"Targeted Revision v2\", description: \"Shot-scoped revision plan + splice repair (spec 132 §9)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 197,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaCharacterProfiles\", label: \"Character Profiles\", description: \"Structured personality + speech/voice profiles per character (spec 132 §7.3, §10.1)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 198,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaCharacterVisualQuality\", label: \"Character Visual Quality\", description: \"Persisted visual bible, expression set, image QC gate, consistency ledger (spec 132 §10.2-10.7)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 199,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaContinuityContracts\", label: \"Continuity Contracts\", description: \"Causal chain map + hook-to-opening enforcement (spec 132 §8.2)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 200,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{ key: \"verticalDramaAngleGridQuality\", label: \"Angle Grid Quality\", description: \"Structured 9-angle camera schema, diversity/coverage rules, best-angle scoring rubric (spec 132 §19)\" },",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 201,
+        "path": "apps/web/client/src/components/admin/tenantFeatureFlagGroups.ts"
+      },
+      {
+        "excerpt": "{/* F132F (spec 132 §7.3, added 2026-07-09) — this freeform textarea",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 6154,
+        "path": "apps/web/client/src/components/verticalDramaSeries/CreateSeriesWizard.tsx"
+      },
+      {
+        "excerpt": "/* F132F speech-profile editing form state (spec 132 §7.3, added 2026-07-09)  */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 1967,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "/** F132F `verticalDramaCharacterProfiles` (spec 132 §7.3, added 2026-07-09)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2575,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "/** F132F (spec 132 §7.3, added 2026-07-09) — persists the speech-profile",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 3090,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "/** F132F \"prefill from speech profile\" style-hints save (spec 132 §7.3,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 3558,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "/** F132F (spec 132 §7.3, added 2026-07-09) — tolerant parse of the",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 5939,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "{/* F132F `verticalDramaCharacterProfiles` (spec 132 §7.3,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 11047,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterStockPanel.tsx"
+      },
+      {
+        "excerpt": "* F132F speech-profile \"prefill from speech profile\" suggestion (spec 132",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 128,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard.tsx"
+      },
+      {
+        "excerpt": "/** F132F `verticalDramaCharacterProfiles` (spec 132 §7.3, added",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 194,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard.tsx"
+      },
+      {
+        "excerpt": "*  isn't clobbered by a re-render. Never auto-saved (spec 132 §7.3 hard",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 239,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard.tsx"
+      },
+      {
+        "excerpt": "{/* F132F `verticalDramaCharacterProfiles` (spec 132 §7.3, added",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 480,
+        "path": "apps/web/client/src/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard.tsx"
+      },
+      {
+        "excerpt": "/* F132F speech-profile-driven style hints (spec 132 §7.3, added           */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 808,
+        "path": "apps/web/client/src/components/verticalDramaSeries/verticalDramaCopy.ts"
+      },
+      {
+        "excerpt": "// F132F (spec 132 §7.3/§10.1, added 2026-07-09) — gates the Characters",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 282,
+        "path": "apps/web/client/src/pages/VerticalDramaSeriesDetailPage.tsx"
+      },
+      {
+        "excerpt": "verticalDramaUserPremise: boolean; // F132A — spec 132 §4 user premise field + premise-primary synthesis (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 239,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaQualityLedgers: boolean; // F132B — spec 132 §5 ledgers + story state + deterministic checks (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 240,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaSceneContracts: boolean; // F132C — spec 132 §6 scene contracts in drafts/pipeline validation (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 241,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaMultiPassQc: boolean; // F132D — spec 132 §7-8 dialogue rules v2 + multi-pass critique + scorecard v3 (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 242,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaTargetedRevisionV2: boolean; // F132E — spec 132 §9 shot-scoped revision + revision plan (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 243,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaCharacterProfiles: boolean; // F132F — spec 132 §7.3/§10.1 structured personality/speech profiles (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 244,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaCharacterVisualQuality: boolean; // F132G — spec 132 §10.2-10.7 persisted bible, expression set, image QC, consistency ledger (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 245,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaContinuityContracts: boolean; // F132H — spec 132 §8.2 causal chain / hook-to-opening enforcement (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 246,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "verticalDramaAngleGridQuality: boolean; // F132I — spec 132 §19 structured 9-angle schema, diversity/coverage rules, best-angle scoring rubric (fail-closed)",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 247,
+        "path": "apps/web/shared/featureFlags.ts"
+      },
+      {
+        "excerpt": "describe(\"suggestStyleHintsFromSpeechProfile (F132F, spec 132 §7.3)\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 104,
+        "path": "apps/web/client/src/components/verticalDramaSeries/__tests__/VerticalDramaCharacterVoiceCastingCard.pure.test.ts"
+      }
+    ],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md"
+      },
+      {
+        "digest": "e4c484a46776a3d3eef4d9aeb1134416f022e7060ab1dfadb28563ca71b22ac3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/claude-plan.md"
+      },
+      {
+        "digest": "d40c75c1246a9463b7c776e91f905be3ca49e42665d2d4ad2daf2cda9f834bed",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/reviews/completeness-audit-vs-spec-round-2.md"
+      },
+      {
+        "digest": "319b43c6fbbaf537161fbdc093aea287ccf13cdb5216ad45d08944ac41af787a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "5728c78b4fce7baa6eed87853005a75d27ec8ad2efe56b31409fae0b5120db4f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/index.md"
+      },
+      {
+        "digest": "015e2ca186b4a5325f1e7d854d89d74cbd52fabb4c8770a76dfd9acfefdcbee3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-01-shared-criteria-and-flags.md"
+      },
+      {
+        "digest": "3db1984e11dbcabb68606626b4084de04f5858f8734289e80febc94fd161a53e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-02-user-premise-preset-mix.md"
+      },
+      {
+        "digest": "dfde92104565a19f05e2bb36062f62163388cee433a439e2dafaadf1bf571c7f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-03-ledgers-and-story-state.md"
+      },
+      {
+        "digest": "7bfe07552855051d1d07a2afa8c95c1b39eb2dcc4d5a82e60685ea461182b00d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-04-scene-contracts.md"
+      },
+      {
+        "digest": "f90f9efef65696d9543dae1ecc73a2d4f80c40487d5e21545d22f47b0f23e5cc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-05-dialogue-rules-and-speech-profiles.md"
+      },
+      {
+        "digest": "7ad29c7a8932074aa6ad0037955ba1d6119328322b7f1eb6bc2aa748b187260a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-06-multipass-qc-and-scorecard-v3.md"
+      },
+      {
+        "digest": "002f92d713b4135f77dde486c341435bea45ad1f26239b22aaf79db9d7874b6a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-07-targeted-revision-engine.md"
+      },
+      {
+        "digest": "ffe6efbdcbc32f5a78bc60766395ede1d861c4d5d4579cacb16fc81fcdbaa4f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-08-character-personality-and-visual-bible.md"
+      },
+      {
+        "digest": "e17589ea96ab88d42883eb3dbcee72a93ceac6d833827bd24703ba9df67b4d81",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-09-character-image-qc-and-cast-contrast.md"
+      },
+      {
+        "digest": "917baf8564722f872a2fb2225fbf8250fd57524982a72be4af9a75b5fbc72529",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/132-vertical-drama-story-character-quality-engine/sections/section-10-camera-angle-grid-quality.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 57,
+    "unresolved": 57
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.229684Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

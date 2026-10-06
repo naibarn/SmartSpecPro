@@ -1,0 +1,472 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "bf42b226a51f476380103430ed6f6bd50541f1b84e0e999afee18030839f8778",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/spec.md"
+      },
+      {
+        "digest": "2cbb7d06a42b76fdf1ead368abecb6b2253525800c12ad2a45e22e5c7022f764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "925b7d3f11c7052eee2cb0321b026e27883c80586c27473c6f9fc95321b20a13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
+      },
+      {
+        "digest": "fd0e9d8b0125d0b40ba9cbc7fa531d4524b40ee6c9b91e81e559b28ccfcae82b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
+      },
+      {
+        "digest": "5e601ac59fa225cdb758252625679d68ee88872db275d8e4697a24df8a5d25d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
+      },
+      {
+        "digest": "7d64835e18c18dc02daf425b2131036e4f0a8a602061893340f272d9478f6c61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
+      },
+      {
+        "digest": "869e951e117631ee063fda771273be1af466a5ca404faa2983b2a91ebb657a6a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
+      },
+      {
+        "digest": "064d2fa4291b4b7c59e558111f7a4bae127b014707e7add4bdd28ad51b94235a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
+      },
+      {
+        "digest": "de8ada7c6af6d29454fdb0bdeaeae7137514898116cb8c813a28830e3144d4ee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
+      },
+      {
+        "digest": "116cbd2595bb726ccd2899eaf3e0bdf995f1c5e71ac79729da3e67d3c5c58857",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
+      },
+      {
+        "digest": "781b2f0a2bcb2677774f40c10761faf3aee585272b74dee47fcb093a2153f37e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
+      },
+      {
+        "digest": "e50a6527895e8f905cbe75a8d35878ce0549f855fa43b00b206bd8d67171bf64",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
+      },
+      {
+        "digest": "4d7546a6a4320f5a7b17c0046264157cfaab276495341f20d7fb98b36a2f94ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "bf42b226a51f476380103430ed6f6bd50541f1b84e0e999afee18030839f8778"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "bf42b226a51f476380103430ed6f6bd50541f1b84e0e999afee18030839f8778",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/spec.md"
+      },
+      {
+        "digest": "2cbb7d06a42b76fdf1ead368abecb6b2253525800c12ad2a45e22e5c7022f764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "925b7d3f11c7052eee2cb0321b026e27883c80586c27473c6f9fc95321b20a13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
+      },
+      {
+        "digest": "fd0e9d8b0125d0b40ba9cbc7fa531d4524b40ee6c9b91e81e559b28ccfcae82b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
+      },
+      {
+        "digest": "5e601ac59fa225cdb758252625679d68ee88872db275d8e4697a24df8a5d25d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
+      },
+      {
+        "digest": "7d64835e18c18dc02daf425b2131036e4f0a8a602061893340f272d9478f6c61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
+      },
+      {
+        "digest": "869e951e117631ee063fda771273be1af466a5ca404faa2983b2a91ebb657a6a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
+      },
+      {
+        "digest": "064d2fa4291b4b7c59e558111f7a4bae127b014707e7add4bdd28ad51b94235a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
+      },
+      {
+        "digest": "de8ada7c6af6d29454fdb0bdeaeae7137514898116cb8c813a28830e3144d4ee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
+      },
+      {
+        "digest": "116cbd2595bb726ccd2899eaf3e0bdf995f1c5e71ac79729da3e67d3c5c58857",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
+      },
+      {
+        "digest": "781b2f0a2bcb2677774f40c10761faf3aee585272b74dee47fcb093a2153f37e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
+      },
+      {
+        "digest": "e50a6527895e8f905cbe75a8d35878ce0549f855fa43b00b206bd8d67171bf64",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
+      },
+      {
+        "digest": "4d7546a6a4320f5a7b17c0046264157cfaab276495341f20d7fb98b36a2f94ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "bf42b226a51f476380103430ed6f6bd50541f1b84e0e999afee18030839f8778",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/spec.md"
+      },
+      {
+        "digest": "2cbb7d06a42b76fdf1ead368abecb6b2253525800c12ad2a45e22e5c7022f764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "925b7d3f11c7052eee2cb0321b026e27883c80586c27473c6f9fc95321b20a13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
+      },
+      {
+        "digest": "fd0e9d8b0125d0b40ba9cbc7fa531d4524b40ee6c9b91e81e559b28ccfcae82b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
+      },
+      {
+        "digest": "5e601ac59fa225cdb758252625679d68ee88872db275d8e4697a24df8a5d25d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
+      },
+      {
+        "digest": "7d64835e18c18dc02daf425b2131036e4f0a8a602061893340f272d9478f6c61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
+      },
+      {
+        "digest": "869e951e117631ee063fda771273be1af466a5ca404faa2983b2a91ebb657a6a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
+      },
+      {
+        "digest": "064d2fa4291b4b7c59e558111f7a4bae127b014707e7add4bdd28ad51b94235a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
+      },
+      {
+        "digest": "de8ada7c6af6d29454fdb0bdeaeae7137514898116cb8c813a28830e3144d4ee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
+      },
+      {
+        "digest": "116cbd2595bb726ccd2899eaf3e0bdf995f1c5e71ac79729da3e67d3c5c58857",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
+      },
+      {
+        "digest": "781b2f0a2bcb2677774f40c10761faf3aee585272b74dee47fcb093a2153f37e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
+      },
+      {
+        "digest": "e50a6527895e8f905cbe75a8d35878ce0549f855fa43b00b206bd8d67171bf64",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
+      },
+      {
+        "digest": "4d7546a6a4320f5a7b17c0046264157cfaab276495341f20d7fb98b36a2f94ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/104-md-knowledge-vault-production-readiness/spec.md",
+    "digest": "bf42b226a51f476380103430ed6f6bd50541f1b84e0e999afee18030839f8778",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.972496Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-23T09:32:16+07:00",
+      "spec_last_changed_at": "2026-04-23T09:32:16+07:00"
+    },
+    "revision": "1.1",
+    "slug": "104-md-knowledge-vault-production-readiness",
+    "spec_id": "104",
+    "title": "Feature 104 - Markdown Knowledge Vault Production Readiness and Agent Memory"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.972496Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.972496Z",
+    "sources": [
+      {
+        "digest": "bf42b226a51f476380103430ed6f6bd50541f1b84e0e999afee18030839f8778",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/spec.md"
+      },
+      {
+        "digest": "2cbb7d06a42b76fdf1ead368abecb6b2253525800c12ad2a45e22e5c7022f764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "925b7d3f11c7052eee2cb0321b026e27883c80586c27473c6f9fc95321b20a13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
+      },
+      {
+        "digest": "fd0e9d8b0125d0b40ba9cbc7fa531d4524b40ee6c9b91e81e559b28ccfcae82b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
+      },
+      {
+        "digest": "5e601ac59fa225cdb758252625679d68ee88872db275d8e4697a24df8a5d25d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
+      },
+      {
+        "digest": "7d64835e18c18dc02daf425b2131036e4f0a8a602061893340f272d9478f6c61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
+      },
+      {
+        "digest": "869e951e117631ee063fda771273be1af466a5ca404faa2983b2a91ebb657a6a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
+      },
+      {
+        "digest": "064d2fa4291b4b7c59e558111f7a4bae127b014707e7add4bdd28ad51b94235a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
+      },
+      {
+        "digest": "de8ada7c6af6d29454fdb0bdeaeae7137514898116cb8c813a28830e3144d4ee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
+      },
+      {
+        "digest": "116cbd2595bb726ccd2899eaf3e0bdf995f1c5e71ac79729da3e67d3c5c58857",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
+      },
+      {
+        "digest": "781b2f0a2bcb2677774f40c10761faf3aee585272b74dee47fcb093a2153f37e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
+      },
+      {
+        "digest": "e50a6527895e8f905cbe75a8d35878ce0549f855fa43b00b206bd8d67171bf64",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
+      },
+      {
+        "digest": "4d7546a6a4320f5a7b17c0046264157cfaab276495341f20d7fb98b36a2f94ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "bf42b226a51f476380103430ed6f6bd50541f1b84e0e999afee18030839f8778",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/spec.md"
+      },
+      {
+        "digest": "2cbb7d06a42b76fdf1ead368abecb6b2253525800c12ad2a45e22e5c7022f764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "925b7d3f11c7052eee2cb0321b026e27883c80586c27473c6f9fc95321b20a13",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
+      },
+      {
+        "digest": "fd0e9d8b0125d0b40ba9cbc7fa531d4524b40ee6c9b91e81e559b28ccfcae82b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
+      },
+      {
+        "digest": "5e601ac59fa225cdb758252625679d68ee88872db275d8e4697a24df8a5d25d5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
+      },
+      {
+        "digest": "7d64835e18c18dc02daf425b2131036e4f0a8a602061893340f272d9478f6c61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
+      },
+      {
+        "digest": "869e951e117631ee063fda771273be1af466a5ca404faa2983b2a91ebb657a6a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
+      },
+      {
+        "digest": "064d2fa4291b4b7c59e558111f7a4bae127b014707e7add4bdd28ad51b94235a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
+      },
+      {
+        "digest": "de8ada7c6af6d29454fdb0bdeaeae7137514898116cb8c813a28830e3144d4ee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
+      },
+      {
+        "digest": "116cbd2595bb726ccd2899eaf3e0bdf995f1c5e71ac79729da3e67d3c5c58857",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
+      },
+      {
+        "digest": "781b2f0a2bcb2677774f40c10761faf3aee585272b74dee47fcb093a2153f37e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
+      },
+      {
+        "digest": "e50a6527895e8f905cbe75a8d35878ce0549f855fa43b00b206bd8d67171bf64",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
+      },
+      {
+        "digest": "4d7546a6a4320f5a7b17c0046264157cfaab276495341f20d7fb98b36a2f94ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 104,
+    "unresolved": 104
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.972496Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

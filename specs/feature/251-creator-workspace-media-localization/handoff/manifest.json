@@ -1,0 +1,223 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "233",
+        "referenced_spec_id": "233",
+        "referencing_spec_id": "251",
+        "relation_text": "merge",
+        "requirement_ids": [],
+        "source": "specs/feature/251-creator-workspace-media-localization/spec.md#L46",
+        "source_digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
+        "successor_spec_id": "251"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "251",
+        "referenced_spec_id": "251",
+        "referencing_spec_id": "240",
+        "relation_text": "merge",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "251",
+        "referenced_spec_id": "251",
+        "referencing_spec_id": "252",
+        "relation_text": "supersede",
+        "requirement_ids": [
+          "R1.1"
+        ],
+        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
+        "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
+        "successor_spec_id": "252"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "251",
+        "referenced_spec_id": "251",
+        "referencing_spec_id": "253",
+        "relation_text": "merging",
+        "requirement_ids": [],
+        "source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L265",
+        "source_digest": "81d69c4736aa34b278f7a002e8a6f7edc6c5eee48d6f819fe736f64aab394288",
+        "successor_spec_id": "253"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/251-creator-workspace-media-localization/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/251-creator-workspace-media-localization/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/251-creator-workspace-media-localization/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/251-creator-workspace-media-localization/spec.md",
+    "digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.527493Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-10-02T19:34:42+07:00",
+      "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
+    },
+    "revision": "0.1.0",
+    "slug": "251-creator-workspace-media-localization",
+    "spec_id": "251",
+    "title": "Spec 251 — Creator Workspace & Media Localization"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.527493Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.527493Z",
+    "sources": [
+      {
+        "digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/251-creator-workspace-media-localization/spec.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/251-creator-workspace-media-localization/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 21,
+    "unresolved": 21
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.527493Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

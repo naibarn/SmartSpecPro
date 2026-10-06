@@ -1,0 +1,272 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L12"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L12",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0e023492a247593d6125c046945dd97542707958ee6436e1f53927f20ab8275b",
+      "requirement_id": "REQ-870C3632871F",
+      "requirement_text": "Users who have existing presentations in Google Slides or PowerPoint (.pptx) must currently recreate them manually inside the SmartSpecPro Presentation Editor. This is a significant barrier to adoption. The feature adds one-way import: convert external presentations into SmartSpecPro's internal `PresentationSlideContent` schema, placing the result in the user's library as an editable deck.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L30"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L30",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1fc3660ff01faf46f5ad8f2084a393ac42ef9ee64a7ae6961c56bb930648e15d",
+      "requirement_id": "REQ-6AC5515F4325",
+      "requirement_text": "- `.ppt` (legacy binary format) — not supported; user must convert to `.pptx` first.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L429"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L429",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "60aa9aee46f6b39c9305c7e3e83abfd243495db24f2762c24a2a4dbfc4823ba4",
+      "requirement_id": "REQ-185420199C1C",
+      "requirement_text": "All required Node.js packages (`zod`, `drizzle-orm`, `@trpc/server`, `@aws-sdk/client-s3`) are already installed.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L488"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L488",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d44214cdb23f0effb70175e24851eca7de61b522070bba57cc4fee97d1ce2efe",
+      "requirement_id": "REQ-0F9FB48BFDA4",
+      "requirement_text": "- [ ] User can upload a 16:9 PPTX with text and images; the resulting deck has the correct number of slides, elements are positioned correctly (within ±5px), and all embedded images are accessible via HTTPS URLs.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L489"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L489",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ffe0762bdcb11f9b55393e0fa57cacf921c2ccbc23ea3b6b74f6888b6131b7af",
+      "requirement_id": "REQ-1213565AD1A8",
+      "requirement_text": "- [ ] User can import a Google Slides presentation using their existing Google OAuth session; text and images are correctly extracted.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L490"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L490",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4bce69ff7c983ddfd833c0b3c42ba7d8098657170e9d1cfcabc8a650781343e8",
+      "requirement_id": "REQ-D83001B9D1CD",
+      "requirement_text": "- [ ] Unsupported elements (table, chart, SmartArt) produce `fidelityWarnings` and are logged to `presentationConversionRecords`.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L491"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L491",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6bc7d91346510235d6756882a6209d40e6bd4714e556a2f058b566a1a532c201",
+      "requirement_id": "REQ-E3EE04601D3F",
+      "requirement_text": "- [ ] A 10-slide PPTX with 5 images per slide completes import in under 60 seconds.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L492"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L492",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b5c8e0d3c32b8164044c0481271a399dc6fe5020c42ab04fada9345f61247adb",
+      "requirement_id": "REQ-C3848CC832ED",
+      "requirement_text": "- [ ] A PPTX larger than 50MB is rejected before upload.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L493"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L493",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "30a153b236122c82a69fed4d7c3bda89098949ab3277f9dd2dc5b53c47b22d97",
+      "requirement_id": "REQ-810418C66475",
+      "requirement_text": "- [ ] The imported deck respects the SmartSpecPro 200-slide and 100MB limits.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L494"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L494",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9fc204c5ff4cd0be10dc7ebf21ffd1933aac55de48e9ddeaf5feac286f3f9b7a",
+      "requirement_id": "REQ-BB1CFB468D41",
+      "requirement_text": "- [ ] All images are stored in tenant-scoped S3 paths (not inline base64 or external URLs).",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L495"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L495",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a96af5dac0c7ddd0df398991bfd7a34304555c8167552ad8e9dba81d04a51383",
+      "requirement_id": "REQ-A42D0827F362",
+      "requirement_text": "- [ ] `pytest` coverage ≥ 80% for `pptx_importer.py` and `gslides_importer.py`.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L496"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L496",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7031b906486a1e484263c7d5b5e22ae88c79da02d43a7f4aad01599c7920e3c0",
+      "requirement_id": "REQ-57C775A9E394",
+      "requirement_text": "- [ ] TypeScript check passes (`pnpm check`).",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+  "spec_id": "024"
+}

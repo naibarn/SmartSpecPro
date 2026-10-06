@@ -1,0 +1,322 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md"
+      },
+      {
+        "digest": "b4fde39192ed21f00041589a8cd4696de5d768da4c2f549e512f4dc62743a5ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "339b371c57db0e9ad41a53d984792b9cfb4876d8ff4b5368a02ccae670891947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
+      },
+      {
+        "digest": "0d65c4d9df0171364d0f38b8b744afd7849b32d47e5b434eef454e5909544255",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
+      },
+      {
+        "digest": "e027950056561d191150e957974a5f9e5ce400003e56e07214d2cd5cfd48a297",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
+      },
+      {
+        "digest": "2257c4afe85ac6dceb1acd529e55261a6bb821bb3f51be9a93408c0644b0d7fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
+      },
+      {
+        "digest": "51c92bc87141300818d41eb90ef22bb6b5d21e40e2b070dcea9c47e27362e28d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md"
+      },
+      {
+        "digest": "b4fde39192ed21f00041589a8cd4696de5d768da4c2f549e512f4dc62743a5ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "339b371c57db0e9ad41a53d984792b9cfb4876d8ff4b5368a02ccae670891947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
+      },
+      {
+        "digest": "0d65c4d9df0171364d0f38b8b744afd7849b32d47e5b434eef454e5909544255",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
+      },
+      {
+        "digest": "e027950056561d191150e957974a5f9e5ce400003e56e07214d2cd5cfd48a297",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
+      },
+      {
+        "digest": "2257c4afe85ac6dceb1acd529e55261a6bb821bb3f51be9a93408c0644b0d7fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
+      },
+      {
+        "digest": "51c92bc87141300818d41eb90ef22bb6b5d21e40e2b070dcea9c47e27362e28d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md"
+      },
+      {
+        "digest": "b4fde39192ed21f00041589a8cd4696de5d768da4c2f549e512f4dc62743a5ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "339b371c57db0e9ad41a53d984792b9cfb4876d8ff4b5368a02ccae670891947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
+      },
+      {
+        "digest": "0d65c4d9df0171364d0f38b8b744afd7849b32d47e5b434eef454e5909544255",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
+      },
+      {
+        "digest": "e027950056561d191150e957974a5f9e5ce400003e56e07214d2cd5cfd48a297",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
+      },
+      {
+        "digest": "2257c4afe85ac6dceb1acd529e55261a6bb821bb3f51be9a93408c0644b0d7fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
+      },
+      {
+        "digest": "51c92bc87141300818d41eb90ef22bb6b5d21e40e2b070dcea9c47e27362e28d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md",
+    "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.885828Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-11T19:21:32+07:00",
+      "spec_last_changed_at": "2026-04-11T19:21:32+07:00"
+    },
+    "revision": "1.0",
+    "slug": "091-shared-document-ocr-landingai-ade-python",
+    "spec_id": "091",
+    "title": "091 - Shared Document OCR Backbone with LandingAI ADE Python"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.885828Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.885828Z",
+    "sources": [
+      {
+        "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md"
+      },
+      {
+        "digest": "b4fde39192ed21f00041589a8cd4696de5d768da4c2f549e512f4dc62743a5ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "339b371c57db0e9ad41a53d984792b9cfb4876d8ff4b5368a02ccae670891947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
+      },
+      {
+        "digest": "0d65c4d9df0171364d0f38b8b744afd7849b32d47e5b434eef454e5909544255",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
+      },
+      {
+        "digest": "e027950056561d191150e957974a5f9e5ce400003e56e07214d2cd5cfd48a297",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
+      },
+      {
+        "digest": "2257c4afe85ac6dceb1acd529e55261a6bb821bb3f51be9a93408c0644b0d7fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
+      },
+      {
+        "digest": "51c92bc87141300818d41eb90ef22bb6b5d21e40e2b070dcea9c47e27362e28d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md"
+      },
+      {
+        "digest": "b4fde39192ed21f00041589a8cd4696de5d768da4c2f549e512f4dc62743a5ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "339b371c57db0e9ad41a53d984792b9cfb4876d8ff4b5368a02ccae670891947",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
+      },
+      {
+        "digest": "0d65c4d9df0171364d0f38b8b744afd7849b32d47e5b434eef454e5909544255",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
+      },
+      {
+        "digest": "e027950056561d191150e957974a5f9e5ce400003e56e07214d2cd5cfd48a297",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
+      },
+      {
+        "digest": "2257c4afe85ac6dceb1acd529e55261a6bb821bb3f51be9a93408c0644b0d7fc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
+      },
+      {
+        "digest": "51c92bc87141300818d41eb90ef22bb6b5d21e40e2b070dcea9c47e27362e28d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 18,
+    "unresolved": 18
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.885828Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

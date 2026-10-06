@@ -1,0 +1,674 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "LOW",
+    "conflicts": [
+      {
+        "kind": "DUPLICATE_SPEC_ID",
+        "paths": [
+          "specs/feature/058-agency-creator-intelligence-upgrade"
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "digest": "72883318c300bcdb2b4806e155b278fdd46c29e330bdde8cba162eb87b5762b2",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/058-meta-channels/spec.md"
+      },
+      {
+        "digest": "8725ad616ad0731cc12604f9dc7cfa0723d5415de5f33024b6bbef1235edcd42",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/claude-plan.md"
+      },
+      {
+        "digest": "88574faae302cd67ff617dc9400814b0f3988550f3023e72a2b1d5921de1bdcc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/claude-spec.md"
+      },
+      {
+        "digest": "9c09336526dd2ac03c3017f27f57d084b6701e2213d517189a65f17bfc8d37f5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "995b79c1983bcf71ce4b44b1546dd91b0da72f6182aae8fed03dbf723f2d04f1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/consolidated-review.md"
+      },
+      {
+        "digest": "6822892793eef271085508adc3a815956b5927c5893bdf426be1d24096e11cdc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/security-audit-round-1.md"
+      },
+      {
+        "digest": "923e2af7815d5536994ba4a3de94f8b6f3f883d615604a776b5e518c4fa9b118",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "47b46f976c37a05628d700372b96037866c07a2588f9a48e5b45b5fc9ddc9936",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/index.md"
+      },
+      {
+        "digest": "1123efc19e292c2bef0eda8650b9de26ee61df54e6c55ccf5f1fca6496ac938a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-01-db-schema.md"
+      },
+      {
+        "digest": "7b99224c5741af123273f066823a2df65d77414331792738a8806bff15fdd7d6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-02-feature-flag-menu.md"
+      },
+      {
+        "digest": "901011dc60979acc90576fa7b6fd5240f64e987e020149613c1e4371cca99bfa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-03-meta-graph-client.md"
+      },
+      {
+        "digest": "169c049296a915527344e8d3ea95589c6beabce2b402eee6ed0e50103dae595a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-04-oauth-connection.md"
+      },
+      {
+        "digest": "75ef4857c354146fb72c9457d58c6af29c1059836c82ee53f66a55c2252988e8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-05-webhook-ingestion.md"
+      },
+      {
+        "digest": "82446a063f082c0827cdc5cd8ff8d860d7717a12cfe611de265678d9b1d65f0e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-06-inbox-backend.md"
+      },
+      {
+        "digest": "fa04f12e6c576c53fd1cdebe5d237df1bed60099f13f6d0be871bc09909e8d0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-07-inbox-frontend.md"
+      },
+      {
+        "digest": "d67d4718f6885c14c79a7e3b804ce0beac00bad93aafaca1848c9fc929adc068",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-08-ai-draft.md"
+      },
+      {
+        "digest": "ab35e9d93b7f7a8946a6a1e4506475ebabe6777639d70d7611b7445a05e4bbc3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-09-publishing.md"
+      },
+      {
+        "digest": "f7f02932d496bc7ff9ef8dc2fb2381e0dc02db166aed785a9a4355962f703ea3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-10-comments-moderation.md"
+      },
+      {
+        "digest": "4e640743375b2195c03f866aa37514f838f05c047fc0f82369ada24b6f2a500a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-11-workflow-nodes.md"
+      },
+      {
+        "digest": "173f6769bbb635e492d268a233071e306c3960fa8b07cb9de909a419adf983a0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-12-agency-tool.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "AUTHORITY_CONFLICT",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "72883318c300bcdb2b4806e155b278fdd46c29e330bdde8cba162eb87b5762b2"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "72883318c300bcdb2b4806e155b278fdd46c29e330bdde8cba162eb87b5762b2",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/058-meta-channels/spec.md"
+      },
+      {
+        "digest": "8725ad616ad0731cc12604f9dc7cfa0723d5415de5f33024b6bbef1235edcd42",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/claude-plan.md"
+      },
+      {
+        "digest": "88574faae302cd67ff617dc9400814b0f3988550f3023e72a2b1d5921de1bdcc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/claude-spec.md"
+      },
+      {
+        "digest": "9c09336526dd2ac03c3017f27f57d084b6701e2213d517189a65f17bfc8d37f5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "995b79c1983bcf71ce4b44b1546dd91b0da72f6182aae8fed03dbf723f2d04f1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/consolidated-review.md"
+      },
+      {
+        "digest": "6822892793eef271085508adc3a815956b5927c5893bdf426be1d24096e11cdc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/security-audit-round-1.md"
+      },
+      {
+        "digest": "923e2af7815d5536994ba4a3de94f8b6f3f883d615604a776b5e518c4fa9b118",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "47b46f976c37a05628d700372b96037866c07a2588f9a48e5b45b5fc9ddc9936",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/index.md"
+      },
+      {
+        "digest": "1123efc19e292c2bef0eda8650b9de26ee61df54e6c55ccf5f1fca6496ac938a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-01-db-schema.md"
+      },
+      {
+        "digest": "7b99224c5741af123273f066823a2df65d77414331792738a8806bff15fdd7d6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-02-feature-flag-menu.md"
+      },
+      {
+        "digest": "901011dc60979acc90576fa7b6fd5240f64e987e020149613c1e4371cca99bfa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-03-meta-graph-client.md"
+      },
+      {
+        "digest": "169c049296a915527344e8d3ea95589c6beabce2b402eee6ed0e50103dae595a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-04-oauth-connection.md"
+      },
+      {
+        "digest": "75ef4857c354146fb72c9457d58c6af29c1059836c82ee53f66a55c2252988e8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-05-webhook-ingestion.md"
+      },
+      {
+        "digest": "82446a063f082c0827cdc5cd8ff8d860d7717a12cfe611de265678d9b1d65f0e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-06-inbox-backend.md"
+      },
+      {
+        "digest": "fa04f12e6c576c53fd1cdebe5d237df1bed60099f13f6d0be871bc09909e8d0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-07-inbox-frontend.md"
+      },
+      {
+        "digest": "d67d4718f6885c14c79a7e3b804ce0beac00bad93aafaca1848c9fc929adc068",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-08-ai-draft.md"
+      },
+      {
+        "digest": "ab35e9d93b7f7a8946a6a1e4506475ebabe6777639d70d7611b7445a05e4bbc3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-09-publishing.md"
+      },
+      {
+        "digest": "f7f02932d496bc7ff9ef8dc2fb2381e0dc02db166aed785a9a4355962f703ea3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-10-comments-moderation.md"
+      },
+      {
+        "digest": "4e640743375b2195c03f866aa37514f838f05c047fc0f82369ada24b6f2a500a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-11-workflow-nodes.md"
+      },
+      {
+        "digest": "173f6769bbb635e492d268a233071e306c3960fa8b07cb9de909a419adf983a0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-12-agency-tool.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "72883318c300bcdb2b4806e155b278fdd46c29e330bdde8cba162eb87b5762b2",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/058-meta-channels/spec.md"
+      },
+      {
+        "digest": "8725ad616ad0731cc12604f9dc7cfa0723d5415de5f33024b6bbef1235edcd42",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/claude-plan.md"
+      },
+      {
+        "digest": "88574faae302cd67ff617dc9400814b0f3988550f3023e72a2b1d5921de1bdcc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/claude-spec.md"
+      },
+      {
+        "digest": "9c09336526dd2ac03c3017f27f57d084b6701e2213d517189a65f17bfc8d37f5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "995b79c1983bcf71ce4b44b1546dd91b0da72f6182aae8fed03dbf723f2d04f1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/consolidated-review.md"
+      },
+      {
+        "digest": "6822892793eef271085508adc3a815956b5927c5893bdf426be1d24096e11cdc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/security-audit-round-1.md"
+      },
+      {
+        "digest": "923e2af7815d5536994ba4a3de94f8b6f3f883d615604a776b5e518c4fa9b118",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "47b46f976c37a05628d700372b96037866c07a2588f9a48e5b45b5fc9ddc9936",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/index.md"
+      },
+      {
+        "digest": "1123efc19e292c2bef0eda8650b9de26ee61df54e6c55ccf5f1fca6496ac938a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-01-db-schema.md"
+      },
+      {
+        "digest": "7b99224c5741af123273f066823a2df65d77414331792738a8806bff15fdd7d6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-02-feature-flag-menu.md"
+      },
+      {
+        "digest": "901011dc60979acc90576fa7b6fd5240f64e987e020149613c1e4371cca99bfa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-03-meta-graph-client.md"
+      },
+      {
+        "digest": "169c049296a915527344e8d3ea95589c6beabce2b402eee6ed0e50103dae595a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-04-oauth-connection.md"
+      },
+      {
+        "digest": "75ef4857c354146fb72c9457d58c6af29c1059836c82ee53f66a55c2252988e8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-05-webhook-ingestion.md"
+      },
+      {
+        "digest": "82446a063f082c0827cdc5cd8ff8d860d7717a12cfe611de265678d9b1d65f0e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-06-inbox-backend.md"
+      },
+      {
+        "digest": "fa04f12e6c576c53fd1cdebe5d237df1bed60099f13f6d0be871bc09909e8d0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-07-inbox-frontend.md"
+      },
+      {
+        "digest": "d67d4718f6885c14c79a7e3b804ce0beac00bad93aafaca1848c9fc929adc068",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-08-ai-draft.md"
+      },
+      {
+        "digest": "ab35e9d93b7f7a8946a6a1e4506475ebabe6777639d70d7611b7445a05e4bbc3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-09-publishing.md"
+      },
+      {
+        "digest": "f7f02932d496bc7ff9ef8dc2fb2381e0dc02db166aed785a9a4355962f703ea3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-10-comments-moderation.md"
+      },
+      {
+        "digest": "4e640743375b2195c03f866aa37514f838f05c047fc0f82369ada24b6f2a500a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-11-workflow-nodes.md"
+      },
+      {
+        "digest": "173f6769bbb635e492d268a233071e306c3960fa8b07cb9de909a419adf983a0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-12-agency-tool.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/058-meta-channels/spec.md",
+    "digest": "72883318c300bcdb2b4806e155b278fdd46c29e330bdde8cba162eb87b5762b2",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.709055Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-03-27T07:08:29+07:00",
+      "spec_last_changed_at": "2026-03-27T07:08:29+07:00"
+    },
+    "revision": null,
+    "slug": "058-meta-channels",
+    "spec_id": "058",
+    "title": "Feature 058 — Meta Channels (Facebook Page & Messenger Integration)"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.709055Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.709055Z",
+    "sources": [
+      {
+        "digest": "72883318c300bcdb2b4806e155b278fdd46c29e330bdde8cba162eb87b5762b2",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/058-meta-channels/spec.md"
+      },
+      {
+        "digest": "8725ad616ad0731cc12604f9dc7cfa0723d5415de5f33024b6bbef1235edcd42",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/claude-plan.md"
+      },
+      {
+        "digest": "88574faae302cd67ff617dc9400814b0f3988550f3023e72a2b1d5921de1bdcc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/claude-spec.md"
+      },
+      {
+        "digest": "9c09336526dd2ac03c3017f27f57d084b6701e2213d517189a65f17bfc8d37f5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "995b79c1983bcf71ce4b44b1546dd91b0da72f6182aae8fed03dbf723f2d04f1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/consolidated-review.md"
+      },
+      {
+        "digest": "6822892793eef271085508adc3a815956b5927c5893bdf426be1d24096e11cdc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/security-audit-round-1.md"
+      },
+      {
+        "digest": "923e2af7815d5536994ba4a3de94f8b6f3f883d615604a776b5e518c4fa9b118",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "47b46f976c37a05628d700372b96037866c07a2588f9a48e5b45b5fc9ddc9936",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/index.md"
+      },
+      {
+        "digest": "1123efc19e292c2bef0eda8650b9de26ee61df54e6c55ccf5f1fca6496ac938a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-01-db-schema.md"
+      },
+      {
+        "digest": "7b99224c5741af123273f066823a2df65d77414331792738a8806bff15fdd7d6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-02-feature-flag-menu.md"
+      },
+      {
+        "digest": "901011dc60979acc90576fa7b6fd5240f64e987e020149613c1e4371cca99bfa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-03-meta-graph-client.md"
+      },
+      {
+        "digest": "169c049296a915527344e8d3ea95589c6beabce2b402eee6ed0e50103dae595a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-04-oauth-connection.md"
+      },
+      {
+        "digest": "75ef4857c354146fb72c9457d58c6af29c1059836c82ee53f66a55c2252988e8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-05-webhook-ingestion.md"
+      },
+      {
+        "digest": "82446a063f082c0827cdc5cd8ff8d860d7717a12cfe611de265678d9b1d65f0e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-06-inbox-backend.md"
+      },
+      {
+        "digest": "fa04f12e6c576c53fd1cdebe5d237df1bed60099f13f6d0be871bc09909e8d0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-07-inbox-frontend.md"
+      },
+      {
+        "digest": "d67d4718f6885c14c79a7e3b804ce0beac00bad93aafaca1848c9fc929adc068",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-08-ai-draft.md"
+      },
+      {
+        "digest": "ab35e9d93b7f7a8946a6a1e4506475ebabe6777639d70d7611b7445a05e4bbc3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-09-publishing.md"
+      },
+      {
+        "digest": "f7f02932d496bc7ff9ef8dc2fb2381e0dc02db166aed785a9a4355962f703ea3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-10-comments-moderation.md"
+      },
+      {
+        "digest": "4e640743375b2195c03f866aa37514f838f05c047fc0f82369ada24b6f2a500a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-11-workflow-nodes.md"
+      },
+      {
+        "digest": "173f6769bbb635e492d268a233071e306c3960fa8b07cb9de909a419adf983a0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-12-agency-tool.md"
+      },
+      {
+        "digest": "7055f9ee362261730028a1f4b0d9d0f5b86e9e0d181949188dcb94b5a7cf994e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-13-rag-archival.md"
+      },
+      {
+        "digest": "d5543acaff6b3b6e9cf1a9e3e564d763244d2e95acfb3c62063cbab0c3e0a886",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-14-automation-rules.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "72883318c300bcdb2b4806e155b278fdd46c29e330bdde8cba162eb87b5762b2",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/058-meta-channels/spec.md"
+      },
+      {
+        "digest": "8725ad616ad0731cc12604f9dc7cfa0723d5415de5f33024b6bbef1235edcd42",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/claude-plan.md"
+      },
+      {
+        "digest": "88574faae302cd67ff617dc9400814b0f3988550f3023e72a2b1d5921de1bdcc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/claude-spec.md"
+      },
+      {
+        "digest": "9c09336526dd2ac03c3017f27f57d084b6701e2213d517189a65f17bfc8d37f5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "995b79c1983bcf71ce4b44b1546dd91b0da72f6182aae8fed03dbf723f2d04f1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/consolidated-review.md"
+      },
+      {
+        "digest": "6822892793eef271085508adc3a815956b5927c5893bdf426be1d24096e11cdc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/security-audit-round-1.md"
+      },
+      {
+        "digest": "923e2af7815d5536994ba4a3de94f8b6f3f883d615604a776b5e518c4fa9b118",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "47b46f976c37a05628d700372b96037866c07a2588f9a48e5b45b5fc9ddc9936",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/index.md"
+      },
+      {
+        "digest": "1123efc19e292c2bef0eda8650b9de26ee61df54e6c55ccf5f1fca6496ac938a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-01-db-schema.md"
+      },
+      {
+        "digest": "7b99224c5741af123273f066823a2df65d77414331792738a8806bff15fdd7d6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-02-feature-flag-menu.md"
+      },
+      {
+        "digest": "901011dc60979acc90576fa7b6fd5240f64e987e020149613c1e4371cca99bfa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-03-meta-graph-client.md"
+      },
+      {
+        "digest": "169c049296a915527344e8d3ea95589c6beabce2b402eee6ed0e50103dae595a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-04-oauth-connection.md"
+      },
+      {
+        "digest": "75ef4857c354146fb72c9457d58c6af29c1059836c82ee53f66a55c2252988e8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-05-webhook-ingestion.md"
+      },
+      {
+        "digest": "82446a063f082c0827cdc5cd8ff8d860d7717a12cfe611de265678d9b1d65f0e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-06-inbox-backend.md"
+      },
+      {
+        "digest": "fa04f12e6c576c53fd1cdebe5d237df1bed60099f13f6d0be871bc09909e8d0c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-07-inbox-frontend.md"
+      },
+      {
+        "digest": "d67d4718f6885c14c79a7e3b804ce0beac00bad93aafaca1848c9fc929adc068",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-08-ai-draft.md"
+      },
+      {
+        "digest": "ab35e9d93b7f7a8946a6a1e4506475ebabe6777639d70d7611b7445a05e4bbc3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-09-publishing.md"
+      },
+      {
+        "digest": "f7f02932d496bc7ff9ef8dc2fb2381e0dc02db166aed785a9a4355962f703ea3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-10-comments-moderation.md"
+      },
+      {
+        "digest": "4e640743375b2195c03f866aa37514f838f05c047fc0f82369ada24b6f2a500a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-11-workflow-nodes.md"
+      },
+      {
+        "digest": "173f6769bbb635e492d268a233071e306c3960fa8b07cb9de909a419adf983a0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-12-agency-tool.md"
+      },
+      {
+        "digest": "7055f9ee362261730028a1f4b0d9d0f5b86e9e0d181949188dcb94b5a7cf994e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-13-rag-archival.md"
+      },
+      {
+        "digest": "d5543acaff6b3b6e9cf1a9e3e564d763244d2e95acfb3c62063cbab0c3e0a886",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/058-meta-channels/sections/section-14-automation-rules.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 44,
+    "unresolved": 44
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.709055Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

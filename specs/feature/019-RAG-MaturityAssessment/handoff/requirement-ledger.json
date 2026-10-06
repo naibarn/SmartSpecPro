@@ -1,0 +1,140 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L922"
+      ],
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L922",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "10de817c0b6ea5fae5f93dd779bc2cb083e44313be792fa902f769d2bb59d945",
+      "requirement_id": "REQ-D0A898726709",
+      "requirement_text": "1. **Smart Chunking** — New `ChunkStrategy.RECURSIVE` becomes default; existing `FIXED` strategy preserved for backward compat. Old chunks remain valid.",
+      "source_spec_digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L924"
+      ],
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L924",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2097f94da5a745b6d729c43778105459b30ca4a2f0bdb6bfa7ddea9c1e679b06",
+      "requirement_id": "REQ-E8A6452FE60B",
+      "requirement_text": "2. **Query Processing** — Default is `PASSTHROUGH` (no processing). Opt-in via `RAGConfig.query_processing`.",
+      "source_spec_digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L926"
+      ],
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L926",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3e65efb956359ef3f5c57c3d5991d580a09f32b1d7d7d494c7930a8c453fb972",
+      "requirement_id": "REQ-1C760FC8E423",
+      "requirement_text": "3. **Cross-Encoder Reranking** — New default strategy; LLM and heuristic remain as fallbacks. Existing behavior unchanged if cross-encoder fails.",
+      "source_spec_digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L928"
+      ],
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L928",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5355c735a0a4602d812f13688b4e26aca1d60ecf69cf9a80d05a1a56ebe3d056",
+      "requirement_id": "REQ-5F4D6E3077E0",
+      "requirement_text": "4. **Guardrails** — New quality assessment is appended to `RAGResult`. Existing consumers ignore new fields.",
+      "source_spec_digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L930"
+      ],
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L930",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "39d75075613826643f9c58c18549e192469145b052afc5b1e106d554cdb922e3",
+      "requirement_id": "REQ-7C4AE5F031AD",
+      "requirement_text": "5. **RAG Executor** — Replaces mock with real engine. Existing workflow nodes get real results instead of fake ones.",
+      "source_spec_digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/019-RAG-MaturityAssessment/spec.md#L934"
+      ],
+      "authority_source": "specs/feature/019-RAG-MaturityAssessment/spec.md#L934",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e2387598f96e2a9d53f6013adf151d0a0e1bd31b367026e8157e9e16593725f3",
+      "requirement_id": "REQ-4937ADF21533",
+      "requirement_text": "No database schema changes required. Smart chunking improves future chunks; existing chunks remain functional.",
+      "source_spec_digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "de7303e9725d58bed304accf9af37d85705a335d6fe81c7264c70302c02aa48b",
+  "spec_id": "019"
+}

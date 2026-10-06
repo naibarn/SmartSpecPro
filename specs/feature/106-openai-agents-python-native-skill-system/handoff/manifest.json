@@ -1,0 +1,397 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/spec.md"
+      },
+      {
+        "digest": "d7023a0da69c28926c05b9edb79af68ec78a6141c8dea18b00dd935bdf57569b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
+      },
+      {
+        "digest": "298854163e0445094be6dcd833acd3d9b0658b932c63821771277a004c9cb605",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
+      },
+      {
+        "digest": "ff7c05234585befc25ab24f1a4c527af0bb1c73812fd7884b7cd7779e688c62e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "8995112e07c899e3688efa38e59e4ca6787354837be24108ea58b4dfeea18be7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
+      },
+      {
+        "digest": "53ca6456379046706291a1e873a40c40a321498d8ae462ac9ae863b4a54a67d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
+      },
+      {
+        "digest": "36084b7c380955d24472532510d56b3ef90c3c6c0f61355be439be1b3cabc9fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
+      },
+      {
+        "digest": "c64dbd3db7fe672a7f65b8a2baafcc8d9cf228ac16e9e5ebdfdc041192f22994",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
+      },
+      {
+        "digest": "55feaea4fdf04d99f293377b08fb3c18489006906758b6e8cdd1cd404a9f6dc3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
+      },
+      {
+        "digest": "07802a703db28e931b1bfb30ec82bc018bdb8c5b28dde9c5505c8fed0c7d9051",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/spec.md"
+      },
+      {
+        "digest": "d7023a0da69c28926c05b9edb79af68ec78a6141c8dea18b00dd935bdf57569b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
+      },
+      {
+        "digest": "298854163e0445094be6dcd833acd3d9b0658b932c63821771277a004c9cb605",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
+      },
+      {
+        "digest": "ff7c05234585befc25ab24f1a4c527af0bb1c73812fd7884b7cd7779e688c62e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "8995112e07c899e3688efa38e59e4ca6787354837be24108ea58b4dfeea18be7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
+      },
+      {
+        "digest": "53ca6456379046706291a1e873a40c40a321498d8ae462ac9ae863b4a54a67d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
+      },
+      {
+        "digest": "36084b7c380955d24472532510d56b3ef90c3c6c0f61355be439be1b3cabc9fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
+      },
+      {
+        "digest": "c64dbd3db7fe672a7f65b8a2baafcc8d9cf228ac16e9e5ebdfdc041192f22994",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
+      },
+      {
+        "digest": "55feaea4fdf04d99f293377b08fb3c18489006906758b6e8cdd1cd404a9f6dc3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
+      },
+      {
+        "digest": "07802a703db28e931b1bfb30ec82bc018bdb8c5b28dde9c5505c8fed0c7d9051",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/spec.md"
+      },
+      {
+        "digest": "d7023a0da69c28926c05b9edb79af68ec78a6141c8dea18b00dd935bdf57569b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
+      },
+      {
+        "digest": "298854163e0445094be6dcd833acd3d9b0658b932c63821771277a004c9cb605",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
+      },
+      {
+        "digest": "ff7c05234585befc25ab24f1a4c527af0bb1c73812fd7884b7cd7779e688c62e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "8995112e07c899e3688efa38e59e4ca6787354837be24108ea58b4dfeea18be7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
+      },
+      {
+        "digest": "53ca6456379046706291a1e873a40c40a321498d8ae462ac9ae863b4a54a67d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
+      },
+      {
+        "digest": "36084b7c380955d24472532510d56b3ef90c3c6c0f61355be439be1b3cabc9fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
+      },
+      {
+        "digest": "c64dbd3db7fe672a7f65b8a2baafcc8d9cf228ac16e9e5ebdfdc041192f22994",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
+      },
+      {
+        "digest": "55feaea4fdf04d99f293377b08fb3c18489006906758b6e8cdd1cd404a9f6dc3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
+      },
+      {
+        "digest": "07802a703db28e931b1bfb30ec82bc018bdb8c5b28dde9c5505c8fed0c7d9051",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/106-openai-agents-python-native-skill-system/spec.md",
+    "digest": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.985514Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-23T08:41:19+07:00",
+      "spec_last_changed_at": "2026-04-23T08:41:19+07:00"
+    },
+    "revision": "0.1",
+    "slug": "106-openai-agents-python-native-skill-system",
+    "spec_id": "106",
+    "title": "Feature 106: OpenAI Agents Python Native Skill System"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.985514Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.985514Z",
+    "sources": [
+      {
+        "digest": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/spec.md"
+      },
+      {
+        "digest": "d7023a0da69c28926c05b9edb79af68ec78a6141c8dea18b00dd935bdf57569b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
+      },
+      {
+        "digest": "298854163e0445094be6dcd833acd3d9b0658b932c63821771277a004c9cb605",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
+      },
+      {
+        "digest": "ff7c05234585befc25ab24f1a4c527af0bb1c73812fd7884b7cd7779e688c62e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "8995112e07c899e3688efa38e59e4ca6787354837be24108ea58b4dfeea18be7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
+      },
+      {
+        "digest": "53ca6456379046706291a1e873a40c40a321498d8ae462ac9ae863b4a54a67d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
+      },
+      {
+        "digest": "36084b7c380955d24472532510d56b3ef90c3c6c0f61355be439be1b3cabc9fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
+      },
+      {
+        "digest": "c64dbd3db7fe672a7f65b8a2baafcc8d9cf228ac16e9e5ebdfdc041192f22994",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
+      },
+      {
+        "digest": "55feaea4fdf04d99f293377b08fb3c18489006906758b6e8cdd1cd404a9f6dc3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
+      },
+      {
+        "digest": "07802a703db28e931b1bfb30ec82bc018bdb8c5b28dde9c5505c8fed0c7d9051",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/spec.md"
+      },
+      {
+        "digest": "d7023a0da69c28926c05b9edb79af68ec78a6141c8dea18b00dd935bdf57569b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
+      },
+      {
+        "digest": "298854163e0445094be6dcd833acd3d9b0658b932c63821771277a004c9cb605",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
+      },
+      {
+        "digest": "ff7c05234585befc25ab24f1a4c527af0bb1c73812fd7884b7cd7779e688c62e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "8995112e07c899e3688efa38e59e4ca6787354837be24108ea58b4dfeea18be7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
+      },
+      {
+        "digest": "53ca6456379046706291a1e873a40c40a321498d8ae462ac9ae863b4a54a67d9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
+      },
+      {
+        "digest": "36084b7c380955d24472532510d56b3ef90c3c6c0f61355be439be1b3cabc9fe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
+      },
+      {
+        "digest": "c64dbd3db7fe672a7f65b8a2baafcc8d9cf228ac16e9e5ebdfdc041192f22994",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
+      },
+      {
+        "digest": "55feaea4fdf04d99f293377b08fb3c18489006906758b6e8cdd1cd404a9f6dc3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
+      },
+      {
+        "digest": "07802a703db28e931b1bfb30ec82bc018bdb8c5b28dde9c5505c8fed0c7d9051",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 98,
+    "unresolved": 98
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.985514Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

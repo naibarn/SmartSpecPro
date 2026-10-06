@@ -1,0 +1,572 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md"
+      },
+      {
+        "digest": "3ff6060630312d57a3c554457a4254c8089600db671ab9c9afc1026888618382",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/claude-plan.md"
+      },
+      {
+        "digest": "7f7199eb8c84f00975ec20e6ac56a9b58bdc33ee3de0f893743c8e2ce3aac158",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/claude-spec.md"
+      },
+      {
+        "digest": "f95c50b22ee30a79274cf862d9c3b89fd86d76b0552fb8e2f79fe4c60abf9716",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/cross-section-review.md"
+      },
+      {
+        "digest": "9b2ef820dc725af6e5ea0a3b4a8598528c773abe243eea101402096242de7e95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "0010a23d3ead5edf0a4d532e0c62d785149047fc1eabb8643ed2ca0be9e2dca3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/gap-review-rounds-1-5.md"
+      },
+      {
+        "digest": "e92d37c679927dfc90f8c656f575dd2143dd8871713d8036eb1e1c333e5e652d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/gap-review-rounds-11-20.md"
+      },
+      {
+        "digest": "7ec7de7031cc2af870a69170ce8b533823d2557780a6f576405ad01e828c169f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/section-01-evidence.md"
+      },
+      {
+        "digest": "2efc98bb8f0bde9a4fe8cc4812fb42972b7e12f382b54978391ad89c3637789d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/section-02-evidence.md"
+      },
+      {
+        "digest": "85f31defb3c8d551ece61555d45847faade079b14c4019abff0526ef9b28ca1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/ui-browser-verification.md"
+      },
+      {
+        "digest": "d459adb0d24cd2725d816476539984dae4ef657130534a90afa147e7bc4231ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/usage.md"
+      },
+      {
+        "digest": "d96ae2942b71af23a087afee483495dba52340bec48c6950d2341e2e11c2bd2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/deep-review-10-rounds.md"
+      },
+      {
+        "digest": "46d49f83c80b66954807ac6a16f819d075b0da3c32bbe63148b289d81b790200",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/final-5-rounds.md"
+      },
+      {
+        "digest": "38cb931cf089d53acd847a2d15b4d66cf4ddd19336a62d3a1f48774735ba6490",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "9a89f54a33d37a0bf80958bdff9291a9c08e20a0e77f5a2690465dfe28302cbe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/index.md"
+      },
+      {
+        "digest": "579989c4dccc81686e07d0aa83954a7f2c2b3a19a76dcecd0312c0d38339181b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/section-01-web-contract-api-skill.md"
+      },
+      {
+        "digest": "62bd4eb6586ddd3d9667fa0ab5d68d23ebb32d3d0a928ead965a7be01a61263c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/section-02-web-ui-review-broll.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md"
+      },
+      {
+        "digest": "3ff6060630312d57a3c554457a4254c8089600db671ab9c9afc1026888618382",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/claude-plan.md"
+      },
+      {
+        "digest": "7f7199eb8c84f00975ec20e6ac56a9b58bdc33ee3de0f893743c8e2ce3aac158",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/claude-spec.md"
+      },
+      {
+        "digest": "f95c50b22ee30a79274cf862d9c3b89fd86d76b0552fb8e2f79fe4c60abf9716",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/cross-section-review.md"
+      },
+      {
+        "digest": "9b2ef820dc725af6e5ea0a3b4a8598528c773abe243eea101402096242de7e95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "0010a23d3ead5edf0a4d532e0c62d785149047fc1eabb8643ed2ca0be9e2dca3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/gap-review-rounds-1-5.md"
+      },
+      {
+        "digest": "e92d37c679927dfc90f8c656f575dd2143dd8871713d8036eb1e1c333e5e652d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/gap-review-rounds-11-20.md"
+      },
+      {
+        "digest": "7ec7de7031cc2af870a69170ce8b533823d2557780a6f576405ad01e828c169f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/section-01-evidence.md"
+      },
+      {
+        "digest": "2efc98bb8f0bde9a4fe8cc4812fb42972b7e12f382b54978391ad89c3637789d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/section-02-evidence.md"
+      },
+      {
+        "digest": "85f31defb3c8d551ece61555d45847faade079b14c4019abff0526ef9b28ca1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/ui-browser-verification.md"
+      },
+      {
+        "digest": "d459adb0d24cd2725d816476539984dae4ef657130534a90afa147e7bc4231ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/usage.md"
+      },
+      {
+        "digest": "d96ae2942b71af23a087afee483495dba52340bec48c6950d2341e2e11c2bd2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/deep-review-10-rounds.md"
+      },
+      {
+        "digest": "46d49f83c80b66954807ac6a16f819d075b0da3c32bbe63148b289d81b790200",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/final-5-rounds.md"
+      },
+      {
+        "digest": "38cb931cf089d53acd847a2d15b4d66cf4ddd19336a62d3a1f48774735ba6490",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "9a89f54a33d37a0bf80958bdff9291a9c08e20a0e77f5a2690465dfe28302cbe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/index.md"
+      },
+      {
+        "digest": "579989c4dccc81686e07d0aa83954a7f2c2b3a19a76dcecd0312c0d38339181b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/section-01-web-contract-api-skill.md"
+      },
+      {
+        "digest": "62bd4eb6586ddd3d9667fa0ab5d68d23ebb32d3d0a928ead965a7be01a61263c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/section-02-web-ui-review-broll.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md"
+      },
+      {
+        "digest": "3ff6060630312d57a3c554457a4254c8089600db671ab9c9afc1026888618382",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/claude-plan.md"
+      },
+      {
+        "digest": "7f7199eb8c84f00975ec20e6ac56a9b58bdc33ee3de0f893743c8e2ce3aac158",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/claude-spec.md"
+      },
+      {
+        "digest": "f95c50b22ee30a79274cf862d9c3b89fd86d76b0552fb8e2f79fe4c60abf9716",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/cross-section-review.md"
+      },
+      {
+        "digest": "9b2ef820dc725af6e5ea0a3b4a8598528c773abe243eea101402096242de7e95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "0010a23d3ead5edf0a4d532e0c62d785149047fc1eabb8643ed2ca0be9e2dca3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/gap-review-rounds-1-5.md"
+      },
+      {
+        "digest": "e92d37c679927dfc90f8c656f575dd2143dd8871713d8036eb1e1c333e5e652d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/gap-review-rounds-11-20.md"
+      },
+      {
+        "digest": "7ec7de7031cc2af870a69170ce8b533823d2557780a6f576405ad01e828c169f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/section-01-evidence.md"
+      },
+      {
+        "digest": "2efc98bb8f0bde9a4fe8cc4812fb42972b7e12f382b54978391ad89c3637789d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/section-02-evidence.md"
+      },
+      {
+        "digest": "85f31defb3c8d551ece61555d45847faade079b14c4019abff0526ef9b28ca1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/ui-browser-verification.md"
+      },
+      {
+        "digest": "d459adb0d24cd2725d816476539984dae4ef657130534a90afa147e7bc4231ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/usage.md"
+      },
+      {
+        "digest": "d96ae2942b71af23a087afee483495dba52340bec48c6950d2341e2e11c2bd2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/deep-review-10-rounds.md"
+      },
+      {
+        "digest": "46d49f83c80b66954807ac6a16f819d075b0da3c32bbe63148b289d81b790200",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/final-5-rounds.md"
+      },
+      {
+        "digest": "38cb931cf089d53acd847a2d15b4d66cf4ddd19336a62d3a1f48774735ba6490",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "9a89f54a33d37a0bf80958bdff9291a9c08e20a0e77f5a2690465dfe28302cbe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/index.md"
+      },
+      {
+        "digest": "579989c4dccc81686e07d0aa83954a7f2c2b3a19a76dcecd0312c0d38339181b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/section-01-web-contract-api-skill.md"
+      },
+      {
+        "digest": "62bd4eb6586ddd3d9667fa0ab5d68d23ebb32d3d0a928ead965a7be01a61263c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/section-02-web-ui-review-broll.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md",
+    "digest": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.482496Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-08-30T21:05:27+07:00",
+      "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
+    },
+    "revision": null,
+    "slug": "168-vertical-drama-special-tie-in-footage-web",
+    "spec_id": "168",
+    "title": "Feature 168 — Special Tie-in Footage-first Web Flow"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.482496Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.482496Z",
+    "sources": [
+      {
+        "digest": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md"
+      },
+      {
+        "digest": "3ff6060630312d57a3c554457a4254c8089600db671ab9c9afc1026888618382",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/claude-plan.md"
+      },
+      {
+        "digest": "7f7199eb8c84f00975ec20e6ac56a9b58bdc33ee3de0f893743c8e2ce3aac158",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/claude-spec.md"
+      },
+      {
+        "digest": "f95c50b22ee30a79274cf862d9c3b89fd86d76b0552fb8e2f79fe4c60abf9716",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/cross-section-review.md"
+      },
+      {
+        "digest": "9b2ef820dc725af6e5ea0a3b4a8598528c773abe243eea101402096242de7e95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "0010a23d3ead5edf0a4d532e0c62d785149047fc1eabb8643ed2ca0be9e2dca3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/gap-review-rounds-1-5.md"
+      },
+      {
+        "digest": "e92d37c679927dfc90f8c656f575dd2143dd8871713d8036eb1e1c333e5e652d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/gap-review-rounds-11-20.md"
+      },
+      {
+        "digest": "7ec7de7031cc2af870a69170ce8b533823d2557780a6f576405ad01e828c169f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/section-01-evidence.md"
+      },
+      {
+        "digest": "2efc98bb8f0bde9a4fe8cc4812fb42972b7e12f382b54978391ad89c3637789d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/section-02-evidence.md"
+      },
+      {
+        "digest": "85f31defb3c8d551ece61555d45847faade079b14c4019abff0526ef9b28ca1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/ui-browser-verification.md"
+      },
+      {
+        "digest": "d459adb0d24cd2725d816476539984dae4ef657130534a90afa147e7bc4231ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/usage.md"
+      },
+      {
+        "digest": "d96ae2942b71af23a087afee483495dba52340bec48c6950d2341e2e11c2bd2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/deep-review-10-rounds.md"
+      },
+      {
+        "digest": "46d49f83c80b66954807ac6a16f819d075b0da3c32bbe63148b289d81b790200",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/final-5-rounds.md"
+      },
+      {
+        "digest": "38cb931cf089d53acd847a2d15b4d66cf4ddd19336a62d3a1f48774735ba6490",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "9a89f54a33d37a0bf80958bdff9291a9c08e20a0e77f5a2690465dfe28302cbe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/index.md"
+      },
+      {
+        "digest": "579989c4dccc81686e07d0aa83954a7f2c2b3a19a76dcecd0312c0d38339181b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/section-01-web-contract-api-skill.md"
+      },
+      {
+        "digest": "62bd4eb6586ddd3d9667fa0ab5d68d23ebb32d3d0a928ead965a7be01a61263c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/section-02-web-ui-review-broll.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md"
+      },
+      {
+        "digest": "3ff6060630312d57a3c554457a4254c8089600db671ab9c9afc1026888618382",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/claude-plan.md"
+      },
+      {
+        "digest": "7f7199eb8c84f00975ec20e6ac56a9b58bdc33ee3de0f893743c8e2ce3aac158",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/claude-spec.md"
+      },
+      {
+        "digest": "f95c50b22ee30a79274cf862d9c3b89fd86d76b0552fb8e2f79fe4c60abf9716",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/cross-section-review.md"
+      },
+      {
+        "digest": "9b2ef820dc725af6e5ea0a3b4a8598528c773abe243eea101402096242de7e95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "0010a23d3ead5edf0a4d532e0c62d785149047fc1eabb8643ed2ca0be9e2dca3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/gap-review-rounds-1-5.md"
+      },
+      {
+        "digest": "e92d37c679927dfc90f8c656f575dd2143dd8871713d8036eb1e1c333e5e652d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/gap-review-rounds-11-20.md"
+      },
+      {
+        "digest": "7ec7de7031cc2af870a69170ce8b533823d2557780a6f576405ad01e828c169f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/section-01-evidence.md"
+      },
+      {
+        "digest": "2efc98bb8f0bde9a4fe8cc4812fb42972b7e12f382b54978391ad89c3637789d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/section-02-evidence.md"
+      },
+      {
+        "digest": "85f31defb3c8d551ece61555d45847faade079b14c4019abff0526ef9b28ca1a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/ui-browser-verification.md"
+      },
+      {
+        "digest": "d459adb0d24cd2725d816476539984dae4ef657130534a90afa147e7bc4231ec",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/usage.md"
+      },
+      {
+        "digest": "d96ae2942b71af23a087afee483495dba52340bec48c6950d2341e2e11c2bd2b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/deep-review-10-rounds.md"
+      },
+      {
+        "digest": "46d49f83c80b66954807ac6a16f819d075b0da3c32bbe63148b289d81b790200",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/final-5-rounds.md"
+      },
+      {
+        "digest": "38cb931cf089d53acd847a2d15b4d66cf4ddd19336a62d3a1f48774735ba6490",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "9a89f54a33d37a0bf80958bdff9291a9c08e20a0e77f5a2690465dfe28302cbe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/index.md"
+      },
+      {
+        "digest": "579989c4dccc81686e07d0aa83954a7f2c2b3a19a76dcecd0312c0d38339181b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/section-01-web-contract-api-skill.md"
+      },
+      {
+        "digest": "62bd4eb6586ddd3d9667fa0ab5d68d23ebb32d3d0a928ead965a7be01a61263c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/section-02-web-ui-review-broll.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 31,
+    "unresolved": 31
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.482496Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

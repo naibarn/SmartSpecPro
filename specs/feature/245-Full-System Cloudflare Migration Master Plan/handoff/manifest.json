@@ -1,0 +1,801 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "220",
+        "referenced_spec_id": "220",
+        "referencing_spec_id": "245",
+        "relation_text": "supersede",
+        "requirement_ids": [
+          "R1",
+          "R4",
+          "R5",
+          "R5-01",
+          "R5-15"
+        ],
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "successor_spec_id": "245"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "245",
+        "relation_text": "supersede",
+        "requirement_ids": [
+          "R1",
+          "R4",
+          "R5",
+          "R5-01",
+          "R5-15"
+        ],
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "successor_spec_id": "245"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "245",
+        "relation_text": "merges",
+        "requirement_ids": [
+          "R1",
+          "R2"
+        ],
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L88",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "successor_spec_id": "245"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "229",
+        "referenced_spec_id": "229",
+        "referencing_spec_id": "245",
+        "relation_text": "supersede",
+        "requirement_ids": [
+          "R1",
+          "R4",
+          "R5",
+          "R5-01",
+          "R5-15"
+        ],
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "successor_spec_id": "245"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "232",
+        "referenced_spec_id": "232",
+        "referencing_spec_id": "245",
+        "relation_text": "replace",
+        "requirement_ids": [
+          "R2"
+        ],
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L1313",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "successor_spec_id": "245"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "232",
+        "referenced_spec_id": "232",
+        "referencing_spec_id": "245",
+        "relation_text": "replacement",
+        "requirement_ids": [
+          "R2"
+        ],
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L1953",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "successor_spec_id": "245"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "232",
+        "referenced_spec_id": "232",
+        "referencing_spec_id": "245",
+        "relation_text": "merge",
+        "requirement_ids": [
+          "R2",
+          "R3",
+          "R4"
+        ],
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L2721",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "successor_spec_id": "245"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "232",
+        "referenced_spec_id": "232",
+        "referencing_spec_id": "245",
+        "relation_text": "supersede",
+        "requirement_ids": [
+          "R1",
+          "R4",
+          "R5",
+          "R5-01",
+          "R5-15"
+        ],
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "successor_spec_id": "245"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "232",
+        "referenced_spec_id": "232",
+        "referencing_spec_id": "245",
+        "relation_text": "merges",
+        "requirement_ids": [
+          "R1",
+          "R2"
+        ],
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L88",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "successor_spec_id": "245"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "242",
+        "referenced_spec_id": "242",
+        "referencing_spec_id": "245",
+        "relation_text": "merge",
+        "requirement_ids": [
+          "R2",
+          "R3",
+          "R4"
+        ],
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L2721",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "successor_spec_id": "245"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "242",
+        "referenced_spec_id": "242",
+        "referencing_spec_id": "245",
+        "relation_text": "supersede",
+        "requirement_ids": [
+          "R1",
+          "R4",
+          "R5",
+          "R5-01",
+          "R5-15"
+        ],
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "successor_spec_id": "245"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "245",
+        "referenced_spec_id": "245",
+        "referencing_spec_id": "231",
+        "relation_text": "superseded",
+        "requirement_ids": [
+          "R2",
+          "R3",
+          "R5",
+          "R6",
+          "R7"
+        ],
+        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
+        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "successor_spec_id": "231"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "245",
+        "referenced_spec_id": "245",
+        "referencing_spec_id": "232",
+        "relation_text": "superseded",
+        "requirement_ids": [
+          "R1.MD",
+          "R2",
+          "R2.1"
+        ],
+        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
+        "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
+        "successor_spec_id": "232"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "245",
+        "referenced_spec_id": "245",
+        "referencing_spec_id": "257",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L174",
+        "source_digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
+        "successor_spec_id": "257"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md"
+      },
+      {
+        "digest": "bc22fb439270bf4ecc77649b00154a225f5a3f85813987bd4ae56bbf159f43c8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/claude-plan.md"
+      },
+      {
+        "digest": "94af12283eaf054876f247f23e47bd694579f4bd0671105601eb6dc47bdca32c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/claude-spec.md"
+      },
+      {
+        "digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "10e090e3a689baf667984bdce19fc7a095ebca85b1b9c1fb3951a0f2a57a5227",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-adversarial-round-1.md"
+      },
+      {
+        "digest": "b0d5b906797ce7da1b030486e876f1307226848999cd9a5da0b252d226e72913",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "22051689577ec56eacdb0d891d9c12d3d1fd28e7e6d87f02694452c87c0e7367",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "dd342a409cde7e69e5aaf73001e6084857f161a7233f7e489f50d99653d42417",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/index.md"
+      },
+      {
+        "digest": "e695de5a051752a1045c9139fa94ff70b9c5a503a4c04514511d5a7d4280a244",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-01-inventory-and-cloudflare-foundation.md"
+      },
+      {
+        "digest": "b410d103227732041e82b14d023bc50459b1577c3c3e82a63201763d188d6a9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-02-search-cache-kv-and-admin-control.md"
+      },
+      {
+        "digest": "e984987ab4f843154074b186660a4df19a8ed7fe6586b2bcb8045a56800ae275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-03-redis-responsibilities-and-durable-objects.md"
+      },
+      {
+        "digest": "456b14147d27ff626456a663869275781d841e874b60a54d2f76a8c3123129e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-04-database-runtime-and-debian-retirement.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md"
+      },
+      {
+        "digest": "bc22fb439270bf4ecc77649b00154a225f5a3f85813987bd4ae56bbf159f43c8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/claude-plan.md"
+      },
+      {
+        "digest": "94af12283eaf054876f247f23e47bd694579f4bd0671105601eb6dc47bdca32c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/claude-spec.md"
+      },
+      {
+        "digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "10e090e3a689baf667984bdce19fc7a095ebca85b1b9c1fb3951a0f2a57a5227",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-adversarial-round-1.md"
+      },
+      {
+        "digest": "b0d5b906797ce7da1b030486e876f1307226848999cd9a5da0b252d226e72913",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "22051689577ec56eacdb0d891d9c12d3d1fd28e7e6d87f02694452c87c0e7367",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "dd342a409cde7e69e5aaf73001e6084857f161a7233f7e489f50d99653d42417",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/index.md"
+      },
+      {
+        "digest": "e695de5a051752a1045c9139fa94ff70b9c5a503a4c04514511d5a7d4280a244",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-01-inventory-and-cloudflare-foundation.md"
+      },
+      {
+        "digest": "b410d103227732041e82b14d023bc50459b1577c3c3e82a63201763d188d6a9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-02-search-cache-kv-and-admin-control.md"
+      },
+      {
+        "digest": "e984987ab4f843154074b186660a4df19a8ed7fe6586b2bcb8045a56800ae275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-03-redis-responsibilities-and-durable-objects.md"
+      },
+      {
+        "digest": "456b14147d27ff626456a663869275781d841e874b60a54d2f76a8c3123129e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-04-database-runtime-and-debian-retirement.md"
+      },
+      {
+        "excerpt": "# Spec 245 Compatibility Compiler",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 1,
+        "path": "apps/web/scripts/cloudflare-migration/README.md"
+      },
+      {
+        "excerpt": "The `smartaihub:migrate` command compiles an owner-maintained JSON evidence manifest into the artifacts named by Spec 245 §2.1. It is a local planning and verification tool; it does not deploy, contact Cloudflare, connect to production, exe",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 3,
+        "path": "apps/web/scripts/cloudflare-migration/README.md"
+      },
+      {
+        "excerpt": "<p>{text(\"One place for SmartSpecPro Cloudflare credentials, permission guides, and safe access checks. The catalog covers services used by this repository and Spec 245; it is not a list of every Cloudflare product.\", \"รวม credential, คู่มื",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 159,
+        "path": "apps/web/client/src/components/admin/CloudflareCredentialCenter.tsx"
+      },
+      {
+        "excerpt": "<p>{text(\"One place for SmartSpecPro Cloudflare credentials, permission guides, and safe access checks. The catalog covers services used by this repository and Spec 245; it is not a list of every Cloudflare product.\", \"รวม credential, คู่มื",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 159,
+        "path": "apps/web/client/src/components/admin/CloudflareCredentialCenter.tsx"
+      },
+      {
+        "excerpt": "describe(\"Spec 245 migration compatibility compiler\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 96,
+        "path": "apps/web/scripts/__tests__/cloudflare-migration-compiler.test.ts"
+      },
+      {
+        "excerpt": "\"Refusing to run G4 tests outside the isolated Spec 245 database\"",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 22,
+        "path": "apps/web/server/services/__tests__/postgresDelegatedWorkerSemaphore.integration.test.ts"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md"
+      },
+      {
+        "digest": "bc22fb439270bf4ecc77649b00154a225f5a3f85813987bd4ae56bbf159f43c8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/claude-plan.md"
+      },
+      {
+        "digest": "94af12283eaf054876f247f23e47bd694579f4bd0671105601eb6dc47bdca32c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/claude-spec.md"
+      },
+      {
+        "digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "10e090e3a689baf667984bdce19fc7a095ebca85b1b9c1fb3951a0f2a57a5227",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-adversarial-round-1.md"
+      },
+      {
+        "digest": "b0d5b906797ce7da1b030486e876f1307226848999cd9a5da0b252d226e72913",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "22051689577ec56eacdb0d891d9c12d3d1fd28e7e6d87f02694452c87c0e7367",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "dd342a409cde7e69e5aaf73001e6084857f161a7233f7e489f50d99653d42417",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/index.md"
+      },
+      {
+        "digest": "e695de5a051752a1045c9139fa94ff70b9c5a503a4c04514511d5a7d4280a244",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-01-inventory-and-cloudflare-foundation.md"
+      },
+      {
+        "digest": "b410d103227732041e82b14d023bc50459b1577c3c3e82a63201763d188d6a9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-02-search-cache-kv-and-admin-control.md"
+      },
+      {
+        "digest": "e984987ab4f843154074b186660a4df19a8ed7fe6586b2bcb8045a56800ae275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-03-redis-responsibilities-and-durable-objects.md"
+      },
+      {
+        "digest": "456b14147d27ff626456a663869275781d841e874b60a54d2f76a8c3123129e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-04-database-runtime-and-debian-retirement.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md",
+    "digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.446947Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-26T09:26:48+07:00",
+      "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
+    },
+    "revision": "8.0",
+    "slug": "245-Full-System Cloudflare Migration Master Plan",
+    "spec_id": "245",
+    "title": "Spec 245 — SmartAIHub Full-System Cloudflare Migration Master Plan (R8 Cutover Amendment)"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.446947Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.446947Z",
+    "sources": [
+      {
+        "digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md"
+      },
+      {
+        "digest": "bc22fb439270bf4ecc77649b00154a225f5a3f85813987bd4ae56bbf159f43c8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/claude-plan.md"
+      },
+      {
+        "digest": "94af12283eaf054876f247f23e47bd694579f4bd0671105601eb6dc47bdca32c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/claude-spec.md"
+      },
+      {
+        "digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "10e090e3a689baf667984bdce19fc7a095ebca85b1b9c1fb3951a0f2a57a5227",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-adversarial-round-1.md"
+      },
+      {
+        "digest": "b0d5b906797ce7da1b030486e876f1307226848999cd9a5da0b252d226e72913",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "22051689577ec56eacdb0d891d9c12d3d1fd28e7e6d87f02694452c87c0e7367",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "dd342a409cde7e69e5aaf73001e6084857f161a7233f7e489f50d99653d42417",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/index.md"
+      },
+      {
+        "digest": "e695de5a051752a1045c9139fa94ff70b9c5a503a4c04514511d5a7d4280a244",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-01-inventory-and-cloudflare-foundation.md"
+      },
+      {
+        "digest": "b410d103227732041e82b14d023bc50459b1577c3c3e82a63201763d188d6a9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-02-search-cache-kv-and-admin-control.md"
+      },
+      {
+        "digest": "e984987ab4f843154074b186660a4df19a8ed7fe6586b2bcb8045a56800ae275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-03-redis-responsibilities-and-durable-objects.md"
+      },
+      {
+        "digest": "456b14147d27ff626456a663869275781d841e874b60a54d2f76a8c3123129e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-04-database-runtime-and-debian-retirement.md"
+      },
+      {
+        "excerpt": "# Spec 245 Compatibility Compiler",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 1,
+        "path": "apps/web/scripts/cloudflare-migration/README.md"
+      },
+      {
+        "excerpt": "The `smartaihub:migrate` command compiles an owner-maintained JSON evidence manifest into the artifacts named by Spec 245 §2.1. It is a local planning and verification tool; it does not deploy, contact Cloudflare, connect to production, exe",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 3,
+        "path": "apps/web/scripts/cloudflare-migration/README.md"
+      },
+      {
+        "excerpt": "<p>{text(\"One place for SmartSpecPro Cloudflare credentials, permission guides, and safe access checks. The catalog covers services used by this repository and Spec 245; it is not a list of every Cloudflare product.\", \"รวม credential, คู่มื",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 159,
+        "path": "apps/web/client/src/components/admin/CloudflareCredentialCenter.tsx"
+      },
+      {
+        "excerpt": "<p>{text(\"One place for SmartSpecPro Cloudflare credentials, permission guides, and safe access checks. The catalog covers services used by this repository and Spec 245; it is not a list of every Cloudflare product.\", \"รวม credential, คู่มื",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 159,
+        "path": "apps/web/client/src/components/admin/CloudflareCredentialCenter.tsx"
+      },
+      {
+        "excerpt": "describe(\"Spec 245 migration compatibility compiler\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 96,
+        "path": "apps/web/scripts/__tests__/cloudflare-migration-compiler.test.ts"
+      },
+      {
+        "excerpt": "\"Refusing to run G4 tests outside the isolated Spec 245 database\"",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 22,
+        "path": "apps/web/server/services/__tests__/postgresDelegatedWorkerSemaphore.integration.test.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "# Spec 245 Compatibility Compiler",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 1,
+        "path": "apps/web/scripts/cloudflare-migration/README.md"
+      },
+      {
+        "excerpt": "The `smartaihub:migrate` command compiles an owner-maintained JSON evidence manifest into the artifacts named by Spec 245 §2.1. It is a local planning and verification tool; it does not deploy, contact Cloudflare, connect to production, exe",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 3,
+        "path": "apps/web/scripts/cloudflare-migration/README.md"
+      },
+      {
+        "excerpt": "<p>{text(\"One place for SmartSpecPro Cloudflare credentials, permission guides, and safe access checks. The catalog covers services used by this repository and Spec 245; it is not a list of every Cloudflare product.\", \"รวม credential, คู่มื",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 159,
+        "path": "apps/web/client/src/components/admin/CloudflareCredentialCenter.tsx"
+      },
+      {
+        "excerpt": "<p>{text(\"One place for SmartSpecPro Cloudflare credentials, permission guides, and safe access checks. The catalog covers services used by this repository and Spec 245; it is not a list of every Cloudflare product.\", \"รวม credential, คู่มื",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 159,
+        "path": "apps/web/client/src/components/admin/CloudflareCredentialCenter.tsx"
+      },
+      {
+        "excerpt": "describe(\"Spec 245 migration compatibility compiler\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 96,
+        "path": "apps/web/scripts/__tests__/cloudflare-migration-compiler.test.ts"
+      },
+      {
+        "excerpt": "\"Refusing to run G4 tests outside the isolated Spec 245 database\"",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 22,
+        "path": "apps/web/server/services/__tests__/postgresDelegatedWorkerSemaphore.integration.test.ts"
+      }
+    ],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md"
+      },
+      {
+        "digest": "bc22fb439270bf4ecc77649b00154a225f5a3f85813987bd4ae56bbf159f43c8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/claude-plan.md"
+      },
+      {
+        "digest": "94af12283eaf054876f247f23e47bd694579f4bd0671105601eb6dc47bdca32c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/claude-spec.md"
+      },
+      {
+        "digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "10e090e3a689baf667984bdce19fc7a095ebca85b1b9c1fb3951a0f2a57a5227",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-adversarial-round-1.md"
+      },
+      {
+        "digest": "b0d5b906797ce7da1b030486e876f1307226848999cd9a5da0b252d226e72913",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "22051689577ec56eacdb0d891d9c12d3d1fd28e7e6d87f02694452c87c0e7367",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "dd342a409cde7e69e5aaf73001e6084857f161a7233f7e489f50d99653d42417",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/index.md"
+      },
+      {
+        "digest": "e695de5a051752a1045c9139fa94ff70b9c5a503a4c04514511d5a7d4280a244",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-01-inventory-and-cloudflare-foundation.md"
+      },
+      {
+        "digest": "b410d103227732041e82b14d023bc50459b1577c3c3e82a63201763d188d6a9d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-02-search-cache-kv-and-admin-control.md"
+      },
+      {
+        "digest": "e984987ab4f843154074b186660a4df19a8ed7fe6586b2bcb8045a56800ae275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-03-redis-responsibilities-and-durable-objects.md"
+      },
+      {
+        "digest": "456b14147d27ff626456a663869275781d841e874b60a54d2f76a8c3123129e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/sections/section-04-database-runtime-and-debian-retirement.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 191,
+    "unresolved": 191
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.446947Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

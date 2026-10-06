@@ -145,3 +145,7 @@ This skill's domain workflow remains in force. When its work changes files insid
 - For builds or operations that consume an integrated revision, use `$canonical-checkout-sync` when available, or the repository's equivalent canonical-source workflow, to prepare an isolated workspace pinned to the exact revision. Release and deployment remain separate gates.
 
 For work that does not change a Git repository, this lifecycle does not add a commit or integration step.
+
+## Canonical Spec release evidence
+
+For Spec-backed releases, read the canonical Handoff and release obligations before proceeding. Attach release evidence with exact integrated source SHA and artifact digest through the shared writer in `skills/development-lifecycle/spec-handoff-contract.md`. A release document is supporting evidence and does not independently set Spec completion.

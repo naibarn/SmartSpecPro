@@ -1,0 +1,74 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/008-tests-and-validators/spec.md#L60"
+      ],
+      "authority_source": "specs/feature/008-tests-and-validators/spec.md#L60",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4869be38dad5d7a093454d15872f9cf1bc921daf54968813c716c4450038eaa4",
+      "requirement_id": "REQ-B3741AFD7535",
+      "requirement_text": "- เอกสารนี้บอกได้ว่า tests ครอบคลุมอะไร, อิงโมดูลไหน, และ fixtures ใช้เพื่ออะไร",
+      "source_spec_digest": "862da08e8e544862edfaa08639d9119005b81a534e31bd42b9eb70c15a012ca4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/008-tests-and-validators/spec.md#L61"
+      ],
+      "authority_source": "specs/feature/008-tests-and-validators/spec.md#L61",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0409603f0d788256ad066b719354dff30972ba009ddb4a2c30dadf4cb19c3ac0",
+      "requirement_id": "REQ-4B6E6588D2D7",
+      "requirement_text": "- ระบุ path dependency `.smartspec/ss_autopilot` ชัดเจน (เพราะ tests import จากที่นั่น)",
+      "source_spec_digest": "862da08e8e544862edfaa08639d9119005b81a534e31bd42b9eb70c15a012ca4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/008-tests-and-validators/spec.md#L62"
+      ],
+      "authority_source": "specs/feature/008-tests-and-validators/spec.md#L62",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e93fb966778deb7e0ca829ecf8b7a2df497521c1baccbb453b840d4cfbfb6667",
+      "requirement_id": "REQ-8B7C4E86879C",
+      "requirement_text": "- แยก unit vs integration vs fixtures ให้ชัด",
+      "source_spec_digest": "862da08e8e544862edfaa08639d9119005b81a534e31bd42b9eb70c15a012ca4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "862da08e8e544862edfaa08639d9119005b81a534e31bd42b9eb70c15a012ca4",
+  "spec_id": "008"
+}

@@ -1,0 +1,52 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md#L197"
+      ],
+      "authority_source": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md#L197",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "03ed8961b87d73091f9320a8a0593e6c50f2286ed89f395ec173dd424b7c6ba4",
+      "requirement_id": "REQ-509CB6DC25D4",
+      "requirement_text": "- states that product category, shape, proportions, material, visible construction, label/logo placement, and usage must not be altered beyond product references and facts.",
+      "source_spec_digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md#L283"
+      ],
+      "authority_source": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md#L283",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f076ccd0befc694263e35a1a77f1dd5178ed8d48caa4bab6c1561fe8f2892686",
+      "requirement_id": "REQ-07697F2A01FB",
+      "requirement_text": "- product must not gain drawers, panels, handles, extra shelves, extra logos, alternate materials, alternate colors, or changed proportions.",
+      "source_spec_digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+  "spec_id": "118"
+}

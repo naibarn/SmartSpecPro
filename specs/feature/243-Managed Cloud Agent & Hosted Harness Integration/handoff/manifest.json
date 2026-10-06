@@ -1,0 +1,197 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "243",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1893",
+        "source_digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+        "successor_spec_id": "243"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "242",
+        "referenced_spec_id": "242",
+        "referencing_spec_id": "243",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1894",
+        "source_digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+        "successor_spec_id": "243"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md",
+    "digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.415742Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-26T09:26:48+07:00",
+      "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
+    },
+    "revision": "1.2",
+    "slug": "243-Managed Cloud Agent & Hosted Harness Integration",
+    "spec_id": "243",
+    "title": "Spec 243 — SmartAIHub Managed Cloud Agent & Hosted Harness Integration"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.415742Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.415742Z",
+    "sources": [
+      {
+        "digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 192,
+    "unresolved": 192
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.415742Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

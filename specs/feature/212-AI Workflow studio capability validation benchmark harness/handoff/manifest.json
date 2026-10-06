@@ -1,0 +1,559 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "209",
+        "referenced_spec_id": "209",
+        "referencing_spec_id": "212",
+        "relation_text": "superseded",
+        "requirement_ids": [],
+        "source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L66",
+        "source_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
+        "successor_spec_id": "212"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "216",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
+        "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "successor_spec_id": "216"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "233",
+        "relation_text": "supersede",
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R20",
+          "R21"
+        ],
+        "source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1275",
+        "source_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+        "successor_spec_id": "233"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "234",
+        "relation_text": "merged",
+        "requirement_ids": [
+          "R20",
+          "R21-LIVING-USE-CASE-DEMAND-ALIGNMENT.MD"
+        ],
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L152",
+        "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
+        "successor_spec_id": "234"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "234",
+        "relation_text": "supersedes",
+        "requirement_ids": [
+          "R1",
+          "R2"
+        ],
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L158",
+        "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
+        "successor_spec_id": "234"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "234",
+        "relation_text": "merge",
+        "requirement_ids": [],
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L261",
+        "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
+        "successor_spec_id": "234"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "234",
+        "relation_text": "replacing",
+        "requirement_ids": [],
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L38",
+        "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
+        "successor_spec_id": "234"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "238",
+        "relation_text": "merged",
+        "requirement_ids": [],
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
+        "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
+        "successor_spec_id": "238"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "239",
+        "relation_text": "merge",
+        "requirement_ids": [
+          "R2"
+        ],
+        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
+        "successor_spec_id": "239"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "240",
+        "relation_text": "superseded",
+        "requirement_ids": [
+          "R0.4",
+          "R0.5",
+          "R0.6"
+        ],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L17",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "240",
+        "relation_text": "supersede",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "240",
+        "relation_text": "replaces",
+        "requirement_ids": [
+          "R0.5"
+        ],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L983",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "212",
+        "referenced_spec_id": "212",
+        "referencing_spec_id": "242",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L659",
+        "source_digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
+        "successor_spec_id": "242"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md"
+      },
+      {
+        "excerpt": "describe(\"Spec 214 / Spec 212 R20 static coverage contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 27,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "expect(readJson<{ files: Record<string, { sha256?: string; records?: number }> }>(\"spec-212-corpus-manifest-r20.json\").files[\"spec-214-112-nodeType-clean-slate-disposition.json\"]).toMatchObject({ records: 112, sha256: expect.stringMatching(",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 45,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "}>(\"spec-214-spec212-coverage-manifest-r20.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 63,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "\"spec-212-current-contract-profile-r20.json\"",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 69,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "\"spec-212-corpus-manifest-r20.json\"",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 72,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "const useCases = readJson<Array<{ th?: string; en?: string }>>(\"spec-212-use-cases-2930-bilingual.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 74,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "const corpusManifest = readJson<{ files: Record<string, { sha256?: string; records?: number }> }>(\"spec-212-corpus-manifest-r20.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 99,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "const index = readJson<{ identity_revision: number; entry_count: number; first_id: string; last_id: string; entries: Array<{ id: string; sha256: string }> }>(\"spec-212-use-case-identity-r20.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 100,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "const useCases = readJson<Array<{ th: string; en: string }>>(\"spec-212-use-cases-2930-bilingual.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 101,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "expect(corpusManifest.files[\"spec-212-use-case-identity-r20.json\"]).toMatchObject({ records: 2930, sha256: expect.stringMatching(/^[a-f0-9]{64}$/) });",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 104,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md",
+    "digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.000594Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-20T12:59:58+07:00",
+      "spec_last_changed_at": "2026-09-20T12:59:58+07:00"
+    },
+    "revision": "20",
+    "slug": "212-AI Workflow studio capability validation benchmark harness",
+    "spec_id": "212",
+    "title": "Spec 212 — SmartAIHub Workflow Template Marketplace, Capability Lab & Product-Grade Continuous Validation"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.000594Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.000594Z",
+    "sources": [
+      {
+        "digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md"
+      },
+      {
+        "excerpt": "describe(\"Spec 214 / Spec 212 R20 static coverage contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 27,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "expect(readJson<{ files: Record<string, { sha256?: string; records?: number }> }>(\"spec-212-corpus-manifest-r20.json\").files[\"spec-214-112-nodeType-clean-slate-disposition.json\"]).toMatchObject({ records: 112, sha256: expect.stringMatching(",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 45,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "}>(\"spec-214-spec212-coverage-manifest-r20.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 63,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "\"spec-212-current-contract-profile-r20.json\"",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 69,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "\"spec-212-corpus-manifest-r20.json\"",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 72,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "const useCases = readJson<Array<{ th?: string; en?: string }>>(\"spec-212-use-cases-2930-bilingual.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 74,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "const corpusManifest = readJson<{ files: Record<string, { sha256?: string; records?: number }> }>(\"spec-212-corpus-manifest-r20.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 99,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "const index = readJson<{ identity_revision: number; entry_count: number; first_id: string; last_id: string; entries: Array<{ id: string; sha256: string }> }>(\"spec-212-use-case-identity-r20.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 100,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "const useCases = readJson<Array<{ th: string; en: string }>>(\"spec-212-use-cases-2930-bilingual.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 101,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "expect(corpusManifest.files[\"spec-212-use-case-identity-r20.json\"]).toMatchObject({ records: 2930, sha256: expect.stringMatching(/^[a-f0-9]{64}$/) });",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 104,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "describe(\"Spec 214 / Spec 212 R20 static coverage contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 27,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "expect(readJson<{ files: Record<string, { sha256?: string; records?: number }> }>(\"spec-212-corpus-manifest-r20.json\").files[\"spec-214-112-nodeType-clean-slate-disposition.json\"]).toMatchObject({ records: 112, sha256: expect.stringMatching(",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 45,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "}>(\"spec-214-spec212-coverage-manifest-r20.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 63,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "\"spec-212-current-contract-profile-r20.json\"",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 69,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "\"spec-212-corpus-manifest-r20.json\"",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 72,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "const useCases = readJson<Array<{ th?: string; en?: string }>>(\"spec-212-use-cases-2930-bilingual.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 74,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "const corpusManifest = readJson<{ files: Record<string, { sha256?: string; records?: number }> }>(\"spec-212-corpus-manifest-r20.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 99,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "const index = readJson<{ identity_revision: number; entry_count: number; first_id: string; last_id: string; entries: Array<{ id: string; sha256: string }> }>(\"spec-212-use-case-identity-r20.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 100,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "const useCases = readJson<Array<{ th: string; en: string }>>(\"spec-212-use-cases-2930-bilingual.json\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 101,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      },
+      {
+        "excerpt": "expect(corpusManifest.files[\"spec-212-use-case-identity-r20.json\"]).toMatchObject({ records: 2930, sha256: expect.stringMatching(/^[a-f0-9]{64}$/) });",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 104,
+        "path": "apps/web/shared/workflow214Coverage.test.ts"
+      }
+    ],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 1051,
+    "unresolved": 1051
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.000594Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

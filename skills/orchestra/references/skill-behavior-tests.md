@@ -56,6 +56,10 @@ Maintain scenario coverage for:
 - quality evidence keeps applicable functional, visual, accessibility, security,
   performance, data-integrity, operational, deployment, and evidence-completeness checks
   distinct
+- Spec-backed skills load one canonical manifest and requirement ledger, keep disposition/lifecycle/continuation independent, and never infer completion or continuation from age, section counts, commits, or completion documents
+- session resume consumes the canonical continuation capsule before reconstructing local task state
+- stale manifest, requirement-ledger, Spec-digest, or canonical-SHA writes are rejected and require refresh/reconciliation
+- verification, deployment, and acceptance evidence bind to the exact source/canonical SHA through the shared writer
 
 ## Scenario Format
 

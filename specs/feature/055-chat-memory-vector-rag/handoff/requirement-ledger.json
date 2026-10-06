@@ -1,0 +1,272 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/055-chat-memory-vector-rag/spec.md#L16"
+      ],
+      "authority_source": "specs/feature/055-chat-memory-vector-rag/spec.md#L16",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "78e7ac3b32c84cf0101aeb99f8c19493e4727b029c68c11af9a353863248520c",
+      "requirement_id": "REQ-07C1EECBF14B",
+      "requirement_text": "3. **Summarize เฉพาะจุดที่ปลอดภัย** — แยก \"safe-to-summarize\" กับ \"must-preserve\" ชัดเจน ข้อมูลที่เสี่ยงจะหายไม่ถูก summarize",
+      "source_spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/055-chat-memory-vector-rag/spec.md#L263"
+      ],
+      "authority_source": "specs/feature/055-chat-memory-vector-rag/spec.md#L263",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fb2700d84d22a4a06479ec293ae1a68134cee41b3e69ab45bd1004235deb4d94",
+      "requirement_id": "REQ-2BB81EA9000C",
+      "requirement_text": "> 1. User message content MUST be placed in `HumanMessage` role — NEVER interpolated into system prompt",
+      "source_spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/055-chat-memory-vector-rag/spec.md#L284"
+      ],
+      "authority_source": "specs/feature/055-chat-memory-vector-rag/spec.md#L284",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e33fd3af831684260ff3b6d821e45cb02d8071289b58157776a0001407bcba9d",
+      "requirement_id": "REQ-095C54993286",
+      "requirement_text": "2. Each fact must be self-contained — understandable without reading the full conversation.",
+      "source_spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/055-chat-memory-vector-rag/spec.md#L748"
+      ],
+      "authority_source": "specs/feature/055-chat-memory-vector-rag/spec.md#L748",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6b26ca0cf87afc0fc2241e04346aa437409f858db43a83ff9fe1abfa4e586709",
+      "requirement_id": "REQ-68F1890BED2B",
+      "requirement_text": "The existing function at `memoryService.ts:2087` must be modified as follows:",
+      "source_spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/055-chat-memory-vector-rag/spec.md#L883"
+      ],
+      "authority_source": "specs/feature/055-chat-memory-vector-rag/spec.md#L883",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "cc2d0a7799d6fab8a33c53c09d70b15671e62526ef194cb77f0823a5f82dde9f",
+      "requirement_id": "REQ-8FE709BD6A8A",
+      "requirement_text": "conversationId,  // MUST be verified to belong to userId (S-03)",
+      "source_spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/055-chat-memory-vector-rag/spec.md#L1235"
+      ],
+      "authority_source": "specs/feature/055-chat-memory-vector-rag/spec.md#L1235",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "477883e77c845923602e6d4043e195531b630c3489773bdddec816d5f81dfbbb",
+      "requirement_id": "REQ-3EEB4678C57A",
+      "requirement_text": "-- All indexes must show indisvalid = true. If false, REINDEX CONCURRENTLY.",
+      "source_spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/055-chat-memory-vector-rag/spec.md#L1677"
+      ],
+      "authority_source": "specs/feature/055-chat-memory-vector-rag/spec.md#L1677",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d7f8ee86947f09f86f35f767a3b6607f67bf402ce73984af7d0b045114988b4b",
+      "requirement_id": "REQ-64189C160475",
+      "requirement_text": "When a user requests account deletion, the following MUST happen **synchronously** (not deferred):",
+      "source_spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/055-chat-memory-vector-rag/spec.md#L1709"
+      ],
+      "authority_source": "specs/feature/055-chat-memory-vector-rag/spec.md#L1709",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "beadd1640295bfcaa7c1e724164865619e1f14c5d8e14ddda343cf8db0301260",
+      "requirement_id": "REQ-18ED0F3A2C74",
+      "requirement_text": "- **If stricter PII compliance required:** Add per-tenant flag `chat_chunk_pii_redact` to",
+      "source_spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/055-chat-memory-vector-rag/spec.md#L1865"
+      ],
+      "authority_source": "specs/feature/055-chat-memory-vector-rag/spec.md#L1865",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7c98cc82245cabf2bfe610b96fc927f355a0f4442d2230a4e3a44d3c5b3584cb",
+      "requirement_id": "REQ-DB5CFF97E76E",
+      "requirement_text": "// Auth: ctx.userId must own the conversation",
+      "source_spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/055-chat-memory-vector-rag/spec.md#L1975"
+      ],
+      "authority_source": "specs/feature/055-chat-memory-vector-rag/spec.md#L1975",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c4e3f849c4fd3db79a0e9cefd48a8109358bfcf3051b05fd5e733c9840046be8",
+      "requirement_id": "REQ-2132C835E081",
+      "requirement_text": "Future improvement: Use per-file derived key via HKDF (`LLM_ENCRYPTION_KEY + fileId`) to limit blast radius. Not required for initial deployment.",
+      "source_spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/055-chat-memory-vector-rag/spec.md#L1979"
+      ],
+      "authority_source": "specs/feature/055-chat-memory-vector-rag/spec.md#L1979",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b2f83fbc5a5b262f0f0a7cd8a29c1e5d192906f8cbf164bae698b1fb16c06a1b",
+      "requirement_id": "REQ-AC85BB09A20C",
+      "requirement_text": "`conversation_summaries.extractedFactIds` is a **soft reference** — IDs may become stale when facts are evicted or deleted. Code that reads these IDs must handle missing rows gracefully:",
+      "source_spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/055-chat-memory-vector-rag/spec.md#L1998"
+      ],
+      "authority_source": "specs/feature/055-chat-memory-vector-rag/spec.md#L1998",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "25d8dca11c0c738fc2c8dd84e2efc46a7db733383bb968495b8c2be5c16713ef",
+      "requirement_id": "REQ-A53B508257FD",
+      "requirement_text": "**No migration of existing data required.** The system is additive:",
+      "source_spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+  "spec_id": "055"
+}

@@ -1,0 +1,422 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "bd020b67a80960ea995944b69f727331557cd185aaae1412df12979376b26eee",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/093-hermes-capability-expansion/spec.md"
+      },
+      {
+        "digest": "3f4e72de7e78381b5a8bd4c2f3f0e7c605cf2ed0fc21431d9e53bc219d9e4598",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ebc1b5bb6d7192f7aa5044e1b492519203317e1ba70817a4da7b0619185102ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/index.md"
+      },
+      {
+        "digest": "22c2717488ae7190943a2c5070aeb5b13c305597bf2daf839afec3f67df8b425",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-01-persona-profile-and-selection.md"
+      },
+      {
+        "digest": "46647d443ca1779cf8b639f10f002cc514c1078d154dd21c2c26235c1f75bd1d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-02-channel-companion-and-webhook-workflows.md"
+      },
+      {
+        "digest": "0922c55ad79ae7a2a709c4cffb32ce4aa329892e02b4e0a3136ede580c69510d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-03-opt-in-memory-and-context-sync.md"
+      },
+      {
+        "digest": "56bbb568df820397b4c0b7d6a2cb674fe22589a6cc793dd395f7f52331025fb5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-04-task-specialization-and-work-dispatch.md"
+      },
+      {
+        "digest": "89381c481a6321fa2631faa9c063add52aa188b06593effb34c2cde35ff19b71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-05-visibility-observability-and-rollout.md"
+      },
+      {
+        "digest": "d6c5b3c1667a5d700334bd88bc6f2c815f2e2449ea995fe112adb71b15259d63",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration-plan.md"
+      },
+      {
+        "digest": "8b2fb207259f99d191f3effeb67977621cba6cfe535f9f06d1cc48b411e42b6b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration-tasks.md"
+      },
+      {
+        "digest": "e9a64cdf23a4df90231b92e3fe669d8f43847e469b0111603482516123b8c7a4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "bd020b67a80960ea995944b69f727331557cd185aaae1412df12979376b26eee"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "bd020b67a80960ea995944b69f727331557cd185aaae1412df12979376b26eee",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/093-hermes-capability-expansion/spec.md"
+      },
+      {
+        "digest": "3f4e72de7e78381b5a8bd4c2f3f0e7c605cf2ed0fc21431d9e53bc219d9e4598",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ebc1b5bb6d7192f7aa5044e1b492519203317e1ba70817a4da7b0619185102ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/index.md"
+      },
+      {
+        "digest": "22c2717488ae7190943a2c5070aeb5b13c305597bf2daf839afec3f67df8b425",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-01-persona-profile-and-selection.md"
+      },
+      {
+        "digest": "46647d443ca1779cf8b639f10f002cc514c1078d154dd21c2c26235c1f75bd1d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-02-channel-companion-and-webhook-workflows.md"
+      },
+      {
+        "digest": "0922c55ad79ae7a2a709c4cffb32ce4aa329892e02b4e0a3136ede580c69510d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-03-opt-in-memory-and-context-sync.md"
+      },
+      {
+        "digest": "56bbb568df820397b4c0b7d6a2cb674fe22589a6cc793dd395f7f52331025fb5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-04-task-specialization-and-work-dispatch.md"
+      },
+      {
+        "digest": "89381c481a6321fa2631faa9c063add52aa188b06593effb34c2cde35ff19b71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-05-visibility-observability-and-rollout.md"
+      },
+      {
+        "digest": "d6c5b3c1667a5d700334bd88bc6f2c815f2e2449ea995fe112adb71b15259d63",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration-plan.md"
+      },
+      {
+        "digest": "8b2fb207259f99d191f3effeb67977621cba6cfe535f9f06d1cc48b411e42b6b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration-tasks.md"
+      },
+      {
+        "digest": "e9a64cdf23a4df90231b92e3fe669d8f43847e469b0111603482516123b8c7a4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "bd020b67a80960ea995944b69f727331557cd185aaae1412df12979376b26eee",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/093-hermes-capability-expansion/spec.md"
+      },
+      {
+        "digest": "3f4e72de7e78381b5a8bd4c2f3f0e7c605cf2ed0fc21431d9e53bc219d9e4598",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ebc1b5bb6d7192f7aa5044e1b492519203317e1ba70817a4da7b0619185102ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/index.md"
+      },
+      {
+        "digest": "22c2717488ae7190943a2c5070aeb5b13c305597bf2daf839afec3f67df8b425",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-01-persona-profile-and-selection.md"
+      },
+      {
+        "digest": "46647d443ca1779cf8b639f10f002cc514c1078d154dd21c2c26235c1f75bd1d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-02-channel-companion-and-webhook-workflows.md"
+      },
+      {
+        "digest": "0922c55ad79ae7a2a709c4cffb32ce4aa329892e02b4e0a3136ede580c69510d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-03-opt-in-memory-and-context-sync.md"
+      },
+      {
+        "digest": "56bbb568df820397b4c0b7d6a2cb674fe22589a6cc793dd395f7f52331025fb5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-04-task-specialization-and-work-dispatch.md"
+      },
+      {
+        "digest": "89381c481a6321fa2631faa9c063add52aa188b06593effb34c2cde35ff19b71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-05-visibility-observability-and-rollout.md"
+      },
+      {
+        "digest": "d6c5b3c1667a5d700334bd88bc6f2c815f2e2449ea995fe112adb71b15259d63",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration-plan.md"
+      },
+      {
+        "digest": "8b2fb207259f99d191f3effeb67977621cba6cfe535f9f06d1cc48b411e42b6b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration-tasks.md"
+      },
+      {
+        "digest": "e9a64cdf23a4df90231b92e3fe669d8f43847e469b0111603482516123b8c7a4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/093-hermes-capability-expansion/spec.md",
+    "digest": "bd020b67a80960ea995944b69f727331557cd185aaae1412df12979376b26eee",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.894221Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-04-15T08:00:16+07:00",
+      "spec_last_changed_at": "2026-04-15T08:00:16+07:00"
+    },
+    "revision": "1.0",
+    "slug": "093-hermes-capability-expansion",
+    "spec_id": "093",
+    "title": "093 - Hermes Capability and Experience Expansion"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.894221Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.894221Z",
+    "sources": [
+      {
+        "digest": "bd020b67a80960ea995944b69f727331557cd185aaae1412df12979376b26eee",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/093-hermes-capability-expansion/spec.md"
+      },
+      {
+        "digest": "3f4e72de7e78381b5a8bd4c2f3f0e7c605cf2ed0fc21431d9e53bc219d9e4598",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ebc1b5bb6d7192f7aa5044e1b492519203317e1ba70817a4da7b0619185102ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/index.md"
+      },
+      {
+        "digest": "22c2717488ae7190943a2c5070aeb5b13c305597bf2daf839afec3f67df8b425",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-01-persona-profile-and-selection.md"
+      },
+      {
+        "digest": "46647d443ca1779cf8b639f10f002cc514c1078d154dd21c2c26235c1f75bd1d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-02-channel-companion-and-webhook-workflows.md"
+      },
+      {
+        "digest": "0922c55ad79ae7a2a709c4cffb32ce4aa329892e02b4e0a3136ede580c69510d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-03-opt-in-memory-and-context-sync.md"
+      },
+      {
+        "digest": "56bbb568df820397b4c0b7d6a2cb674fe22589a6cc793dd395f7f52331025fb5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-04-task-specialization-and-work-dispatch.md"
+      },
+      {
+        "digest": "89381c481a6321fa2631faa9c063add52aa188b06593effb34c2cde35ff19b71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-05-visibility-observability-and-rollout.md"
+      },
+      {
+        "digest": "d6c5b3c1667a5d700334bd88bc6f2c815f2e2449ea995fe112adb71b15259d63",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration-plan.md"
+      },
+      {
+        "digest": "8b2fb207259f99d191f3effeb67977621cba6cfe535f9f06d1cc48b411e42b6b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration-tasks.md"
+      },
+      {
+        "digest": "e9a64cdf23a4df90231b92e3fe669d8f43847e469b0111603482516123b8c7a4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "bd020b67a80960ea995944b69f727331557cd185aaae1412df12979376b26eee",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/093-hermes-capability-expansion/spec.md"
+      },
+      {
+        "digest": "3f4e72de7e78381b5a8bd4c2f3f0e7c605cf2ed0fc21431d9e53bc219d9e4598",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "ebc1b5bb6d7192f7aa5044e1b492519203317e1ba70817a4da7b0619185102ce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/index.md"
+      },
+      {
+        "digest": "22c2717488ae7190943a2c5070aeb5b13c305597bf2daf839afec3f67df8b425",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-01-persona-profile-and-selection.md"
+      },
+      {
+        "digest": "46647d443ca1779cf8b639f10f002cc514c1078d154dd21c2c26235c1f75bd1d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-02-channel-companion-and-webhook-workflows.md"
+      },
+      {
+        "digest": "0922c55ad79ae7a2a709c4cffb32ce4aa329892e02b4e0a3136ede580c69510d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-03-opt-in-memory-and-context-sync.md"
+      },
+      {
+        "digest": "56bbb568df820397b4c0b7d6a2cb674fe22589a6cc793dd395f7f52331025fb5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-04-task-specialization-and-work-dispatch.md"
+      },
+      {
+        "digest": "89381c481a6321fa2631faa9c063add52aa188b06593effb34c2cde35ff19b71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-05-visibility-observability-and-rollout.md"
+      },
+      {
+        "digest": "d6c5b3c1667a5d700334bd88bc6f2c815f2e2449ea995fe112adb71b15259d63",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration-plan.md"
+      },
+      {
+        "digest": "8b2fb207259f99d191f3effeb67977621cba6cfe535f9f06d1cc48b411e42b6b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration-tasks.md"
+      },
+      {
+        "digest": "e9a64cdf23a4df90231b92e3fe669d8f43847e469b0111603482516123b8c7a4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 32,
+    "unresolved": 32
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.894221Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

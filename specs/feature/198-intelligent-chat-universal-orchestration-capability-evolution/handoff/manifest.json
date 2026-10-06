@@ -1,0 +1,497 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "275beeba6f8b56ba420aa90cbecd7193c4e1e567b8510370a97e807d5bbaa8cc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md"
+      },
+      {
+        "digest": "39307b9a09537555f794afe0e5bbaa006e927b7d33d73db56d350618f521b45d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/claude-plan.md"
+      },
+      {
+        "digest": "8dd81ab7235bfd820bcc9468eeaad9c61b7ed0b6903d67079c06e8e081cb0f5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/claude-spec.md"
+      },
+      {
+        "digest": "04e267225eaaf3f6a856d26663d9c841bc57ce57e7b2f33e5b5169dc526e42b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/completion.md"
+      },
+      {
+        "digest": "56e60d74e0a3009e5f38172f2021846ccf0bcdeb92e64c40e19503c425abb1e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "db1b8e34ba5520900967226efbaad41bc28277685ec051da0b69ae6fe77c2dea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/review.md"
+      },
+      {
+        "digest": "7e5b5c1e6f3d96e4d32f294de014fc2577b861e78590681bb01f52e4d7d1003a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "0ee20ed711dc27c8337b3ddd83f3952e74e572ca5693a952c3b2afe13010740f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/index.md"
+      },
+      {
+        "digest": "a0447dfa2e17d4ffc3aa60e633f08e80292d0a9a21e2153d568d1dd676a4560c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-01-chat-contracts.md"
+      },
+      {
+        "digest": "5c1f41698ed94b19544e6dd9c76fe4b08605ec142b06d5c8621eab0593cfa036",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-02-brokers-and-runtime.md"
+      },
+      {
+        "digest": "20484d81351a38d1c58ab8b55d352953b0182f912738882020c8edf6eb8d6cd9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-03-task-state-and-provenance.md"
+      },
+      {
+        "digest": "fe641b005048e9e4829a4efea2cbf1800f82501fcf1e51dfdd107f736de3e380",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-04-ui-surfaces.md"
+      },
+      {
+        "digest": "231b6d19cad3afa04fb453ec4a3671748c23f016397f20cbdfedcf4144f43250",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-05-evolution-and-governance.md"
+      },
+      {
+        "digest": "a2d077488fe374fa1f4097c219f5dece2e7295503985405176ca05001e3d80b0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-06-browser-and-release-gates.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "275beeba6f8b56ba420aa90cbecd7193c4e1e567b8510370a97e807d5bbaa8cc"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "275beeba6f8b56ba420aa90cbecd7193c4e1e567b8510370a97e807d5bbaa8cc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md"
+      },
+      {
+        "digest": "39307b9a09537555f794afe0e5bbaa006e927b7d33d73db56d350618f521b45d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/claude-plan.md"
+      },
+      {
+        "digest": "8dd81ab7235bfd820bcc9468eeaad9c61b7ed0b6903d67079c06e8e081cb0f5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/claude-spec.md"
+      },
+      {
+        "digest": "04e267225eaaf3f6a856d26663d9c841bc57ce57e7b2f33e5b5169dc526e42b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/completion.md"
+      },
+      {
+        "digest": "56e60d74e0a3009e5f38172f2021846ccf0bcdeb92e64c40e19503c425abb1e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "db1b8e34ba5520900967226efbaad41bc28277685ec051da0b69ae6fe77c2dea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/review.md"
+      },
+      {
+        "digest": "7e5b5c1e6f3d96e4d32f294de014fc2577b861e78590681bb01f52e4d7d1003a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "0ee20ed711dc27c8337b3ddd83f3952e74e572ca5693a952c3b2afe13010740f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/index.md"
+      },
+      {
+        "digest": "a0447dfa2e17d4ffc3aa60e633f08e80292d0a9a21e2153d568d1dd676a4560c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-01-chat-contracts.md"
+      },
+      {
+        "digest": "5c1f41698ed94b19544e6dd9c76fe4b08605ec142b06d5c8621eab0593cfa036",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-02-brokers-and-runtime.md"
+      },
+      {
+        "digest": "20484d81351a38d1c58ab8b55d352953b0182f912738882020c8edf6eb8d6cd9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-03-task-state-and-provenance.md"
+      },
+      {
+        "digest": "fe641b005048e9e4829a4efea2cbf1800f82501fcf1e51dfdd107f736de3e380",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-04-ui-surfaces.md"
+      },
+      {
+        "digest": "231b6d19cad3afa04fb453ec4a3671748c23f016397f20cbdfedcf4144f43250",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-05-evolution-and-governance.md"
+      },
+      {
+        "digest": "a2d077488fe374fa1f4097c219f5dece2e7295503985405176ca05001e3d80b0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-06-browser-and-release-gates.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "275beeba6f8b56ba420aa90cbecd7193c4e1e567b8510370a97e807d5bbaa8cc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md"
+      },
+      {
+        "digest": "39307b9a09537555f794afe0e5bbaa006e927b7d33d73db56d350618f521b45d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/claude-plan.md"
+      },
+      {
+        "digest": "8dd81ab7235bfd820bcc9468eeaad9c61b7ed0b6903d67079c06e8e081cb0f5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/claude-spec.md"
+      },
+      {
+        "digest": "04e267225eaaf3f6a856d26663d9c841bc57ce57e7b2f33e5b5169dc526e42b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/completion.md"
+      },
+      {
+        "digest": "56e60d74e0a3009e5f38172f2021846ccf0bcdeb92e64c40e19503c425abb1e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "db1b8e34ba5520900967226efbaad41bc28277685ec051da0b69ae6fe77c2dea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/review.md"
+      },
+      {
+        "digest": "7e5b5c1e6f3d96e4d32f294de014fc2577b861e78590681bb01f52e4d7d1003a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "0ee20ed711dc27c8337b3ddd83f3952e74e572ca5693a952c3b2afe13010740f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/index.md"
+      },
+      {
+        "digest": "a0447dfa2e17d4ffc3aa60e633f08e80292d0a9a21e2153d568d1dd676a4560c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-01-chat-contracts.md"
+      },
+      {
+        "digest": "5c1f41698ed94b19544e6dd9c76fe4b08605ec142b06d5c8621eab0593cfa036",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-02-brokers-and-runtime.md"
+      },
+      {
+        "digest": "20484d81351a38d1c58ab8b55d352953b0182f912738882020c8edf6eb8d6cd9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-03-task-state-and-provenance.md"
+      },
+      {
+        "digest": "fe641b005048e9e4829a4efea2cbf1800f82501fcf1e51dfdd107f736de3e380",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-04-ui-surfaces.md"
+      },
+      {
+        "digest": "231b6d19cad3afa04fb453ec4a3671748c23f016397f20cbdfedcf4144f43250",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-05-evolution-and-governance.md"
+      },
+      {
+        "digest": "a2d077488fe374fa1f4097c219f5dece2e7295503985405176ca05001e3d80b0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-06-browser-and-release-gates.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md",
+    "digest": "275beeba6f8b56ba420aa90cbecd7193c4e1e567b8510370a97e807d5bbaa8cc",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.693825Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-17T15:42:23+07:00",
+      "spec_last_changed_at": "2026-09-17T22:49:43+07:00"
+    },
+    "revision": null,
+    "slug": "198-intelligent-chat-universal-orchestration-capability-evolution",
+    "spec_id": "198",
+    "title": "Feature 198 — SmartAIHub Intelligent Chat, Universal Orchestration & Capability Evolution"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.693825Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.693825Z",
+    "sources": [
+      {
+        "digest": "275beeba6f8b56ba420aa90cbecd7193c4e1e567b8510370a97e807d5bbaa8cc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md"
+      },
+      {
+        "digest": "39307b9a09537555f794afe0e5bbaa006e927b7d33d73db56d350618f521b45d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/claude-plan.md"
+      },
+      {
+        "digest": "8dd81ab7235bfd820bcc9468eeaad9c61b7ed0b6903d67079c06e8e081cb0f5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/claude-spec.md"
+      },
+      {
+        "digest": "04e267225eaaf3f6a856d26663d9c841bc57ce57e7b2f33e5b5169dc526e42b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/completion.md"
+      },
+      {
+        "digest": "56e60d74e0a3009e5f38172f2021846ccf0bcdeb92e64c40e19503c425abb1e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "db1b8e34ba5520900967226efbaad41bc28277685ec051da0b69ae6fe77c2dea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/review.md"
+      },
+      {
+        "digest": "7e5b5c1e6f3d96e4d32f294de014fc2577b861e78590681bb01f52e4d7d1003a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "0ee20ed711dc27c8337b3ddd83f3952e74e572ca5693a952c3b2afe13010740f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/index.md"
+      },
+      {
+        "digest": "a0447dfa2e17d4ffc3aa60e633f08e80292d0a9a21e2153d568d1dd676a4560c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-01-chat-contracts.md"
+      },
+      {
+        "digest": "5c1f41698ed94b19544e6dd9c76fe4b08605ec142b06d5c8621eab0593cfa036",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-02-brokers-and-runtime.md"
+      },
+      {
+        "digest": "20484d81351a38d1c58ab8b55d352953b0182f912738882020c8edf6eb8d6cd9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-03-task-state-and-provenance.md"
+      },
+      {
+        "digest": "fe641b005048e9e4829a4efea2cbf1800f82501fcf1e51dfdd107f736de3e380",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-04-ui-surfaces.md"
+      },
+      {
+        "digest": "231b6d19cad3afa04fb453ec4a3671748c23f016397f20cbdfedcf4144f43250",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-05-evolution-and-governance.md"
+      },
+      {
+        "digest": "a2d077488fe374fa1f4097c219f5dece2e7295503985405176ca05001e3d80b0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-06-browser-and-release-gates.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "275beeba6f8b56ba420aa90cbecd7193c4e1e567b8510370a97e807d5bbaa8cc",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md"
+      },
+      {
+        "digest": "39307b9a09537555f794afe0e5bbaa006e927b7d33d73db56d350618f521b45d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/claude-plan.md"
+      },
+      {
+        "digest": "8dd81ab7235bfd820bcc9468eeaad9c61b7ed0b6903d67079c06e8e081cb0f5b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/claude-spec.md"
+      },
+      {
+        "digest": "04e267225eaaf3f6a856d26663d9c841bc57ce57e7b2f33e5b5169dc526e42b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/completion.md"
+      },
+      {
+        "digest": "56e60d74e0a3009e5f38172f2021846ccf0bcdeb92e64c40e19503c425abb1e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "db1b8e34ba5520900967226efbaad41bc28277685ec051da0b69ae6fe77c2dea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/review.md"
+      },
+      {
+        "digest": "7e5b5c1e6f3d96e4d32f294de014fc2577b861e78590681bb01f52e4d7d1003a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "0ee20ed711dc27c8337b3ddd83f3952e74e572ca5693a952c3b2afe13010740f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/index.md"
+      },
+      {
+        "digest": "a0447dfa2e17d4ffc3aa60e633f08e80292d0a9a21e2153d568d1dd676a4560c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-01-chat-contracts.md"
+      },
+      {
+        "digest": "5c1f41698ed94b19544e6dd9c76fe4b08605ec142b06d5c8621eab0593cfa036",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-02-brokers-and-runtime.md"
+      },
+      {
+        "digest": "20484d81351a38d1c58ab8b55d352953b0182f912738882020c8edf6eb8d6cd9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-03-task-state-and-provenance.md"
+      },
+      {
+        "digest": "fe641b005048e9e4829a4efea2cbf1800f82501fcf1e51dfdd107f736de3e380",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-04-ui-surfaces.md"
+      },
+      {
+        "digest": "231b6d19cad3afa04fb453ec4a3671748c23f016397f20cbdfedcf4144f43250",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-05-evolution-and-governance.md"
+      },
+      {
+        "digest": "a2d077488fe374fa1f4097c219f5dece2e7295503985405176ca05001e3d80b0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/section-06-browser-and-release-gates.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 343,
+    "unresolved": 343
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.693825Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

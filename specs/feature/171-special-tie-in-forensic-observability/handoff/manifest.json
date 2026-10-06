@@ -1,0 +1,372 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/spec.md"
+      },
+      {
+        "digest": "0f827fb10690b65b8632508cc7e8cd732a07c30d3bc32f118e60cbabe34e837f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/claude-plan.md"
+      },
+      {
+        "digest": "4a64b484f4b06e564be38dcefc937c2f7b014e961f5c6941dcde36805b652531",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/claude-spec.md"
+      },
+      {
+        "digest": "f97d13d5c05954858f3def3285a5c83a0a999d71ef094bad7f3223fcea68142b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/index.md"
+      },
+      {
+        "digest": "f4905b98100a02326e8e44cc112f0b4dd0100452f9d02df8239b7dcd74c516d6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-01-forensic-storage.md"
+      },
+      {
+        "digest": "287ededc34691ff1623743b1ef56f331bbbd2b2ff81d0cc6d6465935d1258fb3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-02-provider-observers.md"
+      },
+      {
+        "digest": "c85f1f6ef393bc81303dc3eb3d3e95b088fb4dcd1d418750e5d01a1f57906d73",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-03-special-lifecycle.md"
+      },
+      {
+        "digest": "8cf98d88f64354438c251722e4c088810af5ea4de44934425fc112d9d72594b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-04-admin-retention.md"
+      },
+      {
+        "digest": "f6232fdf7b19213a00e4b5b09f26e00accc039daff10d871cbdc8cb3671baf6e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-05-integration-proof.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/spec.md"
+      },
+      {
+        "digest": "0f827fb10690b65b8632508cc7e8cd732a07c30d3bc32f118e60cbabe34e837f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/claude-plan.md"
+      },
+      {
+        "digest": "4a64b484f4b06e564be38dcefc937c2f7b014e961f5c6941dcde36805b652531",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/claude-spec.md"
+      },
+      {
+        "digest": "f97d13d5c05954858f3def3285a5c83a0a999d71ef094bad7f3223fcea68142b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/index.md"
+      },
+      {
+        "digest": "f4905b98100a02326e8e44cc112f0b4dd0100452f9d02df8239b7dcd74c516d6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-01-forensic-storage.md"
+      },
+      {
+        "digest": "287ededc34691ff1623743b1ef56f331bbbd2b2ff81d0cc6d6465935d1258fb3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-02-provider-observers.md"
+      },
+      {
+        "digest": "c85f1f6ef393bc81303dc3eb3d3e95b088fb4dcd1d418750e5d01a1f57906d73",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-03-special-lifecycle.md"
+      },
+      {
+        "digest": "8cf98d88f64354438c251722e4c088810af5ea4de44934425fc112d9d72594b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-04-admin-retention.md"
+      },
+      {
+        "digest": "f6232fdf7b19213a00e4b5b09f26e00accc039daff10d871cbdc8cb3671baf6e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-05-integration-proof.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/spec.md"
+      },
+      {
+        "digest": "0f827fb10690b65b8632508cc7e8cd732a07c30d3bc32f118e60cbabe34e837f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/claude-plan.md"
+      },
+      {
+        "digest": "4a64b484f4b06e564be38dcefc937c2f7b014e961f5c6941dcde36805b652531",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/claude-spec.md"
+      },
+      {
+        "digest": "f97d13d5c05954858f3def3285a5c83a0a999d71ef094bad7f3223fcea68142b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/index.md"
+      },
+      {
+        "digest": "f4905b98100a02326e8e44cc112f0b4dd0100452f9d02df8239b7dcd74c516d6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-01-forensic-storage.md"
+      },
+      {
+        "digest": "287ededc34691ff1623743b1ef56f331bbbd2b2ff81d0cc6d6465935d1258fb3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-02-provider-observers.md"
+      },
+      {
+        "digest": "c85f1f6ef393bc81303dc3eb3d3e95b088fb4dcd1d418750e5d01a1f57906d73",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-03-special-lifecycle.md"
+      },
+      {
+        "digest": "8cf98d88f64354438c251722e4c088810af5ea4de44934425fc112d9d72594b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-04-admin-retention.md"
+      },
+      {
+        "digest": "f6232fdf7b19213a00e4b5b09f26e00accc039daff10d871cbdc8cb3671baf6e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-05-integration-proof.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/171-special-tie-in-forensic-observability/spec.md",
+    "digest": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.498841Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-03T09:03:20+07:00",
+      "spec_last_changed_at": "2026-09-03T09:03:20+07:00"
+    },
+    "revision": null,
+    "slug": "171-special-tie-in-forensic-observability",
+    "spec_id": "171",
+    "title": "Feature 171: Special Tie-in forensic observability"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.498841Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.498841Z",
+    "sources": [
+      {
+        "digest": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/spec.md"
+      },
+      {
+        "digest": "0f827fb10690b65b8632508cc7e8cd732a07c30d3bc32f118e60cbabe34e837f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/claude-plan.md"
+      },
+      {
+        "digest": "4a64b484f4b06e564be38dcefc937c2f7b014e961f5c6941dcde36805b652531",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/claude-spec.md"
+      },
+      {
+        "digest": "f97d13d5c05954858f3def3285a5c83a0a999d71ef094bad7f3223fcea68142b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/index.md"
+      },
+      {
+        "digest": "f4905b98100a02326e8e44cc112f0b4dd0100452f9d02df8239b7dcd74c516d6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-01-forensic-storage.md"
+      },
+      {
+        "digest": "287ededc34691ff1623743b1ef56f331bbbd2b2ff81d0cc6d6465935d1258fb3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-02-provider-observers.md"
+      },
+      {
+        "digest": "c85f1f6ef393bc81303dc3eb3d3e95b088fb4dcd1d418750e5d01a1f57906d73",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-03-special-lifecycle.md"
+      },
+      {
+        "digest": "8cf98d88f64354438c251722e4c088810af5ea4de44934425fc112d9d72594b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-04-admin-retention.md"
+      },
+      {
+        "digest": "f6232fdf7b19213a00e4b5b09f26e00accc039daff10d871cbdc8cb3671baf6e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-05-integration-proof.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/spec.md"
+      },
+      {
+        "digest": "0f827fb10690b65b8632508cc7e8cd732a07c30d3bc32f118e60cbabe34e837f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/claude-plan.md"
+      },
+      {
+        "digest": "4a64b484f4b06e564be38dcefc937c2f7b014e961f5c6941dcde36805b652531",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/claude-spec.md"
+      },
+      {
+        "digest": "f97d13d5c05954858f3def3285a5c83a0a999d71ef094bad7f3223fcea68142b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/index.md"
+      },
+      {
+        "digest": "f4905b98100a02326e8e44cc112f0b4dd0100452f9d02df8239b7dcd74c516d6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-01-forensic-storage.md"
+      },
+      {
+        "digest": "287ededc34691ff1623743b1ef56f331bbbd2b2ff81d0cc6d6465935d1258fb3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-02-provider-observers.md"
+      },
+      {
+        "digest": "c85f1f6ef393bc81303dc3eb3d3e95b088fb4dcd1d418750e5d01a1f57906d73",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-03-special-lifecycle.md"
+      },
+      {
+        "digest": "8cf98d88f64354438c251722e4c088810af5ea4de44934425fc112d9d72594b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-04-admin-retention.md"
+      },
+      {
+        "digest": "f6232fdf7b19213a00e4b5b09f26e00accc039daff10d871cbdc8cb3671baf6e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/171-special-tie-in-forensic-observability/sections/section-05-integration-proof.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 2,
+    "unresolved": 2
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.498841Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

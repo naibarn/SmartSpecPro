@@ -79,3 +79,7 @@ not task completion until the outcome's Definition of Done is met.
 - `FAST_GATE_BLOCKED`: the remaining delta cannot safely enter the configured canonical ref; exact failure, durable recovery location, owner, and next action are recorded. This is not completion.
 
 Do not claim heavy verification, UAT, production readiness, or deployment unless each has its own passing evidence.
+
+## Canonical Spec resume capsule
+
+For Spec-backed work, persist the resume capsule through the canonical manifest writer described in `skills/development-lifecycle/spec-handoff-contract.md`. Include canonical SHA, manifest generation, completed WorkUnits, unresolved requirement IDs, blocker class/root cause, attempted and prohibited strategies, waiting/reactivation predicates, evidence freshness, next ready WorkUnit, and resume point. `orchestra/progress.md` links to this capsule and is not a competing Spec status source.

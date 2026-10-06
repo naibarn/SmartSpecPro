@@ -1,0 +1,558 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "200",
+        "referenced_spec_id": "200",
+        "referencing_spec_id": "210",
+        "relation_text": "replaceable",
+        "requirement_ids": [],
+        "source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L154",
+        "source_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+        "successor_spec_id": "210"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "200",
+        "referenced_spec_id": "200",
+        "referencing_spec_id": "210",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L181",
+        "source_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+        "successor_spec_id": "210"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "200",
+        "referenced_spec_id": "200",
+        "referencing_spec_id": "210",
+        "relation_text": "replaceable",
+        "requirement_ids": [],
+        "source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L5349",
+        "source_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+        "successor_spec_id": "210"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "206",
+        "referenced_spec_id": "206",
+        "referencing_spec_id": "210",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L182",
+        "source_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+        "successor_spec_id": "210"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "210",
+        "referenced_spec_id": "210",
+        "referencing_spec_id": "211",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L385",
+        "source_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
+        "successor_spec_id": "211"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md"
+      },
+      {
+        "digest": "98e9e2933461b6f0ab8ef545a7dc731950225472d2a6c40e6dd68e9bd91a32d2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/claude-plan.md"
+      },
+      {
+        "digest": "85542b5c8256030ef7f6335760d85a76b591dcab9d1f4fe7ec5586fae4f06aca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/claude-spec.md"
+      },
+      {
+        "digest": "8686c4397ca51eef5865a74bc9a3e9a478ed2992de1aaa3be888cb242cc1595e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/implementation/completion.md"
+      },
+      {
+        "digest": "11d0d99d24fc2c84edd3e7d181ff8c3c34ef9ae359946c91691e9044b372b54c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "aaa26c22cb48eed12d73257219b2090d2033bf3b47eb4bb711771534b3a3d8f3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/release-gate.md"
+      },
+      {
+        "digest": "9401eaab50df6260d2cf3ecb96a18fe14df162ee9909df4d518493a12bd603ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "ec0f45634a1a8ab7cdeaa27d450d0f00658c43272b62f95ba846d8fe35d34d5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/index.md"
+      },
+      {
+        "digest": "210519e42ae35aa58694834705b4beb34b7e34701cbc40156d4d62d2f4cde59b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-01-orca-contracts-readiness.md"
+      },
+      {
+        "digest": "17ed712e4b1c7e12f65e5ec830a1650857fe3a91a5f1a44ed0a38557d76e6605",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-02-runner-session-lifecycle.md"
+      },
+      {
+        "digest": "35a6a76bfacfaf8eeee4c8e6906b12da9522d033cb7156c87ea75d878cb00baa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-03-job-attempt-receipts.md"
+      },
+      {
+        "digest": "48723e0c1c9f7557661c45966b6e5c6ea1387e8463d89477b0cdd18f184b7353",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-04-auth-approval-economics.md"
+      },
+      {
+        "digest": "e2f5372361bed5b891de1d42b1eb1bb632f6f0d9b46573d4457428023b110c2f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-05-operations-projection-ui.md"
+      },
+      {
+        "digest": "e47ba0880171be2a314b10d7d6c50f3527742e52f52b9180476909cd4cebb5ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-06-certification-rollout.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md"
+      },
+      {
+        "digest": "98e9e2933461b6f0ab8ef545a7dc731950225472d2a6c40e6dd68e9bd91a32d2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/claude-plan.md"
+      },
+      {
+        "digest": "85542b5c8256030ef7f6335760d85a76b591dcab9d1f4fe7ec5586fae4f06aca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/claude-spec.md"
+      },
+      {
+        "digest": "8686c4397ca51eef5865a74bc9a3e9a478ed2992de1aaa3be888cb242cc1595e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/implementation/completion.md"
+      },
+      {
+        "digest": "11d0d99d24fc2c84edd3e7d181ff8c3c34ef9ae359946c91691e9044b372b54c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "aaa26c22cb48eed12d73257219b2090d2033bf3b47eb4bb711771534b3a3d8f3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/release-gate.md"
+      },
+      {
+        "digest": "9401eaab50df6260d2cf3ecb96a18fe14df162ee9909df4d518493a12bd603ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "ec0f45634a1a8ab7cdeaa27d450d0f00658c43272b62f95ba846d8fe35d34d5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/index.md"
+      },
+      {
+        "digest": "210519e42ae35aa58694834705b4beb34b7e34701cbc40156d4d62d2f4cde59b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-01-orca-contracts-readiness.md"
+      },
+      {
+        "digest": "17ed712e4b1c7e12f65e5ec830a1650857fe3a91a5f1a44ed0a38557d76e6605",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-02-runner-session-lifecycle.md"
+      },
+      {
+        "digest": "35a6a76bfacfaf8eeee4c8e6906b12da9522d033cb7156c87ea75d878cb00baa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-03-job-attempt-receipts.md"
+      },
+      {
+        "digest": "48723e0c1c9f7557661c45966b6e5c6ea1387e8463d89477b0cdd18f184b7353",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-04-auth-approval-economics.md"
+      },
+      {
+        "digest": "e2f5372361bed5b891de1d42b1eb1bb632f6f0d9b46573d4457428023b110c2f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-05-operations-projection-ui.md"
+      },
+      {
+        "digest": "e47ba0880171be2a314b10d7d6c50f3527742e52f52b9180476909cd4cebb5ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-06-certification-rollout.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md"
+      },
+      {
+        "digest": "98e9e2933461b6f0ab8ef545a7dc731950225472d2a6c40e6dd68e9bd91a32d2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/claude-plan.md"
+      },
+      {
+        "digest": "85542b5c8256030ef7f6335760d85a76b591dcab9d1f4fe7ec5586fae4f06aca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/claude-spec.md"
+      },
+      {
+        "digest": "8686c4397ca51eef5865a74bc9a3e9a478ed2992de1aaa3be888cb242cc1595e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/implementation/completion.md"
+      },
+      {
+        "digest": "11d0d99d24fc2c84edd3e7d181ff8c3c34ef9ae359946c91691e9044b372b54c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "aaa26c22cb48eed12d73257219b2090d2033bf3b47eb4bb711771534b3a3d8f3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/release-gate.md"
+      },
+      {
+        "digest": "9401eaab50df6260d2cf3ecb96a18fe14df162ee9909df4d518493a12bd603ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "ec0f45634a1a8ab7cdeaa27d450d0f00658c43272b62f95ba846d8fe35d34d5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/index.md"
+      },
+      {
+        "digest": "210519e42ae35aa58694834705b4beb34b7e34701cbc40156d4d62d2f4cde59b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-01-orca-contracts-readiness.md"
+      },
+      {
+        "digest": "17ed712e4b1c7e12f65e5ec830a1650857fe3a91a5f1a44ed0a38557d76e6605",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-02-runner-session-lifecycle.md"
+      },
+      {
+        "digest": "35a6a76bfacfaf8eeee4c8e6906b12da9522d033cb7156c87ea75d878cb00baa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-03-job-attempt-receipts.md"
+      },
+      {
+        "digest": "48723e0c1c9f7557661c45966b6e5c6ea1387e8463d89477b0cdd18f184b7353",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-04-auth-approval-economics.md"
+      },
+      {
+        "digest": "e2f5372361bed5b891de1d42b1eb1bb632f6f0d9b46573d4457428023b110c2f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-05-operations-projection-ui.md"
+      },
+      {
+        "digest": "e47ba0880171be2a314b10d7d6c50f3527742e52f52b9180476909cd4cebb5ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-06-certification-rollout.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md",
+    "digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.951296Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-26T09:26:48+07:00",
+      "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
+    },
+    "revision": null,
+    "slug": "210-orca-runtime-adapter-cli-agent-execution-bridge",
+    "spec_id": "210",
+    "title": "Spec 210 — SmartAIHub Orca Runtime Adapter & CLI Agent Execution Bridge"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.951296Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.951296Z",
+    "sources": [
+      {
+        "digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md"
+      },
+      {
+        "digest": "98e9e2933461b6f0ab8ef545a7dc731950225472d2a6c40e6dd68e9bd91a32d2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/claude-plan.md"
+      },
+      {
+        "digest": "85542b5c8256030ef7f6335760d85a76b591dcab9d1f4fe7ec5586fae4f06aca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/claude-spec.md"
+      },
+      {
+        "digest": "8686c4397ca51eef5865a74bc9a3e9a478ed2992de1aaa3be888cb242cc1595e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/implementation/completion.md"
+      },
+      {
+        "digest": "11d0d99d24fc2c84edd3e7d181ff8c3c34ef9ae359946c91691e9044b372b54c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "aaa26c22cb48eed12d73257219b2090d2033bf3b47eb4bb711771534b3a3d8f3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/release-gate.md"
+      },
+      {
+        "digest": "9401eaab50df6260d2cf3ecb96a18fe14df162ee9909df4d518493a12bd603ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "ec0f45634a1a8ab7cdeaa27d450d0f00658c43272b62f95ba846d8fe35d34d5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/index.md"
+      },
+      {
+        "digest": "210519e42ae35aa58694834705b4beb34b7e34701cbc40156d4d62d2f4cde59b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-01-orca-contracts-readiness.md"
+      },
+      {
+        "digest": "17ed712e4b1c7e12f65e5ec830a1650857fe3a91a5f1a44ed0a38557d76e6605",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-02-runner-session-lifecycle.md"
+      },
+      {
+        "digest": "35a6a76bfacfaf8eeee4c8e6906b12da9522d033cb7156c87ea75d878cb00baa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-03-job-attempt-receipts.md"
+      },
+      {
+        "digest": "48723e0c1c9f7557661c45966b6e5c6ea1387e8463d89477b0cdd18f184b7353",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-04-auth-approval-economics.md"
+      },
+      {
+        "digest": "e2f5372361bed5b891de1d42b1eb1bb632f6f0d9b46573d4457428023b110c2f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-05-operations-projection-ui.md"
+      },
+      {
+        "digest": "e47ba0880171be2a314b10d7d6c50f3527742e52f52b9180476909cd4cebb5ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-06-certification-rollout.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md"
+      },
+      {
+        "digest": "98e9e2933461b6f0ab8ef545a7dc731950225472d2a6c40e6dd68e9bd91a32d2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/claude-plan.md"
+      },
+      {
+        "digest": "85542b5c8256030ef7f6335760d85a76b591dcab9d1f4fe7ec5586fae4f06aca",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/claude-spec.md"
+      },
+      {
+        "digest": "8686c4397ca51eef5865a74bc9a3e9a478ed2992de1aaa3be888cb242cc1595e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/implementation/completion.md"
+      },
+      {
+        "digest": "11d0d99d24fc2c84edd3e7d181ff8c3c34ef9ae359946c91691e9044b372b54c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "aaa26c22cb48eed12d73257219b2090d2033bf3b47eb4bb711771534b3a3d8f3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/release-gate.md"
+      },
+      {
+        "digest": "9401eaab50df6260d2cf3ecb96a18fe14df162ee9909df4d518493a12bd603ab",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "ec0f45634a1a8ab7cdeaa27d450d0f00658c43272b62f95ba846d8fe35d34d5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/index.md"
+      },
+      {
+        "digest": "210519e42ae35aa58694834705b4beb34b7e34701cbc40156d4d62d2f4cde59b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-01-orca-contracts-readiness.md"
+      },
+      {
+        "digest": "17ed712e4b1c7e12f65e5ec830a1650857fe3a91a5f1a44ed0a38557d76e6605",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-02-runner-session-lifecycle.md"
+      },
+      {
+        "digest": "35a6a76bfacfaf8eeee4c8e6906b12da9522d033cb7156c87ea75d878cb00baa",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-03-job-attempt-receipts.md"
+      },
+      {
+        "digest": "48723e0c1c9f7557661c45966b6e5c6ea1387e8463d89477b0cdd18f184b7353",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-04-auth-approval-economics.md"
+      },
+      {
+        "digest": "e2f5372361bed5b891de1d42b1eb1bb632f6f0d9b46573d4457428023b110c2f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-05-operations-projection-ui.md"
+      },
+      {
+        "digest": "e47ba0880171be2a314b10d7d6c50f3527742e52f52b9180476909cd4cebb5ea",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-06-certification-rollout.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 486,
+    "unresolved": 486
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.951296Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

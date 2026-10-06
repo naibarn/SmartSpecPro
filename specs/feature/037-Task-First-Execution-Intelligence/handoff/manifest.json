@@ -1,0 +1,419 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "5a8c47087b8039b5de1d82ca608324d0bf48f5ce445ae15d0ae4215b4c713884",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/spec.md"
+      },
+      {
+        "digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7b6aa933db0d198da73725bee4c5a428be312cbf02ff7c6bea4059bef34da1df",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
+      },
+      {
+        "digest": "161c8236bfa4b992275e6b2387f8f3215a24392f989faace1108e10af1cf4163",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
+      },
+      {
+        "digest": "068d163cdcdfdacb71cc355a5a72e3bc6050515e8ac3b10737363be94f39b764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
+      },
+      {
+        "digest": "d79f57f31a7cd78a023775ef158c3612d02a6e5c9e5b08269c4e6ae9b7eee6a4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
+      },
+      {
+        "digest": "86b6ea4634ee975bb45b47b072532c713168e66bc376395ba58697ba9d1a23ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
+      },
+      {
+        "digest": "9204247c71b674911c366decec770f082a70650c1c18267904596a7a08741b00",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
+      },
+      {
+        "digest": "f307ef118170f0de6fcb463ca67ce21f308bb476d35ef1d87db0d68c2fef88ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
+      },
+      {
+        "digest": "9a1e94132ca82ba54651670e8bbe5fb3c88e4c53296f43a07b0bf45fe70a1115",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "5a8c47087b8039b5de1d82ca608324d0bf48f5ce445ae15d0ae4215b4c713884"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "5a8c47087b8039b5de1d82ca608324d0bf48f5ce445ae15d0ae4215b4c713884",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/spec.md"
+      },
+      {
+        "digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7b6aa933db0d198da73725bee4c5a428be312cbf02ff7c6bea4059bef34da1df",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
+      },
+      {
+        "digest": "161c8236bfa4b992275e6b2387f8f3215a24392f989faace1108e10af1cf4163",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
+      },
+      {
+        "digest": "068d163cdcdfdacb71cc355a5a72e3bc6050515e8ac3b10737363be94f39b764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
+      },
+      {
+        "digest": "d79f57f31a7cd78a023775ef158c3612d02a6e5c9e5b08269c4e6ae9b7eee6a4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
+      },
+      {
+        "digest": "86b6ea4634ee975bb45b47b072532c713168e66bc376395ba58697ba9d1a23ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
+      },
+      {
+        "digest": "9204247c71b674911c366decec770f082a70650c1c18267904596a7a08741b00",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
+      },
+      {
+        "digest": "f307ef118170f0de6fcb463ca67ce21f308bb476d35ef1d87db0d68c2fef88ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
+      },
+      {
+        "digest": "9a1e94132ca82ba54651670e8bbe5fb3c88e4c53296f43a07b0bf45fe70a1115",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
+      },
+      {
+        "excerpt": "// ── Task Execution Intelligence (Spec 037 §03) ────────────────────────",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 14380,
+        "path": "apps/web/drizzle/schema.ts"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "5a8c47087b8039b5de1d82ca608324d0bf48f5ce445ae15d0ae4215b4c713884",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/spec.md"
+      },
+      {
+        "digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7b6aa933db0d198da73725bee4c5a428be312cbf02ff7c6bea4059bef34da1df",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
+      },
+      {
+        "digest": "161c8236bfa4b992275e6b2387f8f3215a24392f989faace1108e10af1cf4163",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
+      },
+      {
+        "digest": "068d163cdcdfdacb71cc355a5a72e3bc6050515e8ac3b10737363be94f39b764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
+      },
+      {
+        "digest": "d79f57f31a7cd78a023775ef158c3612d02a6e5c9e5b08269c4e6ae9b7eee6a4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
+      },
+      {
+        "digest": "86b6ea4634ee975bb45b47b072532c713168e66bc376395ba58697ba9d1a23ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
+      },
+      {
+        "digest": "9204247c71b674911c366decec770f082a70650c1c18267904596a7a08741b00",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
+      },
+      {
+        "digest": "f307ef118170f0de6fcb463ca67ce21f308bb476d35ef1d87db0d68c2fef88ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
+      },
+      {
+        "digest": "9a1e94132ca82ba54651670e8bbe5fb3c88e4c53296f43a07b0bf45fe70a1115",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/037-Task-First-Execution-Intelligence/spec.md",
+    "digest": "5a8c47087b8039b5de1d82ca608324d0bf48f5ce445ae15d0ae4215b4c713884",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.569115Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-03-11T13:15:46+07:00",
+      "spec_last_changed_at": "2026-03-11T13:15:46+07:00"
+    },
+    "revision": "1.0",
+    "slug": "037-Task-First-Execution-Intelligence",
+    "spec_id": "037",
+    "title": "037 — Task-First Execution Intelligence & Autonomous Work Runtime"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.569115Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.569115Z",
+    "sources": [
+      {
+        "digest": "5a8c47087b8039b5de1d82ca608324d0bf48f5ce445ae15d0ae4215b4c713884",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/spec.md"
+      },
+      {
+        "digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7b6aa933db0d198da73725bee4c5a428be312cbf02ff7c6bea4059bef34da1df",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
+      },
+      {
+        "digest": "161c8236bfa4b992275e6b2387f8f3215a24392f989faace1108e10af1cf4163",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
+      },
+      {
+        "digest": "068d163cdcdfdacb71cc355a5a72e3bc6050515e8ac3b10737363be94f39b764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
+      },
+      {
+        "digest": "d79f57f31a7cd78a023775ef158c3612d02a6e5c9e5b08269c4e6ae9b7eee6a4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
+      },
+      {
+        "digest": "86b6ea4634ee975bb45b47b072532c713168e66bc376395ba58697ba9d1a23ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
+      },
+      {
+        "digest": "9204247c71b674911c366decec770f082a70650c1c18267904596a7a08741b00",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
+      },
+      {
+        "digest": "f307ef118170f0de6fcb463ca67ce21f308bb476d35ef1d87db0d68c2fef88ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
+      },
+      {
+        "digest": "9a1e94132ca82ba54651670e8bbe5fb3c88e4c53296f43a07b0bf45fe70a1115",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
+      },
+      {
+        "excerpt": "// ── Task Execution Intelligence (Spec 037 §03) ────────────────────────",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 14380,
+        "path": "apps/web/drizzle/schema.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "// ── Task Execution Intelligence (Spec 037 §03) ────────────────────────",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 14380,
+        "path": "apps/web/drizzle/schema.ts"
+      }
+    ],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "5a8c47087b8039b5de1d82ca608324d0bf48f5ce445ae15d0ae4215b4c713884",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/spec.md"
+      },
+      {
+        "digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7b6aa933db0d198da73725bee4c5a428be312cbf02ff7c6bea4059bef34da1df",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
+      },
+      {
+        "digest": "161c8236bfa4b992275e6b2387f8f3215a24392f989faace1108e10af1cf4163",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
+      },
+      {
+        "digest": "068d163cdcdfdacb71cc355a5a72e3bc6050515e8ac3b10737363be94f39b764",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
+      },
+      {
+        "digest": "d79f57f31a7cd78a023775ef158c3612d02a6e5c9e5b08269c4e6ae9b7eee6a4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
+      },
+      {
+        "digest": "86b6ea4634ee975bb45b47b072532c713168e66bc376395ba58697ba9d1a23ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
+      },
+      {
+        "digest": "9204247c71b674911c366decec770f082a70650c1c18267904596a7a08741b00",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
+      },
+      {
+        "digest": "f307ef118170f0de6fcb463ca67ce21f308bb476d35ef1d87db0d68c2fef88ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
+      },
+      {
+        "digest": "9a1e94132ca82ba54651670e8bbe5fb3c88e4c53296f43a07b0bf45fe70a1115",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 119,
+    "unresolved": 119
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.569115Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

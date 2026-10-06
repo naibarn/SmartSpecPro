@@ -1,0 +1,333 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "199",
+        "referenced_spec_id": "199",
+        "referencing_spec_id": "248",
+        "relation_text": "merging",
+        "requirement_ids": [
+          "R2"
+        ],
+        "source": "specs/feature/248-MCP Skills Extension/spec.md#L502",
+        "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+        "successor_spec_id": "248"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "221",
+        "referenced_spec_id": "221",
+        "referencing_spec_id": "248",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/248-MCP Skills Extension/spec.md#L278",
+        "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+        "successor_spec_id": "248"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "221",
+        "referenced_spec_id": "221",
+        "referencing_spec_id": "248",
+        "relation_text": "merging",
+        "requirement_ids": [
+          "R2"
+        ],
+        "source": "specs/feature/248-MCP Skills Extension/spec.md#L502",
+        "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+        "successor_spec_id": "248"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "248",
+        "relation_text": "merging",
+        "requirement_ids": [
+          "R2"
+        ],
+        "source": "specs/feature/248-MCP Skills Extension/spec.md#L502",
+        "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+        "successor_spec_id": "248"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "247",
+        "referenced_spec_id": "247",
+        "referencing_spec_id": "248",
+        "relation_text": "merge",
+        "requirement_ids": [],
+        "source": "specs/feature/248-MCP Skills Extension/spec.md#L15",
+        "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+        "successor_spec_id": "248"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "248",
+        "referenced_spec_id": "248",
+        "referencing_spec_id": "250",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+        "successor_spec_id": "250"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "248",
+        "referenced_spec_id": "248",
+        "referencing_spec_id": "250",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/250-Development-Reliability/spec.md#L1537",
+        "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+        "successor_spec_id": "250"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "248",
+        "referenced_spec_id": "248",
+        "referencing_spec_id": "250",
+        "relation_text": "supersede",
+        "requirement_ids": [
+          "R0.6",
+          "R0.7",
+          "R1.3"
+        ],
+        "source": "specs/feature/250-Development-Reliability/spec.md#L19",
+        "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+        "successor_spec_id": "250"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "248",
+        "referenced_spec_id": "248",
+        "referencing_spec_id": "250",
+        "relation_text": "supersede",
+        "requirement_ids": [
+          "R0.1",
+          "R0.5",
+          "R0.6"
+        ],
+        "source": "specs/feature/250-Development-Reliability/spec.md#L23",
+        "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+        "successor_spec_id": "250"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "248",
+        "referenced_spec_id": "248",
+        "referencing_spec_id": "250",
+        "relation_text": "replacement",
+        "requirement_ids": [
+          "R0.8"
+        ],
+        "source": "specs/feature/250-Development-Reliability/spec.md#L40",
+        "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+        "successor_spec_id": "250"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "248",
+        "referenced_spec_id": "248",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "248",
+        "referenced_spec_id": "248",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/248-MCP Skills Extension/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/248-MCP Skills Extension/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/248-MCP Skills Extension/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/248-MCP Skills Extension/spec.md",
+    "digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.485588Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-26T09:26:48+07:00",
+      "spec_last_changed_at": "2026-09-28T00:04:37+07:00"
+    },
+    "revision": null,
+    "slug": "248-MCP Skills Extension",
+    "spec_id": "248",
+    "title": "Spec 248 — MCP Skills Extension (SEP-2640): Distribution, Interoperability & Governance"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.485588Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.485588Z",
+    "sources": [
+      {
+        "digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/248-MCP Skills Extension/spec.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/248-MCP Skills Extension/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 71,
+    "unresolved": 71
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.485588Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

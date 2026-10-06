@@ -1,0 +1,372 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md"
+      },
+      {
+        "digest": "8ba9eb50d20125654090af387b7f9efffa43be74a806ada831ddfbd69e96027b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/claude-plan.md"
+      },
+      {
+        "digest": "45b14c68355e602905f0cbe2e799a2938c663031eb9100ff4cc442fb465a27fb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/index.md"
+      },
+      {
+        "digest": "618890be45231b0706b2f30b647e3a3a9ebd936699e48266b4b82e76b085333e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-01-contracts-and-fingerprints.md"
+      },
+      {
+        "digest": "d1d72036bb58eb72ea81b23fc0fc066cf036ad7a19255c9ac9e32d9de0730b79",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-02-compiler-and-adapters.md"
+      },
+      {
+        "digest": "fdbbeba14b1a09f371e7fdf31b8acf9fe844bc6d9be9f2ddc1f834a55a3c7af0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-03-worker-qc-and-transcoding.md"
+      },
+      {
+        "digest": "f965c5aa7b248a5cd5c2a24858904a01623d6fb30382287a277467ad9f4dfda3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-04-demucs-surgical-repair.md"
+      },
+      {
+        "digest": "43aad05d879e10ab0f9537aa7811de1a40c266c71d7532ab804d976dc5189a0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-05-mastering-and-codec-delivery.md"
+      },
+      {
+        "digest": "8e818d02913c123451f458811fb4c427602a691def9fd9feef43ff9f5bc1c893",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-06-storyboard-ui-and-metering.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md"
+      },
+      {
+        "digest": "8ba9eb50d20125654090af387b7f9efffa43be74a806ada831ddfbd69e96027b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/claude-plan.md"
+      },
+      {
+        "digest": "45b14c68355e602905f0cbe2e799a2938c663031eb9100ff4cc442fb465a27fb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/index.md"
+      },
+      {
+        "digest": "618890be45231b0706b2f30b647e3a3a9ebd936699e48266b4b82e76b085333e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-01-contracts-and-fingerprints.md"
+      },
+      {
+        "digest": "d1d72036bb58eb72ea81b23fc0fc066cf036ad7a19255c9ac9e32d9de0730b79",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-02-compiler-and-adapters.md"
+      },
+      {
+        "digest": "fdbbeba14b1a09f371e7fdf31b8acf9fe844bc6d9be9f2ddc1f834a55a3c7af0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-03-worker-qc-and-transcoding.md"
+      },
+      {
+        "digest": "f965c5aa7b248a5cd5c2a24858904a01623d6fb30382287a277467ad9f4dfda3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-04-demucs-surgical-repair.md"
+      },
+      {
+        "digest": "43aad05d879e10ab0f9537aa7811de1a40c266c71d7532ab804d976dc5189a0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-05-mastering-and-codec-delivery.md"
+      },
+      {
+        "digest": "8e818d02913c123451f458811fb4c427602a691def9fd9feef43ff9f5bc1c893",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-06-storyboard-ui-and-metering.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md"
+      },
+      {
+        "digest": "8ba9eb50d20125654090af387b7f9efffa43be74a806ada831ddfbd69e96027b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/claude-plan.md"
+      },
+      {
+        "digest": "45b14c68355e602905f0cbe2e799a2938c663031eb9100ff4cc442fb465a27fb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/index.md"
+      },
+      {
+        "digest": "618890be45231b0706b2f30b647e3a3a9ebd936699e48266b4b82e76b085333e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-01-contracts-and-fingerprints.md"
+      },
+      {
+        "digest": "d1d72036bb58eb72ea81b23fc0fc066cf036ad7a19255c9ac9e32d9de0730b79",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-02-compiler-and-adapters.md"
+      },
+      {
+        "digest": "fdbbeba14b1a09f371e7fdf31b8acf9fe844bc6d9be9f2ddc1f834a55a3c7af0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-03-worker-qc-and-transcoding.md"
+      },
+      {
+        "digest": "f965c5aa7b248a5cd5c2a24858904a01623d6fb30382287a277467ad9f4dfda3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-04-demucs-surgical-repair.md"
+      },
+      {
+        "digest": "43aad05d879e10ab0f9537aa7811de1a40c266c71d7532ab804d976dc5189a0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-05-mastering-and-codec-delivery.md"
+      },
+      {
+        "digest": "8e818d02913c123451f458811fb4c427602a691def9fd9feef43ff9f5bc1c893",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-06-storyboard-ui-and-metering.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md",
+    "digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.528717Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-03T13:05:27+07:00",
+      "spec_last_changed_at": "2026-09-03T13:05:27+07:00"
+    },
+    "revision": null,
+    "slug": "175-vertical-drama-native-cinematic-audio",
+    "spec_id": "175",
+    "title": "Feature 175 — Vertical Drama Native Audio & Cinematic Sound Design Pipeline"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.528717Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.528717Z",
+    "sources": [
+      {
+        "digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md"
+      },
+      {
+        "digest": "8ba9eb50d20125654090af387b7f9efffa43be74a806ada831ddfbd69e96027b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/claude-plan.md"
+      },
+      {
+        "digest": "45b14c68355e602905f0cbe2e799a2938c663031eb9100ff4cc442fb465a27fb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/index.md"
+      },
+      {
+        "digest": "618890be45231b0706b2f30b647e3a3a9ebd936699e48266b4b82e76b085333e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-01-contracts-and-fingerprints.md"
+      },
+      {
+        "digest": "d1d72036bb58eb72ea81b23fc0fc066cf036ad7a19255c9ac9e32d9de0730b79",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-02-compiler-and-adapters.md"
+      },
+      {
+        "digest": "fdbbeba14b1a09f371e7fdf31b8acf9fe844bc6d9be9f2ddc1f834a55a3c7af0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-03-worker-qc-and-transcoding.md"
+      },
+      {
+        "digest": "f965c5aa7b248a5cd5c2a24858904a01623d6fb30382287a277467ad9f4dfda3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-04-demucs-surgical-repair.md"
+      },
+      {
+        "digest": "43aad05d879e10ab0f9537aa7811de1a40c266c71d7532ab804d976dc5189a0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-05-mastering-and-codec-delivery.md"
+      },
+      {
+        "digest": "8e818d02913c123451f458811fb4c427602a691def9fd9feef43ff9f5bc1c893",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-06-storyboard-ui-and-metering.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md"
+      },
+      {
+        "digest": "8ba9eb50d20125654090af387b7f9efffa43be74a806ada831ddfbd69e96027b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/claude-plan.md"
+      },
+      {
+        "digest": "45b14c68355e602905f0cbe2e799a2938c663031eb9100ff4cc442fb465a27fb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/index.md"
+      },
+      {
+        "digest": "618890be45231b0706b2f30b647e3a3a9ebd936699e48266b4b82e76b085333e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-01-contracts-and-fingerprints.md"
+      },
+      {
+        "digest": "d1d72036bb58eb72ea81b23fc0fc066cf036ad7a19255c9ac9e32d9de0730b79",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-02-compiler-and-adapters.md"
+      },
+      {
+        "digest": "fdbbeba14b1a09f371e7fdf31b8acf9fe844bc6d9be9f2ddc1f834a55a3c7af0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-03-worker-qc-and-transcoding.md"
+      },
+      {
+        "digest": "f965c5aa7b248a5cd5c2a24858904a01623d6fb30382287a277467ad9f4dfda3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-04-demucs-surgical-repair.md"
+      },
+      {
+        "digest": "43aad05d879e10ab0f9537aa7811de1a40c266c71d7532ab804d976dc5189a0b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-05-mastering-and-codec-delivery.md"
+      },
+      {
+        "digest": "8e818d02913c123451f458811fb4c427602a691def9fd9feef43ff9f5bc1c893",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-06-storyboard-ui-and-metering.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 21,
+    "unresolved": 21
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.528717Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

@@ -1,0 +1,422 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md"
+      },
+      {
+        "digest": "4fed383020bfb444dfffe05e45840462e1aaac055f56021efc59d1b26648ed93",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/implementation/implementation-status.md"
+      },
+      {
+        "digest": "5a706a127b1c62d2f1897ae47c6e96e23cf9dcfa269319e7c097ffa0a8ebfe0a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/implementation/plan.md"
+      },
+      {
+        "digest": "cd0c2f670311fd062ced32a0b0b0c01535ae8452971893cbdf10cfb3af539ffb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/01-contracts.md"
+      },
+      {
+        "digest": "856787a3ef52593a84ce1d85319af01da22589474564bd9077f05d895f146233",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/02-closure-qc-repair.md"
+      },
+      {
+        "digest": "b4c23cd24da531fd4567a1bc178295437d87f2a728c5e2dad1adb8187b52c830",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/03-documentary-review-formats.md"
+      },
+      {
+        "digest": "f899a29ce1857ea61ecb765188cef5168ead0fb7ac1b5cbe82ac9b2507dbdc11",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/04-visual-genre-grounding.md"
+      },
+      {
+        "digest": "db12f98b1121e28c1d593668c321441183166816d628edf54cfa94461e35f82c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/05-prompt-runtime.md"
+      },
+      {
+        "digest": "049be72ab0fab967b08eec5113f65884860d8d97891011818a9872d9e5171005",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/06-ui-diagnostics.md"
+      },
+      {
+        "digest": "b9612608e750c2796bec1f8a460dab8541e53da843099b6ec8246f8dfee98e5c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/07-proof-rollout.md"
+      },
+      {
+        "digest": "588d42221bc1946d655dcb8c7b57512d390be609139bfc2db269c885f11dfbb0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/index.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md"
+      },
+      {
+        "digest": "4fed383020bfb444dfffe05e45840462e1aaac055f56021efc59d1b26648ed93",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/implementation/implementation-status.md"
+      },
+      {
+        "digest": "5a706a127b1c62d2f1897ae47c6e96e23cf9dcfa269319e7c097ffa0a8ebfe0a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/implementation/plan.md"
+      },
+      {
+        "digest": "cd0c2f670311fd062ced32a0b0b0c01535ae8452971893cbdf10cfb3af539ffb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/01-contracts.md"
+      },
+      {
+        "digest": "856787a3ef52593a84ce1d85319af01da22589474564bd9077f05d895f146233",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/02-closure-qc-repair.md"
+      },
+      {
+        "digest": "b4c23cd24da531fd4567a1bc178295437d87f2a728c5e2dad1adb8187b52c830",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/03-documentary-review-formats.md"
+      },
+      {
+        "digest": "f899a29ce1857ea61ecb765188cef5168ead0fb7ac1b5cbe82ac9b2507dbdc11",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/04-visual-genre-grounding.md"
+      },
+      {
+        "digest": "db12f98b1121e28c1d593668c321441183166816d628edf54cfa94461e35f82c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/05-prompt-runtime.md"
+      },
+      {
+        "digest": "049be72ab0fab967b08eec5113f65884860d8d97891011818a9872d9e5171005",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/06-ui-diagnostics.md"
+      },
+      {
+        "digest": "b9612608e750c2796bec1f8a460dab8541e53da843099b6ec8246f8dfee98e5c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/07-proof-rollout.md"
+      },
+      {
+        "digest": "588d42221bc1946d655dcb8c7b57512d390be609139bfc2db269c885f11dfbb0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/index.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md"
+      },
+      {
+        "digest": "4fed383020bfb444dfffe05e45840462e1aaac055f56021efc59d1b26648ed93",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/implementation/implementation-status.md"
+      },
+      {
+        "digest": "5a706a127b1c62d2f1897ae47c6e96e23cf9dcfa269319e7c097ffa0a8ebfe0a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/implementation/plan.md"
+      },
+      {
+        "digest": "cd0c2f670311fd062ced32a0b0b0c01535ae8452971893cbdf10cfb3af539ffb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/01-contracts.md"
+      },
+      {
+        "digest": "856787a3ef52593a84ce1d85319af01da22589474564bd9077f05d895f146233",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/02-closure-qc-repair.md"
+      },
+      {
+        "digest": "b4c23cd24da531fd4567a1bc178295437d87f2a728c5e2dad1adb8187b52c830",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/03-documentary-review-formats.md"
+      },
+      {
+        "digest": "f899a29ce1857ea61ecb765188cef5168ead0fb7ac1b5cbe82ac9b2507dbdc11",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/04-visual-genre-grounding.md"
+      },
+      {
+        "digest": "db12f98b1121e28c1d593668c321441183166816d628edf54cfa94461e35f82c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/05-prompt-runtime.md"
+      },
+      {
+        "digest": "049be72ab0fab967b08eec5113f65884860d8d97891011818a9872d9e5171005",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/06-ui-diagnostics.md"
+      },
+      {
+        "digest": "b9612608e750c2796bec1f8a460dab8541e53da843099b6ec8246f8dfee98e5c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/07-proof-rollout.md"
+      },
+      {
+        "digest": "588d42221bc1946d655dcb8c7b57512d390be609139bfc2db269c885f11dfbb0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/index.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md",
+    "digest": "0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.388885Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-08-30T21:05:27+07:00",
+      "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
+    },
+    "revision": "1",
+    "slug": "154-vertical-drama-closure-documentary-genre-grounding",
+    "spec_id": "154",
+    "title": "Feature 154 — Closure Assurance, Documentary/Review Series, and Genre Grounding"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.388885Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.388885Z",
+    "sources": [
+      {
+        "digest": "0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md"
+      },
+      {
+        "digest": "4fed383020bfb444dfffe05e45840462e1aaac055f56021efc59d1b26648ed93",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/implementation/implementation-status.md"
+      },
+      {
+        "digest": "5a706a127b1c62d2f1897ae47c6e96e23cf9dcfa269319e7c097ffa0a8ebfe0a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/implementation/plan.md"
+      },
+      {
+        "digest": "cd0c2f670311fd062ced32a0b0b0c01535ae8452971893cbdf10cfb3af539ffb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/01-contracts.md"
+      },
+      {
+        "digest": "856787a3ef52593a84ce1d85319af01da22589474564bd9077f05d895f146233",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/02-closure-qc-repair.md"
+      },
+      {
+        "digest": "b4c23cd24da531fd4567a1bc178295437d87f2a728c5e2dad1adb8187b52c830",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/03-documentary-review-formats.md"
+      },
+      {
+        "digest": "f899a29ce1857ea61ecb765188cef5168ead0fb7ac1b5cbe82ac9b2507dbdc11",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/04-visual-genre-grounding.md"
+      },
+      {
+        "digest": "db12f98b1121e28c1d593668c321441183166816d628edf54cfa94461e35f82c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/05-prompt-runtime.md"
+      },
+      {
+        "digest": "049be72ab0fab967b08eec5113f65884860d8d97891011818a9872d9e5171005",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/06-ui-diagnostics.md"
+      },
+      {
+        "digest": "b9612608e750c2796bec1f8a460dab8541e53da843099b6ec8246f8dfee98e5c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/07-proof-rollout.md"
+      },
+      {
+        "digest": "588d42221bc1946d655dcb8c7b57512d390be609139bfc2db269c885f11dfbb0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/index.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md"
+      },
+      {
+        "digest": "4fed383020bfb444dfffe05e45840462e1aaac055f56021efc59d1b26648ed93",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/implementation/implementation-status.md"
+      },
+      {
+        "digest": "5a706a127b1c62d2f1897ae47c6e96e23cf9dcfa269319e7c097ffa0a8ebfe0a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/implementation/plan.md"
+      },
+      {
+        "digest": "cd0c2f670311fd062ced32a0b0b0c01535ae8452971893cbdf10cfb3af539ffb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/01-contracts.md"
+      },
+      {
+        "digest": "856787a3ef52593a84ce1d85319af01da22589474564bd9077f05d895f146233",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/02-closure-qc-repair.md"
+      },
+      {
+        "digest": "b4c23cd24da531fd4567a1bc178295437d87f2a728c5e2dad1adb8187b52c830",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/03-documentary-review-formats.md"
+      },
+      {
+        "digest": "f899a29ce1857ea61ecb765188cef5168ead0fb7ac1b5cbe82ac9b2507dbdc11",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/04-visual-genre-grounding.md"
+      },
+      {
+        "digest": "db12f98b1121e28c1d593668c321441183166816d628edf54cfa94461e35f82c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/05-prompt-runtime.md"
+      },
+      {
+        "digest": "049be72ab0fab967b08eec5113f65884860d8d97891011818a9872d9e5171005",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/06-ui-diagnostics.md"
+      },
+      {
+        "digest": "b9612608e750c2796bec1f8a460dab8541e53da843099b6ec8246f8dfee98e5c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/07-proof-rollout.md"
+      },
+      {
+        "digest": "588d42221bc1946d655dcb8c7b57512d390be609139bfc2db269c885f11dfbb0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/index.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 16,
+    "unresolved": 16
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.388885Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

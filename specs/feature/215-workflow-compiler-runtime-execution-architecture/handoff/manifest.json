@@ -1,0 +1,1223 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "215",
+        "referenced_spec_id": "215",
+        "referencing_spec_id": "219",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md#L67",
+        "source_digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
+        "successor_spec_id": "219"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "215",
+        "referenced_spec_id": "215",
+        "referencing_spec_id": "226",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
+        "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+        "successor_spec_id": "226"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "215",
+        "referenced_spec_id": "215",
+        "referencing_spec_id": "238",
+        "relation_text": "supersede",
+        "requirement_ids": [],
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
+        "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
+        "successor_spec_id": "238"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "215",
+        "referenced_spec_id": "215",
+        "referencing_spec_id": "240",
+        "relation_text": "merge",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "215",
+        "referenced_spec_id": "215",
+        "referencing_spec_id": "240",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L421",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "successor_spec_id": "240"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "215",
+        "referenced_spec_id": "215",
+        "referencing_spec_id": "244",
+        "relation_text": "superseded",
+        "requirement_ids": [],
+        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1217",
+        "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
+        "successor_spec_id": "244"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "215",
+        "referenced_spec_id": "215",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "215",
+        "referenced_spec_id": "215",
+        "referencing_spec_id": "256",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "successor_spec_id": "256"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md"
+      },
+      {
+        "digest": "dec985a2d92b3c39ef6bcb83eec96f90e5e6a5dfb710a44e7af6cb5c2b0aebda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/claude-plan.md"
+      },
+      {
+        "digest": "532be178325e85555541f5c8a4d22b5c06f7ece9fcca7a4874818a889dd35770",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/claude-spec.md"
+      },
+      {
+        "digest": "6c11bfdd824437ed70d64e007a1ae63257eace66888d9c81928ff22b5227ca04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "4c1505d0719d6d388951568e861bef32471d36e399ce06df671dc82bcb47fbcf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-02-durable-logical-execution-state.md"
+      },
+      {
+        "digest": "056a8f9cd5f3bf4e011398a0902076a1e7bc02d82be4339de06580311a86bd52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-03-compiler-plan-policy-projection.md"
+      },
+      {
+        "digest": "f3ab3ce27e2071952a50f5f18859f56a4936a8c9517e095c22cd0362b76d7d41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-04-dependency-aware-run-scheduler.md"
+      },
+      {
+        "digest": "c6a39a76896685d860c654f82f1ae4a576c89dfa1a3c5766d4f944d7210bb275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-05-canonical-job-executor-lifecycle.md"
+      },
+      {
+        "digest": "357a599f21cb4ccbad1d2d0512283c78c74150ed67a252603a31b540fa049d52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-06-versioned-node-adapters-preflight.md"
+      },
+      {
+        "digest": "4f77319ce173aba46e5186853a8488ff370b4425580ec48a8119bbbc5c781020",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-07-persisted-graph-control-flow.md"
+      },
+      {
+        "digest": "b20b61fd05f03f2d65f22258ff5be3d212cc637d6a97483d571e8cb00c633f92",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-08-checkpoints-human-suspension-resume.md"
+      },
+      {
+        "digest": "20a3702ddbcc95ef82b8b5b0b850fc7333795eeee4b194cbccd002a2cce4182f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-09-effects-replay-recovery.md"
+      },
+      {
+        "digest": "2d142bc078018e213627b5c3d736e6450dc3a63e89d9f235346cdb951e1f51ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-10-authorization-placement-governance.md"
+      },
+      {
+        "digest": "832253bdcf6760181a53636a2a36982021ae843bcb830a4e9b2b8b5a53112051",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-11-economics-fairness-operations.md"
+      },
+      {
+        "digest": "2c04a9013cf7af4f92615b1df91825cb69f65aac755179c88dd5e9ea73802e14",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-12-conformance-migration-release-proof.md"
+      },
+      {
+        "digest": "18351079f2ea7ccf47ddad3a9d323a0d85b081bbd89d9b86ef54b5a8694bb8bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "8a195b2acf58a7782279fbc848ea4b1c93f0be68f9c453f39b6eb0367fe75150",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "2d39c76e9c481f3076edb03fa50c669b86a49f3754c5d98ad7c30e5c074eb29a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/index.md"
+      },
+      {
+        "digest": "54302c32239b212858c664ada67da6482b4531c2d35d37c19ab7b8d3fcf7b4be",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-01-authority-migration-baseline.md"
+      },
+      {
+        "digest": "644196383c5ed736b2e2b9c19752b5e863b689abed8cecd46c308e43b6b80adb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-02-durable-logical-execution-state.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md"
+      },
+      {
+        "digest": "dec985a2d92b3c39ef6bcb83eec96f90e5e6a5dfb710a44e7af6cb5c2b0aebda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/claude-plan.md"
+      },
+      {
+        "digest": "532be178325e85555541f5c8a4d22b5c06f7ece9fcca7a4874818a889dd35770",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/claude-spec.md"
+      },
+      {
+        "digest": "6c11bfdd824437ed70d64e007a1ae63257eace66888d9c81928ff22b5227ca04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "4c1505d0719d6d388951568e861bef32471d36e399ce06df671dc82bcb47fbcf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-02-durable-logical-execution-state.md"
+      },
+      {
+        "digest": "056a8f9cd5f3bf4e011398a0902076a1e7bc02d82be4339de06580311a86bd52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-03-compiler-plan-policy-projection.md"
+      },
+      {
+        "digest": "f3ab3ce27e2071952a50f5f18859f56a4936a8c9517e095c22cd0362b76d7d41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-04-dependency-aware-run-scheduler.md"
+      },
+      {
+        "digest": "c6a39a76896685d860c654f82f1ae4a576c89dfa1a3c5766d4f944d7210bb275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-05-canonical-job-executor-lifecycle.md"
+      },
+      {
+        "digest": "357a599f21cb4ccbad1d2d0512283c78c74150ed67a252603a31b540fa049d52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-06-versioned-node-adapters-preflight.md"
+      },
+      {
+        "digest": "4f77319ce173aba46e5186853a8488ff370b4425580ec48a8119bbbc5c781020",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-07-persisted-graph-control-flow.md"
+      },
+      {
+        "digest": "b20b61fd05f03f2d65f22258ff5be3d212cc637d6a97483d571e8cb00c633f92",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-08-checkpoints-human-suspension-resume.md"
+      },
+      {
+        "digest": "20a3702ddbcc95ef82b8b5b0b850fc7333795eeee4b194cbccd002a2cce4182f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-09-effects-replay-recovery.md"
+      },
+      {
+        "digest": "2d142bc078018e213627b5c3d736e6450dc3a63e89d9f235346cdb951e1f51ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-10-authorization-placement-governance.md"
+      },
+      {
+        "digest": "832253bdcf6760181a53636a2a36982021ae843bcb830a4e9b2b8b5a53112051",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-11-economics-fairness-operations.md"
+      },
+      {
+        "digest": "2c04a9013cf7af4f92615b1df91825cb69f65aac755179c88dd5e9ea73802e14",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-12-conformance-migration-release-proof.md"
+      },
+      {
+        "digest": "18351079f2ea7ccf47ddad3a9d323a0d85b081bbd89d9b86ef54b5a8694bb8bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "8a195b2acf58a7782279fbc848ea4b1c93f0be68f9c453f39b6eb0367fe75150",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "2d39c76e9c481f3076edb03fa50c669b86a49f3754c5d98ad7c30e5c074eb29a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/index.md"
+      },
+      {
+        "digest": "54302c32239b212858c664ada67da6482b4531c2d35d37c19ab7b8d3fcf7b4be",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-01-authority-migration-baseline.md"
+      },
+      {
+        "digest": "644196383c5ed736b2e2b9c19752b5e863b689abed8cecd46c308e43b6b80adb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-02-durable-logical-execution-state.md"
+      },
+      {
+        "excerpt": "-- baseline before Spec 215 alters workflow_studio_runs. This also repairs",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 153,
+        "path": "apps/web/drizzle/0365_spec215_durable_logical_runtime.sql"
+      },
+      {
+        "excerpt": "/** Spec 215 logical node state; physical leases remain owned by worker_jobs. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 16936,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-215-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 111,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "compilerContractVersion: \"spec-215-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 123,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "policyContractVersion: \"spec-215-policy-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 126,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "compilerContractVersion: \"spec-215-v3\" as const,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 565,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "policyContractVersion: \"spec-215-policy-v1\" as const,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 568,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-215-v3\" as const,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 571,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "compilerContract: \"spec-215-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 936,
+        "path": "apps/web/server/services/workflowNodeContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-215-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 82,
+        "path": "apps/web/server/services/workflowStudioRuntime.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-215-v3\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 339,
+        "path": "apps/web/server/services/workflowStudioRuntime.ts"
+      },
+      {
+        "excerpt": "* Projects canonical Feature 195 terminal truth into Spec 215 logical state.",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 231,
+        "path": "apps/web/server/services/workflowStudioSettlement.ts"
+      },
+      {
+        "excerpt": "it(\"repairs the missing 0340 and 0341 baselines before Spec 215 alters runs\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 50,
+        "path": "apps/web/drizzle/__tests__/workflowStudioMigration.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 215 canonical workflow compiler/runtime contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 74,
+        "path": "apps/web/server/services/__tests__/workflowCompilerRuntimeContracts.test.ts"
+      },
+      {
+        "excerpt": "expect(first.contractVersion).toBe(\"spec-215-v3\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 106,
+        "path": "apps/web/server/services/__tests__/workflowCompilerRuntimeContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 215 durable logical execution persistence\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 16,
+        "path": "apps/web/server/services/__tests__/workflowStudioDurableStateSchema.test.ts"
+      },
+      {
+        "excerpt": "expect(plan.contractVersion).toBe(\"spec-215-v3\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 100,
+        "path": "apps/web/server/services/__tests__/workflowStudioRuntime.test.ts"
+      },
+      {
+        "excerpt": "expect(plan.contractVersion).toBe(\"spec-215-v3\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 398,
+        "path": "apps/web/server/services/__tests__/workflowStudioRuntime.test.ts"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md"
+      },
+      {
+        "digest": "dec985a2d92b3c39ef6bcb83eec96f90e5e6a5dfb710a44e7af6cb5c2b0aebda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/claude-plan.md"
+      },
+      {
+        "digest": "532be178325e85555541f5c8a4d22b5c06f7ece9fcca7a4874818a889dd35770",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/claude-spec.md"
+      },
+      {
+        "digest": "6c11bfdd824437ed70d64e007a1ae63257eace66888d9c81928ff22b5227ca04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "4c1505d0719d6d388951568e861bef32471d36e399ce06df671dc82bcb47fbcf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-02-durable-logical-execution-state.md"
+      },
+      {
+        "digest": "056a8f9cd5f3bf4e011398a0902076a1e7bc02d82be4339de06580311a86bd52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-03-compiler-plan-policy-projection.md"
+      },
+      {
+        "digest": "f3ab3ce27e2071952a50f5f18859f56a4936a8c9517e095c22cd0362b76d7d41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-04-dependency-aware-run-scheduler.md"
+      },
+      {
+        "digest": "c6a39a76896685d860c654f82f1ae4a576c89dfa1a3c5766d4f944d7210bb275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-05-canonical-job-executor-lifecycle.md"
+      },
+      {
+        "digest": "357a599f21cb4ccbad1d2d0512283c78c74150ed67a252603a31b540fa049d52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-06-versioned-node-adapters-preflight.md"
+      },
+      {
+        "digest": "4f77319ce173aba46e5186853a8488ff370b4425580ec48a8119bbbc5c781020",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-07-persisted-graph-control-flow.md"
+      },
+      {
+        "digest": "b20b61fd05f03f2d65f22258ff5be3d212cc637d6a97483d571e8cb00c633f92",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-08-checkpoints-human-suspension-resume.md"
+      },
+      {
+        "digest": "20a3702ddbcc95ef82b8b5b0b850fc7333795eeee4b194cbccd002a2cce4182f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-09-effects-replay-recovery.md"
+      },
+      {
+        "digest": "2d142bc078018e213627b5c3d736e6450dc3a63e89d9f235346cdb951e1f51ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-10-authorization-placement-governance.md"
+      },
+      {
+        "digest": "832253bdcf6760181a53636a2a36982021ae843bcb830a4e9b2b8b5a53112051",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-11-economics-fairness-operations.md"
+      },
+      {
+        "digest": "2c04a9013cf7af4f92615b1df91825cb69f65aac755179c88dd5e9ea73802e14",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-12-conformance-migration-release-proof.md"
+      },
+      {
+        "digest": "18351079f2ea7ccf47ddad3a9d323a0d85b081bbd89d9b86ef54b5a8694bb8bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "8a195b2acf58a7782279fbc848ea4b1c93f0be68f9c453f39b6eb0367fe75150",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "2d39c76e9c481f3076edb03fa50c669b86a49f3754c5d98ad7c30e5c074eb29a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/index.md"
+      },
+      {
+        "digest": "54302c32239b212858c664ada67da6482b4531c2d35d37c19ab7b8d3fcf7b4be",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-01-authority-migration-baseline.md"
+      },
+      {
+        "digest": "644196383c5ed736b2e2b9c19752b5e863b689abed8cecd46c308e43b6b80adb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-02-durable-logical-execution-state.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md",
+    "digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:01.093287Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-26T09:26:48+07:00",
+      "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
+    },
+    "revision": "6",
+    "slug": "215-workflow-compiler-runtime-execution-architecture",
+    "spec_id": "215",
+    "title": "Spec 215 — Workflow Compiler & Runtime Execution Architecture v5"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:01.093287Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:01.093287Z",
+    "sources": [
+      {
+        "digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md"
+      },
+      {
+        "digest": "dec985a2d92b3c39ef6bcb83eec96f90e5e6a5dfb710a44e7af6cb5c2b0aebda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/claude-plan.md"
+      },
+      {
+        "digest": "532be178325e85555541f5c8a4d22b5c06f7ece9fcca7a4874818a889dd35770",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/claude-spec.md"
+      },
+      {
+        "digest": "6c11bfdd824437ed70d64e007a1ae63257eace66888d9c81928ff22b5227ca04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "4c1505d0719d6d388951568e861bef32471d36e399ce06df671dc82bcb47fbcf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-02-durable-logical-execution-state.md"
+      },
+      {
+        "digest": "056a8f9cd5f3bf4e011398a0902076a1e7bc02d82be4339de06580311a86bd52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-03-compiler-plan-policy-projection.md"
+      },
+      {
+        "digest": "f3ab3ce27e2071952a50f5f18859f56a4936a8c9517e095c22cd0362b76d7d41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-04-dependency-aware-run-scheduler.md"
+      },
+      {
+        "digest": "c6a39a76896685d860c654f82f1ae4a576c89dfa1a3c5766d4f944d7210bb275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-05-canonical-job-executor-lifecycle.md"
+      },
+      {
+        "digest": "357a599f21cb4ccbad1d2d0512283c78c74150ed67a252603a31b540fa049d52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-06-versioned-node-adapters-preflight.md"
+      },
+      {
+        "digest": "4f77319ce173aba46e5186853a8488ff370b4425580ec48a8119bbbc5c781020",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-07-persisted-graph-control-flow.md"
+      },
+      {
+        "digest": "b20b61fd05f03f2d65f22258ff5be3d212cc637d6a97483d571e8cb00c633f92",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-08-checkpoints-human-suspension-resume.md"
+      },
+      {
+        "digest": "20a3702ddbcc95ef82b8b5b0b850fc7333795eeee4b194cbccd002a2cce4182f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-09-effects-replay-recovery.md"
+      },
+      {
+        "digest": "2d142bc078018e213627b5c3d736e6450dc3a63e89d9f235346cdb951e1f51ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-10-authorization-placement-governance.md"
+      },
+      {
+        "digest": "832253bdcf6760181a53636a2a36982021ae843bcb830a4e9b2b8b5a53112051",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-11-economics-fairness-operations.md"
+      },
+      {
+        "digest": "2c04a9013cf7af4f92615b1df91825cb69f65aac755179c88dd5e9ea73802e14",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-12-conformance-migration-release-proof.md"
+      },
+      {
+        "digest": "18351079f2ea7ccf47ddad3a9d323a0d85b081bbd89d9b86ef54b5a8694bb8bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "8a195b2acf58a7782279fbc848ea4b1c93f0be68f9c453f39b6eb0367fe75150",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "2d39c76e9c481f3076edb03fa50c669b86a49f3754c5d98ad7c30e5c074eb29a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/index.md"
+      },
+      {
+        "digest": "54302c32239b212858c664ada67da6482b4531c2d35d37c19ab7b8d3fcf7b4be",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-01-authority-migration-baseline.md"
+      },
+      {
+        "digest": "644196383c5ed736b2e2b9c19752b5e863b689abed8cecd46c308e43b6b80adb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-02-durable-logical-execution-state.md"
+      },
+      {
+        "digest": "259198da5a97a9e88616597f339f1e108367700457816360da9807c9b8034aa1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-03-compiler-plan-policy-projection.md"
+      },
+      {
+        "digest": "9bc04fe12b5c56c211d83aea4ab64c6f640b485b241cd4d0f1837df11a1f519f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-04-dependency-aware-run-scheduler.md"
+      },
+      {
+        "digest": "26b15b1b02d3ad01d3a40ab3d5b5d4a3a129102a0449a22f497bbbca0987f061",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-05-canonical-job-executor-lifecycle.md"
+      },
+      {
+        "digest": "903b99664df8ee0f00da470813857f8e089a32b7acc250102601df599006815f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-06-versioned-node-adapters-preflight.md"
+      },
+      {
+        "digest": "f243bbeef4ab0649a91c3769277519825c51a38047a1053256146101b1e708af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-07-persisted-graph-control-flow.md"
+      },
+      {
+        "digest": "8b09b1799a4515200725458529847d1d5caffb4d2758ac2665afb7e8b4abec23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-08-checkpoints-human-suspension-resume.md"
+      },
+      {
+        "digest": "fb8bdf1f31a2cf710d968762f2d0e248c16e26f45eb683f40f2ca289ac744cfe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-09-effects-replay-recovery.md"
+      },
+      {
+        "digest": "2ff0897dc9df9036173324c8f1ba391fee8eb0e3959137afea61fc74cd4cf34d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-10-authorization-placement-governance.md"
+      },
+      {
+        "digest": "f72af68af63b7da658adbacc9432431ed44c6267196cd9c47a408738e068097b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-11-economics-fairness-operations.md"
+      },
+      {
+        "digest": "da2db18ee1a549f7bf9bee485aa5d6fc53c0632c8191e5fbe4fb53b28ce3caa9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-12-conformance-migration-release-proof.md"
+      },
+      {
+        "excerpt": "-- baseline before Spec 215 alters workflow_studio_runs. This also repairs",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 153,
+        "path": "apps/web/drizzle/0365_spec215_durable_logical_runtime.sql"
+      },
+      {
+        "excerpt": "/** Spec 215 logical node state; physical leases remain owned by worker_jobs. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 16936,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-215-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 111,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "compilerContractVersion: \"spec-215-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 123,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "policyContractVersion: \"spec-215-policy-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 126,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "compilerContractVersion: \"spec-215-v3\" as const,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 565,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "policyContractVersion: \"spec-215-policy-v1\" as const,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 568,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-215-v3\" as const,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 571,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "compilerContract: \"spec-215-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 936,
+        "path": "apps/web/server/services/workflowNodeContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-215-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 82,
+        "path": "apps/web/server/services/workflowStudioRuntime.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-215-v3\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 339,
+        "path": "apps/web/server/services/workflowStudioRuntime.ts"
+      },
+      {
+        "excerpt": "* Projects canonical Feature 195 terminal truth into Spec 215 logical state.",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 231,
+        "path": "apps/web/server/services/workflowStudioSettlement.ts"
+      },
+      {
+        "excerpt": "it(\"repairs the missing 0340 and 0341 baselines before Spec 215 alters runs\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 50,
+        "path": "apps/web/drizzle/__tests__/workflowStudioMigration.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 215 canonical workflow compiler/runtime contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 74,
+        "path": "apps/web/server/services/__tests__/workflowCompilerRuntimeContracts.test.ts"
+      },
+      {
+        "excerpt": "expect(first.contractVersion).toBe(\"spec-215-v3\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 106,
+        "path": "apps/web/server/services/__tests__/workflowCompilerRuntimeContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 215 durable logical execution persistence\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 16,
+        "path": "apps/web/server/services/__tests__/workflowStudioDurableStateSchema.test.ts"
+      },
+      {
+        "excerpt": "expect(plan.contractVersion).toBe(\"spec-215-v3\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 100,
+        "path": "apps/web/server/services/__tests__/workflowStudioRuntime.test.ts"
+      },
+      {
+        "excerpt": "expect(plan.contractVersion).toBe(\"spec-215-v3\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 398,
+        "path": "apps/web/server/services/__tests__/workflowStudioRuntime.test.ts"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "-- baseline before Spec 215 alters workflow_studio_runs. This also repairs",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 153,
+        "path": "apps/web/drizzle/0365_spec215_durable_logical_runtime.sql"
+      },
+      {
+        "excerpt": "/** Spec 215 logical node state; physical leases remain owned by worker_jobs. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 16936,
+        "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-215-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 111,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "compilerContractVersion: \"spec-215-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 123,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "policyContractVersion: \"spec-215-policy-v1\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 126,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "compilerContractVersion: \"spec-215-v3\" as const,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 565,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "policyContractVersion: \"spec-215-policy-v1\" as const,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 568,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-215-v3\" as const,",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 571,
+        "path": "apps/web/server/services/workflowCompilerRuntimeContracts.ts"
+      },
+      {
+        "excerpt": "compilerContract: \"spec-215-v1\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 936,
+        "path": "apps/web/server/services/workflowNodeContracts.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-215-v3\";",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 82,
+        "path": "apps/web/server/services/workflowStudioRuntime.ts"
+      },
+      {
+        "excerpt": "contractVersion: \"spec-215-v3\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 339,
+        "path": "apps/web/server/services/workflowStudioRuntime.ts"
+      },
+      {
+        "excerpt": "* Projects canonical Feature 195 terminal truth into Spec 215 logical state.",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 231,
+        "path": "apps/web/server/services/workflowStudioSettlement.ts"
+      },
+      {
+        "excerpt": "it(\"repairs the missing 0340 and 0341 baselines before Spec 215 alters runs\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 50,
+        "path": "apps/web/drizzle/__tests__/workflowStudioMigration.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 215 canonical workflow compiler/runtime contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 74,
+        "path": "apps/web/server/services/__tests__/workflowCompilerRuntimeContracts.test.ts"
+      },
+      {
+        "excerpt": "expect(first.contractVersion).toBe(\"spec-215-v3\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 106,
+        "path": "apps/web/server/services/__tests__/workflowCompilerRuntimeContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 215 durable logical execution persistence\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 16,
+        "path": "apps/web/server/services/__tests__/workflowStudioDurableStateSchema.test.ts"
+      },
+      {
+        "excerpt": "expect(plan.contractVersion).toBe(\"spec-215-v3\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 100,
+        "path": "apps/web/server/services/__tests__/workflowStudioRuntime.test.ts"
+      },
+      {
+        "excerpt": "expect(plan.contractVersion).toBe(\"spec-215-v3\");",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 398,
+        "path": "apps/web/server/services/__tests__/workflowStudioRuntime.test.ts"
+      }
+    ],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md"
+      },
+      {
+        "digest": "dec985a2d92b3c39ef6bcb83eec96f90e5e6a5dfb710a44e7af6cb5c2b0aebda",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/claude-plan.md"
+      },
+      {
+        "digest": "532be178325e85555541f5c8a4d22b5c06f7ece9fcca7a4874818a889dd35770",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/claude-spec.md"
+      },
+      {
+        "digest": "6c11bfdd824437ed70d64e007a1ae63257eace66888d9c81928ff22b5227ca04",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "4c1505d0719d6d388951568e861bef32471d36e399ce06df671dc82bcb47fbcf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-02-durable-logical-execution-state.md"
+      },
+      {
+        "digest": "056a8f9cd5f3bf4e011398a0902076a1e7bc02d82be4339de06580311a86bd52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-03-compiler-plan-policy-projection.md"
+      },
+      {
+        "digest": "f3ab3ce27e2071952a50f5f18859f56a4936a8c9517e095c22cd0362b76d7d41",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-04-dependency-aware-run-scheduler.md"
+      },
+      {
+        "digest": "c6a39a76896685d860c654f82f1ae4a576c89dfa1a3c5766d4f944d7210bb275",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-05-canonical-job-executor-lifecycle.md"
+      },
+      {
+        "digest": "357a599f21cb4ccbad1d2d0512283c78c74150ed67a252603a31b540fa049d52",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-06-versioned-node-adapters-preflight.md"
+      },
+      {
+        "digest": "4f77319ce173aba46e5186853a8488ff370b4425580ec48a8119bbbc5c781020",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-07-persisted-graph-control-flow.md"
+      },
+      {
+        "digest": "b20b61fd05f03f2d65f22258ff5be3d212cc637d6a97483d571e8cb00c633f92",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-08-checkpoints-human-suspension-resume.md"
+      },
+      {
+        "digest": "20a3702ddbcc95ef82b8b5b0b850fc7333795eeee4b194cbccd002a2cce4182f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-09-effects-replay-recovery.md"
+      },
+      {
+        "digest": "2d142bc078018e213627b5c3d736e6450dc3a63e89d9f235346cdb951e1f51ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-10-authorization-placement-governance.md"
+      },
+      {
+        "digest": "832253bdcf6760181a53636a2a36982021ae843bcb830a4e9b2b8b5a53112051",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-11-economics-fairness-operations.md"
+      },
+      {
+        "digest": "2c04a9013cf7af4f92615b1df91825cb69f65aac755179c88dd5e9ea73802e14",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/implementation/sections/section-12-conformance-migration-release-proof.md"
+      },
+      {
+        "digest": "18351079f2ea7ccf47ddad3a9d323a0d85b081bbd89d9b86ef54b5a8694bb8bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "8a195b2acf58a7782279fbc848ea4b1c93f0be68f9c453f39b6eb0367fe75150",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/reviews/self-review-round-2.md"
+      },
+      {
+        "digest": "2d39c76e9c481f3076edb03fa50c669b86a49f3754c5d98ad7c30e5c074eb29a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/index.md"
+      },
+      {
+        "digest": "54302c32239b212858c664ada67da6482b4531c2d35d37c19ab7b8d3fcf7b4be",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-01-authority-migration-baseline.md"
+      },
+      {
+        "digest": "644196383c5ed736b2e2b9c19752b5e863b689abed8cecd46c308e43b6b80adb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-02-durable-logical-execution-state.md"
+      },
+      {
+        "digest": "259198da5a97a9e88616597f339f1e108367700457816360da9807c9b8034aa1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-03-compiler-plan-policy-projection.md"
+      },
+      {
+        "digest": "9bc04fe12b5c56c211d83aea4ab64c6f640b485b241cd4d0f1837df11a1f519f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-04-dependency-aware-run-scheduler.md"
+      },
+      {
+        "digest": "26b15b1b02d3ad01d3a40ab3d5b5d4a3a129102a0449a22f497bbbca0987f061",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-05-canonical-job-executor-lifecycle.md"
+      },
+      {
+        "digest": "903b99664df8ee0f00da470813857f8e089a32b7acc250102601df599006815f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-06-versioned-node-adapters-preflight.md"
+      },
+      {
+        "digest": "f243bbeef4ab0649a91c3769277519825c51a38047a1053256146101b1e708af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-07-persisted-graph-control-flow.md"
+      },
+      {
+        "digest": "8b09b1799a4515200725458529847d1d5caffb4d2758ac2665afb7e8b4abec23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-08-checkpoints-human-suspension-resume.md"
+      },
+      {
+        "digest": "fb8bdf1f31a2cf710d968762f2d0e248c16e26f45eb683f40f2ca289ac744cfe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-09-effects-replay-recovery.md"
+      },
+      {
+        "digest": "2ff0897dc9df9036173324c8f1ba391fee8eb0e3959137afea61fc74cd4cf34d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-10-authorization-placement-governance.md"
+      },
+      {
+        "digest": "f72af68af63b7da658adbacc9432431ed44c6267196cd9c47a408738e068097b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-11-economics-fairness-operations.md"
+      },
+      {
+        "digest": "da2db18ee1a549f7bf9bee485aa5d6fc53c0632c8191e5fbe4fb53b28ce3caa9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture/sections/section-12-conformance-migration-release-proof.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 130,
+    "unresolved": 130
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:01.093287Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

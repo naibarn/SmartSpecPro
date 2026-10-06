@@ -1,0 +1,257 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/176-drama-series-emotion-timeline-web/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/176-drama-series-emotion-timeline-web/spec.md"
+      },
+      {
+        "excerpt": "name: \"🎵 MiniMax Music 3 Spec 176 & 177 (สร้างดนตรีประกอบ)\".into(),",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2748,
+        "path": "apps/worker-app/src-tauri/src/commands.rs"
+      },
+      {
+        "excerpt": "<span>ผูกกับ Series (เชื่อมข้อมูลช็อต & Spec 176/177)</span>",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 389,
+        "path": "apps/worker-app/src/screens/media-workspace/ProjectSettingsModal.tsx"
+      },
+      {
+        "excerpt": "💡 Auto-filter วิดีโอช็อตของ Series นี้ และใช้ Spec 176/177 สำหรับสร้างดนตรี",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 408,
+        "path": "apps/worker-app/src/screens/media-workspace/ProjectSettingsModal.tsx"
+      },
+      {
+        "excerpt": "{t(\"ดึงข้อมูล Series จริงจาก Server (smartaihub.app) เพื่อผูกข้อมูลช็อตและ Spec 176/177\", \"Load series data from the server to link shots and Specs 176/177\")}",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 101,
+        "path": "apps/worker-app/src/screens/media-workspace/SeriesSwitcherModal.tsx"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/176-drama-series-emotion-timeline-web/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/176-drama-series-emotion-timeline-web/spec.md",
+    "digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:43:00.535034Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-05T07:29:01+07:00",
+      "spec_last_changed_at": "2026-09-05T21:39:19+07:00"
+    },
+    "revision": null,
+    "slug": "176-drama-series-emotion-timeline-web",
+    "spec_id": "176",
+    "title": "Feature 176 — Drama Series Emotion Timeline & Music Direction (Web)"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:43:00.535034Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:43:00.535034Z",
+    "sources": [
+      {
+        "digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/176-drama-series-emotion-timeline-web/spec.md"
+      },
+      {
+        "excerpt": "name: \"🎵 MiniMax Music 3 Spec 176 & 177 (สร้างดนตรีประกอบ)\".into(),",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2748,
+        "path": "apps/worker-app/src-tauri/src/commands.rs"
+      },
+      {
+        "excerpt": "<span>ผูกกับ Series (เชื่อมข้อมูลช็อต & Spec 176/177)</span>",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 389,
+        "path": "apps/worker-app/src/screens/media-workspace/ProjectSettingsModal.tsx"
+      },
+      {
+        "excerpt": "💡 Auto-filter วิดีโอช็อตของ Series นี้ และใช้ Spec 176/177 สำหรับสร้างดนตรี",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 408,
+        "path": "apps/worker-app/src/screens/media-workspace/ProjectSettingsModal.tsx"
+      },
+      {
+        "excerpt": "{t(\"ดึงข้อมูล Series จริงจาก Server (smartaihub.app) เพื่อผูกข้อมูลช็อตและ Spec 176/177\", \"Load series data from the server to link shots and Specs 176/177\")}",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 101,
+        "path": "apps/worker-app/src/screens/media-workspace/SeriesSwitcherModal.tsx"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "excerpt": "name: \"🎵 MiniMax Music 3 Spec 176 & 177 (สร้างดนตรีประกอบ)\".into(),",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 2748,
+        "path": "apps/worker-app/src-tauri/src/commands.rs"
+      },
+      {
+        "excerpt": "<span>ผูกกับ Series (เชื่อมข้อมูลช็อต & Spec 176/177)</span>",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 389,
+        "path": "apps/worker-app/src/screens/media-workspace/ProjectSettingsModal.tsx"
+      },
+      {
+        "excerpt": "💡 Auto-filter วิดีโอช็อตของ Series นี้ และใช้ Spec 176/177 สำหรับสร้างดนตรี",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 408,
+        "path": "apps/worker-app/src/screens/media-workspace/ProjectSettingsModal.tsx"
+      },
+      {
+        "excerpt": "{t(\"ดึงข้อมูล Series จริงจาก Server (smartaihub.app) เพื่อผูกข้อมูลช็อตและ Spec 176/177\", \"Load series data from the server to link shots and Specs 176/177\")}",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 101,
+        "path": "apps/worker-app/src/screens/media-workspace/SeriesSwitcherModal.tsx"
+      }
+    ],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/176-drama-series-emotion-timeline-web/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 32,
+    "unresolved": 32
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:43:00.535034Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

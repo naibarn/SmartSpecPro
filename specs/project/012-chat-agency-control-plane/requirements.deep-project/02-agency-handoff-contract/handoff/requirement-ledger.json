@@ -1,0 +1,140 @@
+{
+  "generation": 0,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L70"
+      ],
+      "authority_source": "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L70",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f9968461df1e94ec59d6773e43bfd8adacd944ab8de2fd28b185e757ff56d262",
+      "requirement_id": "REQ-C5FA8E8E65F2",
+      "requirement_text": "Deep plan must not leave `Automation Program` as a conceptual wrapper only. It must make an explicit persistence decision and document:",
+      "source_spec_digest": "556247d2b7eb5c2788a3f4817e81454b3ce7d81d00b455123539f3c621a099ce",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L72"
+      ],
+      "authority_source": "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L72",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "aef9371e13fe452c925129b90dc83bc5dce08ac0c8e0383d5f918e141849f334",
+      "requirement_id": "REQ-9744128FA4EA",
+      "requirement_text": "- where canonical identity lives",
+      "source_spec_digest": "556247d2b7eb5c2788a3f4817e81454b3ce7d81d00b455123539f3c621a099ce",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L73"
+      ],
+      "authority_source": "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L73",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e93b1913a082e47f1bc4813dd533136f3b735e065c0c0855398fc8ed0d596e01",
+      "requirement_id": "REQ-9BA9D6B60C5A",
+      "requirement_text": "- what record owns lifecycle state",
+      "source_spec_digest": "556247d2b7eb5c2788a3f4817e81454b3ce7d81d00b455123539f3c621a099ce",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L74"
+      ],
+      "authority_source": "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L74",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ef86761a5ba2babe9e75c396cd2656baadc464c68481401a44fa256c8beaa57a",
+      "requirement_id": "REQ-FC806E6352B3",
+      "requirement_text": "- which downstream systems reference that identity",
+      "source_spec_digest": "556247d2b7eb5c2788a3f4817e81454b3ce7d81d00b455123539f3c621a099ce",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L75"
+      ],
+      "authority_source": "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L75",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8fec4e10aafeb161ffae2e18c52e89fe67ef72153e8c3bd3234327cf5240f022",
+      "requirement_id": "REQ-D442C4A4931B",
+      "requirement_text": "- how divergent state is prevented between Chat, Agency, schedule bindings, and materialized outputs",
+      "source_spec_digest": "556247d2b7eb5c2788a3f4817e81454b3ce7d81d00b455123539f3c621a099ce",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L76"
+      ],
+      "authority_source": "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md#L76",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "052d94c941c3f8e6bc1661b20e387f9ed4ff92667b3b72e2511ceda2f06dc93c",
+      "requirement_id": "REQ-75DDC4E97340",
+      "requirement_text": "- how tenant/user ownership and permission provenance are preserved across run, rerun, resume, and recurring execution",
+      "source_spec_digest": "556247d2b7eb5c2788a3f4817e81454b3ce7d81d00b455123539f3c621a099ce",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "556247d2b7eb5c2788a3f4817e81454b3ce7d81d00b455123539f3c621a099ce",
+  "spec_id": "02"
+}

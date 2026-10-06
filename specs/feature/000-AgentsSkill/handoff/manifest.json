@@ -1,0 +1,554 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "LOW",
+    "conflicts": [
+      {
+        "kind": "DUPLICATE_SPEC_ID",
+        "paths": [
+          "specs/feature/000-selence-dectection"
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "digest": "9932f0a3206c67cec53bee8675a3b861854dc016a2f72c3952e2e5fa39598aa3",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/000-AgentsSkill/spec.md"
+      },
+      {
+        "digest": "34f674cb9c6224a126bce5bdb6c588cd8ad54dc4f03638b5868e9666617bcbce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/claude-plan.md"
+      },
+      {
+        "digest": "a123d4b692e32cb93869a3f448ecd4d7c0b908b53fdf7993b43f29f3adb9a48d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/claude-spec.md"
+      },
+      {
+        "digest": "aac0339b1d26fe48b577adc95e366e66d4fd54e932b05d0fd3a7d1debbc3bbc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7e8bade9250939bbf8f5cac36de7143758d514b59c36698de4e8adb141cf8b97",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/implementation/usage.md"
+      },
+      {
+        "digest": "58bd2009d172c609e4f14aa3b0aa04a23028f960cdcbcf47182e7d2f354ecf61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "f498a4ca0b7733419104d3052d4a6c53cd9fba3e627d9e6d075fab2ace0d7b23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/index.md"
+      },
+      {
+        "digest": "6c1005995e1552bea489aef2719d12eaac5fba8ab4f1228123f090754cd5d303",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-01-foundation-scaffolding-contracts.md"
+      },
+      {
+        "digest": "b5e4d2ec017991d8318fcaa02cd502caa64100d25536004da4d338a311e72a3d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-02-task-analysis-routing.md"
+      },
+      {
+        "digest": "013a012e774d9d9816c8112379165ced6fd7fcba54c21151742b8da7cb006d5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-03-wave-planning-dispatch-platform.md"
+      },
+      {
+        "digest": "6865efee87559a478e65b4e1fbbae29504967ea5647326d34dee7beded256d71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-04-quality-gates-integration-security.md"
+      },
+      {
+        "digest": "3bb3e64b761b218a6be91f1b2caadc80c2b4a359f9c4deb41e5a5a1f76e0683c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-05-artifact-compaction-integration.md"
+      },
+      {
+        "digest": "c757ec4213bf5253be2ec9e289656469eb8d35e7389df2bc9b34ef34a299ccd9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-06-orchestra-skill-conductor.md"
+      },
+      {
+        "digest": "60d5c04280e5de696d70f40a2b12c0e514489cfdb6959f8806c48937d1e6222f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-07-general-subagent-agents.md"
+      },
+      {
+        "digest": "1d8c4ddaad7e3bc6c974a372ee34a46b32a011536865fa121332d28fc0b3843b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-08-security-specialists-readme.md"
+      },
+      {
+        "digest": "5bc518193121dacb5723d908781760ad6aaf0ff0fe886eaea843a56065b50be4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-09-native-claude-agents.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "AUTHORITY_CONFLICT",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "9932f0a3206c67cec53bee8675a3b861854dc016a2f72c3952e2e5fa39598aa3"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "9932f0a3206c67cec53bee8675a3b861854dc016a2f72c3952e2e5fa39598aa3",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/000-AgentsSkill/spec.md"
+      },
+      {
+        "digest": "34f674cb9c6224a126bce5bdb6c588cd8ad54dc4f03638b5868e9666617bcbce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/claude-plan.md"
+      },
+      {
+        "digest": "a123d4b692e32cb93869a3f448ecd4d7c0b908b53fdf7993b43f29f3adb9a48d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/claude-spec.md"
+      },
+      {
+        "digest": "aac0339b1d26fe48b577adc95e366e66d4fd54e932b05d0fd3a7d1debbc3bbc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7e8bade9250939bbf8f5cac36de7143758d514b59c36698de4e8adb141cf8b97",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/implementation/usage.md"
+      },
+      {
+        "digest": "58bd2009d172c609e4f14aa3b0aa04a23028f960cdcbcf47182e7d2f354ecf61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "f498a4ca0b7733419104d3052d4a6c53cd9fba3e627d9e6d075fab2ace0d7b23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/index.md"
+      },
+      {
+        "digest": "6c1005995e1552bea489aef2719d12eaac5fba8ab4f1228123f090754cd5d303",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-01-foundation-scaffolding-contracts.md"
+      },
+      {
+        "digest": "b5e4d2ec017991d8318fcaa02cd502caa64100d25536004da4d338a311e72a3d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-02-task-analysis-routing.md"
+      },
+      {
+        "digest": "013a012e774d9d9816c8112379165ced6fd7fcba54c21151742b8da7cb006d5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-03-wave-planning-dispatch-platform.md"
+      },
+      {
+        "digest": "6865efee87559a478e65b4e1fbbae29504967ea5647326d34dee7beded256d71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-04-quality-gates-integration-security.md"
+      },
+      {
+        "digest": "3bb3e64b761b218a6be91f1b2caadc80c2b4a359f9c4deb41e5a5a1f76e0683c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-05-artifact-compaction-integration.md"
+      },
+      {
+        "digest": "c757ec4213bf5253be2ec9e289656469eb8d35e7389df2bc9b34ef34a299ccd9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-06-orchestra-skill-conductor.md"
+      },
+      {
+        "digest": "60d5c04280e5de696d70f40a2b12c0e514489cfdb6959f8806c48937d1e6222f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-07-general-subagent-agents.md"
+      },
+      {
+        "digest": "1d8c4ddaad7e3bc6c974a372ee34a46b32a011536865fa121332d28fc0b3843b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-08-security-specialists-readme.md"
+      },
+      {
+        "digest": "5bc518193121dacb5723d908781760ad6aaf0ff0fe886eaea843a56065b50be4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-09-native-claude-agents.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "9932f0a3206c67cec53bee8675a3b861854dc016a2f72c3952e2e5fa39598aa3",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/000-AgentsSkill/spec.md"
+      },
+      {
+        "digest": "34f674cb9c6224a126bce5bdb6c588cd8ad54dc4f03638b5868e9666617bcbce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/claude-plan.md"
+      },
+      {
+        "digest": "a123d4b692e32cb93869a3f448ecd4d7c0b908b53fdf7993b43f29f3adb9a48d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/claude-spec.md"
+      },
+      {
+        "digest": "aac0339b1d26fe48b577adc95e366e66d4fd54e932b05d0fd3a7d1debbc3bbc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7e8bade9250939bbf8f5cac36de7143758d514b59c36698de4e8adb141cf8b97",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/implementation/usage.md"
+      },
+      {
+        "digest": "58bd2009d172c609e4f14aa3b0aa04a23028f960cdcbcf47182e7d2f354ecf61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "f498a4ca0b7733419104d3052d4a6c53cd9fba3e627d9e6d075fab2ace0d7b23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/index.md"
+      },
+      {
+        "digest": "6c1005995e1552bea489aef2719d12eaac5fba8ab4f1228123f090754cd5d303",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-01-foundation-scaffolding-contracts.md"
+      },
+      {
+        "digest": "b5e4d2ec017991d8318fcaa02cd502caa64100d25536004da4d338a311e72a3d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-02-task-analysis-routing.md"
+      },
+      {
+        "digest": "013a012e774d9d9816c8112379165ced6fd7fcba54c21151742b8da7cb006d5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-03-wave-planning-dispatch-platform.md"
+      },
+      {
+        "digest": "6865efee87559a478e65b4e1fbbae29504967ea5647326d34dee7beded256d71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-04-quality-gates-integration-security.md"
+      },
+      {
+        "digest": "3bb3e64b761b218a6be91f1b2caadc80c2b4a359f9c4deb41e5a5a1f76e0683c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-05-artifact-compaction-integration.md"
+      },
+      {
+        "digest": "c757ec4213bf5253be2ec9e289656469eb8d35e7389df2bc9b34ef34a299ccd9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-06-orchestra-skill-conductor.md"
+      },
+      {
+        "digest": "60d5c04280e5de696d70f40a2b12c0e514489cfdb6959f8806c48937d1e6222f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-07-general-subagent-agents.md"
+      },
+      {
+        "digest": "1d8c4ddaad7e3bc6c974a372ee34a46b32a011536865fa121332d28fc0b3843b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-08-security-specialists-readme.md"
+      },
+      {
+        "digest": "5bc518193121dacb5723d908781760ad6aaf0ff0fe886eaea843a56065b50be4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-09-native-claude-agents.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/000-AgentsSkill/spec.md",
+    "digest": "9932f0a3206c67cec53bee8675a3b861854dc016a2f72c3952e2e5fa39598aa3",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T00:42:59.346475Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-02-23T16:44:30+07:00",
+      "spec_last_changed_at": "2026-02-23T16:44:30+07:00"
+    },
+    "revision": null,
+    "slug": "000-AgentsSkill",
+    "spec_id": "000",
+    "title": "000 — Orchestra Agent & Sub-Agents Skill Pack"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T00:42:59.346475Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T00:42:59.346475Z",
+    "sources": [
+      {
+        "digest": "9932f0a3206c67cec53bee8675a3b861854dc016a2f72c3952e2e5fa39598aa3",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/000-AgentsSkill/spec.md"
+      },
+      {
+        "digest": "34f674cb9c6224a126bce5bdb6c588cd8ad54dc4f03638b5868e9666617bcbce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/claude-plan.md"
+      },
+      {
+        "digest": "a123d4b692e32cb93869a3f448ecd4d7c0b908b53fdf7993b43f29f3adb9a48d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/claude-spec.md"
+      },
+      {
+        "digest": "aac0339b1d26fe48b577adc95e366e66d4fd54e932b05d0fd3a7d1debbc3bbc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7e8bade9250939bbf8f5cac36de7143758d514b59c36698de4e8adb141cf8b97",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/implementation/usage.md"
+      },
+      {
+        "digest": "58bd2009d172c609e4f14aa3b0aa04a23028f960cdcbcf47182e7d2f354ecf61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "f498a4ca0b7733419104d3052d4a6c53cd9fba3e627d9e6d075fab2ace0d7b23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/index.md"
+      },
+      {
+        "digest": "6c1005995e1552bea489aef2719d12eaac5fba8ab4f1228123f090754cd5d303",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-01-foundation-scaffolding-contracts.md"
+      },
+      {
+        "digest": "b5e4d2ec017991d8318fcaa02cd502caa64100d25536004da4d338a311e72a3d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-02-task-analysis-routing.md"
+      },
+      {
+        "digest": "013a012e774d9d9816c8112379165ced6fd7fcba54c21151742b8da7cb006d5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-03-wave-planning-dispatch-platform.md"
+      },
+      {
+        "digest": "6865efee87559a478e65b4e1fbbae29504967ea5647326d34dee7beded256d71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-04-quality-gates-integration-security.md"
+      },
+      {
+        "digest": "3bb3e64b761b218a6be91f1b2caadc80c2b4a359f9c4deb41e5a5a1f76e0683c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-05-artifact-compaction-integration.md"
+      },
+      {
+        "digest": "c757ec4213bf5253be2ec9e289656469eb8d35e7389df2bc9b34ef34a299ccd9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-06-orchestra-skill-conductor.md"
+      },
+      {
+        "digest": "60d5c04280e5de696d70f40a2b12c0e514489cfdb6959f8806c48937d1e6222f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-07-general-subagent-agents.md"
+      },
+      {
+        "digest": "1d8c4ddaad7e3bc6c974a372ee34a46b32a011536865fa121332d28fc0b3843b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-08-security-specialists-readme.md"
+      },
+      {
+        "digest": "5bc518193121dacb5723d908781760ad6aaf0ff0fe886eaea843a56065b50be4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-09-native-claude-agents.md"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "9932f0a3206c67cec53bee8675a3b861854dc016a2f72c3952e2e5fa39598aa3",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/000-AgentsSkill/spec.md"
+      },
+      {
+        "digest": "34f674cb9c6224a126bce5bdb6c588cd8ad54dc4f03638b5868e9666617bcbce",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/claude-plan.md"
+      },
+      {
+        "digest": "a123d4b692e32cb93869a3f448ecd4d7c0b908b53fdf7993b43f29f3adb9a48d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/claude-spec.md"
+      },
+      {
+        "digest": "aac0339b1d26fe48b577adc95e366e66d4fd54e932b05d0fd3a7d1debbc3bbc2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "7e8bade9250939bbf8f5cac36de7143758d514b59c36698de4e8adb141cf8b97",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/implementation/usage.md"
+      },
+      {
+        "digest": "58bd2009d172c609e4f14aa3b0aa04a23028f960cdcbcf47182e7d2f354ecf61",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "f498a4ca0b7733419104d3052d4a6c53cd9fba3e627d9e6d075fab2ace0d7b23",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/index.md"
+      },
+      {
+        "digest": "6c1005995e1552bea489aef2719d12eaac5fba8ab4f1228123f090754cd5d303",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-01-foundation-scaffolding-contracts.md"
+      },
+      {
+        "digest": "b5e4d2ec017991d8318fcaa02cd502caa64100d25536004da4d338a311e72a3d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-02-task-analysis-routing.md"
+      },
+      {
+        "digest": "013a012e774d9d9816c8112379165ced6fd7fcba54c21151742b8da7cb006d5e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-03-wave-planning-dispatch-platform.md"
+      },
+      {
+        "digest": "6865efee87559a478e65b4e1fbbae29504967ea5647326d34dee7beded256d71",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-04-quality-gates-integration-security.md"
+      },
+      {
+        "digest": "3bb3e64b761b218a6be91f1b2caadc80c2b4a359f9c4deb41e5a5a1f76e0683c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-05-artifact-compaction-integration.md"
+      },
+      {
+        "digest": "c757ec4213bf5253be2ec9e289656469eb8d35e7389df2bc9b34ef34a299ccd9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-06-orchestra-skill-conductor.md"
+      },
+      {
+        "digest": "60d5c04280e5de696d70f40a2b12c0e514489cfdb6959f8806c48937d1e6222f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-07-general-subagent-agents.md"
+      },
+      {
+        "digest": "1d8c4ddaad7e3bc6c974a372ee34a46b32a011536865fa121332d28fc0b3843b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-08-security-specialists-readme.md"
+      },
+      {
+        "digest": "5bc518193121dacb5723d908781760ad6aaf0ff0fe886eaea843a56065b50be4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/000-AgentsSkill/sections/section-09-native-claude-agents.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 76,
+    "unresolved": 76
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T00:42:59.346475Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}
