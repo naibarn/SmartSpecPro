@@ -86,6 +86,24 @@ class InventoryTests(unittest.TestCase):
             self.assertNotIn(nested.relative_to(repo).as_posix(), records["specs/feature/001-one"]["relationships"]["duplicate_ids"])
             self.assertEqual(len(records), result["invariants"]["record_count"])
 
+    def test_yaml_frontmatter_title_is_used_when_heading_is_beyond_scan_window(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.make_repo(repo)
+            spec = repo / "specs/feature/005-frontmatter"
+            spec.mkdir(parents=True)
+            spec.joinpath("spec.md").write_text(
+                "---\ntitle: Frontmatter title\nrevision: 1.7-candidate\n---\n"
+                + "\n".join(f"metadata line {index}" for index in range(90))
+                + "\n# Delayed heading\n",
+                encoding="utf-8",
+            )
+            result = inventory(repo)
+            record = next(row for row in result["records"] if row["path"] == "specs/feature/005-frontmatter")
+            self.assertEqual(record["title"], "Frontmatter title")
+            self.assertEqual(record["revision"], "1.7")
+            self.assertEqual(record["record_kind"], "CANONICAL_SPEC")
+
 
 if __name__ == "__main__":
     unittest.main()
