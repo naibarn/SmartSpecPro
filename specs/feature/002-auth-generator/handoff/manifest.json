@@ -49,34 +49,6 @@
         "digest": "cd9b9a026a4a9e57b8c2877d36b86efed59232715f4872808c59221563eceb39",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/002-auth-generator/plan.md"
-      },
-      {
-        "excerpt": "const spec2 = makeMinimalSpec({",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 134,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const result2 = validateJobSpec(spec2);",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 138,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "spec2 = NodeTypeSpec(type=\"node2\", display_name=\"N2\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 78,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec2)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 80,
-        "path": "python-backend/tests/test_node_registry.py"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -114,7 +86,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/002-auth-generator/spec.md",
     "digest": "f3d1bf8163bc0767ecf53b6fb2acd6c3c84ce0e3cfff748c0cf1ecf57a5709d0",
@@ -168,34 +140,6 @@
         "digest": "cd9b9a026a4a9e57b8c2877d36b86efed59232715f4872808c59221563eceb39",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/002-auth-generator/plan.md"
-      },
-      {
-        "excerpt": "const spec2 = makeMinimalSpec({",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 134,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const result2 = validateJobSpec(spec2);",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 138,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "spec2 = NodeTypeSpec(type=\"node2\", display_name=\"N2\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 78,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec2)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 80,
-        "path": "python-backend/tests/test_node_registry.py"
       }
     ],
     "stale_fields": [],
@@ -207,36 +151,7 @@
     ]
   },
   "relevance_assessment": {
-    "active_references": [
-      {
-        "excerpt": "const spec2 = makeMinimalSpec({",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 134,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const result2 = validateJobSpec(spec2);",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 138,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "spec2 = NodeTypeSpec(type=\"node2\", display_name=\"N2\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 78,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec2)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 80,
-        "path": "python-backend/tests/test_node_registry.py"
-      }
-    ],
+    "active_references": [],
     "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",

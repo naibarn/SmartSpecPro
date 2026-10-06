@@ -162,13 +162,6 @@
         "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md"
       },
       {
-        "excerpt": "`spec226-${Date.now()}-${Math.random().toString(36).slice(2)}`",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 120,
-        "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
-      },
-      {
         "excerpt": "// while the additive Spec 226 D3 procedures roll out.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -183,13 +176,6 @@
         "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
       },
       {
-        "excerpt": "idempotencyKey: `spec226-ui:${run.runId}:${action}:${fresh.revision}:${fresh.fencingVersion}:${fresh.decisionEpoch}`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 560,
-        "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
-      },
-      {
         "excerpt": "Owner-scoped Spec 224 state through the canonical Spec 226",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -201,20 +187,6 @@
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 195,
-        "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
-      },
-      {
-        "excerpt": "authorizationScope: \"spec226-development-control\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 377,
-        "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
-      },
-      {
-        "excerpt": "authorizationScope: \"spec226-development-control\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 471,
         "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
       },
       {
@@ -243,13 +215,6 @@
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 735,
-        "path": "apps/web/client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx"
-      },
-      {
-        "excerpt": "idempotencyKey: \"spec226-ui:run-226-ui:pause:3:7:4\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 798,
         "path": "apps/web/client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx"
       },
       {
@@ -311,7 +276,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md",
     "digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
@@ -362,13 +327,6 @@
         "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md"
       },
       {
-        "excerpt": "`spec226-${Date.now()}-${Math.random().toString(36).slice(2)}`",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 120,
-        "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
-      },
-      {
         "excerpt": "// while the additive Spec 226 D3 procedures roll out.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -383,13 +341,6 @@
         "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
       },
       {
-        "excerpt": "idempotencyKey: `spec226-ui:${run.runId}:${action}:${fresh.revision}:${fresh.fencingVersion}:${fresh.decisionEpoch}`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 560,
-        "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
-      },
-      {
         "excerpt": "Owner-scoped Spec 224 state through the canonical Spec 226",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -401,20 +352,6 @@
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 195,
-        "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
-      },
-      {
-        "excerpt": "authorizationScope: \"spec226-development-control\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 377,
-        "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
-      },
-      {
-        "excerpt": "authorizationScope: \"spec226-development-control\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 471,
         "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
       },
       {
@@ -443,13 +380,6 @@
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 735,
-        "path": "apps/web/client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx"
-      },
-      {
-        "excerpt": "idempotencyKey: \"spec226-ui:run-226-ui:pause:3:7:4\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 798,
         "path": "apps/web/client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx"
       },
       {
@@ -492,13 +422,6 @@
   "relevance_assessment": {
     "active_references": [
       {
-        "excerpt": "`spec226-${Date.now()}-${Math.random().toString(36).slice(2)}`",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 120,
-        "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
-      },
-      {
         "excerpt": "// while the additive Spec 226 D3 procedures roll out.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -513,13 +436,6 @@
         "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
       },
       {
-        "excerpt": "idempotencyKey: `spec226-ui:${run.runId}:${action}:${fresh.revision}:${fresh.fencingVersion}:${fresh.decisionEpoch}`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 560,
-        "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
-      },
-      {
         "excerpt": "Owner-scoped Spec 224 state through the canonical Spec 226",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -531,20 +447,6 @@
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 195,
-        "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
-      },
-      {
-        "excerpt": "authorizationScope: \"spec226-development-control\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 377,
-        "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
-      },
-      {
-        "excerpt": "authorizationScope: \"spec226-development-control\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 471,
         "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
       },
       {
@@ -573,13 +475,6 @@
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 735,
-        "path": "apps/web/client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx"
-      },
-      {
-        "excerpt": "idempotencyKey: \"spec226-ui:run-226-ui:pause:3:7:4\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 798,
         "path": "apps/web/client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx"
       },
       {

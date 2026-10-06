@@ -294,115 +294,10 @@
         "path": "apps/web/server/services/decisionIntelligence/analysis.ts"
       },
       {
-        "excerpt": "contractVersion: \"spec266-research-v1\" as const,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 150,
-        "path": "apps/web/server/services/decisionIntelligence/researchAdapter.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-evidence-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 23,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.ts"
-      },
-      {
-        "excerpt": "if (value.contractVersion !== \"spec266-evidence-v1\" || !isId(value.id) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 121,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-evidence-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 143,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-geometry-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 14,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.ts"
-      },
-      {
-        "excerpt": "if (value.contractVersion !== \"spec266-geometry-v1\" ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 123,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geometry-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 133,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-research-watch-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 82,
-        "path": "apps/web/server/services/intelligenceFabric/researchAdmission.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geometry-v1\", geometryId: \"candidate.geometry\", geometryVersion: \"candidate-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 148,
-        "path": "apps/web/server/services/intelligenceFabric/researchAdmission.ts"
-      },
-      {
-        "excerpt": "if (input.contractVersion !== \"spec266-research-watch-v1\" || !id(input.changeId) || !id(input.idempotencyKey) || !id(input.watchRef) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 243,
-        "path": "apps/web/server/services/intelligenceFabric/researchAdmission.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-research-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 8,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-research-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 34,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.ts"
-      },
-      {
-        "excerpt": "if (value.contractVersion !== \"spec266-research-v1\" || !isId(value.researchRequestId) || !PERSISTED_ID.test(value.researchRequestId as string) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 205,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.ts"
-      },
-      {
-        "excerpt": "if (value.contractVersion !== \"spec266-research-v1\" || !isId(value.researchRunId) || !PERSISTED_ID.test(value.researchRunId as string) || !isId(value.researchRequestId) || !PERSISTED_ID.test(value.researchRequestId as string) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 265,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.ts"
-      },
-      {
         "excerpt": "// admission envelope aligned with the registered Spec 266 executor.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 88,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-research-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 89,
         "path": "apps/web/server/services/intelligenceFabric/researchPersistence.ts"
       },
       {
@@ -413,11 +308,74 @@
         "path": "apps/web/server/services/intelligenceFabric/resolver.ts"
       },
       {
-        "excerpt": "readonly contractVersion: \"spec266-geo-evidence-v1\";",
+        "excerpt": "describe(\"Spec 266 evidence admission\", () => {",
         "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 155,
-        "path": "apps/web/server/services/intelligenceFabric/semantic.ts"
+        "kind": "TEST",
+        "line": 97,
+        "path": "apps/web/server/services/intelligenceFabric/evidenceAdmission.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 266 canonical geometry contract\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 16,
+        "path": "apps/web/server/services/intelligenceFabric/geometry.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 266 pending-review registry persistence\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 91,
+        "path": "apps/web/server/services/intelligenceFabric/registryPersistence.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 266 research contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 24,
+        "path": "apps/web/server/services/intelligenceFabric/researchContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 266 research persistence admission\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 9,
+        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 266 research promotion policy\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 18,
+        "path": "apps/web/server/services/intelligenceFabric/researchPromotion.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 266 immutable ResearchRun persistence\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 89,
+        "path": "apps/web/server/services/intelligenceFabric/researchRunPersistence.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 266 semantic and spatial contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 4,
+        "path": "apps/web/server/services/intelligenceFabric/semantic.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 266 independent source health\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 19,
+        "path": "apps/web/server/services/intelligenceFabric/sourceHealth.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 266 bounded spatial operations\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 31,
+        "path": "apps/web/server/services/intelligenceFabric/spatialOps.test.ts"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -530,7 +488,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md",
     "digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
@@ -675,115 +633,10 @@
         "path": "apps/web/server/services/decisionIntelligence/analysis.ts"
       },
       {
-        "excerpt": "contractVersion: \"spec266-research-v1\" as const,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 150,
-        "path": "apps/web/server/services/decisionIntelligence/researchAdapter.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-evidence-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 23,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.ts"
-      },
-      {
-        "excerpt": "if (value.contractVersion !== \"spec266-evidence-v1\" || !isId(value.id) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 121,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-evidence-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 143,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-geometry-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 14,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.ts"
-      },
-      {
-        "excerpt": "if (value.contractVersion !== \"spec266-geometry-v1\" ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 123,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geometry-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 133,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-research-watch-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 82,
-        "path": "apps/web/server/services/intelligenceFabric/researchAdmission.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geometry-v1\", geometryId: \"candidate.geometry\", geometryVersion: \"candidate-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 148,
-        "path": "apps/web/server/services/intelligenceFabric/researchAdmission.ts"
-      },
-      {
-        "excerpt": "if (input.contractVersion !== \"spec266-research-watch-v1\" || !id(input.changeId) || !id(input.idempotencyKey) || !id(input.watchRef) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 243,
-        "path": "apps/web/server/services/intelligenceFabric/researchAdmission.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-research-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 8,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-research-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 34,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.ts"
-      },
-      {
-        "excerpt": "if (value.contractVersion !== \"spec266-research-v1\" || !isId(value.researchRequestId) || !PERSISTED_ID.test(value.researchRequestId as string) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 205,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.ts"
-      },
-      {
-        "excerpt": "if (value.contractVersion !== \"spec266-research-v1\" || !isId(value.researchRunId) || !PERSISTED_ID.test(value.researchRunId as string) || !isId(value.researchRequestId) || !PERSISTED_ID.test(value.researchRequestId as string) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 265,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.ts"
-      },
-      {
         "excerpt": "// admission envelope aligned with the registered Spec 266 executor.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 88,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-research-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 89,
         "path": "apps/web/server/services/intelligenceFabric/researchPersistence.ts"
       },
       {
@@ -794,116 +647,11 @@
         "path": "apps/web/server/services/intelligenceFabric/resolver.ts"
       },
       {
-        "excerpt": "readonly contractVersion: \"spec266-geo-evidence-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 155,
-        "path": "apps/web/server/services/intelligenceFabric/semantic.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geo-evidence-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 178,
-        "path": "apps/web/server/services/intelligenceFabric/semantic.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-source-health-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/server/services/intelligenceFabric/sourceHealth.ts"
-      },
-      {
-        "excerpt": "if (!hasExactKeys(input, fields) || input.contractVersion !== \"spec266-source-health-v1\" ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 80,
-        "path": "apps/web/server/services/intelligenceFabric/sourceHealth.ts"
-      },
-      {
-        "excerpt": "const INTELLIGENCE_RESEARCH_CONTRACT_VERSION = \"spec266-research-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 39,
-        "path": "apps/web/server/services/jobExecutorRegistry.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-research-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 43,
-        "path": "apps/web/server/services/jobExecutorRegistry.ts"
-      },
-      {
-        "excerpt": "const envelope = { contractVersion: \"spec266-research-v1\", researchRequestId: \"research-request-1\" };",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 26,
-        "path": "apps/web/server/services/__tests__/intelligenceResearchJobRegistration.test.ts"
-      },
-      {
-        "excerpt": "expect(defaultJobExecutorRegistry.resolve(\"intelligence.research.execute\", \"spec266-research-v1\")).toMatchObject({",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 31,
-        "path": "apps/web/server/services/__tests__/intelligenceResearchJobRegistration.test.ts"
-      },
-      {
-        "excerpt": "const executor = defaultJobExecutorRegistry.resolve(\"intelligence.research.execute\", \"spec266-research-v1\")!.executor;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 38,
-        "path": "apps/web/server/services/__tests__/intelligenceResearchJobRegistration.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-source-health-v1\" as const, sourceId: \"source-1\", datasetId: \"dataset-1\", offerId: \"offer-1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 8,
-        "path": "apps/web/server/services/decisionIntelligence/evidencePlan.test.ts"
-      },
-      {
-        "excerpt": "expect(result.value.request).toMatchObject({ contractVersion: \"spec266-research-v1\", consumerKind: \"DECISION_ANALYSIS\", consumerRef: \"need-1\", projectId: \"project-1\", tenantId: \"tenant-1\", requestedBy: \"user-1\", outputPolicyRef: \"policy-1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 12,
-        "path": "apps/web/server/services/decisionIntelligence/researchAdapter.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-evidence-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 5,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.test.ts"
-      },
-      {
-        "excerpt": "expect(parseEvidenceItem({ ...evidence, contractVersion: \"spec266-evidence-v99\" })).toMatchObject({",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 20,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-evidence-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 20,
-        "path": "apps/web/server/services/intelligenceFabric/evidenceAdmission.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 266 evidence admission\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 97,
         "path": "apps/web/server/services/intelligenceFabric/evidenceAdmission.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geometry-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 6,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.test.ts"
       },
       {
         "excerpt": "describe(\"Spec 266 canonical geometry contract\", () => {",
@@ -920,38 +668,10 @@
         "path": "apps/web/server/services/intelligenceFabric/registryPersistence.test.ts"
       },
       {
-        "excerpt": "contractVersion: \"spec266-research-watch-v1\", changeId: \"change-1\", idempotencyKey: \"idem-1\", watchRef: \"watch-1\", watchRevision: 2,",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 135,
-        "path": "apps/web/server/services/intelligenceFabric/researchAdmission.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-research-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 5,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 266 research contracts\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 24,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.test.ts"
-      },
-      {
-        "excerpt": "expect(parseResearchRequest({ ...request, contractVersion: \"spec266-research-v99\" })).toMatchObject({ ok: false, code: \"RESEARCH_CONTRACT_INVALID\" });",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 36,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-research-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 98,
         "path": "apps/web/server/services/intelligenceFabric/researchContracts.test.ts"
       },
       {
@@ -962,39 +682,11 @@
         "path": "apps/web/server/services/intelligenceFabric/researchPersistence.test.ts"
       },
       {
-        "excerpt": "contractVersion: \"spec266-research-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 21,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.test.ts"
-      },
-      {
-        "excerpt": "input: { contractVersion: \"spec266-research-v1\", researchRequestId: request.researchRequestId },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 25,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.test.ts"
-      },
-      {
-        "excerpt": "const notice = { contractVersion: \"spec266-research-watch-v1\", changeId: \"change-1\", idempotencyKey: \"notice-key-1\", watchRef: \"watch-1\", watchRevision: 1, consumerKind: \"DECISION_ANALYSIS\", consumerRef: \"consumer-1\", authorizationScope: \"T",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 12,
-        "path": "apps/web/server/services/intelligenceFabric/researchPromotion.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 266 research promotion policy\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 18,
         "path": "apps/web/server/services/intelligenceFabric/researchPromotion.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-research-v1\" as const,",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 18,
-        "path": "apps/web/server/services/intelligenceFabric/researchRunPersistence.test.ts"
       },
       {
         "excerpt": "describe(\"Spec 266 immutable ResearchRun persistence\", () => {",
@@ -1004,34 +696,6 @@
         "path": "apps/web/server/services/intelligenceFabric/researchRunPersistence.test.ts"
       },
       {
-        "excerpt": "contractVersion: \"spec266-source-health-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 43,
-        "path": "apps/web/server/services/intelligenceFabric/resolver.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-source-health-v1\", sourceId: \"source-1\", datasetId: \"dataset-1\", offerId: \"degraded\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 86,
-        "path": "apps/web/server/services/intelligenceFabric/resolver.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-source-health-v1\", sourceId: \"source-1\", datasetId: \"dataset-1\", offerId: \"offer-1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 154,
-        "path": "apps/web/server/services/intelligenceFabric/resolver.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-source-health-v1\", sourceId: \"source-1\", datasetId: \"dataset-drifted\", offerId: \"dataset-drifted\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 181,
-        "path": "apps/web/server/services/intelligenceFabric/resolver.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 266 semantic and spatial contracts\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
@@ -1039,32 +703,11 @@
         "path": "apps/web/server/services/intelligenceFabric/semantic.test.ts"
       },
       {
-        "excerpt": "contractVersion: \"spec266-source-health-v1\", sourceId: \"source-1\", datasetId: \"dataset-1\", offerId: \"offer-1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 11,
-        "path": "apps/web/server/services/intelligenceFabric/sourceHealth.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 266 independent source health\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 19,
         "path": "apps/web/server/services/intelligenceFabric/sourceHealth.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geometry-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 12,
-        "path": "apps/web/server/services/intelligenceFabric/spatialOps.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geometry-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 22,
-        "path": "apps/web/server/services/intelligenceFabric/spatialOps.test.ts"
       },
       {
         "excerpt": "describe(\"Spec 266 bounded spatial operations\", () => {",
@@ -1099,115 +742,10 @@
         "path": "apps/web/server/services/decisionIntelligence/analysis.ts"
       },
       {
-        "excerpt": "contractVersion: \"spec266-research-v1\" as const,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 150,
-        "path": "apps/web/server/services/decisionIntelligence/researchAdapter.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-evidence-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 23,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.ts"
-      },
-      {
-        "excerpt": "if (value.contractVersion !== \"spec266-evidence-v1\" || !isId(value.id) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 121,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-evidence-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 143,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-geometry-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 14,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.ts"
-      },
-      {
-        "excerpt": "if (value.contractVersion !== \"spec266-geometry-v1\" ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 123,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geometry-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 133,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-research-watch-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 82,
-        "path": "apps/web/server/services/intelligenceFabric/researchAdmission.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geometry-v1\", geometryId: \"candidate.geometry\", geometryVersion: \"candidate-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 148,
-        "path": "apps/web/server/services/intelligenceFabric/researchAdmission.ts"
-      },
-      {
-        "excerpt": "if (input.contractVersion !== \"spec266-research-watch-v1\" || !id(input.changeId) || !id(input.idempotencyKey) || !id(input.watchRef) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 243,
-        "path": "apps/web/server/services/intelligenceFabric/researchAdmission.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-research-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 8,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-research-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 34,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.ts"
-      },
-      {
-        "excerpt": "if (value.contractVersion !== \"spec266-research-v1\" || !isId(value.researchRequestId) || !PERSISTED_ID.test(value.researchRequestId as string) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 205,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.ts"
-      },
-      {
-        "excerpt": "if (value.contractVersion !== \"spec266-research-v1\" || !isId(value.researchRunId) || !PERSISTED_ID.test(value.researchRunId as string) || !isId(value.researchRequestId) || !PERSISTED_ID.test(value.researchRequestId as string) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 265,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.ts"
-      },
-      {
         "excerpt": "// admission envelope aligned with the registered Spec 266 executor.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 88,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-research-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 89,
         "path": "apps/web/server/services/intelligenceFabric/researchPersistence.ts"
       },
       {
@@ -1218,116 +756,11 @@
         "path": "apps/web/server/services/intelligenceFabric/resolver.ts"
       },
       {
-        "excerpt": "readonly contractVersion: \"spec266-geo-evidence-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 155,
-        "path": "apps/web/server/services/intelligenceFabric/semantic.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geo-evidence-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 178,
-        "path": "apps/web/server/services/intelligenceFabric/semantic.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-source-health-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/server/services/intelligenceFabric/sourceHealth.ts"
-      },
-      {
-        "excerpt": "if (!hasExactKeys(input, fields) || input.contractVersion !== \"spec266-source-health-v1\" ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 80,
-        "path": "apps/web/server/services/intelligenceFabric/sourceHealth.ts"
-      },
-      {
-        "excerpt": "const INTELLIGENCE_RESEARCH_CONTRACT_VERSION = \"spec266-research-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 39,
-        "path": "apps/web/server/services/jobExecutorRegistry.ts"
-      },
-      {
-        "excerpt": "readonly contractVersion: \"spec266-research-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 43,
-        "path": "apps/web/server/services/jobExecutorRegistry.ts"
-      },
-      {
-        "excerpt": "const envelope = { contractVersion: \"spec266-research-v1\", researchRequestId: \"research-request-1\" };",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 26,
-        "path": "apps/web/server/services/__tests__/intelligenceResearchJobRegistration.test.ts"
-      },
-      {
-        "excerpt": "expect(defaultJobExecutorRegistry.resolve(\"intelligence.research.execute\", \"spec266-research-v1\")).toMatchObject({",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 31,
-        "path": "apps/web/server/services/__tests__/intelligenceResearchJobRegistration.test.ts"
-      },
-      {
-        "excerpt": "const executor = defaultJobExecutorRegistry.resolve(\"intelligence.research.execute\", \"spec266-research-v1\")!.executor;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 38,
-        "path": "apps/web/server/services/__tests__/intelligenceResearchJobRegistration.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-source-health-v1\" as const, sourceId: \"source-1\", datasetId: \"dataset-1\", offerId: \"offer-1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 8,
-        "path": "apps/web/server/services/decisionIntelligence/evidencePlan.test.ts"
-      },
-      {
-        "excerpt": "expect(result.value.request).toMatchObject({ contractVersion: \"spec266-research-v1\", consumerKind: \"DECISION_ANALYSIS\", consumerRef: \"need-1\", projectId: \"project-1\", tenantId: \"tenant-1\", requestedBy: \"user-1\", outputPolicyRef: \"policy-1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 12,
-        "path": "apps/web/server/services/decisionIntelligence/researchAdapter.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-evidence-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 5,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.test.ts"
-      },
-      {
-        "excerpt": "expect(parseEvidenceItem({ ...evidence, contractVersion: \"spec266-evidence-v99\" })).toMatchObject({",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 20,
-        "path": "apps/web/server/services/intelligenceFabric/contracts.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-evidence-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 20,
-        "path": "apps/web/server/services/intelligenceFabric/evidenceAdmission.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 266 evidence admission\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 97,
         "path": "apps/web/server/services/intelligenceFabric/evidenceAdmission.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geometry-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 6,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.test.ts"
       },
       {
         "excerpt": "describe(\"Spec 266 canonical geometry contract\", () => {",
@@ -1344,38 +777,10 @@
         "path": "apps/web/server/services/intelligenceFabric/registryPersistence.test.ts"
       },
       {
-        "excerpt": "contractVersion: \"spec266-research-watch-v1\", changeId: \"change-1\", idempotencyKey: \"idem-1\", watchRef: \"watch-1\", watchRevision: 2,",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 135,
-        "path": "apps/web/server/services/intelligenceFabric/researchAdmission.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-research-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 5,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 266 research contracts\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 24,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.test.ts"
-      },
-      {
-        "excerpt": "expect(parseResearchRequest({ ...request, contractVersion: \"spec266-research-v99\" })).toMatchObject({ ok: false, code: \"RESEARCH_CONTRACT_INVALID\" });",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 36,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-research-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 98,
         "path": "apps/web/server/services/intelligenceFabric/researchContracts.test.ts"
       },
       {
@@ -1386,39 +791,11 @@
         "path": "apps/web/server/services/intelligenceFabric/researchPersistence.test.ts"
       },
       {
-        "excerpt": "contractVersion: \"spec266-research-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 21,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.test.ts"
-      },
-      {
-        "excerpt": "input: { contractVersion: \"spec266-research-v1\", researchRequestId: request.researchRequestId },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 25,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.test.ts"
-      },
-      {
-        "excerpt": "const notice = { contractVersion: \"spec266-research-watch-v1\", changeId: \"change-1\", idempotencyKey: \"notice-key-1\", watchRef: \"watch-1\", watchRevision: 1, consumerKind: \"DECISION_ANALYSIS\", consumerRef: \"consumer-1\", authorizationScope: \"T",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 12,
-        "path": "apps/web/server/services/intelligenceFabric/researchPromotion.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 266 research promotion policy\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 18,
         "path": "apps/web/server/services/intelligenceFabric/researchPromotion.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-research-v1\" as const,",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 18,
-        "path": "apps/web/server/services/intelligenceFabric/researchRunPersistence.test.ts"
       },
       {
         "excerpt": "describe(\"Spec 266 immutable ResearchRun persistence\", () => {",
@@ -1428,34 +805,6 @@
         "path": "apps/web/server/services/intelligenceFabric/researchRunPersistence.test.ts"
       },
       {
-        "excerpt": "contractVersion: \"spec266-source-health-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 43,
-        "path": "apps/web/server/services/intelligenceFabric/resolver.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-source-health-v1\", sourceId: \"source-1\", datasetId: \"dataset-1\", offerId: \"degraded\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 86,
-        "path": "apps/web/server/services/intelligenceFabric/resolver.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-source-health-v1\", sourceId: \"source-1\", datasetId: \"dataset-1\", offerId: \"offer-1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 154,
-        "path": "apps/web/server/services/intelligenceFabric/resolver.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-source-health-v1\", sourceId: \"source-1\", datasetId: \"dataset-drifted\", offerId: \"dataset-drifted\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 181,
-        "path": "apps/web/server/services/intelligenceFabric/resolver.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 266 semantic and spatial contracts\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
@@ -1463,32 +812,11 @@
         "path": "apps/web/server/services/intelligenceFabric/semantic.test.ts"
       },
       {
-        "excerpt": "contractVersion: \"spec266-source-health-v1\", sourceId: \"source-1\", datasetId: \"dataset-1\", offerId: \"offer-1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 11,
-        "path": "apps/web/server/services/intelligenceFabric/sourceHealth.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 266 independent source health\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 19,
         "path": "apps/web/server/services/intelligenceFabric/sourceHealth.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geometry-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 12,
-        "path": "apps/web/server/services/intelligenceFabric/spatialOps.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec266-geometry-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 22,
-        "path": "apps/web/server/services/intelligenceFabric/spatialOps.test.ts"
       },
       {
         "excerpt": "describe(\"Spec 266 bounded spatial operations\", () => {",

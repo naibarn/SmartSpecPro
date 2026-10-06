@@ -47,90 +47,6 @@
         "digest": "556247d2b7eb5c2788a3f4817e81454b3ce7d81d00b455123539f3c621a099ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md"
-      },
-      {
-        "excerpt": "const spec2 = makeMinimalSpec({",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 134,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const spec2 = makeMinimalSpec({",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 134,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const spec2 = makeMinimalSpec({",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 134,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const result2 = validateJobSpec(spec2);",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 138,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const result2 = validateJobSpec(spec2);",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 138,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const result2 = validateJobSpec(spec2);",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 138,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "spec2 = NodeTypeSpec(type=\"node2\", display_name=\"N2\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 78,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "spec2 = NodeTypeSpec(type=\"node2\", display_name=\"N2\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 78,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "spec2 = NodeTypeSpec(type=\"node2\", display_name=\"N2\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 78,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec2)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 80,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec2)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 80,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec2)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 80,
-        "path": "python-backend/tests/test_node_registry.py"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -163,7 +79,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md",
     "digest": "556247d2b7eb5c2788a3f4817e81454b3ce7d81d00b455123539f3c621a099ce",
@@ -212,90 +128,6 @@
         "digest": "556247d2b7eb5c2788a3f4817e81454b3ce7d81d00b455123539f3c621a099ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract/spec.md"
-      },
-      {
-        "excerpt": "const spec2 = makeMinimalSpec({",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 134,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const spec2 = makeMinimalSpec({",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 134,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const spec2 = makeMinimalSpec({",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 134,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const result2 = validateJobSpec(spec2);",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 138,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const result2 = validateJobSpec(spec2);",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 138,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const result2 = validateJobSpec(spec2);",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 138,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "spec2 = NodeTypeSpec(type=\"node2\", display_name=\"N2\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 78,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "spec2 = NodeTypeSpec(type=\"node2\", display_name=\"N2\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 78,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "spec2 = NodeTypeSpec(type=\"node2\", display_name=\"N2\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 78,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec2)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 80,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec2)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 80,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec2)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 80,
-        "path": "python-backend/tests/test_node_registry.py"
       }
     ],
     "stale_fields": [],
@@ -307,92 +139,7 @@
     ]
   },
   "relevance_assessment": {
-    "active_references": [
-      {
-        "excerpt": "const spec2 = makeMinimalSpec({",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 134,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const spec2 = makeMinimalSpec({",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 134,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const spec2 = makeMinimalSpec({",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 134,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const result2 = validateJobSpec(spec2);",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 138,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const result2 = validateJobSpec(spec2);",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 138,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "const result2 = validateJobSpec(spec2);",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 138,
-        "path": "apps/web/shared/types/__tests__/mediaJob.test.ts"
-      },
-      {
-        "excerpt": "spec2 = NodeTypeSpec(type=\"node2\", display_name=\"N2\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 78,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "spec2 = NodeTypeSpec(type=\"node2\", display_name=\"N2\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 78,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "spec2 = NodeTypeSpec(type=\"node2\", display_name=\"N2\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 78,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec2)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 80,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec2)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 80,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec2)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 80,
-        "path": "python-backend/tests/test_node_registry.py"
-      }
-    ],
+    "active_references": [],
     "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",

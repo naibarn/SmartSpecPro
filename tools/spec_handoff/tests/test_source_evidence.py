@@ -16,7 +16,8 @@ class SourceEvidenceTests(unittest.TestCase):
             spec.mkdir(parents=True)
             (spec / "spec.md").write_text("# A\n", encoding="utf-8")
             (repo / "apps/web/server/a.ts").parent.mkdir(parents=True)
-            (repo / "apps/web/server/a.ts").write_text("// Spec 001 is documented here\n", encoding="utf-8")
+            (repo / "apps/web/server/a.ts").write_text("// Spec 001 is documented here\nconst spec1 = makeSpec();\n", encoding="utf-8")
+            (repo / "apps/web/server/package.json").write_text('{"resolved":"https://registry.npmjs.org/@standard-schema/spec/-/spec-1.1.0.tgz"}\n', encoding="utf-8")
             (repo / "apps/web/server/__tests__").mkdir()
             (repo / "apps/web/server/__tests__/a.test.ts").write_text("// Spec 001 test reference\n", encoding="utf-8")
             evidence = collect_source_evidence_for_inventory(repo, inventory(repo))["001"]

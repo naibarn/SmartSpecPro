@@ -79,7 +79,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/03-evidence-reconciliation-engine/spec.md",
     "digest": "d59929242a42b1a08a857781a3e2c509f01dbdf1b76fd4da9f71ded2084251f3",
@@ -87,8 +87,8 @@
       "implementation_last_touched_at": null,
       "last_evidence_at": "2026-10-06T00:43:01.827184Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-10-06T08:02:24+07:00",
+      "spec_last_changed_at": "2026-10-06T08:02:24+07:00"
     },
     "revision": null,
     "slug": "03-evidence-reconciliation-engine",

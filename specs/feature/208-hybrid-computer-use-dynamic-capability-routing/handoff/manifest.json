@@ -294,27 +294,6 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-06-conformance-rollout.md"
       },
       {
-        "excerpt": "\"verification\": { \"required\": true, \"verifier\": \"spec208-independent-v1\" },",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2938,
-        "path": "apps/runner-app/src/diagnostics.rs"
-      },
-      {
-        "excerpt": "\"spec208-independent-v1\"",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2949,
-        "path": "apps/runner-app/src/diagnostics.rs"
-      },
-      {
-        "excerpt": "\"spec208-independent-v1\"",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2960,
-        "path": "apps/runner-app/src/diagnostics.rs"
-      },
-      {
         "excerpt": "engineRef: \"computer-use:spec-208\";",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -343,81 +322,11 @@
         "path": "apps/web/server/services/computerUseCertificationContracts.ts"
       },
       {
-        "excerpt": "verifier: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 176,
-        "path": "apps/web/server/services/computerUseFeature195Gateway.ts"
-      },
-      {
-        "excerpt": "verifierType: \"spec208-independent\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 12,
-        "path": "apps/web/server/services/computerUseIndependentVerifier.ts"
-      },
-      {
-        "excerpt": "verifierVersion: \"spec208-independent-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 13,
-        "path": "apps/web/server/services/computerUseIndependentVerifier.ts"
-      },
-      {
-        "excerpt": "verifierType: \"spec208-independent\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 151,
-        "path": "apps/web/server/services/computerUseIndependentVerifier.ts"
-      },
-      {
-        "excerpt": "verifierVersion: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 152,
-        "path": "apps/web/server/services/computerUseIndependentVerifier.ts"
-      },
-      {
-        "excerpt": "verifier: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 124,
-        "path": "apps/web/server/services/computerUseRunnerJobExecutor.ts"
-      },
-      {
-        "excerpt": "verifier: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 204,
-        "path": "apps/web/server/services/computerUseSemanticHandshake.ts"
-      },
-      {
-        "excerpt": "verification: metadata.verification ?? { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 227,
-        "path": "apps/web/server/services/computerUseSemanticHandshakeRuntime.ts"
-      },
-      {
-        "excerpt": "verification: metadata.verification ?? { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 360,
-        "path": "apps/web/server/services/computerUseSemanticHandshakeRuntime.ts"
-      },
-      {
         "excerpt": "* Canonical Spec 208 semantic boundary. It intentionally stops before the",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 56,
         "path": "apps/web/server/services/computerUseSemanticRuntime.ts"
-      },
-      {
-        "excerpt": "export const SPEC208_CANDIDATE_BUILDER_VERSION = \"spec208-deterministic-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 3,
-        "path": "apps/web/server/services/computerUseSpec208Contracts.ts"
       },
       {
         "excerpt": "* Spec 208 independent verifier evaluates the post-action evidence. */",
@@ -427,11 +336,67 @@
         "path": "apps/web/server/services/jobControlPlane.ts"
       },
       {
-        "excerpt": "source: \"spec208-independent-verifier\",",
+        "excerpt": "* job may become terminal only after the independent Spec 208 verifier passes.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 6611,
-        "path": "apps/web/server/services/jobControlPlane.ts"
+        "line": 290,
+        "path": "apps/web/server/services/runnerJobCommandContracts.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 208 bounded browser candidate builder\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 52,
+        "path": "apps/web/server/services/__tests__/computerUseCandidateBuilder.test.ts"
+      },
+      {
+        "excerpt": "engineRef: \"computer-use:spec-208\",",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 13,
+        "path": "apps/web/server/services/__tests__/computerUseCertificationContracts.test.ts"
+      },
+      {
+        "excerpt": "it(\"accepts only the existing Spec 208 engine and canonical fallback order\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 28,
+        "path": "apps/web/server/services/__tests__/computerUseCertificationContracts.test.ts"
+      },
+      {
+        "excerpt": "expect(buildComputerUseQualification(baseQualification)).toMatchObject({ engineRef: \"computer-use:spec-208\" });",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 29,
+        "path": "apps/web/server/services/__tests__/computerUseCertificationContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 208 provider-neutral DecisionProvider\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 62,
+        "path": "apps/web/server/services/__tests__/computerUseDecisionProvider.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 208 independent Computer Use verifier\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 63,
+        "path": "apps/web/server/services/__tests__/computerUseIndependentVerifier.test.ts"
+      },
+      {
+        "excerpt": "workflowName: \"P213 Spec 208\",",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 32,
+        "path": "apps/web/server/services/__tests__/computerUseSemanticRuntime.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 208 semantic runtime\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 37,
+        "path": "apps/web/server/services/__tests__/computerUseSemanticRuntime.test.ts"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -529,7 +494,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
@@ -645,27 +610,6 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-06-conformance-rollout.md"
       },
       {
-        "excerpt": "\"verification\": { \"required\": true, \"verifier\": \"spec208-independent-v1\" },",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2938,
-        "path": "apps/runner-app/src/diagnostics.rs"
-      },
-      {
-        "excerpt": "\"spec208-independent-v1\"",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2949,
-        "path": "apps/runner-app/src/diagnostics.rs"
-      },
-      {
-        "excerpt": "\"spec208-independent-v1\"",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2960,
-        "path": "apps/runner-app/src/diagnostics.rs"
-      },
-      {
         "excerpt": "engineRef: \"computer-use:spec-208\";",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -694,69 +638,6 @@
         "path": "apps/web/server/services/computerUseCertificationContracts.ts"
       },
       {
-        "excerpt": "verifier: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 176,
-        "path": "apps/web/server/services/computerUseFeature195Gateway.ts"
-      },
-      {
-        "excerpt": "verifierType: \"spec208-independent\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 12,
-        "path": "apps/web/server/services/computerUseIndependentVerifier.ts"
-      },
-      {
-        "excerpt": "verifierVersion: \"spec208-independent-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 13,
-        "path": "apps/web/server/services/computerUseIndependentVerifier.ts"
-      },
-      {
-        "excerpt": "verifierType: \"spec208-independent\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 151,
-        "path": "apps/web/server/services/computerUseIndependentVerifier.ts"
-      },
-      {
-        "excerpt": "verifierVersion: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 152,
-        "path": "apps/web/server/services/computerUseIndependentVerifier.ts"
-      },
-      {
-        "excerpt": "verifier: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 124,
-        "path": "apps/web/server/services/computerUseRunnerJobExecutor.ts"
-      },
-      {
-        "excerpt": "verifier: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 204,
-        "path": "apps/web/server/services/computerUseSemanticHandshake.ts"
-      },
-      {
-        "excerpt": "verification: metadata.verification ?? { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 227,
-        "path": "apps/web/server/services/computerUseSemanticHandshakeRuntime.ts"
-      },
-      {
-        "excerpt": "verification: metadata.verification ?? { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 360,
-        "path": "apps/web/server/services/computerUseSemanticHandshakeRuntime.ts"
-      },
-      {
         "excerpt": "* Canonical Spec 208 semantic boundary. It intentionally stops before the",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -764,24 +645,10 @@
         "path": "apps/web/server/services/computerUseSemanticRuntime.ts"
       },
       {
-        "excerpt": "export const SPEC208_CANDIDATE_BUILDER_VERSION = \"spec208-deterministic-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 3,
-        "path": "apps/web/server/services/computerUseSpec208Contracts.ts"
-      },
-      {
         "excerpt": "* Spec 208 independent verifier evaluates the post-action evidence. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 6377,
-        "path": "apps/web/server/services/jobControlPlane.ts"
-      },
-      {
-        "excerpt": "source: \"spec208-independent-verifier\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6611,
         "path": "apps/web/server/services/jobControlPlane.ts"
       },
       {
@@ -796,13 +663,6 @@
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 52,
-        "path": "apps/web/server/services/__tests__/computerUseCandidateBuilder.test.ts"
-      },
-      {
-        "excerpt": "reductionStrategy: \"spec208-deterministic-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 94,
         "path": "apps/web/server/services/__tests__/computerUseCandidateBuilder.test.ts"
       },
       {
@@ -834,88 +694,11 @@
         "path": "apps/web/server/services/__tests__/computerUseDecisionProvider.test.ts"
       },
       {
-        "excerpt": "verifier: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 105,
-        "path": "apps/web/server/services/__tests__/computerUseFeature195Gateway.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 208 independent Computer Use verifier\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 63,
         "path": "apps/web/server/services/__tests__/computerUseIndependentVerifier.test.ts"
-      },
-      {
-        "excerpt": "verifierType: \"spec208-independent\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 85,
-        "path": "apps/web/server/services/__tests__/computerUseIndependentVerifier.test.ts"
-      },
-      {
-        "excerpt": "verifierVersion: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 86,
-        "path": "apps/web/server/services/__tests__/computerUseIndependentVerifier.test.ts"
-      },
-      {
-        "excerpt": "reductionStrategy: \"spec208-deterministic-v1\" as const,",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 52,
-        "path": "apps/web/server/services/__tests__/computerUseRunnerJobExecutor.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 117,
-        "path": "apps/web/server/services/__tests__/computerUseRunnerJobExecutor.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 158,
-        "path": "apps/web/server/services/__tests__/computerUseRunnerJobExecutor.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 178,
-        "path": "apps/web/server/services/__tests__/computerUseRunnerJobExecutor.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 73,
-        "path": "apps/web/server/services/__tests__/computerUseSemanticHandshake.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 93,
-        "path": "apps/web/server/services/__tests__/computerUseSemanticHandshakeRuntime.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 182,
-        "path": "apps/web/server/services/__tests__/computerUseSemanticHandshakeRuntime.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 266,
-        "path": "apps/web/server/services/__tests__/computerUseSemanticHandshakeRuntime.test.ts"
       },
       {
         "excerpt": "workflowName: \"P213 Spec 208\",",
@@ -943,27 +726,6 @@
   "relevance_assessment": {
     "active_references": [
       {
-        "excerpt": "\"verification\": { \"required\": true, \"verifier\": \"spec208-independent-v1\" },",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2938,
-        "path": "apps/runner-app/src/diagnostics.rs"
-      },
-      {
-        "excerpt": "\"spec208-independent-v1\"",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2949,
-        "path": "apps/runner-app/src/diagnostics.rs"
-      },
-      {
-        "excerpt": "\"spec208-independent-v1\"",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2960,
-        "path": "apps/runner-app/src/diagnostics.rs"
-      },
-      {
         "excerpt": "engineRef: \"computer-use:spec-208\";",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -992,69 +754,6 @@
         "path": "apps/web/server/services/computerUseCertificationContracts.ts"
       },
       {
-        "excerpt": "verifier: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 176,
-        "path": "apps/web/server/services/computerUseFeature195Gateway.ts"
-      },
-      {
-        "excerpt": "verifierType: \"spec208-independent\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 12,
-        "path": "apps/web/server/services/computerUseIndependentVerifier.ts"
-      },
-      {
-        "excerpt": "verifierVersion: \"spec208-independent-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 13,
-        "path": "apps/web/server/services/computerUseIndependentVerifier.ts"
-      },
-      {
-        "excerpt": "verifierType: \"spec208-independent\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 151,
-        "path": "apps/web/server/services/computerUseIndependentVerifier.ts"
-      },
-      {
-        "excerpt": "verifierVersion: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 152,
-        "path": "apps/web/server/services/computerUseIndependentVerifier.ts"
-      },
-      {
-        "excerpt": "verifier: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 124,
-        "path": "apps/web/server/services/computerUseRunnerJobExecutor.ts"
-      },
-      {
-        "excerpt": "verifier: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 204,
-        "path": "apps/web/server/services/computerUseSemanticHandshake.ts"
-      },
-      {
-        "excerpt": "verification: metadata.verification ?? { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 227,
-        "path": "apps/web/server/services/computerUseSemanticHandshakeRuntime.ts"
-      },
-      {
-        "excerpt": "verification: metadata.verification ?? { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 360,
-        "path": "apps/web/server/services/computerUseSemanticHandshakeRuntime.ts"
-      },
-      {
         "excerpt": "* Canonical Spec 208 semantic boundary. It intentionally stops before the",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -1062,24 +761,10 @@
         "path": "apps/web/server/services/computerUseSemanticRuntime.ts"
       },
       {
-        "excerpt": "export const SPEC208_CANDIDATE_BUILDER_VERSION = \"spec208-deterministic-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 3,
-        "path": "apps/web/server/services/computerUseSpec208Contracts.ts"
-      },
-      {
         "excerpt": "* Spec 208 independent verifier evaluates the post-action evidence. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 6377,
-        "path": "apps/web/server/services/jobControlPlane.ts"
-      },
-      {
-        "excerpt": "source: \"spec208-independent-verifier\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6611,
         "path": "apps/web/server/services/jobControlPlane.ts"
       },
       {
@@ -1094,13 +779,6 @@
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 52,
-        "path": "apps/web/server/services/__tests__/computerUseCandidateBuilder.test.ts"
-      },
-      {
-        "excerpt": "reductionStrategy: \"spec208-deterministic-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 94,
         "path": "apps/web/server/services/__tests__/computerUseCandidateBuilder.test.ts"
       },
       {
@@ -1132,88 +810,11 @@
         "path": "apps/web/server/services/__tests__/computerUseDecisionProvider.test.ts"
       },
       {
-        "excerpt": "verifier: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 105,
-        "path": "apps/web/server/services/__tests__/computerUseFeature195Gateway.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 208 independent Computer Use verifier\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 63,
         "path": "apps/web/server/services/__tests__/computerUseIndependentVerifier.test.ts"
-      },
-      {
-        "excerpt": "verifierType: \"spec208-independent\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 85,
-        "path": "apps/web/server/services/__tests__/computerUseIndependentVerifier.test.ts"
-      },
-      {
-        "excerpt": "verifierVersion: \"spec208-independent-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 86,
-        "path": "apps/web/server/services/__tests__/computerUseIndependentVerifier.test.ts"
-      },
-      {
-        "excerpt": "reductionStrategy: \"spec208-deterministic-v1\" as const,",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 52,
-        "path": "apps/web/server/services/__tests__/computerUseRunnerJobExecutor.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 117,
-        "path": "apps/web/server/services/__tests__/computerUseRunnerJobExecutor.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 158,
-        "path": "apps/web/server/services/__tests__/computerUseRunnerJobExecutor.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 178,
-        "path": "apps/web/server/services/__tests__/computerUseRunnerJobExecutor.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 73,
-        "path": "apps/web/server/services/__tests__/computerUseSemanticHandshake.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 93,
-        "path": "apps/web/server/services/__tests__/computerUseSemanticHandshakeRuntime.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 182,
-        "path": "apps/web/server/services/__tests__/computerUseSemanticHandshakeRuntime.test.ts"
-      },
-      {
-        "excerpt": "verification: { required: true, verifier: \"spec208-independent-v1\", mode: \"post_observation\" },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 266,
-        "path": "apps/web/server/services/__tests__/computerUseSemanticHandshakeRuntime.test.ts"
       },
       {
         "excerpt": "workflowName: \"P213 Spec 208\",",

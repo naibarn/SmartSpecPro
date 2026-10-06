@@ -380,123 +380,11 @@
         "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-15-offline-accessibility-device-sync.md"
       },
       {
-        "excerpt": "const CATALOG_ID = \"spec262-curated-thai-place-aliases\" as const;",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 3,
-        "path": "apps/web/server/services/geographicSearchService.ts"
-      },
-      {
-        "excerpt": "policyVersion: \"spec262-spatial-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 38,
-        "path": "apps/web/server/services/spec262PublicSpatialProjection.ts"
-      },
-      {
         "excerpt": "* Shared, authority-neutral intent for the Spec 262 adaptive emergency feed.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 2,
         "path": "packages/shared/src/emergency/feedFocus.ts"
-      },
-      {
-        "excerpt": "* Deterministic, authority-neutral feed policy primitives for Spec 262.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "packages/shared/src/emergency/feedSemantics.ts"
-      },
-      {
-        "excerpt": "export const FEED_POLICY_VERSION = \"spec262-feed-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 8,
-        "path": "packages/shared/src/emergency/feedSemantics.ts"
-      },
-      {
-        "excerpt": "/** Pure, bounded privacy decisions for Spec 262. Server callers must supply authoritative policy inputs. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 1,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "readonly policyVersion: \"spec262-spatial-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 31,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "return { policyVersion: \"spec262-spatial-v1\", audience, mode: \"SUPPRESSED\", crs: \"EPSG:4326\", geometry: null, reason };",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 64,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "if (!input || input.policyVersion !== \"spec262-spatial-v1\" || input.crs !== \"EPSG:4326\" ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 73,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "policyVersion: \"spec262-spatial-v1\", audience: input.audience, mode: \"EXACT\", crs: \"EPSG:4326\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 82,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "policyVersion: \"spec262-spatial-v1\", audience: input.audience, mode: \"GENERALIZED\", crs: \"EPSG:4326\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 96,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "if (!input || input.contractVersion !== \"spec262-geospatial-share-v1\" ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 161,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "readonly policyVersion: \"spec262-retention-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 210,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "): GeospatialRetentionDecision => ({ policyVersion: \"spec262-retention-v1\", result, retainedFields, reason });",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 222,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "if (!input || input.policyVersion !== \"spec262-retention-v1\" || !boundedText(input.dataRef) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 223,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "* Deterministic structural hydro-topology traversal for Spec 262.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "packages/shared/src/emergency/hydroImpactGraph.ts"
-      },
-      {
-        "excerpt": "export const HYDRO_IMPACT_GRAPH_POLICY_VERSION = \"spec262-hydro-impact-graph-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 9,
-        "path": "packages/shared/src/emergency/hydroImpactGraph.ts"
       },
       {
         "excerpt": "* Bounded Spec 262 compound-hazard facts. These contracts retain supplied",
@@ -513,11 +401,39 @@
         "path": "apps/web/drizzle/__tests__/spec265266DurableFoundationMigration.test.ts"
       },
       {
-        "excerpt": "describe(\"Spec262 geospatial watch storage migration\", () => {",
+        "excerpt": "describe(\"Spec 262 compound hazard shared contracts\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 19,
+        "path": "apps/web/shared/spec262CompoundContracts.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 262 geospatial privacy core\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 9,
+        "path": "apps/web/shared/spec262GeospatialPrivacy.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 262 offline access boundaries\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 8,
-        "path": "apps/web/drizzle/geospatialWatchesMigration.test.ts"
+        "path": "apps/web/shared/spec262OfflineAccess.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 262 bounded adaptive feed focus\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 20,
+        "path": "packages/shared/src/emergency/feedFocus.test.ts"
+      },
+      {
+        "excerpt": "describe(\"Spec 262 geographic search and watch routes\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 22,
+        "path": "packages/shared/src/emergencyRouteManifest.test.ts"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -645,7 +561,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md",
     "digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
@@ -806,123 +722,11 @@
         "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-18-integrated-acceptance-release-evidence.md"
       },
       {
-        "excerpt": "const CATALOG_ID = \"spec262-curated-thai-place-aliases\" as const;",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 3,
-        "path": "apps/web/server/services/geographicSearchService.ts"
-      },
-      {
-        "excerpt": "policyVersion: \"spec262-spatial-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 38,
-        "path": "apps/web/server/services/spec262PublicSpatialProjection.ts"
-      },
-      {
         "excerpt": "* Shared, authority-neutral intent for the Spec 262 adaptive emergency feed.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 2,
         "path": "packages/shared/src/emergency/feedFocus.ts"
-      },
-      {
-        "excerpt": "* Deterministic, authority-neutral feed policy primitives for Spec 262.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "packages/shared/src/emergency/feedSemantics.ts"
-      },
-      {
-        "excerpt": "export const FEED_POLICY_VERSION = \"spec262-feed-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 8,
-        "path": "packages/shared/src/emergency/feedSemantics.ts"
-      },
-      {
-        "excerpt": "/** Pure, bounded privacy decisions for Spec 262. Server callers must supply authoritative policy inputs. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 1,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "readonly policyVersion: \"spec262-spatial-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 31,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "return { policyVersion: \"spec262-spatial-v1\", audience, mode: \"SUPPRESSED\", crs: \"EPSG:4326\", geometry: null, reason };",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 64,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "if (!input || input.policyVersion !== \"spec262-spatial-v1\" || input.crs !== \"EPSG:4326\" ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 73,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "policyVersion: \"spec262-spatial-v1\", audience: input.audience, mode: \"EXACT\", crs: \"EPSG:4326\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 82,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "policyVersion: \"spec262-spatial-v1\", audience: input.audience, mode: \"GENERALIZED\", crs: \"EPSG:4326\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 96,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "if (!input || input.contractVersion !== \"spec262-geospatial-share-v1\" ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 161,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "readonly policyVersion: \"spec262-retention-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 210,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "): GeospatialRetentionDecision => ({ policyVersion: \"spec262-retention-v1\", result, retainedFields, reason });",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 222,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "if (!input || input.policyVersion !== \"spec262-retention-v1\" || !boundedText(input.dataRef) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 223,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "* Deterministic structural hydro-topology traversal for Spec 262.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "packages/shared/src/emergency/hydroImpactGraph.ts"
-      },
-      {
-        "excerpt": "export const HYDRO_IMPACT_GRAPH_POLICY_VERSION = \"spec262-hydro-impact-graph-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 9,
-        "path": "packages/shared/src/emergency/hydroImpactGraph.ts"
       },
       {
         "excerpt": "* Bounded Spec 262 compound-hazard facts. These contracts retain supplied",
@@ -939,55 +743,6 @@
         "path": "apps/web/drizzle/__tests__/spec265266DurableFoundationMigration.test.ts"
       },
       {
-        "excerpt": "describe(\"Spec262 geospatial watch storage migration\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 8,
-        "path": "apps/web/drizzle/geospatialWatchesMigration.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec262 hydrology observation migration\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 8,
-        "path": "apps/web/drizzle/hydrologyObservationsMigration.test.ts"
-      },
-      {
-        "excerpt": "const key = `spec262-immutable/${Date.now()}-${Math.random().toString(16).slice(2)}.bin`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 228,
-        "path": "apps/web/server/__tests__/r2-storage-abstraction.test.ts"
-      },
-      {
-        "excerpt": "provenance: { catalog: \"spec262-curated-thai-place-aliases\", upstream: null },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 18,
-        "path": "apps/web/server/services/__tests__/geographicSearchService.test.ts"
-      },
-      {
-        "excerpt": "expect(result).toEqual({ status: \"invalid_request\", coverage: \"curated-limited\", results: [], provenance: { catalog: \"spec262-curated-thai-place-aliases\", upstream: null } });",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 47,
-        "path": "apps/web/server/services/__tests__/geographicSearchService.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec262 public emergency spatial projection\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 4,
-        "path": "apps/web/server/services/__tests__/spec262PublicSpatialProjection.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec262 Drizzle geo-source persistence\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 29,
-        "path": "apps/web/server/services/geoSources/drizzlePersistence.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 262 compound hazard shared contracts\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
@@ -1002,34 +757,6 @@
         "path": "apps/web/shared/spec262GeospatialPrivacy.test.ts"
       },
       {
-        "excerpt": "policyVersion: \"spec262-spatial-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 12,
-        "path": "apps/web/shared/spec262GeospatialPrivacy.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec262-geospatial-share-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 73,
-        "path": "apps/web/shared/spec262GeospatialPrivacy.test.ts"
-      },
-      {
-        "excerpt": "policyVersion: \"spec262-retention-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 108,
-        "path": "apps/web/shared/spec262GeospatialPrivacy.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec262 geospatial watch route contract\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 4,
-        "path": "apps/web/shared/spec262GeospatialWatchRoutes.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 262 offline access boundaries\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
@@ -1042,13 +769,6 @@
         "kind": "TEST",
         "line": 20,
         "path": "packages/shared/src/emergency/feedFocus.test.ts"
-      },
-      {
-        "excerpt": "expect(first[0]).toMatchObject({ policyVersion: \"spec262-feed-v1\", reasons: expect.arrayContaining([\"SAFETY_PRIORITY\", \"FOCUS_MATCH\"]) });",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 36,
-        "path": "packages/shared/src/emergency/feedSemantics.test.ts"
       },
       {
         "excerpt": "describe(\"Spec 262 geographic search and watch routes\", () => {",
@@ -1069,123 +789,11 @@
   "relevance_assessment": {
     "active_references": [
       {
-        "excerpt": "const CATALOG_ID = \"spec262-curated-thai-place-aliases\" as const;",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 3,
-        "path": "apps/web/server/services/geographicSearchService.ts"
-      },
-      {
-        "excerpt": "policyVersion: \"spec262-spatial-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 38,
-        "path": "apps/web/server/services/spec262PublicSpatialProjection.ts"
-      },
-      {
         "excerpt": "* Shared, authority-neutral intent for the Spec 262 adaptive emergency feed.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 2,
         "path": "packages/shared/src/emergency/feedFocus.ts"
-      },
-      {
-        "excerpt": "* Deterministic, authority-neutral feed policy primitives for Spec 262.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "packages/shared/src/emergency/feedSemantics.ts"
-      },
-      {
-        "excerpt": "export const FEED_POLICY_VERSION = \"spec262-feed-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 8,
-        "path": "packages/shared/src/emergency/feedSemantics.ts"
-      },
-      {
-        "excerpt": "/** Pure, bounded privacy decisions for Spec 262. Server callers must supply authoritative policy inputs. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 1,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "readonly policyVersion: \"spec262-spatial-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 31,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "return { policyVersion: \"spec262-spatial-v1\", audience, mode: \"SUPPRESSED\", crs: \"EPSG:4326\", geometry: null, reason };",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 64,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "if (!input || input.policyVersion !== \"spec262-spatial-v1\" || input.crs !== \"EPSG:4326\" ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 73,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "policyVersion: \"spec262-spatial-v1\", audience: input.audience, mode: \"EXACT\", crs: \"EPSG:4326\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 82,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "policyVersion: \"spec262-spatial-v1\", audience: input.audience, mode: \"GENERALIZED\", crs: \"EPSG:4326\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 96,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "if (!input || input.contractVersion !== \"spec262-geospatial-share-v1\" ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 161,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "readonly policyVersion: \"spec262-retention-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 210,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "): GeospatialRetentionDecision => ({ policyVersion: \"spec262-retention-v1\", result, retainedFields, reason });",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 222,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "if (!input || input.policyVersion !== \"spec262-retention-v1\" || !boundedText(input.dataRef) ||",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 223,
-        "path": "packages/shared/src/emergency/geospatialPrivacy.ts"
-      },
-      {
-        "excerpt": "* Deterministic structural hydro-topology traversal for Spec 262.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "packages/shared/src/emergency/hydroImpactGraph.ts"
-      },
-      {
-        "excerpt": "export const HYDRO_IMPACT_GRAPH_POLICY_VERSION = \"spec262-hydro-impact-graph-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 9,
-        "path": "packages/shared/src/emergency/hydroImpactGraph.ts"
       },
       {
         "excerpt": "* Bounded Spec 262 compound-hazard facts. These contracts retain supplied",
@@ -1202,55 +810,6 @@
         "path": "apps/web/drizzle/__tests__/spec265266DurableFoundationMigration.test.ts"
       },
       {
-        "excerpt": "describe(\"Spec262 geospatial watch storage migration\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 8,
-        "path": "apps/web/drizzle/geospatialWatchesMigration.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec262 hydrology observation migration\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 8,
-        "path": "apps/web/drizzle/hydrologyObservationsMigration.test.ts"
-      },
-      {
-        "excerpt": "const key = `spec262-immutable/${Date.now()}-${Math.random().toString(16).slice(2)}.bin`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 228,
-        "path": "apps/web/server/__tests__/r2-storage-abstraction.test.ts"
-      },
-      {
-        "excerpt": "provenance: { catalog: \"spec262-curated-thai-place-aliases\", upstream: null },",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 18,
-        "path": "apps/web/server/services/__tests__/geographicSearchService.test.ts"
-      },
-      {
-        "excerpt": "expect(result).toEqual({ status: \"invalid_request\", coverage: \"curated-limited\", results: [], provenance: { catalog: \"spec262-curated-thai-place-aliases\", upstream: null } });",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 47,
-        "path": "apps/web/server/services/__tests__/geographicSearchService.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec262 public emergency spatial projection\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 4,
-        "path": "apps/web/server/services/__tests__/spec262PublicSpatialProjection.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec262 Drizzle geo-source persistence\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 29,
-        "path": "apps/web/server/services/geoSources/drizzlePersistence.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 262 compound hazard shared contracts\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
@@ -1265,34 +824,6 @@
         "path": "apps/web/shared/spec262GeospatialPrivacy.test.ts"
       },
       {
-        "excerpt": "policyVersion: \"spec262-spatial-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 12,
-        "path": "apps/web/shared/spec262GeospatialPrivacy.test.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec262-geospatial-share-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 73,
-        "path": "apps/web/shared/spec262GeospatialPrivacy.test.ts"
-      },
-      {
-        "excerpt": "policyVersion: \"spec262-retention-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 108,
-        "path": "apps/web/shared/spec262GeospatialPrivacy.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec262 geospatial watch route contract\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 4,
-        "path": "apps/web/shared/spec262GeospatialWatchRoutes.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 262 offline access boundaries\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
@@ -1305,13 +836,6 @@
         "kind": "TEST",
         "line": 20,
         "path": "packages/shared/src/emergency/feedFocus.test.ts"
-      },
-      {
-        "excerpt": "expect(first[0]).toMatchObject({ policyVersion: \"spec262-feed-v1\", reasons: expect.arrayContaining([\"SAFETY_PRIORITY\", \"FOCUS_MATCH\"]) });",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 36,
-        "path": "packages/shared/src/emergency/feedSemantics.test.ts"
       },
       {
         "excerpt": "describe(\"Spec 262 geographic search and watch routes\", () => {",

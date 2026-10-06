@@ -9,7 +9,7 @@ from typing import Any
 
 from .inventory import inventory
 
-_SPEC_MENTION = re.compile(r"\b(?:specification|spec)\s*(?:#|no\.?|:|-)?\s*(\d{1,4})\b", re.I)
+_SPEC_MENTION = re.compile(r"\b(?:specification|spec)(?:[ \t]+|[ \t]*(?:#|no\.?|:|-)[ \t]*)(\d{1,4})(?![\d.])\b", re.I)
 _EXTENSIONS = {".ts", ".tsx", ".js", ".jsx", ".py", ".rs", ".sql", ".md", ".json", ".toml", ".yaml", ".yml"}
 _SOURCE_ROOTS = ("apps", "packages", "python-backend", "scripts", "tests", "skills")
 _SKIP_PARTS = {"node_modules", ".git", "target", "dist", "build", "handoff", "specs"}

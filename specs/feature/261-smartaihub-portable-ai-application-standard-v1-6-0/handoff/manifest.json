@@ -218,13 +218,6 @@
         "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
       },
       {
-        "excerpt": "import {entriesFor,parsedManifest,structureFor} from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 3,
-        "path": "packages/spaas-standard/tests/dependency-graph.test.ts"
-      },
-      {
         "excerpt": "it(\"parses the Spec 261 core manifest and generic MCP extension requirements\", async () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
@@ -232,39 +225,11 @@
         "path": "packages/spaas-standard/tests/manifest-parser.test.ts"
       },
       {
-        "excerpt": "import { entriesFor,parsedManifest } from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 3,
-        "path": "packages/spaas-standard/tests/package-structure.test.ts"
-      },
-      {
-        "excerpt": "import { entriesFor } from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 5,
-        "path": "packages/spaas-standard/tests/phase-a.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 261 Phase A validators\",()=>{",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 11,
         "path": "packages/spaas-standard/tests/phase-a.test.ts"
-      },
-      {
-        "excerpt": "import {entriesFor,parsedManifest,structureFor} from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 3,
-        "path": "packages/spaas-standard/tests/secret-scanning.test.ts"
-      },
-      {
-        "excerpt": "import {entriesFor,manifestText,support} from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 3,
-        "path": "packages/spaas-standard/tests/validation-pipeline.test.ts"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -367,7 +332,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md",
     "digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
@@ -488,13 +453,6 @@
         "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
       },
       {
-        "excerpt": "import {entriesFor,parsedManifest,structureFor} from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 3,
-        "path": "packages/spaas-standard/tests/dependency-graph.test.ts"
-      },
-      {
         "excerpt": "it(\"parses the Spec 261 core manifest and generic MCP extension requirements\", async () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
@@ -502,39 +460,11 @@
         "path": "packages/spaas-standard/tests/manifest-parser.test.ts"
       },
       {
-        "excerpt": "import { entriesFor,parsedManifest } from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 3,
-        "path": "packages/spaas-standard/tests/package-structure.test.ts"
-      },
-      {
-        "excerpt": "import { entriesFor } from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 5,
-        "path": "packages/spaas-standard/tests/phase-a.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 261 Phase A validators\",()=>{",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 11,
         "path": "packages/spaas-standard/tests/phase-a.test.ts"
-      },
-      {
-        "excerpt": "import {entriesFor,parsedManifest,structureFor} from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 3,
-        "path": "packages/spaas-standard/tests/secret-scanning.test.ts"
-      },
-      {
-        "excerpt": "import {entriesFor,manifestText,support} from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 3,
-        "path": "packages/spaas-standard/tests/validation-pipeline.test.ts"
       }
     ],
     "stale_fields": [],
@@ -548,13 +478,6 @@
   "relevance_assessment": {
     "active_references": [
       {
-        "excerpt": "import {entriesFor,parsedManifest,structureFor} from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 3,
-        "path": "packages/spaas-standard/tests/dependency-graph.test.ts"
-      },
-      {
         "excerpt": "it(\"parses the Spec 261 core manifest and generic MCP extension requirements\", async () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
@@ -562,39 +485,11 @@
         "path": "packages/spaas-standard/tests/manifest-parser.test.ts"
       },
       {
-        "excerpt": "import { entriesFor,parsedManifest } from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 3,
-        "path": "packages/spaas-standard/tests/package-structure.test.ts"
-      },
-      {
-        "excerpt": "import { entriesFor } from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 5,
-        "path": "packages/spaas-standard/tests/phase-a.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 261 Phase A validators\",()=>{",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 11,
         "path": "packages/spaas-standard/tests/phase-a.test.ts"
-      },
-      {
-        "excerpt": "import {entriesFor,parsedManifest,structureFor} from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 3,
-        "path": "packages/spaas-standard/tests/secret-scanning.test.ts"
-      },
-      {
-        "excerpt": "import {entriesFor,manifestText,support} from \"./helpers/spec261\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 3,
-        "path": "packages/spaas-standard/tests/validation-pipeline.test.ts"
       }
     ],
     "conflict_duplication_risk": "REVIEW_REQUIRED",

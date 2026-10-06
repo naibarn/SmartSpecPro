@@ -238,7 +238,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "update":
         from .store import update_manifest
-        changes = json.loads(args.changes_json)
+        changes_path = Path(args.changes_json)
+        changes = json.loads(changes_path.read_text(encoding="utf-8") if changes_path.is_file() else args.changes_json)
         if not isinstance(changes, dict):
             parser.error("--changes-json must decode to an object")
         updated = update_manifest(args.spec_dir, expected_generation=args.expected_generation,
@@ -249,7 +250,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "requirement-update":
         from .store import update_requirement_ledger
-        changes = json.loads(args.changes_json)
+        changes_path = Path(args.changes_json)
+        changes = json.loads(changes_path.read_text(encoding="utf-8") if changes_path.is_file() else args.changes_json)
         if not isinstance(changes, dict):
             parser.error("--changes-json must decode to an object")
         manifest, ledger = update_requirement_ledger(args.spec_dir,
