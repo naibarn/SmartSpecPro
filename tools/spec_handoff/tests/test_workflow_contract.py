@@ -76,6 +76,141 @@ class WorkflowContractTests(unittest.TestCase):
             self.assertTrue(row["completion_eligible"], row["completion_reasons"])
             self.assertEqual(manifest["continuation"]["resume_point"], "VERIFY")
 
+    def test_cross_skill_lifecycle_persists_deployment_and_resume_in_one_handoff(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "specs/_config").mkdir(parents=True)
+            (repo / "specs/_config/handoff-roots.toml").write_text(
+                '[spec_handoff]\nschema_version=1\ncanonical_roots=["specs/feature"]\nalternate_roots=[]\n',
+                encoding="utf-8",
+            )
+            spec = repo / "specs/feature/001-cross-skill-flow"
+            spec.mkdir(parents=True)
+            (spec / "spec.md").write_text(
+                "# Cross-skill flow\n\n## Requirements\n- One Handoff carries the work through deployment and resume.\n",
+                encoding="utf-8",
+            )
+
+            # deep-project/deep-plan initialize one canonical manifest and ledger.
+            reconcile_one(spec, repo, write=True)
+            from tools.spec_handoff.store import read_manifest
+
+            manifest = read_manifest(spec)
+            digest = manifest["identity"]["digest"]
+            ledger_path = spec / "handoff/requirement-ledger.json"
+            ledger = __import__("json").loads(ledger_path.read_text(encoding="utf-8"))
+            requirement_id = ledger["requirements"][0]["requirement_id"]
+            self.assertEqual(ledger["requirements"][0]["final_state"], "OPEN")
+
+            # deep-implement records implementation before integration exists.
+            manifest, ledger = update_requirement_ledger(
+                spec,
+                expected_manifest_generation=manifest["generation"],
+                expected_ledger_generation=ledger["generation"],
+                expected_spec_digest=digest,
+                expected_canonical_sha=None,
+                requirement_id=requirement_id,
+                changes={
+                    "applicability": "APPLICABLE",
+                    "current_relevance": "CURRENT",
+                    "implementation_status": "IMPLEMENTED",
+                    "implementation_evidence": ["src/flow.py"],
+                    "verification_method": "focused contract test",
+                    "final_state": "OPEN",
+                    "next_action": "Integrate, verify, and deploy the exact canonical revision.",
+                },
+            )
+
+            # integration-controller records the canonical SHA; verification binds to it.
+            canonical_sha = "canonical-commit-001"
+            manifest = update_manifest(
+                spec,
+                expected_generation=manifest["generation"],
+                expected_spec_digest=digest,
+                expected_canonical_sha=None,
+                repo=repo,
+                changes={
+                    "lifecycle.current_state": "PARTIAL_INTEGRATED",
+                    "integration.canonical_ref": "refs/heads/main",
+                    "integration.integrated": True,
+                    "integration.canonical_sha": canonical_sha,
+                    "integration.integrated_at": "2026-10-06T00:00:00Z",
+                },
+            )
+            manifest, ledger = update_requirement_ledger(
+                spec,
+                expected_manifest_generation=manifest["generation"],
+                expected_ledger_generation=ledger["generation"],
+                expected_spec_digest=digest,
+                expected_canonical_sha=canonical_sha,
+                requirement_id=requirement_id,
+                changes={
+                    "verification_evidence": ["evidence/verification.json"],
+                    "evidence_sha": canonical_sha,
+                    "evidence_freshness": "FRESH",
+                    "final_state": "PASS",
+                    "next_action": "Keep exact-SHA deployment and resume evidence current.",
+                },
+            )
+            manifest = update_manifest(
+                spec,
+                expected_generation=manifest["generation"],
+                expected_spec_digest=digest,
+                expected_canonical_sha=canonical_sha,
+                repo=repo,
+                changes={
+                    "authority.status": "ACTIVE_CANONICAL",
+                    "authority.confidence": "HIGH",
+                    "disposition.value": "ACTIVE_CANONICAL",
+                    "disposition.rationale": "Current approved outcome.",
+                    "disposition.confidence": "HIGH",
+                    "disposition.evidence": ["decision.md"],
+                    "reconciliation.confidence": "HIGH",
+                    "lifecycle.current_state": "VERIFIED",
+                    "verification.status": "PASS",
+                    "verification.sha": canonical_sha,
+                    "verification.evidence": ["evidence/verification.json"],
+                    "verification.freshness": "FRESH",
+                    "verification.required_profiles": ["quick"],
+                },
+            )
+
+            # deploy records its artifact and exact source; session-finish stores resume.
+            manifest = update_manifest(
+                spec,
+                expected_generation=manifest["generation"],
+                expected_spec_digest=digest,
+                expected_canonical_sha=canonical_sha,
+                repo=repo,
+                changes={
+                    "lifecycle.current_state": "DEPLOYED",
+                    "deployment.required": True,
+                    "deployment.status": "PASS",
+                    "deployment.source_sha": canonical_sha,
+                    "deployment.artifact_digest": "sha256:artifact-001",
+                    "deployment.environment": "staging",
+                    "deployment.evidence": ["evidence/deployment.json"],
+                    "continuation.next_ready_workunit": "accept-flow",
+                    "continuation.next_action": "Resume the acceptance WorkUnit from the canonical Handoff.",
+                    "continuation.waiting_predicate": "Acceptance evidence is recorded for canonical-commit-001",
+                    "continuation.reactivation_predicate": "Acceptance evidence is recorded for canonical-commit-001",
+                    "continuation.resume_point": "accept-flow after deployment evidence",
+                },
+            )
+
+            # A new Orchestra session reads the same exact state and next WorkUnit.
+            resumed_manifest = read_manifest(spec)
+            resumed_ledger = __import__("json").loads(ledger_path.read_text(encoding="utf-8"))
+            self.assertEqual(resumed_manifest["integration"]["canonical_sha"], canonical_sha)
+            self.assertEqual(resumed_manifest["deployment"]["source_sha"], canonical_sha)
+            self.assertEqual(resumed_manifest["continuation"]["next_ready_workunit"], "accept-flow")
+            self.assertEqual(resumed_manifest["continuation"]["resume_point"], "accept-flow after deployment evidence")
+            self.assertEqual(resumed_ledger["requirements"][0]["evidence_sha"], canonical_sha)
+            views = build_views(repo)
+            row = views["spec-index.json"]["records"][0]
+            self.assertEqual(row["canonical_sha"], canonical_sha)
+            self.assertTrue(row["completion_eligible"], row["completion_reasons"])
+
 
 if __name__ == "__main__":
     unittest.main()

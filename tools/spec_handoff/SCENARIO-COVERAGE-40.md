@@ -42,8 +42,8 @@ Framework scenarios below are checked by focused unit, lifecycle, and skill-cont
 | 36 | Unrecoverable external destructive work is a true blocker | lifecycle scenario DWF-09 | FRAMEWORK_PASS |
 | 37 | Generated status drift is detected | `test_generated_status_manual_drift_is_detected` | FRAMEWORK_PASS |
 | 38 | Canonical manifest decisions survive legacy artifacts/config | `test_manual_decision_survives_inference_seed_rerun`; `test_completion_artifact_claim_does_not_become_authority` | FRAMEWORK_PASS |
-| 39 | Integration state records the exact canonical SHA | `test_planning_to_resume_flow_uses_one_manifest_and_exact_sha` | FRAMEWORK_PASS |
-| 40 | Verification and required deployment evidence bind to exact SHA | `test_completion_rejects_stale_verification_sha`; `test_completion_rejects_missing_deployment_and_acceptance` | FRAMEWORK_PASS |
+| 39 | Integration state records the exact canonical SHA | `test_cross_skill_lifecycle_persists_deployment_and_resume_in_one_handoff`; `test_planning_to_resume_flow_uses_one_manifest_and_exact_sha` | FRAMEWORK_PASS |
+| 40 | Verification and required deployment evidence bind to exact SHA | `test_cross_skill_lifecycle_persists_deployment_and_resume_in_one_handoff`; `test_completion_rejects_stale_verification_sha`; `test_completion_rejects_missing_deployment_and_acceptance` | FRAMEWORK_PASS |
 
 ## Result
 
