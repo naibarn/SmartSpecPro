@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/255-Semantic-Media-Graph-Incremental-Production/spec.md",
     "digest": "b820804fcbb2eeeb5ec7495ef09af2a0ea4dc708d13b199d5a22dff88c600df7",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.550527Z",
+      "last_evidence_at": "2026-10-06T03:28:18.336007Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-28T00:04:37+07:00",
       "spec_last_changed_at": "2026-09-28T00:04:37+07:00"
@@ -85,7 +85,7 @@
     "revision": "1.0",
     "slug": "255-Semantic-Media-Graph-Incremental-Production",
     "spec_id": "255",
-    "title": "Spec 255 — Semantic Media Graph & Incremental Production Contracts"
+    "title": "SmartAIHub Semantic Media Graph & Incremental Production Contracts"
   },
   "implementation": {
     "checkpoint_shas": [],
@@ -104,7 +104,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.550527Z"
+    "updated_at": "2026-10-06T03:28:18.336007Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,7 +114,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.550527Z",
+    "reconciled_at": "2026-10-06T03:28:18.336007Z",
     "sources": [
       {
         "digest": "b820804fcbb2eeeb5ec7495ef09af2a0ea4dc708d13b199d5a22dff88c600df7",
@@ -182,7 +182,7 @@
     "unresolved": 67
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.550527Z",
+  "updated_at": "2026-10-06T03:28:18.336007Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

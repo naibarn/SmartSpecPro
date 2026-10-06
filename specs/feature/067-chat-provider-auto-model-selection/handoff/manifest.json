@@ -17,37 +17,37 @@
       {
         "digest": "489e6ce60ef07999547ff4e6fd1149413bdd5ac60eb85c36cab6968261dad018",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
       },
       {
         "digest": "cf54a6a326e9b9a54807738c4b7dd85c6c010d2a76379d064fc267ee64f832fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
       },
       {
         "digest": "05963e63ce638cb1e70a6817d483e04c321690684fabdbf1243aa47625fe5bef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
       },
       {
         "digest": "eb7f4e6cfacd0669c4903b8a360a62cedb3d5b9407948de826d6015a03ea603a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
       },
       {
         "digest": "acc87b0e11dea49a1456a583c39524ff4a4687be467817f4ec2642490421dda9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
       },
       {
         "digest": "5202bf3fd90948366b0230b9cf34b8b789ba10268e4f590bf8efdeb5e8b9a173",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
       },
       {
         "digest": "fef442aa67ee1d9783367b3b6283a8c6b0b9077c5d123e8addd607ec31a2bde0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
       }
     ],
     "predecessors": [],
@@ -78,37 +78,37 @@
       {
         "digest": "489e6ce60ef07999547ff4e6fd1149413bdd5ac60eb85c36cab6968261dad018",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
       },
       {
         "digest": "cf54a6a326e9b9a54807738c4b7dd85c6c010d2a76379d064fc267ee64f832fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
       },
       {
         "digest": "05963e63ce638cb1e70a6817d483e04c321690684fabdbf1243aa47625fe5bef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
       },
       {
         "digest": "eb7f4e6cfacd0669c4903b8a360a62cedb3d5b9407948de826d6015a03ea603a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
       },
       {
         "digest": "acc87b0e11dea49a1456a583c39524ff4a4687be467817f4ec2642490421dda9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
       },
       {
         "digest": "5202bf3fd90948366b0230b9cf34b8b789ba10268e4f590bf8efdeb5e8b9a173",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
       },
       {
         "digest": "fef442aa67ee1d9783367b3b6283a8c6b0b9077c5d123e8addd607ec31a2bde0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -140,49 +140,49 @@
       {
         "digest": "489e6ce60ef07999547ff4e6fd1149413bdd5ac60eb85c36cab6968261dad018",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
       },
       {
         "digest": "cf54a6a326e9b9a54807738c4b7dd85c6c010d2a76379d064fc267ee64f832fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
       },
       {
         "digest": "05963e63ce638cb1e70a6817d483e04c321690684fabdbf1243aa47625fe5bef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
       },
       {
         "digest": "eb7f4e6cfacd0669c4903b8a360a62cedb3d5b9407948de826d6015a03ea603a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
       },
       {
         "digest": "acc87b0e11dea49a1456a583c39524ff4a4687be467817f4ec2642490421dda9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
       },
       {
         "digest": "5202bf3fd90948366b0230b9cf34b8b789ba10268e4f590bf8efdeb5e8b9a173",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
       },
       {
         "digest": "fef442aa67ee1d9783367b3b6283a8c6b0b9077c5d123e8addd607ec31a2bde0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/067-chat-provider-auto-model-selection/spec.md",
     "digest": "2c231b42f1b5bbdcf7cdd66bcb2a5267fcd99619f152f2690987cd01803a11d7",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.763952Z",
+      "last_evidence_at": "2026-10-06T03:28:15.162851Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-08T19:58:29+07:00",
       "spec_last_changed_at": "2026-04-08T19:58:29+07:00"
@@ -209,7 +209,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.763952Z"
+    "updated_at": "2026-10-06T03:28:15.162851Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -219,7 +219,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.763952Z",
+    "reconciled_at": "2026-10-06T03:28:15.162851Z",
     "sources": [
       {
         "digest": "2c231b42f1b5bbdcf7cdd66bcb2a5267fcd99619f152f2690987cd01803a11d7",
@@ -229,37 +229,37 @@
       {
         "digest": "489e6ce60ef07999547ff4e6fd1149413bdd5ac60eb85c36cab6968261dad018",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
       },
       {
         "digest": "cf54a6a326e9b9a54807738c4b7dd85c6c010d2a76379d064fc267ee64f832fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
       },
       {
         "digest": "05963e63ce638cb1e70a6817d483e04c321690684fabdbf1243aa47625fe5bef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
       },
       {
         "digest": "eb7f4e6cfacd0669c4903b8a360a62cedb3d5b9407948de826d6015a03ea603a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
       },
       {
         "digest": "acc87b0e11dea49a1456a583c39524ff4a4687be467817f4ec2642490421dda9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
       },
       {
         "digest": "5202bf3fd90948366b0230b9cf34b8b789ba10268e4f590bf8efdeb5e8b9a173",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
       },
       {
         "digest": "fef442aa67ee1d9783367b3b6283a8c6b0b9077c5d123e8addd607ec31a2bde0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -309,37 +309,37 @@
       {
         "digest": "489e6ce60ef07999547ff4e6fd1149413bdd5ac60eb85c36cab6968261dad018",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/reviews/self-review-round-1.md"
       },
       {
         "digest": "cf54a6a326e9b9a54807738c4b7dd85c6c010d2a76379d064fc267ee64f832fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/index.md"
       },
       {
         "digest": "05963e63ce638cb1e70a6817d483e04c321690684fabdbf1243aa47625fe5bef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-01-chat-selection-contract-and-picker-ux.md"
       },
       {
         "digest": "eb7f4e6cfacd0669c4903b8a360a62cedb3d5b9407948de826d6015a03ea603a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-02-server-side-chat-model-resolution.md"
       },
       {
         "digest": "acc87b0e11dea49a1456a583c39524ff4a4687be467817f4ec2642490421dda9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-03-capability-derivation-and-route-compatibility.md"
       },
       {
         "digest": "5202bf3fd90948366b0230b9cf34b8b789ba10268e4f590bf8efdeb5e8b9a173",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-04-conversation-persistence-and-observability.md"
       },
       {
         "digest": "fef442aa67ee1d9783367b3b6283a8c6b0b9077c5d123e8addd607ec31a2bde0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
+        "path": "specs/feature/067-chat-provider-auto-model-selection/sections/section-05-tests-rollout-and-guardrails.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -357,7 +357,7 @@
     "unresolved": 82
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.763952Z",
+  "updated_at": "2026-10-06T03:28:15.162851Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

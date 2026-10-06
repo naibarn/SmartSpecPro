@@ -14,7 +14,7 @@
         "referencing_spec_id": "217",
         "relation_text": "supersedes",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1317",
+        "source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1317",
         "source_digest": "c5d200200571a686baaa34ebdb1e8a3f14e770c305049f3a033487d3ef3b07b2",
         "successor_spec_id": "217"
       },
@@ -28,7 +28,7 @@
         "requirement_ids": [
           "R0.2"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L335",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L335",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -40,7 +40,7 @@
         "referencing_spec_id": "244",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
+        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       }
@@ -117,18 +117,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md",
     "digest": "c5d200200571a686baaa34ebdb1e8a3f14e770c305049f3a033487d3ef3b07b2",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.110084Z",
+      "last_evidence_at": "2026-10-06T03:28:17.577650Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-20T12:59:58+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
     },
-    "revision": null,
+    "revision": "5",
     "slug": "217-ai-product-white-label-tenant-platform",
     "spec_id": "217",
     "title": "Spec 217 — SmartAIHub AI Product & White-Label Tenant Platform"
@@ -150,7 +150,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.110084Z"
+    "updated_at": "2026-10-06T03:28:17.577650Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -160,7 +160,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.110084Z",
+    "reconciled_at": "2026-10-06T03:28:17.577650Z",
     "sources": [
       {
         "digest": "c5d200200571a686baaa34ebdb1e8a3f14e770c305049f3a033487d3ef3b07b2",
@@ -243,7 +243,7 @@
     "unresolved": 157
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.110084Z",
+  "updated_at": "2026-10-06T03:28:17.577650Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

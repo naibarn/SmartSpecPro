@@ -17,97 +17,97 @@
       {
         "digest": "f96bcc0d2dcd5e43430dbd65510002b31b6a751cd34c5fd9410a183fc11a961b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/claude-plan.md"
+        "path": "specs/feature/128-age-aware-safety-policy/claude-plan.md"
       },
       {
         "digest": "063c7d0dc89413f344a3a38171fa0205ce38987d4eb3db46b8e7e95c0c820e8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/claude-spec.md"
+        "path": "specs/feature/128-age-aware-safety-policy/claude-spec.md"
       },
       {
         "digest": "9aecaf7c936c2469cbc6c1120f3f6c6675655d6c6d84c8f00a473755a02b2b3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/implementation/as-built.md"
+        "path": "specs/feature/128-age-aware-safety-policy/implementation/as-built.md"
       },
       {
         "digest": "81bc0b8f7edb113dca25c7380b8f9fd0e56bbc4e2184a621b258f514816b68da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/implementation/deep_implement_config.json"
+        "path": "specs/feature/128-age-aware-safety-policy/implementation/deep_implement_config.json"
       },
       {
         "digest": "1c6a21240aa5829088367e34e1bbac36d095698b0f5d7aa33de02a3369db432c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/acceptance-traceability.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/acceptance-traceability.md"
       },
       {
         "digest": "b7ea9f0edde2be154af8f776aa7fe7b714780820ccfb8dda762ebccfc5890a1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-1.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-1.md"
       },
       {
         "digest": "bf8933bdc3eddf4085c14e91f013b2e961468db6023c9c75684b6adf6116749d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-2.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-2.md"
       },
       {
         "digest": "fbf2db33d60f38c010fa135c4cc2cbe46f1532261913ff82cc0b0c28c6c649a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-3.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-3.md"
       },
       {
         "digest": "abe611dea98c1f6b1d3654c578501840f3ca75ab8e54c0f7fb0286bc69942de1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-4.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-4.md"
       },
       {
         "digest": "66e84791eaf6d10ec2e7ab3e521ad1a7dfdc265cd2beddbfb0f524f89962b508",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/index.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/index.md"
       },
       {
         "digest": "e213baadbcd766b138fafb696f90955578cbf91e2355d754291446dc80c30fe7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-01-policy-foundation.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-01-policy-foundation.md"
       },
       {
         "digest": "4a52dcadd53c71efbde06329bfd9b136b99d624008cf0fbac70d625aad89d6c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-02-data-profile-service.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-02-data-profile-service.md"
       },
       {
         "digest": "7e7518484e74361b1a94ac8bb859fd3e7c8fe4a0e727911c1684435fa8e5ef27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-03-security-pin-tokens.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-03-security-pin-tokens.md"
       },
       {
         "digest": "b0b1a2fdf96ca180376755fcb7ad977f99aa8e35dd42f55f82448e09a34248c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-04-admin-policy-audit-flags.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-04-admin-policy-audit-flags.md"
       },
       {
         "digest": "a031a46a0f69c37ff166c07e42318d067771487be99d45e3602d16a2984aeb73",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-05-profile-completion-ux.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-05-profile-completion-ux.md"
       },
       {
         "digest": "83746344ab30e14acb55aac5ae255678eafa46a631fd2b5090d5b267e8d07148",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-06-chat-enforcement.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-06-chat-enforcement.md"
       },
       {
         "digest": "12f18faf8bb43b6b762686775ed6c43d6996941f143374397e63748d25a45dc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-07-media-async-enforcement.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-07-media-async-enforcement.md"
       },
       {
         "digest": "edc5be3f134130055dfef53f54c74953e6d6b78e941e7415e3b19308f2c5abc3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-08-generated-asset-viewer-policy.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-08-generated-asset-viewer-policy.md"
       },
       {
         "digest": "887432d0b2eca247e9c0db836c8981a02d3e410a8a9dc49fe29ae1d99122c234",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-09-external-actors-adapters.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-09-external-actors-adapters.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "f96bcc0d2dcd5e43430dbd65510002b31b6a751cd34c5fd9410a183fc11a961b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/claude-plan.md"
+        "path": "specs/feature/128-age-aware-safety-policy/claude-plan.md"
       },
       {
         "digest": "063c7d0dc89413f344a3a38171fa0205ce38987d4eb3db46b8e7e95c0c820e8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/claude-spec.md"
+        "path": "specs/feature/128-age-aware-safety-policy/claude-spec.md"
       },
       {
         "digest": "9aecaf7c936c2469cbc6c1120f3f6c6675655d6c6d84c8f00a473755a02b2b3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/implementation/as-built.md"
+        "path": "specs/feature/128-age-aware-safety-policy/implementation/as-built.md"
       },
       {
         "digest": "81bc0b8f7edb113dca25c7380b8f9fd0e56bbc4e2184a621b258f514816b68da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/implementation/deep_implement_config.json"
+        "path": "specs/feature/128-age-aware-safety-policy/implementation/deep_implement_config.json"
       },
       {
         "digest": "1c6a21240aa5829088367e34e1bbac36d095698b0f5d7aa33de02a3369db432c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/acceptance-traceability.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/acceptance-traceability.md"
       },
       {
         "digest": "b7ea9f0edde2be154af8f776aa7fe7b714780820ccfb8dda762ebccfc5890a1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-1.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-1.md"
       },
       {
         "digest": "bf8933bdc3eddf4085c14e91f013b2e961468db6023c9c75684b6adf6116749d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-2.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-2.md"
       },
       {
         "digest": "fbf2db33d60f38c010fa135c4cc2cbe46f1532261913ff82cc0b0c28c6c649a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-3.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-3.md"
       },
       {
         "digest": "abe611dea98c1f6b1d3654c578501840f3ca75ab8e54c0f7fb0286bc69942de1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-4.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-4.md"
       },
       {
         "digest": "66e84791eaf6d10ec2e7ab3e521ad1a7dfdc265cd2beddbfb0f524f89962b508",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/index.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/index.md"
       },
       {
         "digest": "e213baadbcd766b138fafb696f90955578cbf91e2355d754291446dc80c30fe7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-01-policy-foundation.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-01-policy-foundation.md"
       },
       {
         "digest": "4a52dcadd53c71efbde06329bfd9b136b99d624008cf0fbac70d625aad89d6c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-02-data-profile-service.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-02-data-profile-service.md"
       },
       {
         "digest": "7e7518484e74361b1a94ac8bb859fd3e7c8fe4a0e727911c1684435fa8e5ef27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-03-security-pin-tokens.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-03-security-pin-tokens.md"
       },
       {
         "digest": "b0b1a2fdf96ca180376755fcb7ad977f99aa8e35dd42f55f82448e09a34248c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-04-admin-policy-audit-flags.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-04-admin-policy-audit-flags.md"
       },
       {
         "digest": "a031a46a0f69c37ff166c07e42318d067771487be99d45e3602d16a2984aeb73",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-05-profile-completion-ux.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-05-profile-completion-ux.md"
       },
       {
         "digest": "83746344ab30e14acb55aac5ae255678eafa46a631fd2b5090d5b267e8d07148",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-06-chat-enforcement.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-06-chat-enforcement.md"
       },
       {
         "digest": "12f18faf8bb43b6b762686775ed6c43d6996941f143374397e63748d25a45dc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-07-media-async-enforcement.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-07-media-async-enforcement.md"
       },
       {
         "digest": "edc5be3f134130055dfef53f54c74953e6d6b78e941e7415e3b19308f2c5abc3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-08-generated-asset-viewer-policy.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-08-generated-asset-viewer-policy.md"
       },
       {
         "digest": "887432d0b2eca247e9c0db836c8981a02d3e410a8a9dc49fe29ae1d99122c234",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-09-external-actors-adapters.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-09-external-actors-adapters.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "f96bcc0d2dcd5e43430dbd65510002b31b6a751cd34c5fd9410a183fc11a961b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/claude-plan.md"
+        "path": "specs/feature/128-age-aware-safety-policy/claude-plan.md"
       },
       {
         "digest": "063c7d0dc89413f344a3a38171fa0205ce38987d4eb3db46b8e7e95c0c820e8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/claude-spec.md"
+        "path": "specs/feature/128-age-aware-safety-policy/claude-spec.md"
       },
       {
         "digest": "9aecaf7c936c2469cbc6c1120f3f6c6675655d6c6d84c8f00a473755a02b2b3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/implementation/as-built.md"
+        "path": "specs/feature/128-age-aware-safety-policy/implementation/as-built.md"
       },
       {
         "digest": "81bc0b8f7edb113dca25c7380b8f9fd0e56bbc4e2184a621b258f514816b68da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/implementation/deep_implement_config.json"
+        "path": "specs/feature/128-age-aware-safety-policy/implementation/deep_implement_config.json"
       },
       {
         "digest": "1c6a21240aa5829088367e34e1bbac36d095698b0f5d7aa33de02a3369db432c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/acceptance-traceability.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/acceptance-traceability.md"
       },
       {
         "digest": "b7ea9f0edde2be154af8f776aa7fe7b714780820ccfb8dda762ebccfc5890a1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-1.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-1.md"
       },
       {
         "digest": "bf8933bdc3eddf4085c14e91f013b2e961468db6023c9c75684b6adf6116749d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-2.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-2.md"
       },
       {
         "digest": "fbf2db33d60f38c010fa135c4cc2cbe46f1532261913ff82cc0b0c28c6c649a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-3.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-3.md"
       },
       {
         "digest": "abe611dea98c1f6b1d3654c578501840f3ca75ab8e54c0f7fb0286bc69942de1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-4.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-4.md"
       },
       {
         "digest": "66e84791eaf6d10ec2e7ab3e521ad1a7dfdc265cd2beddbfb0f524f89962b508",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/index.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/index.md"
       },
       {
         "digest": "e213baadbcd766b138fafb696f90955578cbf91e2355d754291446dc80c30fe7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-01-policy-foundation.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-01-policy-foundation.md"
       },
       {
         "digest": "4a52dcadd53c71efbde06329bfd9b136b99d624008cf0fbac70d625aad89d6c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-02-data-profile-service.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-02-data-profile-service.md"
       },
       {
         "digest": "7e7518484e74361b1a94ac8bb859fd3e7c8fe4a0e727911c1684435fa8e5ef27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-03-security-pin-tokens.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-03-security-pin-tokens.md"
       },
       {
         "digest": "b0b1a2fdf96ca180376755fcb7ad977f99aa8e35dd42f55f82448e09a34248c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-04-admin-policy-audit-flags.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-04-admin-policy-audit-flags.md"
       },
       {
         "digest": "a031a46a0f69c37ff166c07e42318d067771487be99d45e3602d16a2984aeb73",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-05-profile-completion-ux.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-05-profile-completion-ux.md"
       },
       {
         "digest": "83746344ab30e14acb55aac5ae255678eafa46a631fd2b5090d5b267e8d07148",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-06-chat-enforcement.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-06-chat-enforcement.md"
       },
       {
         "digest": "12f18faf8bb43b6b762686775ed6c43d6996941f143374397e63748d25a45dc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-07-media-async-enforcement.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-07-media-async-enforcement.md"
       },
       {
         "digest": "edc5be3f134130055dfef53f54c74953e6d6b78e941e7415e3b19308f2c5abc3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-08-generated-asset-viewer-policy.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-08-generated-asset-viewer-policy.md"
       },
       {
         "digest": "887432d0b2eca247e9c0db836c8981a02d3e410a8a9dc49fe29ae1d99122c234",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-09-external-actors-adapters.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-09-external-actors-adapters.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/128-age-aware-safety-policy/spec.md",
     "digest": "49af520f145ddd5b3571c506e5b5ed6135917652e833e7a12467cb9b98177af2",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.182993Z",
+      "last_evidence_at": "2026-10-06T03:28:15.947233Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-07-04T00:17:21+07:00",
       "spec_last_changed_at": "2026-07-04T00:17:21+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.182993Z"
+    "updated_at": "2026-10-06T03:28:15.947233Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.182993Z",
+    "reconciled_at": "2026-10-06T03:28:15.947233Z",
     "sources": [
       {
         "digest": "49af520f145ddd5b3571c506e5b5ed6135917652e833e7a12467cb9b98177af2",
@@ -409,112 +409,112 @@
       {
         "digest": "f96bcc0d2dcd5e43430dbd65510002b31b6a751cd34c5fd9410a183fc11a961b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/claude-plan.md"
+        "path": "specs/feature/128-age-aware-safety-policy/claude-plan.md"
       },
       {
         "digest": "063c7d0dc89413f344a3a38171fa0205ce38987d4eb3db46b8e7e95c0c820e8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/claude-spec.md"
+        "path": "specs/feature/128-age-aware-safety-policy/claude-spec.md"
       },
       {
         "digest": "9aecaf7c936c2469cbc6c1120f3f6c6675655d6c6d84c8f00a473755a02b2b3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/implementation/as-built.md"
+        "path": "specs/feature/128-age-aware-safety-policy/implementation/as-built.md"
       },
       {
         "digest": "81bc0b8f7edb113dca25c7380b8f9fd0e56bbc4e2184a621b258f514816b68da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/implementation/deep_implement_config.json"
+        "path": "specs/feature/128-age-aware-safety-policy/implementation/deep_implement_config.json"
       },
       {
         "digest": "1c6a21240aa5829088367e34e1bbac36d095698b0f5d7aa33de02a3369db432c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/acceptance-traceability.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/acceptance-traceability.md"
       },
       {
         "digest": "b7ea9f0edde2be154af8f776aa7fe7b714780820ccfb8dda762ebccfc5890a1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-1.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-1.md"
       },
       {
         "digest": "bf8933bdc3eddf4085c14e91f013b2e961468db6023c9c75684b6adf6116749d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-2.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-2.md"
       },
       {
         "digest": "fbf2db33d60f38c010fa135c4cc2cbe46f1532261913ff82cc0b0c28c6c649a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-3.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-3.md"
       },
       {
         "digest": "abe611dea98c1f6b1d3654c578501840f3ca75ab8e54c0f7fb0286bc69942de1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-4.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-4.md"
       },
       {
         "digest": "66e84791eaf6d10ec2e7ab3e521ad1a7dfdc265cd2beddbfb0f524f89962b508",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/index.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/index.md"
       },
       {
         "digest": "e213baadbcd766b138fafb696f90955578cbf91e2355d754291446dc80c30fe7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-01-policy-foundation.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-01-policy-foundation.md"
       },
       {
         "digest": "4a52dcadd53c71efbde06329bfd9b136b99d624008cf0fbac70d625aad89d6c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-02-data-profile-service.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-02-data-profile-service.md"
       },
       {
         "digest": "7e7518484e74361b1a94ac8bb859fd3e7c8fe4a0e727911c1684435fa8e5ef27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-03-security-pin-tokens.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-03-security-pin-tokens.md"
       },
       {
         "digest": "b0b1a2fdf96ca180376755fcb7ad977f99aa8e35dd42f55f82448e09a34248c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-04-admin-policy-audit-flags.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-04-admin-policy-audit-flags.md"
       },
       {
         "digest": "a031a46a0f69c37ff166c07e42318d067771487be99d45e3602d16a2984aeb73",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-05-profile-completion-ux.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-05-profile-completion-ux.md"
       },
       {
         "digest": "83746344ab30e14acb55aac5ae255678eafa46a631fd2b5090d5b267e8d07148",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-06-chat-enforcement.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-06-chat-enforcement.md"
       },
       {
         "digest": "12f18faf8bb43b6b762686775ed6c43d6996941f143374397e63748d25a45dc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-07-media-async-enforcement.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-07-media-async-enforcement.md"
       },
       {
         "digest": "edc5be3f134130055dfef53f54c74953e6d6b78e941e7415e3b19308f2c5abc3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-08-generated-asset-viewer-policy.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-08-generated-asset-viewer-policy.md"
       },
       {
         "digest": "887432d0b2eca247e9c0db836c8981a02d3e410a8a9dc49fe29ae1d99122c234",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-09-external-actors-adapters.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-09-external-actors-adapters.md"
       },
       {
         "digest": "ca60b0eacdeb0a66066e11e9064be8dca5f3e0f1f0ad188ad4ce60d5381176d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-10-settings-admin-i18n.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-10-settings-admin-i18n.md"
       },
       {
         "digest": "f62be77da7a08eefd1dced105df53f9d005285e3ff9e16e93f528a9f15b64800",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-11-observability-compliance.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-11-observability-compliance.md"
       },
       {
         "digest": "faa6c67135e082b3bc0fe51e5cccd10c265132885690c23880863965914dccc3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-12-rollout-verification.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-12-rollout-verification.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -564,112 +564,112 @@
       {
         "digest": "f96bcc0d2dcd5e43430dbd65510002b31b6a751cd34c5fd9410a183fc11a961b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/claude-plan.md"
+        "path": "specs/feature/128-age-aware-safety-policy/claude-plan.md"
       },
       {
         "digest": "063c7d0dc89413f344a3a38171fa0205ce38987d4eb3db46b8e7e95c0c820e8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/claude-spec.md"
+        "path": "specs/feature/128-age-aware-safety-policy/claude-spec.md"
       },
       {
         "digest": "9aecaf7c936c2469cbc6c1120f3f6c6675655d6c6d84c8f00a473755a02b2b3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/implementation/as-built.md"
+        "path": "specs/feature/128-age-aware-safety-policy/implementation/as-built.md"
       },
       {
         "digest": "81bc0b8f7edb113dca25c7380b8f9fd0e56bbc4e2184a621b258f514816b68da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/implementation/deep_implement_config.json"
+        "path": "specs/feature/128-age-aware-safety-policy/implementation/deep_implement_config.json"
       },
       {
         "digest": "1c6a21240aa5829088367e34e1bbac36d095698b0f5d7aa33de02a3369db432c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/acceptance-traceability.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/acceptance-traceability.md"
       },
       {
         "digest": "b7ea9f0edde2be154af8f776aa7fe7b714780820ccfb8dda762ebccfc5890a1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-1.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-1.md"
       },
       {
         "digest": "bf8933bdc3eddf4085c14e91f013b2e961468db6023c9c75684b6adf6116749d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-2.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-2.md"
       },
       {
         "digest": "fbf2db33d60f38c010fa135c4cc2cbe46f1532261913ff82cc0b0c28c6c649a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-3.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-3.md"
       },
       {
         "digest": "abe611dea98c1f6b1d3654c578501840f3ca75ab8e54c0f7fb0286bc69942de1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/reviews/self-review-round-4.md"
+        "path": "specs/feature/128-age-aware-safety-policy/reviews/self-review-round-4.md"
       },
       {
         "digest": "66e84791eaf6d10ec2e7ab3e521ad1a7dfdc265cd2beddbfb0f524f89962b508",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/index.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/index.md"
       },
       {
         "digest": "e213baadbcd766b138fafb696f90955578cbf91e2355d754291446dc80c30fe7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-01-policy-foundation.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-01-policy-foundation.md"
       },
       {
         "digest": "4a52dcadd53c71efbde06329bfd9b136b99d624008cf0fbac70d625aad89d6c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-02-data-profile-service.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-02-data-profile-service.md"
       },
       {
         "digest": "7e7518484e74361b1a94ac8bb859fd3e7c8fe4a0e727911c1684435fa8e5ef27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-03-security-pin-tokens.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-03-security-pin-tokens.md"
       },
       {
         "digest": "b0b1a2fdf96ca180376755fcb7ad977f99aa8e35dd42f55f82448e09a34248c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-04-admin-policy-audit-flags.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-04-admin-policy-audit-flags.md"
       },
       {
         "digest": "a031a46a0f69c37ff166c07e42318d067771487be99d45e3602d16a2984aeb73",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-05-profile-completion-ux.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-05-profile-completion-ux.md"
       },
       {
         "digest": "83746344ab30e14acb55aac5ae255678eafa46a631fd2b5090d5b267e8d07148",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-06-chat-enforcement.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-06-chat-enforcement.md"
       },
       {
         "digest": "12f18faf8bb43b6b762686775ed6c43d6996941f143374397e63748d25a45dc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-07-media-async-enforcement.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-07-media-async-enforcement.md"
       },
       {
         "digest": "edc5be3f134130055dfef53f54c74953e6d6b78e941e7415e3b19308f2c5abc3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-08-generated-asset-viewer-policy.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-08-generated-asset-viewer-policy.md"
       },
       {
         "digest": "887432d0b2eca247e9c0db836c8981a02d3e410a8a9dc49fe29ae1d99122c234",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-09-external-actors-adapters.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-09-external-actors-adapters.md"
       },
       {
         "digest": "ca60b0eacdeb0a66066e11e9064be8dca5f3e0f1f0ad188ad4ce60d5381176d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-10-settings-admin-i18n.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-10-settings-admin-i18n.md"
       },
       {
         "digest": "f62be77da7a08eefd1dced105df53f9d005285e3ff9e16e93f528a9f15b64800",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-11-observability-compliance.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-11-observability-compliance.md"
       },
       {
         "digest": "faa6c67135e082b3bc0fe51e5cccd10c265132885690c23880863965914dccc3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/sections/section-12-rollout-verification.md"
+        "path": "specs/feature/128-age-aware-safety-policy/sections/section-12-rollout-verification.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -687,7 +687,7 @@
     "unresolved": 256
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.182993Z",
+  "updated_at": "2026-10-06T03:28:15.947233Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

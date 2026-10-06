@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md",
     "digest": "957b7b196b67a7c278d2292b51bec7f745e339330a860116cc6e9adeadb3c12a",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.870831Z",
+      "last_evidence_at": "2026-10-06T03:28:15.375342Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-15T08:00:16+07:00",
       "spec_last_changed_at": "2026-04-15T20:27:12+07:00"
@@ -104,7 +104,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.870831Z"
+    "updated_at": "2026-10-06T03:28:15.375342Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,7 +114,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.870831Z",
+    "reconciled_at": "2026-10-06T03:28:15.375342Z",
     "sources": [
       {
         "digest": "957b7b196b67a7c278d2292b51bec7f745e339330a860116cc6e9adeadb3c12a",
@@ -182,7 +182,7 @@
     "unresolved": 39
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.870831Z",
+  "updated_at": "2026-10-06T03:28:15.375342Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

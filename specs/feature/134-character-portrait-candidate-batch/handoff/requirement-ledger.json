@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/spec.md#L9"
+        "specs/feature/134-character-portrait-candidate-batch/spec.md#L9"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/134-character-portrait-candidate-batch/spec.md#L9",
+      "authority_source": "specs/feature/134-character-portrait-candidate-batch/spec.md#L9",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

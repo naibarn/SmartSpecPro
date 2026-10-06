@@ -17,97 +17,97 @@
       {
         "digest": "a2acffa3bafeec571f56476199d8372fcca3928e2a97dedbb61195f30ab4b684",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/claude-plan.md"
+        "path": "specs/feature/070-local-client-llm-mode/claude-plan.md"
       },
       {
         "digest": "fe07677fc9c21fa576e202929bbc47c2ddc8964bb4f97bc932eb592fd7dc3734",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/claude-spec.md"
+        "path": "specs/feature/070-local-client-llm-mode/claude-spec.md"
       },
       {
         "digest": "8f056b29df76eb00da65ba7d8cbe3fae0ca4e72da9f10f8c9d2c2661fefe1c74",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/deep_implement_config.json"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/deep_implement_config.json"
       },
       {
         "digest": "c48e4eb849fd7dfa7e215ae56be97bf9018d472ad32d552b499357e89fe36c6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/index.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/index.md"
       },
       {
         "digest": "14e032c9a4e61ff7ea17206ba8a56700684e38bb9d7a810ae91f4e33d4cb516a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-01-browser-gemma4-runtime.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-01-browser-gemma4-runtime.md"
       },
       {
         "digest": "f3440c0ed71ae5eb93096f257bb0fdb50897e62d4eb121f6de5685a59cd9f107",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-02-tauri-gemma4-litert-runtime.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-02-tauri-gemma4-litert-runtime.md"
       },
       {
         "digest": "5f45eb2ed2e53ea73a789578cf1d4b81b8fde9a66ef4c74a0b228d9e17b4df2a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-03-chat-memory-voice-integration.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-03-chat-memory-voice-integration.md"
       },
       {
         "digest": "d604faf7c2835be66e2764d9e6c3d4d60e2dba02465b33775ab4a86cdf721348",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-04-tauri-skill-execution-policy.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-04-tauri-skill-execution-policy.md"
       },
       {
         "digest": "a69763c98fd64ca40a908443cc53fa222c91a89f6e471d9874fdad2b9010f43e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-05-security-regression-and-rollout.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-05-security-regression-and-rollout.md"
       },
       {
         "digest": "39b4e915e56675e1ebeec435d3e20896820f6b543c5ed03b387cc14ef69c006c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/reviews/self-review-round-1.md"
+        "path": "specs/feature/070-local-client-llm-mode/reviews/self-review-round-1.md"
       },
       {
         "digest": "ba7981d5c6d62aaed2a5a9140a5c7bb32dfc1978b5881d2b60756e3098c1f963",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/index.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/index.md"
       },
       {
         "digest": "aea8333fca8be82dc248e14a911ef3d8fa7d3517fbc265c20305fdfbccc0bb21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-01-contracts-and-policy-foundation.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-01-contracts-and-policy-foundation.md"
       },
       {
         "digest": "60aa2585c705f71d594bd90c79ebe45241d3b197ebf08ec40c0d04542a6d25e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-02-user-settings-and-device-state.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-02-user-settings-and-device-state.md"
       },
       {
         "digest": "2b19a4b3b963a1f52f9ba51a1f8327c7e8a3a0e0fad5a008279dd15d0ca5b978",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-03-local-model-catalog-and-capability-contracts.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-03-local-model-catalog-and-capability-contracts.md"
       },
       {
         "digest": "cc42cfc2de7eef1dab552b1dad4376d39598dfc0554d0b80e48dbc0cf455b44c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-04-chat-routing-and-runtime-metadata.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-04-chat-routing-and-runtime-metadata.md"
       },
       {
         "digest": "1bf2e0fcb3b5c33eda6e85fbbaf48b9f1acbd8714e5956fac23e3e3ddb92d904",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-05-browser-download-and-runtime-adapter.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-05-browser-download-and-runtime-adapter.md"
       },
       {
         "digest": "df2c1c8c24765dba40a1bcdb0075ff9e472b978a9939befaaec53a874f5a401c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-06-tauri-adapter-and-device-storage.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-06-tauri-adapter-and-device-storage.md"
       },
       {
         "digest": "e87d30a51691bd5293b49aca1e9086201e86d02e0d13e4c7d968a4e61df67af3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-07-ocr-security-and-observability.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-07-ocr-security-and-observability.md"
       },
       {
         "digest": "77276fbe81c70767a3d66ce034a6068015e9fce530183c1a632ad24eb868ade9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-08-teams-ui-and-team-room-parity.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-08-teams-ui-and-team-room-parity.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "a2acffa3bafeec571f56476199d8372fcca3928e2a97dedbb61195f30ab4b684",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/claude-plan.md"
+        "path": "specs/feature/070-local-client-llm-mode/claude-plan.md"
       },
       {
         "digest": "fe07677fc9c21fa576e202929bbc47c2ddc8964bb4f97bc932eb592fd7dc3734",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/claude-spec.md"
+        "path": "specs/feature/070-local-client-llm-mode/claude-spec.md"
       },
       {
         "digest": "8f056b29df76eb00da65ba7d8cbe3fae0ca4e72da9f10f8c9d2c2661fefe1c74",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/deep_implement_config.json"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/deep_implement_config.json"
       },
       {
         "digest": "c48e4eb849fd7dfa7e215ae56be97bf9018d472ad32d552b499357e89fe36c6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/index.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/index.md"
       },
       {
         "digest": "14e032c9a4e61ff7ea17206ba8a56700684e38bb9d7a810ae91f4e33d4cb516a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-01-browser-gemma4-runtime.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-01-browser-gemma4-runtime.md"
       },
       {
         "digest": "f3440c0ed71ae5eb93096f257bb0fdb50897e62d4eb121f6de5685a59cd9f107",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-02-tauri-gemma4-litert-runtime.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-02-tauri-gemma4-litert-runtime.md"
       },
       {
         "digest": "5f45eb2ed2e53ea73a789578cf1d4b81b8fde9a66ef4c74a0b228d9e17b4df2a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-03-chat-memory-voice-integration.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-03-chat-memory-voice-integration.md"
       },
       {
         "digest": "d604faf7c2835be66e2764d9e6c3d4d60e2dba02465b33775ab4a86cdf721348",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-04-tauri-skill-execution-policy.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-04-tauri-skill-execution-policy.md"
       },
       {
         "digest": "a69763c98fd64ca40a908443cc53fa222c91a89f6e471d9874fdad2b9010f43e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-05-security-regression-and-rollout.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-05-security-regression-and-rollout.md"
       },
       {
         "digest": "39b4e915e56675e1ebeec435d3e20896820f6b543c5ed03b387cc14ef69c006c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/reviews/self-review-round-1.md"
+        "path": "specs/feature/070-local-client-llm-mode/reviews/self-review-round-1.md"
       },
       {
         "digest": "ba7981d5c6d62aaed2a5a9140a5c7bb32dfc1978b5881d2b60756e3098c1f963",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/index.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/index.md"
       },
       {
         "digest": "aea8333fca8be82dc248e14a911ef3d8fa7d3517fbc265c20305fdfbccc0bb21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-01-contracts-and-policy-foundation.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-01-contracts-and-policy-foundation.md"
       },
       {
         "digest": "60aa2585c705f71d594bd90c79ebe45241d3b197ebf08ec40c0d04542a6d25e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-02-user-settings-and-device-state.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-02-user-settings-and-device-state.md"
       },
       {
         "digest": "2b19a4b3b963a1f52f9ba51a1f8327c7e8a3a0e0fad5a008279dd15d0ca5b978",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-03-local-model-catalog-and-capability-contracts.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-03-local-model-catalog-and-capability-contracts.md"
       },
       {
         "digest": "cc42cfc2de7eef1dab552b1dad4376d39598dfc0554d0b80e48dbc0cf455b44c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-04-chat-routing-and-runtime-metadata.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-04-chat-routing-and-runtime-metadata.md"
       },
       {
         "digest": "1bf2e0fcb3b5c33eda6e85fbbaf48b9f1acbd8714e5956fac23e3e3ddb92d904",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-05-browser-download-and-runtime-adapter.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-05-browser-download-and-runtime-adapter.md"
       },
       {
         "digest": "df2c1c8c24765dba40a1bcdb0075ff9e472b978a9939befaaec53a874f5a401c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-06-tauri-adapter-and-device-storage.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-06-tauri-adapter-and-device-storage.md"
       },
       {
         "digest": "e87d30a51691bd5293b49aca1e9086201e86d02e0d13e4c7d968a4e61df67af3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-07-ocr-security-and-observability.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-07-ocr-security-and-observability.md"
       },
       {
         "digest": "77276fbe81c70767a3d66ce034a6068015e9fce530183c1a632ad24eb868ade9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-08-teams-ui-and-team-room-parity.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-08-teams-ui-and-team-room-parity.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "a2acffa3bafeec571f56476199d8372fcca3928e2a97dedbb61195f30ab4b684",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/claude-plan.md"
+        "path": "specs/feature/070-local-client-llm-mode/claude-plan.md"
       },
       {
         "digest": "fe07677fc9c21fa576e202929bbc47c2ddc8964bb4f97bc932eb592fd7dc3734",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/claude-spec.md"
+        "path": "specs/feature/070-local-client-llm-mode/claude-spec.md"
       },
       {
         "digest": "8f056b29df76eb00da65ba7d8cbe3fae0ca4e72da9f10f8c9d2c2661fefe1c74",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/deep_implement_config.json"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/deep_implement_config.json"
       },
       {
         "digest": "c48e4eb849fd7dfa7e215ae56be97bf9018d472ad32d552b499357e89fe36c6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/index.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/index.md"
       },
       {
         "digest": "14e032c9a4e61ff7ea17206ba8a56700684e38bb9d7a810ae91f4e33d4cb516a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-01-browser-gemma4-runtime.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-01-browser-gemma4-runtime.md"
       },
       {
         "digest": "f3440c0ed71ae5eb93096f257bb0fdb50897e62d4eb121f6de5685a59cd9f107",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-02-tauri-gemma4-litert-runtime.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-02-tauri-gemma4-litert-runtime.md"
       },
       {
         "digest": "5f45eb2ed2e53ea73a789578cf1d4b81b8fde9a66ef4c74a0b228d9e17b4df2a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-03-chat-memory-voice-integration.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-03-chat-memory-voice-integration.md"
       },
       {
         "digest": "d604faf7c2835be66e2764d9e6c3d4d60e2dba02465b33775ab4a86cdf721348",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-04-tauri-skill-execution-policy.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-04-tauri-skill-execution-policy.md"
       },
       {
         "digest": "a69763c98fd64ca40a908443cc53fa222c91a89f6e471d9874fdad2b9010f43e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-05-security-regression-and-rollout.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-05-security-regression-and-rollout.md"
       },
       {
         "digest": "39b4e915e56675e1ebeec435d3e20896820f6b543c5ed03b387cc14ef69c006c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/reviews/self-review-round-1.md"
+        "path": "specs/feature/070-local-client-llm-mode/reviews/self-review-round-1.md"
       },
       {
         "digest": "ba7981d5c6d62aaed2a5a9140a5c7bb32dfc1978b5881d2b60756e3098c1f963",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/index.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/index.md"
       },
       {
         "digest": "aea8333fca8be82dc248e14a911ef3d8fa7d3517fbc265c20305fdfbccc0bb21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-01-contracts-and-policy-foundation.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-01-contracts-and-policy-foundation.md"
       },
       {
         "digest": "60aa2585c705f71d594bd90c79ebe45241d3b197ebf08ec40c0d04542a6d25e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-02-user-settings-and-device-state.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-02-user-settings-and-device-state.md"
       },
       {
         "digest": "2b19a4b3b963a1f52f9ba51a1f8327c7e8a3a0e0fad5a008279dd15d0ca5b978",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-03-local-model-catalog-and-capability-contracts.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-03-local-model-catalog-and-capability-contracts.md"
       },
       {
         "digest": "cc42cfc2de7eef1dab552b1dad4376d39598dfc0554d0b80e48dbc0cf455b44c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-04-chat-routing-and-runtime-metadata.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-04-chat-routing-and-runtime-metadata.md"
       },
       {
         "digest": "1bf2e0fcb3b5c33eda6e85fbbaf48b9f1acbd8714e5956fac23e3e3ddb92d904",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-05-browser-download-and-runtime-adapter.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-05-browser-download-and-runtime-adapter.md"
       },
       {
         "digest": "df2c1c8c24765dba40a1bcdb0075ff9e472b978a9939befaaec53a874f5a401c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-06-tauri-adapter-and-device-storage.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-06-tauri-adapter-and-device-storage.md"
       },
       {
         "digest": "e87d30a51691bd5293b49aca1e9086201e86d02e0d13e4c7d968a4e61df67af3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-07-ocr-security-and-observability.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-07-ocr-security-and-observability.md"
       },
       {
         "digest": "77276fbe81c70767a3d66ce034a6068015e9fce530183c1a632ad24eb868ade9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-08-teams-ui-and-team-room-parity.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-08-teams-ui-and-team-room-parity.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/070-local-client-llm-mode/spec.md",
     "digest": "b5e6cf76fd7131ab9100029f164e92d1f516eb1531377b9e32a9017882169467",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.777542Z",
+      "last_evidence_at": "2026-10-06T03:28:15.186239Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-08T19:58:29+07:00",
       "spec_last_changed_at": "2026-04-08T19:58:29+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.777542Z"
+    "updated_at": "2026-10-06T03:28:15.186239Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.777542Z",
+    "reconciled_at": "2026-10-06T03:28:15.186239Z",
     "sources": [
       {
         "digest": "b5e6cf76fd7131ab9100029f164e92d1f516eb1531377b9e32a9017882169467",
@@ -409,102 +409,102 @@
       {
         "digest": "a2acffa3bafeec571f56476199d8372fcca3928e2a97dedbb61195f30ab4b684",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/claude-plan.md"
+        "path": "specs/feature/070-local-client-llm-mode/claude-plan.md"
       },
       {
         "digest": "fe07677fc9c21fa576e202929bbc47c2ddc8964bb4f97bc932eb592fd7dc3734",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/claude-spec.md"
+        "path": "specs/feature/070-local-client-llm-mode/claude-spec.md"
       },
       {
         "digest": "8f056b29df76eb00da65ba7d8cbe3fae0ca4e72da9f10f8c9d2c2661fefe1c74",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/deep_implement_config.json"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/deep_implement_config.json"
       },
       {
         "digest": "c48e4eb849fd7dfa7e215ae56be97bf9018d472ad32d552b499357e89fe36c6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/index.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/index.md"
       },
       {
         "digest": "14e032c9a4e61ff7ea17206ba8a56700684e38bb9d7a810ae91f4e33d4cb516a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-01-browser-gemma4-runtime.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-01-browser-gemma4-runtime.md"
       },
       {
         "digest": "f3440c0ed71ae5eb93096f257bb0fdb50897e62d4eb121f6de5685a59cd9f107",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-02-tauri-gemma4-litert-runtime.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-02-tauri-gemma4-litert-runtime.md"
       },
       {
         "digest": "5f45eb2ed2e53ea73a789578cf1d4b81b8fde9a66ef4c74a0b228d9e17b4df2a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-03-chat-memory-voice-integration.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-03-chat-memory-voice-integration.md"
       },
       {
         "digest": "d604faf7c2835be66e2764d9e6c3d4d60e2dba02465b33775ab4a86cdf721348",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-04-tauri-skill-execution-policy.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-04-tauri-skill-execution-policy.md"
       },
       {
         "digest": "a69763c98fd64ca40a908443cc53fa222c91a89f6e471d9874fdad2b9010f43e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-05-security-regression-and-rollout.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-05-security-regression-and-rollout.md"
       },
       {
         "digest": "39b4e915e56675e1ebeec435d3e20896820f6b543c5ed03b387cc14ef69c006c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/reviews/self-review-round-1.md"
+        "path": "specs/feature/070-local-client-llm-mode/reviews/self-review-round-1.md"
       },
       {
         "digest": "ba7981d5c6d62aaed2a5a9140a5c7bb32dfc1978b5881d2b60756e3098c1f963",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/index.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/index.md"
       },
       {
         "digest": "aea8333fca8be82dc248e14a911ef3d8fa7d3517fbc265c20305fdfbccc0bb21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-01-contracts-and-policy-foundation.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-01-contracts-and-policy-foundation.md"
       },
       {
         "digest": "60aa2585c705f71d594bd90c79ebe45241d3b197ebf08ec40c0d04542a6d25e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-02-user-settings-and-device-state.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-02-user-settings-and-device-state.md"
       },
       {
         "digest": "2b19a4b3b963a1f52f9ba51a1f8327c7e8a3a0e0fad5a008279dd15d0ca5b978",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-03-local-model-catalog-and-capability-contracts.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-03-local-model-catalog-and-capability-contracts.md"
       },
       {
         "digest": "cc42cfc2de7eef1dab552b1dad4376d39598dfc0554d0b80e48dbc0cf455b44c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-04-chat-routing-and-runtime-metadata.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-04-chat-routing-and-runtime-metadata.md"
       },
       {
         "digest": "1bf2e0fcb3b5c33eda6e85fbbaf48b9f1acbd8714e5956fac23e3e3ddb92d904",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-05-browser-download-and-runtime-adapter.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-05-browser-download-and-runtime-adapter.md"
       },
       {
         "digest": "df2c1c8c24765dba40a1bcdb0075ff9e472b978a9939befaaec53a874f5a401c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-06-tauri-adapter-and-device-storage.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-06-tauri-adapter-and-device-storage.md"
       },
       {
         "digest": "e87d30a51691bd5293b49aca1e9086201e86d02e0d13e4c7d968a4e61df67af3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-07-ocr-security-and-observability.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-07-ocr-security-and-observability.md"
       },
       {
         "digest": "77276fbe81c70767a3d66ce034a6068015e9fce530183c1a632ad24eb868ade9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-08-teams-ui-and-team-room-parity.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-08-teams-ui-and-team-room-parity.md"
       },
       {
         "digest": "58c46bd75dcc1021dcd9e5f0ba15b63655ab2b966d5545a513f2749f696f1124",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-09-regression-tests-and-rollout.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-09-regression-tests-and-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -554,102 +554,102 @@
       {
         "digest": "a2acffa3bafeec571f56476199d8372fcca3928e2a97dedbb61195f30ab4b684",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/claude-plan.md"
+        "path": "specs/feature/070-local-client-llm-mode/claude-plan.md"
       },
       {
         "digest": "fe07677fc9c21fa576e202929bbc47c2ddc8964bb4f97bc932eb592fd7dc3734",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/claude-spec.md"
+        "path": "specs/feature/070-local-client-llm-mode/claude-spec.md"
       },
       {
         "digest": "8f056b29df76eb00da65ba7d8cbe3fae0ca4e72da9f10f8c9d2c2661fefe1c74",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/deep_implement_config.json"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/deep_implement_config.json"
       },
       {
         "digest": "c48e4eb849fd7dfa7e215ae56be97bf9018d472ad32d552b499357e89fe36c6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/index.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/index.md"
       },
       {
         "digest": "14e032c9a4e61ff7ea17206ba8a56700684e38bb9d7a810ae91f4e33d4cb516a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-01-browser-gemma4-runtime.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-01-browser-gemma4-runtime.md"
       },
       {
         "digest": "f3440c0ed71ae5eb93096f257bb0fdb50897e62d4eb121f6de5685a59cd9f107",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-02-tauri-gemma4-litert-runtime.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-02-tauri-gemma4-litert-runtime.md"
       },
       {
         "digest": "5f45eb2ed2e53ea73a789578cf1d4b81b8fde9a66ef4c74a0b228d9e17b4df2a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-03-chat-memory-voice-integration.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-03-chat-memory-voice-integration.md"
       },
       {
         "digest": "d604faf7c2835be66e2764d9e6c3d4d60e2dba02465b33775ab4a86cdf721348",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-04-tauri-skill-execution-policy.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-04-tauri-skill-execution-policy.md"
       },
       {
         "digest": "a69763c98fd64ca40a908443cc53fa222c91a89f6e471d9874fdad2b9010f43e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-05-security-regression-and-rollout.md"
+        "path": "specs/feature/070-local-client-llm-mode/implementation/gemma4-first-web-tauri/sections/section-05-security-regression-and-rollout.md"
       },
       {
         "digest": "39b4e915e56675e1ebeec435d3e20896820f6b543c5ed03b387cc14ef69c006c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/reviews/self-review-round-1.md"
+        "path": "specs/feature/070-local-client-llm-mode/reviews/self-review-round-1.md"
       },
       {
         "digest": "ba7981d5c6d62aaed2a5a9140a5c7bb32dfc1978b5881d2b60756e3098c1f963",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/index.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/index.md"
       },
       {
         "digest": "aea8333fca8be82dc248e14a911ef3d8fa7d3517fbc265c20305fdfbccc0bb21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-01-contracts-and-policy-foundation.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-01-contracts-and-policy-foundation.md"
       },
       {
         "digest": "60aa2585c705f71d594bd90c79ebe45241d3b197ebf08ec40c0d04542a6d25e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-02-user-settings-and-device-state.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-02-user-settings-and-device-state.md"
       },
       {
         "digest": "2b19a4b3b963a1f52f9ba51a1f8327c7e8a3a0e0fad5a008279dd15d0ca5b978",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-03-local-model-catalog-and-capability-contracts.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-03-local-model-catalog-and-capability-contracts.md"
       },
       {
         "digest": "cc42cfc2de7eef1dab552b1dad4376d39598dfc0554d0b80e48dbc0cf455b44c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-04-chat-routing-and-runtime-metadata.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-04-chat-routing-and-runtime-metadata.md"
       },
       {
         "digest": "1bf2e0fcb3b5c33eda6e85fbbaf48b9f1acbd8714e5956fac23e3e3ddb92d904",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-05-browser-download-and-runtime-adapter.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-05-browser-download-and-runtime-adapter.md"
       },
       {
         "digest": "df2c1c8c24765dba40a1bcdb0075ff9e472b978a9939befaaec53a874f5a401c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-06-tauri-adapter-and-device-storage.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-06-tauri-adapter-and-device-storage.md"
       },
       {
         "digest": "e87d30a51691bd5293b49aca1e9086201e86d02e0d13e4c7d968a4e61df67af3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-07-ocr-security-and-observability.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-07-ocr-security-and-observability.md"
       },
       {
         "digest": "77276fbe81c70767a3d66ce034a6068015e9fce530183c1a632ad24eb868ade9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-08-teams-ui-and-team-room-parity.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-08-teams-ui-and-team-room-parity.md"
       },
       {
         "digest": "58c46bd75dcc1021dcd9e5f0ba15b63655ab2b966d5545a513f2749f696f1124",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/070-local-client-llm-mode/sections/section-09-regression-tests-and-rollout.md"
+        "path": "specs/feature/070-local-client-llm-mode/sections/section-09-regression-tests-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -667,7 +667,7 @@
     "unresolved": 273
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.777542Z",
+  "updated_at": "2026-10-06T03:28:15.186239Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

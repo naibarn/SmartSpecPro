@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md",
     "digest": "0c4987cd716d2cf438c8bc3b8e62ffb3ab549638fdb92ee6bd9ca6c4f7335722",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.280160Z",
+      "last_evidence_at": "2026-10-06T03:28:16.108731Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-02T20:17:28+07:00",
       "spec_last_changed_at": "2026-08-02T20:17:28+07:00"
@@ -104,7 +104,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.280160Z"
+    "updated_at": "2026-10-06T03:28:16.108731Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,7 +114,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.280160Z",
+    "reconciled_at": "2026-10-06T03:28:16.108731Z",
     "sources": [
       {
         "digest": "0c4987cd716d2cf438c8bc3b8e62ffb3ab549638fdb92ee6bd9ca6c4f7335722",
@@ -182,7 +182,7 @@
     "unresolved": 16
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.280160Z",
+  "updated_at": "2026-10-06T03:28:16.108731Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

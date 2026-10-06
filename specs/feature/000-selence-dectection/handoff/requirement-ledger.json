@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L420"
+        "specs/feature/000-selence-dectection/spec.md#L420"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L420",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L421"
+        "specs/feature/000-selence-dectection/spec.md#L421"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L421",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L421",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L422"
+        "specs/feature/000-selence-dectection/spec.md#L422"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L422",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L422",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L423"
+        "specs/feature/000-selence-dectection/spec.md#L423"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L423",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L423",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L424"
+        "specs/feature/000-selence-dectection/spec.md#L424"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L424",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L424",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L425"
+        "specs/feature/000-selence-dectection/spec.md#L425"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L425",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L426"
+        "specs/feature/000-selence-dectection/spec.md#L426"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L426",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L427"
+        "specs/feature/000-selence-dectection/spec.md#L427"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L427",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L427",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L428"
+        "specs/feature/000-selence-dectection/spec.md#L428"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L428",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L428",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L429"
+        "specs/feature/000-selence-dectection/spec.md#L429"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L429",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L429",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L430"
+        "specs/feature/000-selence-dectection/spec.md#L430"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L430",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L431"
+        "specs/feature/000-selence-dectection/spec.md#L431"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L431",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L432"
+        "specs/feature/000-selence-dectection/spec.md#L432"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L432",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L433"
+        "specs/feature/000-selence-dectection/spec.md#L433"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-selence-dectection/spec.md#L433",
+      "authority_source": "specs/feature/000-selence-dectection/spec.md#L433",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L38"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L38"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L38",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L38",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L54"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L54"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L54",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L54",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L84"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L84"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L84",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L85"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L85"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L85",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L86"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L86"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L86",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L87"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L87"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L87",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L88"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L88"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L88",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L89"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L89"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L89",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L90"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L90"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L90",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L91"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L91"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L91",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L127"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L127"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L127",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L140"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L140"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L140",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L142"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L142"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L142",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L150"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L150",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L182"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L182"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L182",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,10 +335,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L193",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L615"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L193",
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L615"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L193",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L193",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -358,9 +358,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L264"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L264"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L264",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -380,9 +380,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L445"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L445"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L445",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -402,9 +402,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L559"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L559"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L559",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L559",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -424,9 +424,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L560"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L560"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L560",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L560",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -446,9 +446,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L561"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L561"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L561",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L561",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -468,9 +468,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L562"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L562"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L562",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L562",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -490,9 +490,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L617"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L617"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L617",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -512,9 +512,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L618"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L618"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L618",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -534,9 +534,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L619"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L619"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L619",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -556,9 +556,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L620"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L620"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L620",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L620",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -578,9 +578,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L621"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L621"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L621",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -600,9 +600,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L622"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L622"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L622",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -622,9 +622,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L623"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L623"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L623",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -644,9 +644,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L734"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L734"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L734",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -666,9 +666,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L736"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L736"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L736",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L736",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -688,9 +688,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L740"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L740"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L740",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -710,9 +710,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L759"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L759"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L759",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L759",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -732,9 +732,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L763"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L763"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L763",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L763",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -754,9 +754,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L818"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L818"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L818",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L818",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -776,9 +776,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L831"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L831"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L831",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L831",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -798,9 +798,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L892"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L892"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L892",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L892",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -820,9 +820,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L941"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L941"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L941",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L941",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -842,9 +842,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L945"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L945"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L945",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L945",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -864,9 +864,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L960"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L960"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L960",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L960",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -886,9 +886,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L961"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L961"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L961",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L961",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -908,9 +908,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L962"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L962"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L962",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L962",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -930,9 +930,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L963"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L963"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L963",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L963",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -952,9 +952,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L996"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L996"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L996",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -974,9 +974,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L997"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L997"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L997",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -996,9 +996,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1000"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1000"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1000",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1000",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1018,9 +1018,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1006"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1006"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1006",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1006",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1040,9 +1040,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1058"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1058"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1058",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1058",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1062,9 +1062,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1075"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1075"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1075",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1075",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1084,9 +1084,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1121"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1121"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1121",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1106,9 +1106,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1240"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1240"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1240",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1128,9 +1128,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1241"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1241"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1241",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1150,9 +1150,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1242"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1242"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1242",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1172,9 +1172,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1243"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1243"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1243",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1243",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1194,9 +1194,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1244"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1244"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1244",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1216,9 +1216,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1245"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1245"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1245",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1238,9 +1238,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1246"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1246"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1246",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1260,9 +1260,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1247"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1247"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1247",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1282,9 +1282,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1248"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1248"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1248",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1304,9 +1304,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1249"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1249"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1249",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1326,9 +1326,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1250"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1250"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1250",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1348,9 +1348,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1251"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1251"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1251",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1370,9 +1370,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1252"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1252"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1252",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1252",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1392,9 +1392,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1253"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1253"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1253",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1253",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1414,9 +1414,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1257"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1257"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1257",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1436,9 +1436,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1258"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1258"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1258",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1458,9 +1458,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1259"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1259"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1259",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1480,9 +1480,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1260"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1260"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1260",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1502,9 +1502,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1261"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1261"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1261",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1524,9 +1524,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1262"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1262"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1262",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1546,9 +1546,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1263"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1263"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1263",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1263",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1568,9 +1568,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1264"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1264"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1264",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1590,9 +1590,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1265"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1265"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1265",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1265",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1612,9 +1612,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1266"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1266"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1266",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1634,9 +1634,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1267"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1267"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1267",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1656,9 +1656,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1268"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1268"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1268",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1678,9 +1678,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1269"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1269"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1269",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1700,9 +1700,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1270"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1270"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1270",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1722,9 +1722,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1274"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1274"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1274",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1274",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1744,9 +1744,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1275"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1275"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1275",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1275",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1766,9 +1766,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1276"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1276"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1276",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1788,9 +1788,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1277"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1277"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1277",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1810,9 +1810,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1278"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1278"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1278",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1832,9 +1832,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1279"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1279"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1279",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1854,9 +1854,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1280"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1280"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1280",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1876,9 +1876,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1281"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1281"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1281",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1898,9 +1898,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1282"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1282"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1282",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1920,9 +1920,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1283"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1283"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1283",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1942,9 +1942,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1284"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1284"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1284",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1964,9 +1964,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1285"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1285"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1285",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1986,9 +1986,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1286"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1286"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1286",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2008,9 +2008,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1287"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1287"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1287",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1287",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2030,9 +2030,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1288"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1288"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1288",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2052,9 +2052,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1289"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1289"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1289",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2074,9 +2074,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1290"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1290"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1290",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2096,9 +2096,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1291"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1291"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1291",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1291",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2118,9 +2118,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1292"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1292"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1292",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2140,9 +2140,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1293"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1293"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1293",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2162,9 +2162,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1294"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1294"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1294",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2184,9 +2184,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1295"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1295"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1295",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2206,9 +2206,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1296"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1296"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1296",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2228,9 +2228,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1346"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1346"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1346",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2250,9 +2250,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1347"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1347"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1347",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2272,9 +2272,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1348"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1348"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1348",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2294,9 +2294,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1349"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1349"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1349",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1349",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2316,9 +2316,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1353"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1353"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1353",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2338,9 +2338,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1354"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1354"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1354",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1354",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2360,9 +2360,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1355"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1355"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1355",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1355",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2382,9 +2382,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1356"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1356"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1356",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2404,9 +2404,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1357"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1357"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1357",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1357",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2426,9 +2426,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1358"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1358"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1358",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1358",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2448,9 +2448,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1359"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1359"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1359",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1359",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2470,9 +2470,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1363"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1363"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1363",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2492,9 +2492,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1364"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1364"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1364",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1364",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2514,9 +2514,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1365"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1365"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1365",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1365",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2536,9 +2536,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1366"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1366"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1366",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2558,9 +2558,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1370"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1370"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1370",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2580,9 +2580,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1371"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1371"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1371",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1371",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2602,9 +2602,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1372"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1372"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1372",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2624,9 +2624,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1376"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1376"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1376",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2646,9 +2646,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1377"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1377"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1377",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2668,9 +2668,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1378"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1378"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1378",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2690,9 +2690,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1382"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1382"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1382",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2712,9 +2712,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1383"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1383"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1383",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2734,9 +2734,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1384"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1384"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1384",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2756,9 +2756,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1385"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1385"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1385",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1385",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2778,9 +2778,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1386"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1386"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1386",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1386",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2800,9 +2800,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1387"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1387"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1387",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1387",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2822,9 +2822,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1413"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1413"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1413",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1413",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2844,9 +2844,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1417"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1417"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1417",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2866,9 +2866,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1418"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1418"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1418",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1418",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2888,9 +2888,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1419"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1419"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1419",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2910,9 +2910,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1420"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1420"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1420",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2932,9 +2932,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1430"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1430"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1430",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2954,9 +2954,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1442"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1442"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1442",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1442",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2976,9 +2976,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1459"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1459"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1459",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2998,9 +2998,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1467"
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1467"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1467",
+      "authority_source": "specs/feature/115-extension-local-ai-analysis-layer/spec.md#L1467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

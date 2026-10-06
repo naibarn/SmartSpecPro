@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L24"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L24"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L24",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L24",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L25"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L25"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L25",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L25",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L26"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L26"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L26",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L26",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L27"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L27"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L27",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L27",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L28"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L28"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L28",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L28",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L29"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L29"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L29",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L30"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L30"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L30",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L30",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L31"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L31"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L31",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L46"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L46"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L46",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L47"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L47"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L47",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L47",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L48"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L48"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L48",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L49"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L49"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L49",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L49",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L50"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L50"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L50",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L51"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L51"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L51",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L52"
+        "specs/feature/069-wavespeed-media-provider/spec.md#L52"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/069-wavespeed-media-provider/spec.md#L52",
+      "authority_source": "specs/feature/069-wavespeed-media-provider/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

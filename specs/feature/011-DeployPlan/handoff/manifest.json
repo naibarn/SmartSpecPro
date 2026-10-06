@@ -17,97 +17,97 @@
       {
         "digest": "e8375d5c8f34c5b593b23644bed0e8617db1ac908da18a9326a53469dfeadc84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/claude-plan.md"
+        "path": "specs/feature/011-DeployPlan/claude-plan.md"
       },
       {
         "digest": "13ae4ef252e78a8493bb513c94609c5a1680fe46fa28ec8c762a3bebdba922a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/claude-spec.md"
+        "path": "specs/feature/011-DeployPlan/claude-spec.md"
       },
       {
         "digest": "7f6d2ffd433c269e05484b6ed93701d263a6c23bf5b0584bb8568d905856ac2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/implementation/deep_implement_config.json"
+        "path": "specs/feature/011-DeployPlan/implementation/deep_implement_config.json"
       },
       {
         "digest": "3ac1cffd432d69fdd43cb593e48644b1ba803e3286d29c07149704325bf57898",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/implementation/usage.md"
+        "path": "specs/feature/011-DeployPlan/implementation/usage.md"
       },
       {
         "digest": "576e24ae198a757c1f4aa996661d8420c3387e4278aa22a8cec97a9c968c7b6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/reviews/iteration-1-opus.md"
+        "path": "specs/feature/011-DeployPlan/reviews/iteration-1-opus.md"
       },
       {
         "digest": "eac7f0e54e7bc2b2b7bd032643dbec0eb5647d891b8b51cddd918a2edc132cb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/index.md"
+        "path": "specs/feature/011-DeployPlan/sections/index.md"
       },
       {
         "digest": "fe3a5bdae18c625757812185acedfe8aaad953d75e9b5128ceef31f159e96c62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-01-gcp-bootstrap.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-01-gcp-bootstrap.md"
       },
       {
         "digest": "e9f9f37e358eb49930e71443c52734f1faefb49e39e906c98cf2c23f828cb609",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-02-docker-images.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-02-docker-images.md"
       },
       {
         "digest": "e48a4e826ad01d38efd0c21517ee45400cd215fb6cbba401ca7481e78c0a005d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-03-database.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-03-database.md"
       },
       {
         "digest": "f114da2dada7ce5c5072e1f34d190c11162f9a4ae4c6f8aee5b0d728d41441c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-04-cloud-tasks.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-04-cloud-tasks.md"
       },
       {
         "digest": "71a9fcbe5b2a8b2bf9d36143ee912b240b8e3176de725ac8ed55f6b329bade4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-05-bullmq-migration.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-05-bullmq-migration.md"
       },
       {
         "digest": "0b701d9a59ef123bb1b77334692e090055b9dcda2a33781383364b23d8d24b94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-06-cloud-scheduler.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-06-cloud-scheduler.md"
       },
       {
         "digest": "50248bc4e52106c8f6ab6245589ee5038b68464a307e46577e32ce7858383361",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-07-kie-integration.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-07-kie-integration.md"
       },
       {
         "digest": "6e8d195b92baa522ede0b569a0d800a153bc083bb8f08453300605fabb6be4b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-08-media-pipeline.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-08-media-pipeline.md"
       },
       {
         "digest": "661a319f8055325dbacc616ff2d452b0038e64ed7ca081c379710f7463f61763",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-09-r2-storage.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-09-r2-storage.md"
       },
       {
         "digest": "bf8c42d4ff4fcc575cedce2450cf28dee2033f4d21e83fb1cd0d13514ffe7f3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-10-redis-ratelimit.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-10-redis-ratelimit.md"
       },
       {
         "digest": "6a9439d050676f1c73ed8f817895b268eddf065a3a09963aab5f2be6d92d2ade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-11-video-pipeline.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-11-video-pipeline.md"
       },
       {
         "digest": "f35931f55272747f8784493a6f279d915eedd1691520f077400f75ff2baf97b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-12-vectorize.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-12-vectorize.md"
       },
       {
         "digest": "0250b154a6949b74a6d8e17f98cae6f4fc2425f2f65cbe48bad4f7d4b4370fbd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-13-sentry.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-13-sentry.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "e8375d5c8f34c5b593b23644bed0e8617db1ac908da18a9326a53469dfeadc84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/claude-plan.md"
+        "path": "specs/feature/011-DeployPlan/claude-plan.md"
       },
       {
         "digest": "13ae4ef252e78a8493bb513c94609c5a1680fe46fa28ec8c762a3bebdba922a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/claude-spec.md"
+        "path": "specs/feature/011-DeployPlan/claude-spec.md"
       },
       {
         "digest": "7f6d2ffd433c269e05484b6ed93701d263a6c23bf5b0584bb8568d905856ac2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/implementation/deep_implement_config.json"
+        "path": "specs/feature/011-DeployPlan/implementation/deep_implement_config.json"
       },
       {
         "digest": "3ac1cffd432d69fdd43cb593e48644b1ba803e3286d29c07149704325bf57898",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/implementation/usage.md"
+        "path": "specs/feature/011-DeployPlan/implementation/usage.md"
       },
       {
         "digest": "576e24ae198a757c1f4aa996661d8420c3387e4278aa22a8cec97a9c968c7b6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/reviews/iteration-1-opus.md"
+        "path": "specs/feature/011-DeployPlan/reviews/iteration-1-opus.md"
       },
       {
         "digest": "eac7f0e54e7bc2b2b7bd032643dbec0eb5647d891b8b51cddd918a2edc132cb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/index.md"
+        "path": "specs/feature/011-DeployPlan/sections/index.md"
       },
       {
         "digest": "fe3a5bdae18c625757812185acedfe8aaad953d75e9b5128ceef31f159e96c62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-01-gcp-bootstrap.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-01-gcp-bootstrap.md"
       },
       {
         "digest": "e9f9f37e358eb49930e71443c52734f1faefb49e39e906c98cf2c23f828cb609",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-02-docker-images.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-02-docker-images.md"
       },
       {
         "digest": "e48a4e826ad01d38efd0c21517ee45400cd215fb6cbba401ca7481e78c0a005d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-03-database.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-03-database.md"
       },
       {
         "digest": "f114da2dada7ce5c5072e1f34d190c11162f9a4ae4c6f8aee5b0d728d41441c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-04-cloud-tasks.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-04-cloud-tasks.md"
       },
       {
         "digest": "71a9fcbe5b2a8b2bf9d36143ee912b240b8e3176de725ac8ed55f6b329bade4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-05-bullmq-migration.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-05-bullmq-migration.md"
       },
       {
         "digest": "0b701d9a59ef123bb1b77334692e090055b9dcda2a33781383364b23d8d24b94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-06-cloud-scheduler.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-06-cloud-scheduler.md"
       },
       {
         "digest": "50248bc4e52106c8f6ab6245589ee5038b68464a307e46577e32ce7858383361",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-07-kie-integration.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-07-kie-integration.md"
       },
       {
         "digest": "6e8d195b92baa522ede0b569a0d800a153bc083bb8f08453300605fabb6be4b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-08-media-pipeline.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-08-media-pipeline.md"
       },
       {
         "digest": "661a319f8055325dbacc616ff2d452b0038e64ed7ca081c379710f7463f61763",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-09-r2-storage.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-09-r2-storage.md"
       },
       {
         "digest": "bf8c42d4ff4fcc575cedce2450cf28dee2033f4d21e83fb1cd0d13514ffe7f3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-10-redis-ratelimit.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-10-redis-ratelimit.md"
       },
       {
         "digest": "6a9439d050676f1c73ed8f817895b268eddf065a3a09963aab5f2be6d92d2ade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-11-video-pipeline.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-11-video-pipeline.md"
       },
       {
         "digest": "f35931f55272747f8784493a6f279d915eedd1691520f077400f75ff2baf97b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-12-vectorize.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-12-vectorize.md"
       },
       {
         "digest": "0250b154a6949b74a6d8e17f98cae6f4fc2425f2f65cbe48bad4f7d4b4370fbd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-13-sentry.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-13-sentry.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "e8375d5c8f34c5b593b23644bed0e8617db1ac908da18a9326a53469dfeadc84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/claude-plan.md"
+        "path": "specs/feature/011-DeployPlan/claude-plan.md"
       },
       {
         "digest": "13ae4ef252e78a8493bb513c94609c5a1680fe46fa28ec8c762a3bebdba922a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/claude-spec.md"
+        "path": "specs/feature/011-DeployPlan/claude-spec.md"
       },
       {
         "digest": "7f6d2ffd433c269e05484b6ed93701d263a6c23bf5b0584bb8568d905856ac2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/implementation/deep_implement_config.json"
+        "path": "specs/feature/011-DeployPlan/implementation/deep_implement_config.json"
       },
       {
         "digest": "3ac1cffd432d69fdd43cb593e48644b1ba803e3286d29c07149704325bf57898",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/implementation/usage.md"
+        "path": "specs/feature/011-DeployPlan/implementation/usage.md"
       },
       {
         "digest": "576e24ae198a757c1f4aa996661d8420c3387e4278aa22a8cec97a9c968c7b6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/reviews/iteration-1-opus.md"
+        "path": "specs/feature/011-DeployPlan/reviews/iteration-1-opus.md"
       },
       {
         "digest": "eac7f0e54e7bc2b2b7bd032643dbec0eb5647d891b8b51cddd918a2edc132cb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/index.md"
+        "path": "specs/feature/011-DeployPlan/sections/index.md"
       },
       {
         "digest": "fe3a5bdae18c625757812185acedfe8aaad953d75e9b5128ceef31f159e96c62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-01-gcp-bootstrap.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-01-gcp-bootstrap.md"
       },
       {
         "digest": "e9f9f37e358eb49930e71443c52734f1faefb49e39e906c98cf2c23f828cb609",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-02-docker-images.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-02-docker-images.md"
       },
       {
         "digest": "e48a4e826ad01d38efd0c21517ee45400cd215fb6cbba401ca7481e78c0a005d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-03-database.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-03-database.md"
       },
       {
         "digest": "f114da2dada7ce5c5072e1f34d190c11162f9a4ae4c6f8aee5b0d728d41441c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-04-cloud-tasks.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-04-cloud-tasks.md"
       },
       {
         "digest": "71a9fcbe5b2a8b2bf9d36143ee912b240b8e3176de725ac8ed55f6b329bade4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-05-bullmq-migration.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-05-bullmq-migration.md"
       },
       {
         "digest": "0b701d9a59ef123bb1b77334692e090055b9dcda2a33781383364b23d8d24b94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-06-cloud-scheduler.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-06-cloud-scheduler.md"
       },
       {
         "digest": "50248bc4e52106c8f6ab6245589ee5038b68464a307e46577e32ce7858383361",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-07-kie-integration.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-07-kie-integration.md"
       },
       {
         "digest": "6e8d195b92baa522ede0b569a0d800a153bc083bb8f08453300605fabb6be4b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-08-media-pipeline.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-08-media-pipeline.md"
       },
       {
         "digest": "661a319f8055325dbacc616ff2d452b0038e64ed7ca081c379710f7463f61763",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-09-r2-storage.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-09-r2-storage.md"
       },
       {
         "digest": "bf8c42d4ff4fcc575cedce2450cf28dee2033f4d21e83fb1cd0d13514ffe7f3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-10-redis-ratelimit.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-10-redis-ratelimit.md"
       },
       {
         "digest": "6a9439d050676f1c73ed8f817895b268eddf065a3a09963aab5f2be6d92d2ade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-11-video-pipeline.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-11-video-pipeline.md"
       },
       {
         "digest": "f35931f55272747f8784493a6f279d915eedd1691520f077400f75ff2baf97b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-12-vectorize.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-12-vectorize.md"
       },
       {
         "digest": "0250b154a6949b74a6d8e17f98cae6f4fc2425f2f65cbe48bad4f7d4b4370fbd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-13-sentry.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-13-sentry.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/011-DeployPlan/spec.md",
     "digest": "b1829803ddb113056c46daecd62d70ee9e80acd784f5a356931353fa284786ac",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.411856Z",
+      "last_evidence_at": "2026-10-06T03:28:14.653859Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-02-15T07:46:07+07:00",
       "spec_last_changed_at": "2026-02-15T07:46:07+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.411856Z"
+    "updated_at": "2026-10-06T03:28:14.653859Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.411856Z",
+    "reconciled_at": "2026-10-06T03:28:14.653859Z",
     "sources": [
       {
         "digest": "b1829803ddb113056c46daecd62d70ee9e80acd784f5a356931353fa284786ac",
@@ -409,132 +409,132 @@
       {
         "digest": "e8375d5c8f34c5b593b23644bed0e8617db1ac908da18a9326a53469dfeadc84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/claude-plan.md"
+        "path": "specs/feature/011-DeployPlan/claude-plan.md"
       },
       {
         "digest": "13ae4ef252e78a8493bb513c94609c5a1680fe46fa28ec8c762a3bebdba922a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/claude-spec.md"
+        "path": "specs/feature/011-DeployPlan/claude-spec.md"
       },
       {
         "digest": "7f6d2ffd433c269e05484b6ed93701d263a6c23bf5b0584bb8568d905856ac2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/implementation/deep_implement_config.json"
+        "path": "specs/feature/011-DeployPlan/implementation/deep_implement_config.json"
       },
       {
         "digest": "3ac1cffd432d69fdd43cb593e48644b1ba803e3286d29c07149704325bf57898",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/implementation/usage.md"
+        "path": "specs/feature/011-DeployPlan/implementation/usage.md"
       },
       {
         "digest": "576e24ae198a757c1f4aa996661d8420c3387e4278aa22a8cec97a9c968c7b6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/reviews/iteration-1-opus.md"
+        "path": "specs/feature/011-DeployPlan/reviews/iteration-1-opus.md"
       },
       {
         "digest": "eac7f0e54e7bc2b2b7bd032643dbec0eb5647d891b8b51cddd918a2edc132cb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/index.md"
+        "path": "specs/feature/011-DeployPlan/sections/index.md"
       },
       {
         "digest": "fe3a5bdae18c625757812185acedfe8aaad953d75e9b5128ceef31f159e96c62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-01-gcp-bootstrap.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-01-gcp-bootstrap.md"
       },
       {
         "digest": "e9f9f37e358eb49930e71443c52734f1faefb49e39e906c98cf2c23f828cb609",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-02-docker-images.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-02-docker-images.md"
       },
       {
         "digest": "e48a4e826ad01d38efd0c21517ee45400cd215fb6cbba401ca7481e78c0a005d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-03-database.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-03-database.md"
       },
       {
         "digest": "f114da2dada7ce5c5072e1f34d190c11162f9a4ae4c6f8aee5b0d728d41441c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-04-cloud-tasks.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-04-cloud-tasks.md"
       },
       {
         "digest": "71a9fcbe5b2a8b2bf9d36143ee912b240b8e3176de725ac8ed55f6b329bade4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-05-bullmq-migration.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-05-bullmq-migration.md"
       },
       {
         "digest": "0b701d9a59ef123bb1b77334692e090055b9dcda2a33781383364b23d8d24b94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-06-cloud-scheduler.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-06-cloud-scheduler.md"
       },
       {
         "digest": "50248bc4e52106c8f6ab6245589ee5038b68464a307e46577e32ce7858383361",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-07-kie-integration.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-07-kie-integration.md"
       },
       {
         "digest": "6e8d195b92baa522ede0b569a0d800a153bc083bb8f08453300605fabb6be4b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-08-media-pipeline.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-08-media-pipeline.md"
       },
       {
         "digest": "661a319f8055325dbacc616ff2d452b0038e64ed7ca081c379710f7463f61763",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-09-r2-storage.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-09-r2-storage.md"
       },
       {
         "digest": "bf8c42d4ff4fcc575cedce2450cf28dee2033f4d21e83fb1cd0d13514ffe7f3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-10-redis-ratelimit.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-10-redis-ratelimit.md"
       },
       {
         "digest": "6a9439d050676f1c73ed8f817895b268eddf065a3a09963aab5f2be6d92d2ade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-11-video-pipeline.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-11-video-pipeline.md"
       },
       {
         "digest": "f35931f55272747f8784493a6f279d915eedd1691520f077400f75ff2baf97b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-12-vectorize.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-12-vectorize.md"
       },
       {
         "digest": "0250b154a6949b74a6d8e17f98cae6f4fc2425f2f65cbe48bad4f7d4b4370fbd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-13-sentry.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-13-sentry.md"
       },
       {
         "digest": "b437639fa1da37396b909a4ea42fa0be63d20c8deb97eac62c2b4a545d1276e9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-14-posthog.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-14-posthog.md"
       },
       {
         "digest": "fef207614c1c3c079e0be0099d6c2c6630309425cfe13e75606846bbd58a073b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-15-admin-dashboard.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-15-admin-dashboard.md"
       },
       {
         "digest": "8fb5debc83463849b56598e62e26739925256e466be7af70eeb0074dd6378de5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-16-cloud-monitoring.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-16-cloud-monitoring.md"
       },
       {
         "digest": "1063453ab0367cafa831c394f55ae4b3597af0649411ca190d593e7781e32895",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-17-cicd.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-17-cicd.md"
       },
       {
         "digest": "a60eb1c69c5224a8d112d978bb4078ce21fb7515cc135595121511a067a69c44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-18-auth-hardening.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-18-auth-hardening.md"
       },
       {
         "digest": "f6be2757343390cd12eac4fbeb464f55eb1cdb0d1e2ae343e12ce3d7cfe2f386",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-19-load-testing.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-19-load-testing.md"
       },
       {
         "digest": "5222a8c39170cf6be7dda003652fe0a2d66b9bcfe634d9af8dc1e2ddb79af9d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-20-prod-hardening.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-20-prod-hardening.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -1103,132 +1103,132 @@
       {
         "digest": "e8375d5c8f34c5b593b23644bed0e8617db1ac908da18a9326a53469dfeadc84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/claude-plan.md"
+        "path": "specs/feature/011-DeployPlan/claude-plan.md"
       },
       {
         "digest": "13ae4ef252e78a8493bb513c94609c5a1680fe46fa28ec8c762a3bebdba922a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/claude-spec.md"
+        "path": "specs/feature/011-DeployPlan/claude-spec.md"
       },
       {
         "digest": "7f6d2ffd433c269e05484b6ed93701d263a6c23bf5b0584bb8568d905856ac2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/implementation/deep_implement_config.json"
+        "path": "specs/feature/011-DeployPlan/implementation/deep_implement_config.json"
       },
       {
         "digest": "3ac1cffd432d69fdd43cb593e48644b1ba803e3286d29c07149704325bf57898",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/implementation/usage.md"
+        "path": "specs/feature/011-DeployPlan/implementation/usage.md"
       },
       {
         "digest": "576e24ae198a757c1f4aa996661d8420c3387e4278aa22a8cec97a9c968c7b6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/reviews/iteration-1-opus.md"
+        "path": "specs/feature/011-DeployPlan/reviews/iteration-1-opus.md"
       },
       {
         "digest": "eac7f0e54e7bc2b2b7bd032643dbec0eb5647d891b8b51cddd918a2edc132cb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/index.md"
+        "path": "specs/feature/011-DeployPlan/sections/index.md"
       },
       {
         "digest": "fe3a5bdae18c625757812185acedfe8aaad953d75e9b5128ceef31f159e96c62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-01-gcp-bootstrap.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-01-gcp-bootstrap.md"
       },
       {
         "digest": "e9f9f37e358eb49930e71443c52734f1faefb49e39e906c98cf2c23f828cb609",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-02-docker-images.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-02-docker-images.md"
       },
       {
         "digest": "e48a4e826ad01d38efd0c21517ee45400cd215fb6cbba401ca7481e78c0a005d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-03-database.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-03-database.md"
       },
       {
         "digest": "f114da2dada7ce5c5072e1f34d190c11162f9a4ae4c6f8aee5b0d728d41441c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-04-cloud-tasks.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-04-cloud-tasks.md"
       },
       {
         "digest": "71a9fcbe5b2a8b2bf9d36143ee912b240b8e3176de725ac8ed55f6b329bade4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-05-bullmq-migration.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-05-bullmq-migration.md"
       },
       {
         "digest": "0b701d9a59ef123bb1b77334692e090055b9dcda2a33781383364b23d8d24b94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-06-cloud-scheduler.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-06-cloud-scheduler.md"
       },
       {
         "digest": "50248bc4e52106c8f6ab6245589ee5038b68464a307e46577e32ce7858383361",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-07-kie-integration.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-07-kie-integration.md"
       },
       {
         "digest": "6e8d195b92baa522ede0b569a0d800a153bc083bb8f08453300605fabb6be4b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-08-media-pipeline.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-08-media-pipeline.md"
       },
       {
         "digest": "661a319f8055325dbacc616ff2d452b0038e64ed7ca081c379710f7463f61763",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-09-r2-storage.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-09-r2-storage.md"
       },
       {
         "digest": "bf8c42d4ff4fcc575cedce2450cf28dee2033f4d21e83fb1cd0d13514ffe7f3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-10-redis-ratelimit.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-10-redis-ratelimit.md"
       },
       {
         "digest": "6a9439d050676f1c73ed8f817895b268eddf065a3a09963aab5f2be6d92d2ade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-11-video-pipeline.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-11-video-pipeline.md"
       },
       {
         "digest": "f35931f55272747f8784493a6f279d915eedd1691520f077400f75ff2baf97b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-12-vectorize.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-12-vectorize.md"
       },
       {
         "digest": "0250b154a6949b74a6d8e17f98cae6f4fc2425f2f65cbe48bad4f7d4b4370fbd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-13-sentry.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-13-sentry.md"
       },
       {
         "digest": "b437639fa1da37396b909a4ea42fa0be63d20c8deb97eac62c2b4a545d1276e9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-14-posthog.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-14-posthog.md"
       },
       {
         "digest": "fef207614c1c3c079e0be0099d6c2c6630309425cfe13e75606846bbd58a073b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-15-admin-dashboard.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-15-admin-dashboard.md"
       },
       {
         "digest": "8fb5debc83463849b56598e62e26739925256e466be7af70eeb0074dd6378de5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-16-cloud-monitoring.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-16-cloud-monitoring.md"
       },
       {
         "digest": "1063453ab0367cafa831c394f55ae4b3597af0649411ca190d593e7781e32895",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-17-cicd.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-17-cicd.md"
       },
       {
         "digest": "a60eb1c69c5224a8d112d978bb4078ce21fb7515cc135595121511a067a69c44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-18-auth-hardening.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-18-auth-hardening.md"
       },
       {
         "digest": "f6be2757343390cd12eac4fbeb464f55eb1cdb0d1e2ae343e12ce3d7cfe2f386",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-19-load-testing.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-19-load-testing.md"
       },
       {
         "digest": "5222a8c39170cf6be7dda003652fe0a2d66b9bcfe634d9af8dc1e2ddb79af9d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/011-DeployPlan/sections/section-20-prod-hardening.md"
+        "path": "specs/feature/011-DeployPlan/sections/section-20-prod-hardening.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -1246,7 +1246,7 @@
     "unresolved": 25
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.411856Z",
+  "updated_at": "2026-10-06T03:28:14.653859Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -17,97 +17,97 @@
       {
         "digest": "f76ca053c9bec8a7f000e39545c46695f4f4e8323b549a05c8e8dc52e60260d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/claude-plan.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/claude-plan.md"
       },
       {
         "digest": "d179ba524cc512e2910be6fdbb7a4453661607972e6af6d13bda472f1c9cff14",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/claude-spec.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/claude-spec.md"
       },
       {
         "digest": "3344f5194b1fbec81f5f6106a71335dca1a2e3d5a134ea6ff209cd51a8980e68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/deep_implement_config.json"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/deep_implement_config.json"
       },
       {
         "digest": "6850e9f05664d3465c10b015150eef03805e608c48d5bcf19dd0f84191f166f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-1.md"
       },
       {
         "digest": "3b3dc0e9e052efb26a41d3075a3f301e7d4d4a539ff1c839f859b248c0b44884",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-2.md"
       },
       {
         "digest": "afe00fbed60695f2ac8ae173ff9ad99a6579fb17194cdf3e3b64186b1eb155c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-3.md"
       },
       {
         "digest": "147527ed92f580debd0d68b434f4dccdbbe7f28a5c53be7b604515168eff812a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-4.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-4.md"
       },
       {
         "digest": "29adcc326e42dc50a89c0e28cce84672d31c41b5ce48f325d5d4dcade8626fe9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-5.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-5.md"
       },
       {
         "digest": "768e364eea6ac104c62e0b9feb09162d31c9b7cc4fe88be58e30ac850783f571",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-6.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-6.md"
       },
       {
         "digest": "2baa93ca1d52ff299f3263dddd8b77c2fd7aa966d9ca6260a02b3abd9a837947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-7.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-7.md"
       },
       {
         "digest": "d4adc535d09fb0c3e3208b55d8b7ffae68460d3fc4643457d570edd5734a2b82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/section-status.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/section-status.md"
       },
       {
         "digest": "b37cf50854bbe1bbad0b196c03671637bb64f114009f1655be7465350cff480e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "ddc5e6143ec398b57904212c083817526c264b9664d5b31b194ef71391396bf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-2.md"
       },
       {
         "digest": "ae9d63000143ec14cb066e5b0dd3aada63c7efc2f8f60bc4c7bcdbf40704cbdf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-3.md"
       },
       {
         "digest": "d210edde22ede60da6918e7a3853a237f8c7bb7a3220b4b48c7482796464e58d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-4.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-4.md"
       },
       {
         "digest": "370f61ca80fc170524f7ed186a57cec05078353c5493be99c1febafa45558beb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-5.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-5.md"
       },
       {
         "digest": "9a21a94c9689cf329dd0b283b495b0456a0205e15d33a54e0c8733e9952201ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-1.md"
       },
       {
         "digest": "686d7967a36146b437337605b35dd214cd081567b1e9f12cf61bba5ddbe84037",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-2.md"
       },
       {
         "digest": "e424aee176d48abc79b8b22f62c9b9a6236508e443edc99e53269b2f8afe0fb9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-3.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "f76ca053c9bec8a7f000e39545c46695f4f4e8323b549a05c8e8dc52e60260d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/claude-plan.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/claude-plan.md"
       },
       {
         "digest": "d179ba524cc512e2910be6fdbb7a4453661607972e6af6d13bda472f1c9cff14",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/claude-spec.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/claude-spec.md"
       },
       {
         "digest": "3344f5194b1fbec81f5f6106a71335dca1a2e3d5a134ea6ff209cd51a8980e68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/deep_implement_config.json"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/deep_implement_config.json"
       },
       {
         "digest": "6850e9f05664d3465c10b015150eef03805e608c48d5bcf19dd0f84191f166f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-1.md"
       },
       {
         "digest": "3b3dc0e9e052efb26a41d3075a3f301e7d4d4a539ff1c839f859b248c0b44884",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-2.md"
       },
       {
         "digest": "afe00fbed60695f2ac8ae173ff9ad99a6579fb17194cdf3e3b64186b1eb155c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-3.md"
       },
       {
         "digest": "147527ed92f580debd0d68b434f4dccdbbe7f28a5c53be7b604515168eff812a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-4.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-4.md"
       },
       {
         "digest": "29adcc326e42dc50a89c0e28cce84672d31c41b5ce48f325d5d4dcade8626fe9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-5.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-5.md"
       },
       {
         "digest": "768e364eea6ac104c62e0b9feb09162d31c9b7cc4fe88be58e30ac850783f571",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-6.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-6.md"
       },
       {
         "digest": "2baa93ca1d52ff299f3263dddd8b77c2fd7aa966d9ca6260a02b3abd9a837947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-7.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-7.md"
       },
       {
         "digest": "d4adc535d09fb0c3e3208b55d8b7ffae68460d3fc4643457d570edd5734a2b82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/section-status.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/section-status.md"
       },
       {
         "digest": "b37cf50854bbe1bbad0b196c03671637bb64f114009f1655be7465350cff480e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "ddc5e6143ec398b57904212c083817526c264b9664d5b31b194ef71391396bf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-2.md"
       },
       {
         "digest": "ae9d63000143ec14cb066e5b0dd3aada63c7efc2f8f60bc4c7bcdbf40704cbdf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-3.md"
       },
       {
         "digest": "d210edde22ede60da6918e7a3853a237f8c7bb7a3220b4b48c7482796464e58d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-4.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-4.md"
       },
       {
         "digest": "370f61ca80fc170524f7ed186a57cec05078353c5493be99c1febafa45558beb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-5.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-5.md"
       },
       {
         "digest": "9a21a94c9689cf329dd0b283b495b0456a0205e15d33a54e0c8733e9952201ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-1.md"
       },
       {
         "digest": "686d7967a36146b437337605b35dd214cd081567b1e9f12cf61bba5ddbe84037",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-2.md"
       },
       {
         "digest": "e424aee176d48abc79b8b22f62c9b9a6236508e443edc99e53269b2f8afe0fb9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-3.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "f76ca053c9bec8a7f000e39545c46695f4f4e8323b549a05c8e8dc52e60260d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/claude-plan.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/claude-plan.md"
       },
       {
         "digest": "d179ba524cc512e2910be6fdbb7a4453661607972e6af6d13bda472f1c9cff14",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/claude-spec.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/claude-spec.md"
       },
       {
         "digest": "3344f5194b1fbec81f5f6106a71335dca1a2e3d5a134ea6ff209cd51a8980e68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/deep_implement_config.json"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/deep_implement_config.json"
       },
       {
         "digest": "6850e9f05664d3465c10b015150eef03805e608c48d5bcf19dd0f84191f166f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-1.md"
       },
       {
         "digest": "3b3dc0e9e052efb26a41d3075a3f301e7d4d4a539ff1c839f859b248c0b44884",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-2.md"
       },
       {
         "digest": "afe00fbed60695f2ac8ae173ff9ad99a6579fb17194cdf3e3b64186b1eb155c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-3.md"
       },
       {
         "digest": "147527ed92f580debd0d68b434f4dccdbbe7f28a5c53be7b604515168eff812a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-4.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-4.md"
       },
       {
         "digest": "29adcc326e42dc50a89c0e28cce84672d31c41b5ce48f325d5d4dcade8626fe9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-5.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-5.md"
       },
       {
         "digest": "768e364eea6ac104c62e0b9feb09162d31c9b7cc4fe88be58e30ac850783f571",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-6.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-6.md"
       },
       {
         "digest": "2baa93ca1d52ff299f3263dddd8b77c2fd7aa966d9ca6260a02b3abd9a837947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-7.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-7.md"
       },
       {
         "digest": "d4adc535d09fb0c3e3208b55d8b7ffae68460d3fc4643457d570edd5734a2b82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/section-status.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/section-status.md"
       },
       {
         "digest": "b37cf50854bbe1bbad0b196c03671637bb64f114009f1655be7465350cff480e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "ddc5e6143ec398b57904212c083817526c264b9664d5b31b194ef71391396bf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-2.md"
       },
       {
         "digest": "ae9d63000143ec14cb066e5b0dd3aada63c7efc2f8f60bc4c7bcdbf40704cbdf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-3.md"
       },
       {
         "digest": "d210edde22ede60da6918e7a3853a237f8c7bb7a3220b4b48c7482796464e58d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-4.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-4.md"
       },
       {
         "digest": "370f61ca80fc170524f7ed186a57cec05078353c5493be99c1febafa45558beb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-5.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-5.md"
       },
       {
         "digest": "9a21a94c9689cf329dd0b283b495b0456a0205e15d33a54e0c8733e9952201ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-1.md"
       },
       {
         "digest": "686d7967a36146b437337605b35dd214cd081567b1e9f12cf61bba5ddbe84037",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-2.md"
       },
       {
         "digest": "e424aee176d48abc79b8b22f62c9b9a6236508e443edc99e53269b2f8afe0fb9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-3.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/165-worker-comfyui-mcp-control/spec.md",
     "digest": "e88be316d6efea722a6572f64441e4bf0d6331ee82013dc320533ef9267f2dc0",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.454433Z",
+      "last_evidence_at": "2026-10-06T03:28:16.453637Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-30T21:05:27+07:00",
       "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.454433Z"
+    "updated_at": "2026-10-06T03:28:16.453637Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.454433Z",
+    "reconciled_at": "2026-10-06T03:28:16.453637Z",
     "sources": [
       {
         "digest": "e88be316d6efea722a6572f64441e4bf0d6331ee82013dc320533ef9267f2dc0",
@@ -409,152 +409,152 @@
       {
         "digest": "f76ca053c9bec8a7f000e39545c46695f4f4e8323b549a05c8e8dc52e60260d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/claude-plan.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/claude-plan.md"
       },
       {
         "digest": "d179ba524cc512e2910be6fdbb7a4453661607972e6af6d13bda472f1c9cff14",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/claude-spec.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/claude-spec.md"
       },
       {
         "digest": "3344f5194b1fbec81f5f6106a71335dca1a2e3d5a134ea6ff209cd51a8980e68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/deep_implement_config.json"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/deep_implement_config.json"
       },
       {
         "digest": "6850e9f05664d3465c10b015150eef03805e608c48d5bcf19dd0f84191f166f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-1.md"
       },
       {
         "digest": "3b3dc0e9e052efb26a41d3075a3f301e7d4d4a539ff1c839f859b248c0b44884",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-2.md"
       },
       {
         "digest": "afe00fbed60695f2ac8ae173ff9ad99a6579fb17194cdf3e3b64186b1eb155c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-3.md"
       },
       {
         "digest": "147527ed92f580debd0d68b434f4dccdbbe7f28a5c53be7b604515168eff812a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-4.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-4.md"
       },
       {
         "digest": "29adcc326e42dc50a89c0e28cce84672d31c41b5ce48f325d5d4dcade8626fe9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-5.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-5.md"
       },
       {
         "digest": "768e364eea6ac104c62e0b9feb09162d31c9b7cc4fe88be58e30ac850783f571",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-6.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-6.md"
       },
       {
         "digest": "2baa93ca1d52ff299f3263dddd8b77c2fd7aa966d9ca6260a02b3abd9a837947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-7.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-7.md"
       },
       {
         "digest": "d4adc535d09fb0c3e3208b55d8b7ffae68460d3fc4643457d570edd5734a2b82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/section-status.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/section-status.md"
       },
       {
         "digest": "b37cf50854bbe1bbad0b196c03671637bb64f114009f1655be7465350cff480e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "ddc5e6143ec398b57904212c083817526c264b9664d5b31b194ef71391396bf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-2.md"
       },
       {
         "digest": "ae9d63000143ec14cb066e5b0dd3aada63c7efc2f8f60bc4c7bcdbf40704cbdf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-3.md"
       },
       {
         "digest": "d210edde22ede60da6918e7a3853a237f8c7bb7a3220b4b48c7482796464e58d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-4.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-4.md"
       },
       {
         "digest": "370f61ca80fc170524f7ed186a57cec05078353c5493be99c1febafa45558beb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-5.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-5.md"
       },
       {
         "digest": "9a21a94c9689cf329dd0b283b495b0456a0205e15d33a54e0c8733e9952201ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-1.md"
       },
       {
         "digest": "686d7967a36146b437337605b35dd214cd081567b1e9f12cf61bba5ddbe84037",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-2.md"
       },
       {
         "digest": "e424aee176d48abc79b8b22f62c9b9a6236508e443edc99e53269b2f8afe0fb9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-3.md"
       },
       {
         "digest": "5ffc5f526abed44d3161f1848b59b767b19ad592e4ca15a9f444e94fe54e558c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/spec-completeness-round-8.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/spec-completeness-round-8.md"
       },
       {
         "digest": "1242bdc6dddd8a2e640f983c831d1d4b41896b537b9eaf6d6829171e7b32a983",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/index.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/index.md"
       },
       {
         "digest": "dbf150b2585d894d19aa4a1daa9bf0c38671fd3f06ecd517b01666bf2623cfb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-01-contracts-and-safe-migration.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-01-contracts-and-safe-migration.md"
       },
       {
         "digest": "03ba2d086dbf2316978c259274885859249cd5fa24dbfd5f685df79452df96ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-02-native-profiles-and-mcp-transports.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-02-native-profiles-and-mcp-transports.md"
       },
       {
         "digest": "9925da39f1bb83b8516b4f2b440a41d46aa39b7745fc81cebf3678f991c6684d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-03-capability-and-workflow-resolution.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-03-capability-and-workflow-resolution.md"
       },
       {
         "digest": "94154ffb2ab77218937b67bd8d21f15a4acc87b4d0e0972aa98b131ebc4181c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-04-server-policy-and-comfy-jobs.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-04-server-policy-and-comfy-jobs.md"
       },
       {
         "digest": "f1586c4ef9c77d0b9a2a6bfbce6591897d4f75d89fc832b4bb9049039880fcf9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-05-worker-execution-and-recovery.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-05-worker-execution-and-recovery.md"
       },
       {
         "digest": "38eec41ba9ec21e9acd0e728f0677b3e477425963571455f0e9053bb2b907243",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-06-shared-job-projection.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-06-shared-job-projection.md"
       },
       {
         "digest": "a229d2a283ffa08cfa07859656e1bf22707efb2e2b1fbdfa1c8a2cba0a86dd7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-07-worker-comfy-ui-and-overview.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-07-worker-comfy-ui-and-overview.md"
       },
       {
         "digest": "a299d07adc810407cf2bb15f80cd646fda53a17d9c386b6e263a28de2625900b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-08-series-shot-web-ui.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-08-series-shot-web-ui.md"
       },
       {
         "digest": "6b09dfeea5fc2ef2ada52abb5fb1f4f4ea964c2acb711c3ecf44104ddac2c0ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-09-integration-packaging-and-release.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-09-integration-packaging-and-release.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -604,152 +604,152 @@
       {
         "digest": "f76ca053c9bec8a7f000e39545c46695f4f4e8323b549a05c8e8dc52e60260d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/claude-plan.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/claude-plan.md"
       },
       {
         "digest": "d179ba524cc512e2910be6fdbb7a4453661607972e6af6d13bda472f1c9cff14",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/claude-spec.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/claude-spec.md"
       },
       {
         "digest": "3344f5194b1fbec81f5f6106a71335dca1a2e3d5a134ea6ff209cd51a8980e68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/deep_implement_config.json"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/deep_implement_config.json"
       },
       {
         "digest": "6850e9f05664d3465c10b015150eef03805e608c48d5bcf19dd0f84191f166f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-1.md"
       },
       {
         "digest": "3b3dc0e9e052efb26a41d3075a3f301e7d4d4a539ff1c839f859b248c0b44884",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-2.md"
       },
       {
         "digest": "afe00fbed60695f2ac8ae173ff9ad99a6579fb17194cdf3e3b64186b1eb155c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-3.md"
       },
       {
         "digest": "147527ed92f580debd0d68b434f4dccdbbe7f28a5c53be7b604515168eff812a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-4.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-4.md"
       },
       {
         "digest": "29adcc326e42dc50a89c0e28cce84672d31c41b5ce48f325d5d4dcade8626fe9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-5.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-5.md"
       },
       {
         "digest": "768e364eea6ac104c62e0b9feb09162d31c9b7cc4fe88be58e30ac850783f571",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-6.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-6.md"
       },
       {
         "digest": "2baa93ca1d52ff299f3263dddd8b77c2fd7aa966d9ca6260a02b3abd9a837947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-7.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/review-round-7.md"
       },
       {
         "digest": "d4adc535d09fb0c3e3208b55d8b7ffae68460d3fc4643457d570edd5734a2b82",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/implementation/section-status.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/implementation/section-status.md"
       },
       {
         "digest": "b37cf50854bbe1bbad0b196c03671637bb64f114009f1655be7465350cff480e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "ddc5e6143ec398b57904212c083817526c264b9664d5b31b194ef71391396bf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-2.md"
       },
       {
         "digest": "ae9d63000143ec14cb066e5b0dd3aada63c7efc2f8f60bc4c7bcdbf40704cbdf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-3.md"
       },
       {
         "digest": "d210edde22ede60da6918e7a3853a237f8c7bb7a3220b4b48c7482796464e58d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-4.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-4.md"
       },
       {
         "digest": "370f61ca80fc170524f7ed186a57cec05078353c5493be99c1febafa45558beb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-5.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/plan-self-review-round-5.md"
       },
       {
         "digest": "9a21a94c9689cf329dd0b283b495b0456a0205e15d33a54e0c8733e9952201ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-1.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-1.md"
       },
       {
         "digest": "686d7967a36146b437337605b35dd214cd081567b1e9f12cf61bba5ddbe84037",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-2.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-2.md"
       },
       {
         "digest": "e424aee176d48abc79b8b22f62c9b9a6236508e443edc99e53269b2f8afe0fb9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-3.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/section-cross-review-round-3.md"
       },
       {
         "digest": "5ffc5f526abed44d3161f1848b59b767b19ad592e4ca15a9f444e94fe54e558c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/reviews/spec-completeness-round-8.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/reviews/spec-completeness-round-8.md"
       },
       {
         "digest": "1242bdc6dddd8a2e640f983c831d1d4b41896b537b9eaf6d6829171e7b32a983",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/index.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/index.md"
       },
       {
         "digest": "dbf150b2585d894d19aa4a1daa9bf0c38671fd3f06ecd517b01666bf2623cfb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-01-contracts-and-safe-migration.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-01-contracts-and-safe-migration.md"
       },
       {
         "digest": "03ba2d086dbf2316978c259274885859249cd5fa24dbfd5f685df79452df96ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-02-native-profiles-and-mcp-transports.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-02-native-profiles-and-mcp-transports.md"
       },
       {
         "digest": "9925da39f1bb83b8516b4f2b440a41d46aa39b7745fc81cebf3678f991c6684d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-03-capability-and-workflow-resolution.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-03-capability-and-workflow-resolution.md"
       },
       {
         "digest": "94154ffb2ab77218937b67bd8d21f15a4acc87b4d0e0972aa98b131ebc4181c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-04-server-policy-and-comfy-jobs.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-04-server-policy-and-comfy-jobs.md"
       },
       {
         "digest": "f1586c4ef9c77d0b9a2a6bfbce6591897d4f75d89fc832b4bb9049039880fcf9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-05-worker-execution-and-recovery.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-05-worker-execution-and-recovery.md"
       },
       {
         "digest": "38eec41ba9ec21e9acd0e728f0677b3e477425963571455f0e9053bb2b907243",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-06-shared-job-projection.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-06-shared-job-projection.md"
       },
       {
         "digest": "a229d2a283ffa08cfa07859656e1bf22707efb2e2b1fbdfa1c8a2cba0a86dd7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-07-worker-comfy-ui-and-overview.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-07-worker-comfy-ui-and-overview.md"
       },
       {
         "digest": "a299d07adc810407cf2bb15f80cd646fda53a17d9c386b6e263a28de2625900b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-08-series-shot-web-ui.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-08-series-shot-web-ui.md"
       },
       {
         "digest": "6b09dfeea5fc2ef2ada52abb5fb1f4f4ea964c2acb711c3ecf44104ddac2c0ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/sections/section-09-integration-packaging-and-release.md"
+        "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-09-integration-packaging-and-release.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -767,7 +767,7 @@
     "unresolved": 184
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.454433Z",
+  "updated_at": "2026-10-06T03:28:16.453637Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -17,42 +17,42 @@
       {
         "digest": "82e4615ff096859be3f19b376b7be7c9b9bf50ee67c87881dcfeb7fbd7ebf217",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
       },
       {
         "digest": "607289c7bd865dd1d11b6ee03d2d7a00e4e8ab45e6b617de60ef25bb080fe947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
       },
       {
         "digest": "44e9f6e4965fa0b50cd0681bbdbf3a89904497013857e7fe4ff4b6e7d265850d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
       },
       {
         "digest": "b55811b2173cf8e44a41bdad7fda5eea085c88f717a8ad48284afd506e0489ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
       },
       {
         "digest": "a4445231fdaff5312a37d258b11498815569391a7492298f22d1c6c500f432ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
       },
       {
         "digest": "b6b80d3128b607a0836a7ddd939fd294c9aed053897995c7f1df902cb86a66f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
       },
       {
         "digest": "d083adf750bf8546621336a8303f01d60c27783853b611b5c32eb1805c4bbca8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
       },
       {
         "digest": "0128b88b605c7585237b2a2c69f95f05299af6cda3798f065a6b1e7b61877ffd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
       }
     ],
     "predecessors": [],
@@ -83,42 +83,42 @@
       {
         "digest": "82e4615ff096859be3f19b376b7be7c9b9bf50ee67c87881dcfeb7fbd7ebf217",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
       },
       {
         "digest": "607289c7bd865dd1d11b6ee03d2d7a00e4e8ab45e6b617de60ef25bb080fe947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
       },
       {
         "digest": "44e9f6e4965fa0b50cd0681bbdbf3a89904497013857e7fe4ff4b6e7d265850d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
       },
       {
         "digest": "b55811b2173cf8e44a41bdad7fda5eea085c88f717a8ad48284afd506e0489ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
       },
       {
         "digest": "a4445231fdaff5312a37d258b11498815569391a7492298f22d1c6c500f432ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
       },
       {
         "digest": "b6b80d3128b607a0836a7ddd939fd294c9aed053897995c7f1df902cb86a66f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
       },
       {
         "digest": "d083adf750bf8546621336a8303f01d60c27783853b611b5c32eb1805c4bbca8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
       },
       {
         "digest": "0128b88b605c7585237b2a2c69f95f05299af6cda3798f065a6b1e7b61877ffd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -150,54 +150,54 @@
       {
         "digest": "82e4615ff096859be3f19b376b7be7c9b9bf50ee67c87881dcfeb7fbd7ebf217",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
       },
       {
         "digest": "607289c7bd865dd1d11b6ee03d2d7a00e4e8ab45e6b617de60ef25bb080fe947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
       },
       {
         "digest": "44e9f6e4965fa0b50cd0681bbdbf3a89904497013857e7fe4ff4b6e7d265850d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
       },
       {
         "digest": "b55811b2173cf8e44a41bdad7fda5eea085c88f717a8ad48284afd506e0489ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
       },
       {
         "digest": "a4445231fdaff5312a37d258b11498815569391a7492298f22d1c6c500f432ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
       },
       {
         "digest": "b6b80d3128b607a0836a7ddd939fd294c9aed053897995c7f1df902cb86a66f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
       },
       {
         "digest": "d083adf750bf8546621336a8303f01d60c27783853b611b5c32eb1805c4bbca8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
       },
       {
         "digest": "0128b88b605c7585237b2a2c69f95f05299af6cda3798f065a6b1e7b61877ffd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md",
     "digest": "dd29476cbd74d1d456f4470def4c17f3a7a9adc14274105bdc313d66f3664a16",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.753703Z",
+      "last_evidence_at": "2026-10-06T03:28:15.142181Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-08T19:58:29+07:00",
       "spec_last_changed_at": "2026-04-08T19:58:29+07:00"
@@ -224,7 +224,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.753703Z"
+    "updated_at": "2026-10-06T03:28:15.142181Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -234,7 +234,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.753703Z",
+    "reconciled_at": "2026-10-06T03:28:15.142181Z",
     "sources": [
       {
         "digest": "dd29476cbd74d1d456f4470def4c17f3a7a9adc14274105bdc313d66f3664a16",
@@ -244,42 +244,42 @@
       {
         "digest": "82e4615ff096859be3f19b376b7be7c9b9bf50ee67c87881dcfeb7fbd7ebf217",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
       },
       {
         "digest": "607289c7bd865dd1d11b6ee03d2d7a00e4e8ab45e6b617de60ef25bb080fe947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
       },
       {
         "digest": "44e9f6e4965fa0b50cd0681bbdbf3a89904497013857e7fe4ff4b6e7d265850d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
       },
       {
         "digest": "b55811b2173cf8e44a41bdad7fda5eea085c88f717a8ad48284afd506e0489ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
       },
       {
         "digest": "a4445231fdaff5312a37d258b11498815569391a7492298f22d1c6c500f432ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
       },
       {
         "digest": "b6b80d3128b607a0836a7ddd939fd294c9aed053897995c7f1df902cb86a66f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
       },
       {
         "digest": "d083adf750bf8546621336a8303f01d60c27783853b611b5c32eb1805c4bbca8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
       },
       {
         "digest": "0128b88b605c7585237b2a2c69f95f05299af6cda3798f065a6b1e7b61877ffd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -329,42 +329,42 @@
       {
         "digest": "82e4615ff096859be3f19b376b7be7c9b9bf50ee67c87881dcfeb7fbd7ebf217",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/implementation/deep_implement_config.json"
       },
       {
         "digest": "607289c7bd865dd1d11b6ee03d2d7a00e4e8ab45e6b617de60ef25bb080fe947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/reviews/self-review-round-1.md"
       },
       {
         "digest": "44e9f6e4965fa0b50cd0681bbdbf3a89904497013857e7fe4ff4b6e7d265850d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/index.md"
       },
       {
         "digest": "b55811b2173cf8e44a41bdad7fda5eea085c88f717a8ad48284afd506e0489ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-01-provider-template-and-admin-catalog.md"
       },
       {
         "digest": "a4445231fdaff5312a37d258b11498815569391a7492298f22d1c6c500f432ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-02-llm-request-config-contract.md"
       },
       {
         "digest": "b6b80d3128b607a0836a7ddd939fd294c9aed053897995c7f1df902cb86a66f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-03-kie-endpoint-routing-and-request-shapes.md"
       },
       {
         "digest": "d083adf750bf8546621336a8303f01d60c27783853b611b5c32eb1805c4bbca8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-04-model-catalog-mappings-and-capabilities.md"
       },
       {
         "digest": "0128b88b605c7585237b2a2c69f95f05299af6cda3798f065a6b1e7b61877ffd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
+        "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -382,7 +382,7 @@
     "unresolved": 55
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.753703Z",
+  "updated_at": "2026-10-06T03:28:15.142181Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

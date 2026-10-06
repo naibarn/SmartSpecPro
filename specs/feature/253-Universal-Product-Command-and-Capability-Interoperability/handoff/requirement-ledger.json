@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L29"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L29"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L29",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L63"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L63"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L63",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L63",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L81"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L81"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L81",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L83"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L83"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L83",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L92"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L92"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L92",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L119"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L119"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L119",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L125"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L125"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L125",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L133"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L133",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L152"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L152"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L152",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L153"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L153"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L153",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L154"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L154"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L154",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L155"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L155"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L155",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L156"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L156"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L156",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L157"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L157"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L157",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L158"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L158"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L158",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L159"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L159"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L159",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L168"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L168"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L168",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L190"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L190"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L190",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L196"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L196"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L196",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L196",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L198"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L198"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L198",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L202"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L202"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L202",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L202",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L206"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L206"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L206",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L220"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L220"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L220",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L220",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L222"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L222"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L222",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L222",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L249"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L249"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L249",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L251"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L251"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L251",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L257"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L257"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L257",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L263"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L263"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L263",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L263",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L271"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L271"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L271",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L277"
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L277"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L277",
+      "authority_source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

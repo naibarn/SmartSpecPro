@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/008-tests-and-validators/spec.md#L60"
+        "specs/feature/008-tests-and-validators/spec.md#L60"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/008-tests-and-validators/spec.md#L60",
+      "authority_source": "specs/feature/008-tests-and-validators/spec.md#L60",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/008-tests-and-validators/spec.md#L61"
+        "specs/feature/008-tests-and-validators/spec.md#L61"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/008-tests-and-validators/spec.md#L61",
+      "authority_source": "specs/feature/008-tests-and-validators/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/008-tests-and-validators/spec.md#L62"
+        "specs/feature/008-tests-and-validators/spec.md#L62"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/008-tests-and-validators/spec.md#L62",
+      "authority_source": "specs/feature/008-tests-and-validators/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

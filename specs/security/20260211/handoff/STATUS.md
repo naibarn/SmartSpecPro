@@ -6,4 +6,4 @@
 - Continuation: `VALIDATION_ONLY` (MEDIUM)
 - Requirements: 4 pass / 3 unresolved of 7
 - Next action: Complete focused editor insertion verification and rerun normalized external URL validation with deterministic DNS fixtures.
-- Manifest generation: 17
+- Manifest generation: 18

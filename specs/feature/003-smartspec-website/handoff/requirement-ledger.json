@@ -4,7 +4,7 @@
   "requirements": [
     {
       "applicability": "UNASSESSED",
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/003-smartspec-website/spec.md",
+      "authority_source": "specs/feature/003-smartspec-website/spec.md",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

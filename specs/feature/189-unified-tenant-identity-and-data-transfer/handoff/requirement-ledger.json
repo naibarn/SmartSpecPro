@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L6"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L6"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L6",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L6",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L26"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L26"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L26",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L26",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L27"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L27"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L27",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L27",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L29"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L29"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L29",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L31"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L31"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L31",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L32"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L32"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L32",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L32",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L33"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L33"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L33",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L33",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L34"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L34"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L34",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L34",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L36"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L36"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L36",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L36",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L38"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L38"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L38",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L38",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L39"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L39"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L39",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L39",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L41"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L41"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L41",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L41",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L60"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L60"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L60",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L60",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L62"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L62"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L62",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L74"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L74"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L74",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L93"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L93"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L93",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L93",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L96"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L96"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L96",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L100"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L100"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L100",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L110"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L110"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L110",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L111"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L111"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L111",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L117"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L117"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L117",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L120"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L120"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L120",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L120",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L122"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L122"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L122",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L126"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L126"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L126",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L129"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L129"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L129",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L132"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L132"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L132",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L138"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L138"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L138",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L142"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L142"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L142",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L146"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L146"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L146",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L152"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L152"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L152",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L156"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L156"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L156",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L190"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L190"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L190",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L198"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L198"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L198",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L202"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L202"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L202",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L202",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L203"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L203"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L203",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L203",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L217"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L217"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L217",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L218"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L218"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L218",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L221"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L221"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L221",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L245"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L245"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L245",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L250"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L250"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L250",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L288"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L288"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L288",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L293"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L293"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L293",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L310"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L310"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L310",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L321"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L321"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L321",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L321",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L359"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L359"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L359",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L359",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L383"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L383"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L383",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L418"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L418"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L418",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L418",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L460"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L460"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L460",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L460",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L510"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L510"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L510",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L510",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L526"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L526"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L526",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L527"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L527"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L527",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L539"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L539"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L539",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L539",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L547"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L547"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L547",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L547",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L556"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L556"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L556",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L556",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L590"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L590"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L590",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L590",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L604"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L604"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L604",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L604",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L651"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L651"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L651",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L651",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L652"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L652"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L652",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L653"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L653"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L653",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L655"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L655"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L655",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L655",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L656"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L656"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L656",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L656",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L658"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L658"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L658",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L659"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L659"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L659",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L659",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L660"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L660"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L660",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L660",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L663"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L663"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L663",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L663",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L664"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L664"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L664",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L664",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L666"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L666"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L666",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L667"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L667"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L667",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L667",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L668"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L668"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L668",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L668",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L669"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L669"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L669",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L671"
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L671"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L671",
+      "authority_source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md#L671",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

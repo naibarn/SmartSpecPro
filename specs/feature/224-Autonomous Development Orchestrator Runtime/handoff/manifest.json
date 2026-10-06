@@ -14,7 +14,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L185",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L185",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2893",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2893",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "224",
         "relation_text": "supersedes",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12267",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12267",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replaceable",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2894",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2894",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -86,7 +86,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8683",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8683",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -98,7 +98,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10797",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10797",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -110,7 +110,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2895",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2895",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -122,7 +122,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replaces",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L11375",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L11375",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -134,7 +134,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L104",
+        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L104",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       },
@@ -146,7 +146,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
+        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       },
@@ -158,7 +158,7 @@
         "referencing_spec_id": "228",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md#L5200",
+        "source": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md#L5200",
         "source_digest": "a510bff188def12c2c8cb84ce1e94c1fb6648945119c4914638ad8630f28d616",
         "successor_spec_id": "228"
       },
@@ -174,7 +174,7 @@
           "R2",
           "R2.1"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
+        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
         "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
         "successor_spec_id": "232"
       },
@@ -191,7 +191,7 @@
           "R20",
           "R21"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1275",
+        "source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1275",
         "source_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
         "successor_spec_id": "233"
       },
@@ -203,7 +203,7 @@
         "referencing_spec_id": "234",
         "relation_text": "supersedes",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L223",
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L223",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -217,7 +217,7 @@
         "requirement_ids": [
           "R20-PRODUCT-EVOLUTION-HANDOFF-ALIGNMENT.MD"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L168",
+        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L168",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": "235"
       },
@@ -232,7 +232,7 @@
           "R1",
           "R2"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L174",
+        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L174",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": "235"
       },
@@ -248,7 +248,7 @@
           "R1.1",
           "R2.0"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L15",
+        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L15",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -262,7 +262,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -278,7 +278,7 @@
           "R2",
           "R20"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L88",
+        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L88",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -290,7 +290,7 @@
         "referencing_spec_id": "240",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -302,7 +302,7 @@
         "referencing_spec_id": "242",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L88",
+        "source": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L88",
         "source_digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
         "successor_spec_id": "242"
       },
@@ -314,7 +314,7 @@
         "referencing_spec_id": "243",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1893",
+        "source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1893",
         "source_digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
         "successor_spec_id": "243"
       },
@@ -332,7 +332,7 @@
           "R5-01",
           "R5-15"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       },
@@ -347,7 +347,7 @@
           "R1",
           "R2"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L88",
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L88",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       },
@@ -362,7 +362,7 @@
           "R1.1",
           "R1.2"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L16",
+        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L16",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       },
@@ -376,7 +376,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L502",
+        "source": "specs/feature/248-MCP Skills Extension/spec.md#L502",
         "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
         "successor_spec_id": "248"
       },
@@ -388,7 +388,7 @@
         "referencing_spec_id": "250",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1092",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L1092",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -400,7 +400,7 @@
         "referencing_spec_id": "250",
         "relation_text": "superseding",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1366",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L1366",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -412,7 +412,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -424,7 +424,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1528",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L1528",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -440,7 +440,7 @@
           "R0.7",
           "R1.3"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L19",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L19",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -456,7 +456,7 @@
           "R0.5",
           "R0.6"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L23",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L23",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -473,7 +473,7 @@
           "R0.4",
           "R0.5"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L27",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L27",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -487,7 +487,7 @@
         "requirement_ids": [
           "R0.4"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L30",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L30",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -501,7 +501,7 @@
         "requirement_ids": [
           "R0.8"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L40",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L40",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -513,7 +513,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L489",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L489",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -525,7 +525,7 @@
         "referencing_spec_id": "250",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L533",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L533",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -539,7 +539,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
+        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
         "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
         "successor_spec_id": "252"
       },
@@ -553,7 +553,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L261",
+        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L261",
         "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
         "successor_spec_id": "252"
       },
@@ -565,7 +565,7 @@
         "referencing_spec_id": "254",
         "relation_text": "merging",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L341",
+        "source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L341",
         "source_digest": "2119f2c178a34009653a17dddded659d1bd25d0a6bc7b71dd545104009933b58",
         "successor_spec_id": "254"
       },
@@ -577,7 +577,7 @@
         "referencing_spec_id": "261",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L143",
+        "source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L143",
         "source_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
         "successor_spec_id": "261"
       },
@@ -589,9 +589,47 @@
         "referencing_spec_id": "261",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L2813",
+        "source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L2813",
         "source_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
         "successor_spec_id": "261"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "271",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L104",
+        "source_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
+        "successor_spec_id": "271"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "276",
+        "relation_text": "replacement",
+        "requirement_ids": [
+          "R2"
+        ],
+        "source": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md#L10",
+        "source_digest": "7ffdd84c990ae6353bc95e3c8710153a54e653633ab6454c8fbf67e681c828a0",
+        "successor_spec_id": "276"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "277",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/277-task-control-experience-r1-6/spec.md#L298",
+        "source_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "successor_spec_id": "277"
       },
       {
         "confidence": "LOW",
@@ -601,9 +639,33 @@
         "referencing_spec_id": "278",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L188",
+        "source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L188",
         "source_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
         "successor_spec_id": "278"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "279",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md#L2442",
+        "source_digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+        "successor_spec_id": "279"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "280",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md#L446",
+        "source_digest": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30",
+        "successor_spec_id": "280"
       },
       {
         "confidence": "LOW",
@@ -613,7 +675,7 @@
         "referencing_spec_id": "282",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L110",
+        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L110",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       },
@@ -625,7 +687,7 @@
         "referencing_spec_id": "282",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L119",
+        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L119",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       },
@@ -637,7 +699,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -649,7 +711,7 @@
         "referencing_spec_id": "224",
         "relation_text": "merging",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14794",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14794",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -661,7 +723,7 @@
         "referencing_spec_id": "224",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14861",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14861",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -673,7 +735,7 @@
         "referencing_spec_id": "224",
         "relation_text": "absorbing",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15001",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15001",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -685,7 +747,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replaceable",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -697,7 +759,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2896",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2896",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       }
@@ -907,18 +969,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 9,
+  "generation": 11,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.195945Z",
+      "last_evidence_at": "2026-10-06T03:28:17.742409Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-10-04T09:53:19+07:00"
     },
-    "revision": "17",
+    "revision": "21",
     "slug": "224-Autonomous Development Orchestrator Runtime",
     "spec_id": "224",
     "title": "Spec 224 — SmartAIHub Autonomous Development Orchestrator Runtime"
@@ -940,7 +1002,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.195945Z"
+    "updated_at": "2026-10-06T03:28:17.742409Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -950,7 +1012,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.195945Z",
+    "reconciled_at": "2026-10-06T03:28:17.742409Z",
     "sources": [
       {
         "digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
@@ -2846,7 +2908,7 @@
     "unresolved": 1234
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.195945Z",
+  "updated_at": "2026-10-06T03:28:17.742409Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

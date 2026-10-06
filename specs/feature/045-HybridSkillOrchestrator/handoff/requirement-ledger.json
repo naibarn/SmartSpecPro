@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L65"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L65"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L65",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L66"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L66"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L66",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L67"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L67"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L67",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L77"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L77"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L77",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L77",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L78"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L78"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L78",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L82"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L82"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L82",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L83"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L83"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L83",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L84"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L84"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L84",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L85"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L85"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L85",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L89"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L89"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L89",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L90"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L90"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L90",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L91"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L91"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L91",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L92"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L92"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L92",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L93"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L93"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L93",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L93",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L94"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L94"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L94",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L98"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L98"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L98",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L99"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L99",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L100"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L100"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L100",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L101"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L101"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L101",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L102"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L102"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L102",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L103"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L103"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L103",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L104"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L104"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L104",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L108"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L108"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L108",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L109"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L109"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L109",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L110"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L110"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L110",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L111"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L111"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L111",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L115"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L115"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L115",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L116"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L116"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L116",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L117"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L117"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L117",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L118"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L118"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L118",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L118",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L122"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L122"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L122",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L123"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L123"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L123",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L124"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L124"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L124",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L125"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L125"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L125",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L126"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L126"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L126",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L130"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L130"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L130",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L131"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L131"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L131",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L132"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L132"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L132",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L133"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L133",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L138"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L138"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L138",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L139"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L139"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L139",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L140"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L140"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L140",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L141"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L141"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L141",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L144"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L144"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L144",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L145"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L145"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L145",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L145",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L146"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L146"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L146",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L147"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L147"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L147",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L150"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L150",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L151"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L151"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L151",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L152"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L152"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L152",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L153"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L153"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L153",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L156"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L156"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L156",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L157"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L157"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L157",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L158"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L158"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L158",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L159"
+        "specs/feature/045-HybridSkillOrchestrator/spec.md#L159"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/spec.md#L159",
+      "authority_source": "specs/feature/045-HybridSkillOrchestrator/spec.md#L159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

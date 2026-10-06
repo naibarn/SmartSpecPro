@@ -11,6 +11,7 @@
       {
         "kind": "DUPLICATE_SPEC_ID",
         "paths": [
+          "specs/feature/059-external-worker-provider-framework",
           "specs/feature/059-knplabai-multi-provider-expansion"
         ]
       }
@@ -78,13 +79,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/059-external-worker-provider-framework/spec.md",
     "digest": "5b0a8b29d67a781a0060a55ef9267f6a9cfc874a621e5294de826fff6b0079fa",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.714567Z",
+      "last_evidence_at": "2026-10-06T03:28:15.073543Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-03-30T12:54:14+07:00",
       "spec_last_changed_at": "2026-03-30T12:54:14+07:00"
@@ -111,7 +112,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.714567Z"
+    "updated_at": "2026-10-06T03:28:15.073543Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -121,7 +122,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.714567Z",
+    "reconciled_at": "2026-10-06T03:28:15.073543Z",
     "sources": [
       {
         "digest": "5b0a8b29d67a781a0060a55ef9267f6a9cfc874a621e5294de826fff6b0079fa",
@@ -189,7 +190,7 @@
     "unresolved": 55
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.714567Z",
+  "updated_at": "2026-10-06T03:28:15.073543Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

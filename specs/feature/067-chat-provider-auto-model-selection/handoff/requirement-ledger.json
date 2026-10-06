@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L37"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L37"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L37",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L51"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L51"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L51",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L59"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L59"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L59",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L59",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L61"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L61"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L61",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L62"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L62"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L62",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L68"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L68"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L68",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,10 +137,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L70",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L493"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L70",
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L493"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L70",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -160,10 +160,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L71",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L495"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L71",
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L495"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L71",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -183,10 +183,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L72",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L494"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L72",
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L494"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L72",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -206,9 +206,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L80"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L80"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L80",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -228,9 +228,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L81"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L81"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L81",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -250,9 +250,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L83"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L83"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L83",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -272,9 +272,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L85"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L85"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L85",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -294,9 +294,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L86"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L86"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L86",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -316,9 +316,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L87"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L87"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L87",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -338,9 +338,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L88"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L88"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L88",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -360,9 +360,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L89"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L89"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L89",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -382,9 +382,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L95"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L95"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L95",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -404,9 +404,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L96"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L96"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L96",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -426,9 +426,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L97"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L97"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L97",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L97",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -448,9 +448,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L98"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L98"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L98",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -470,9 +470,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L99"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L99",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -492,9 +492,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L100"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L100"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L100",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -514,9 +514,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L108"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L108"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L108",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -536,9 +536,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L137"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L137"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L137",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -558,9 +558,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L198"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L198"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L198",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -580,9 +580,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L200"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L200"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L200",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -602,9 +602,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L239"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L239"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L239",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -624,9 +624,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L245"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L245"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L245",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -646,9 +646,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L256"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L256"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L256",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -668,9 +668,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L270"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L270"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L270",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -690,9 +690,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L281"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L281"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L281",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -712,9 +712,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L286"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L286"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L286",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -734,9 +734,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L290"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L290"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L290",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -756,9 +756,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L294"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L294"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L294",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -778,9 +778,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L295"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L295"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L295",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -800,9 +800,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L296"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L296"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L296",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -822,9 +822,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L297"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L297"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L297",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -844,9 +844,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L349"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L349"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L349",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L349",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -866,9 +866,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L350"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L350"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L350",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L350",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -888,9 +888,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L351"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L351"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L351",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -910,9 +910,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L353"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L353"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L353",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -932,9 +932,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L373"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L373"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L373",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -954,9 +954,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L390"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L390"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L390",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -976,9 +976,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L404"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L404"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L404",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -998,9 +998,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L421"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L421"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L421",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L421",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1020,9 +1020,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L425"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L425"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L425",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1042,9 +1042,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L476"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L476"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L476",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L476",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1064,9 +1064,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L483"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L483"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L483",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1086,9 +1086,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L505"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L505"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L505",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L505",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1108,9 +1108,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L506"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L506"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L506",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L506",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1130,9 +1130,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L507"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L507"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L507",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L507",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1152,9 +1152,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L513"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L513"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L513",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L513",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1174,9 +1174,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L514"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L514"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L514",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L514",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1196,9 +1196,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L518"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L518"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L518",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1218,9 +1218,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L530"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L530"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L530",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L530",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1240,9 +1240,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L531"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L531"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L531",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L531",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1262,9 +1262,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L546"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L546"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L546",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L546",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1284,9 +1284,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L569"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L569"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L569",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L569",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1306,9 +1306,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L579"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L579"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L579",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L579",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1328,9 +1328,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L645"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L645"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L645",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L645",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1350,9 +1350,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L672"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L672"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L672",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1372,9 +1372,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L673"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L673"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L673",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1394,9 +1394,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L674"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L674"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L674",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L674",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1416,9 +1416,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L675"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L675"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L675",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L675",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1438,9 +1438,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L676"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L676"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L676",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L676",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1460,9 +1460,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L677"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L677"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L677",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L677",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1482,9 +1482,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L678"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L678"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L678",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L678",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1504,9 +1504,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L679"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L679"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L679",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L679",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1526,9 +1526,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L680"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L680"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L680",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L680",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1548,9 +1548,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L681"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L681"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L681",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L681",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1570,9 +1570,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L682"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L682"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L682",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L682",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1592,9 +1592,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L683"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L683"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L683",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L683",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1614,9 +1614,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L684"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L684"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L684",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L684",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1636,9 +1636,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L685"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L685"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L685",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L685",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1658,9 +1658,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L686"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L686"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L686",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L686",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1680,9 +1680,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L687"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L687"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L687",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L687",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1702,9 +1702,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L688"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L688"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L688",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1724,9 +1724,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L689"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L689"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L689",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L689",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1746,9 +1746,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L690"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L690"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L690",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1768,9 +1768,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L691"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L691"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L691",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1790,9 +1790,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L692"
+        "specs/feature/067-chat-provider-auto-model-selection/spec.md#L692"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/067-chat-provider-auto-model-selection/spec.md#L692",
+      "authority_source": "specs/feature/067-chat-provider-auto-model-selection/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L46"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L46"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L46",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L47"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L47"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L47",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L47",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L48"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L48"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L48",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L56"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L56"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L56",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L56",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L57"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L57"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L57",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L57",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L58"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L58"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L58",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L59"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L59"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L59",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L59",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L63"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L63"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L63",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L63",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L64"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L64"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L64",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L64",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L65"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L65"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L65",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L69"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L69"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L69",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L71"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L71"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L71",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L72"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L72"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L72",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L73"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L73"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L73",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L74"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L74"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L74",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L75"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L75",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L76"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L76"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L76",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L76",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L77"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L77"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L77",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L77",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L78"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L78"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L78",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L79"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L79"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L79",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L80"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L80"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L80",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L81"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L81"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L81",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L87"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L87"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L87",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L88"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L88"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L88",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L89"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L89"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L89",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L90"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L90"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L90",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L91"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L91"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L91",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L92"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L92"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L92",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L93"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L93"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L93",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L93",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L94"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L94"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L94",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L95"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L95"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L95",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L150"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L150",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L186"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L186"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L186",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L188"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L188"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L188",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L189"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L189"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L189",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L189",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L190"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L190"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L190",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L260"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L260"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L260",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L261"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L261"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L261",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L285"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L285"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L285",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L308"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L308"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L308",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L308",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L374"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L374"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L374",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L374",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L375"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L375"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L375",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L376"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L376"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L376",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L377"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L377"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L377",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L378"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L378"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L378",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L379"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L379"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L379",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L380"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L380"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L380",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L380",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L381"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L381"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L381",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L382"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L382"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L382",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L383"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L383"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L383",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L384"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L384"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L384",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L385"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L385"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L385",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L385",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L386"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L386"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L386",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L386",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L387"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L387"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L387",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L387",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L388"
+        "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L388"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L388",
+      "authority_source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md#L388",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

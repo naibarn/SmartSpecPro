@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L66"
+        "specs/feature/031-PlaywrightVision/spec.md#L66"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L66",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L67"
+        "specs/feature/031-PlaywrightVision/spec.md#L67"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L67",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L68"
+        "specs/feature/031-PlaywrightVision/spec.md#L68"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L68",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L69"
+        "specs/feature/031-PlaywrightVision/spec.md#L69"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L69",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L70"
+        "specs/feature/031-PlaywrightVision/spec.md#L70"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L70",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L71"
+        "specs/feature/031-PlaywrightVision/spec.md#L71"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L71",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L72"
+        "specs/feature/031-PlaywrightVision/spec.md#L72"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L72",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3021"
+        "specs/feature/031-PlaywrightVision/spec.md#L3021"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3021",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3021",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3036"
+        "specs/feature/031-PlaywrightVision/spec.md#L3036"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3036",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3036",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,10 +203,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3051",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3069"
+        "specs/feature/031-PlaywrightVision/spec.md#L3051",
+        "specs/feature/031-PlaywrightVision/spec.md#L3069"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3051",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3051",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -226,9 +226,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3152"
+        "specs/feature/031-PlaywrightVision/spec.md#L3152"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3152",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -248,9 +248,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3388"
+        "specs/feature/031-PlaywrightVision/spec.md#L3388"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3388",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3388",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -270,9 +270,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3389"
+        "specs/feature/031-PlaywrightVision/spec.md#L3389"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3389",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -292,9 +292,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3390"
+        "specs/feature/031-PlaywrightVision/spec.md#L3390"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3390",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -314,9 +314,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3391"
+        "specs/feature/031-PlaywrightVision/spec.md#L3391"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3391",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -336,9 +336,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3392"
+        "specs/feature/031-PlaywrightVision/spec.md#L3392"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3392",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -358,9 +358,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3393"
+        "specs/feature/031-PlaywrightVision/spec.md#L3393"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3393",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3393",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -380,9 +380,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3394"
+        "specs/feature/031-PlaywrightVision/spec.md#L3394"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3394",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3394",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -402,9 +402,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3395"
+        "specs/feature/031-PlaywrightVision/spec.md#L3395"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3395",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3395",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -424,9 +424,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3690"
+        "specs/feature/031-PlaywrightVision/spec.md#L3690"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/spec.md#L3690",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

@@ -17,77 +17,77 @@
       {
         "digest": "7498a70229d58a87f1c70ac834f0b550ac43c2d60e03070e3aadc530720cd9ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/claude-plan.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/claude-plan.md"
       },
       {
         "digest": "10031617345ba72b659f512aad030cfdcd16455e6c57dae20682f9701356c46e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/claude-spec.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/claude-spec.md"
       },
       {
         "digest": "68383f0c6ebf372ae6229221aaf852fe64a45a7a433ed86e4f6483e827997e91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/implementation/deep_implement_config.json"
+        "path": "specs/feature/083-agent-registry-and-organization-model/implementation/deep_implement_config.json"
       },
       {
         "digest": "e0ea6cb121f82d9c89a71546e90158e5729114bdc44f59f5c3955d4dbb3f8e96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/section-cross-consistency.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/section-cross-consistency.md"
       },
       {
         "digest": "8c672731f89579b5dbfa7c48a36cfd9f93926ac893ddaf678bf940a0b7692d18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-1.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-1.md"
       },
       {
         "digest": "1e040dbeb84b59b3beb85b674efc306e5517e3f1f2e11b1e652d317f024275a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-2.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-2.md"
       },
       {
         "digest": "fd2f96fecbf443981fafd98d46d002aa4ca059db30efc6f39058024fddc81c66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/index.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/index.md"
       },
       {
         "digest": "9918a97af05fcc5bd7c47444f9b1ce75bffdb10a87bd1b5070493f28b5f66f15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-01-schema-foundation.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-01-schema-foundation.md"
       },
       {
         "digest": "d10259b68ca462ce1140b620a71faae1db7287a5e94bcc166d421dd84fbbb041",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-02-registry-contracts-and-validation.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-02-registry-contracts-and-validation.md"
       },
       {
         "digest": "f8bb779f7a4ad1d7e6e0e446a1c720de7ee2420c650cb12fbd44e9fcae11c2bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-03-registry-services-and-resolution.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-03-registry-services-and-resolution.md"
       },
       {
         "digest": "c0b0e55d2ed701e04a28c30ee4332f4fd7a79e93d83dd02cac6486d5e0eca992",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-04-rollout-and-policy-enforcement.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-04-rollout-and-policy-enforcement.md"
       },
       {
         "digest": "17d09af10eadd4ff7a0eff2cad1e8e9815155e08fba6ffce5db63c49ab03df30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-05-outcome-memory-and-promotion.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-05-outcome-memory-and-promotion.md"
       },
       {
         "digest": "d29a32eaa5156a3a56a9d3514f52a2a50e8e580af7ed799344ce7815f7a1b295",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-06-admin-api-and-tenant-controls.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-06-admin-api-and-tenant-controls.md"
       },
       {
         "digest": "43ef1d8bdc7b71f5dce7857a84545961b66c6bd17c2c0ca10d181515191d6dfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-07-runtime-integration-and-adapters.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-07-runtime-integration-and-adapters.md"
       },
       {
         "digest": "7cd9bf124a07bc94a482137caaeb2fe5257495f7d949fa28eca68ec3f137de12",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-08-observability-security-and-rollout-gates.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-08-observability-security-and-rollout-gates.md"
       }
     ],
     "predecessors": [],
@@ -118,77 +118,77 @@
       {
         "digest": "7498a70229d58a87f1c70ac834f0b550ac43c2d60e03070e3aadc530720cd9ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/claude-plan.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/claude-plan.md"
       },
       {
         "digest": "10031617345ba72b659f512aad030cfdcd16455e6c57dae20682f9701356c46e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/claude-spec.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/claude-spec.md"
       },
       {
         "digest": "68383f0c6ebf372ae6229221aaf852fe64a45a7a433ed86e4f6483e827997e91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/implementation/deep_implement_config.json"
+        "path": "specs/feature/083-agent-registry-and-organization-model/implementation/deep_implement_config.json"
       },
       {
         "digest": "e0ea6cb121f82d9c89a71546e90158e5729114bdc44f59f5c3955d4dbb3f8e96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/section-cross-consistency.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/section-cross-consistency.md"
       },
       {
         "digest": "8c672731f89579b5dbfa7c48a36cfd9f93926ac893ddaf678bf940a0b7692d18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-1.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-1.md"
       },
       {
         "digest": "1e040dbeb84b59b3beb85b674efc306e5517e3f1f2e11b1e652d317f024275a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-2.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-2.md"
       },
       {
         "digest": "fd2f96fecbf443981fafd98d46d002aa4ca059db30efc6f39058024fddc81c66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/index.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/index.md"
       },
       {
         "digest": "9918a97af05fcc5bd7c47444f9b1ce75bffdb10a87bd1b5070493f28b5f66f15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-01-schema-foundation.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-01-schema-foundation.md"
       },
       {
         "digest": "d10259b68ca462ce1140b620a71faae1db7287a5e94bcc166d421dd84fbbb041",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-02-registry-contracts-and-validation.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-02-registry-contracts-and-validation.md"
       },
       {
         "digest": "f8bb779f7a4ad1d7e6e0e446a1c720de7ee2420c650cb12fbd44e9fcae11c2bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-03-registry-services-and-resolution.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-03-registry-services-and-resolution.md"
       },
       {
         "digest": "c0b0e55d2ed701e04a28c30ee4332f4fd7a79e93d83dd02cac6486d5e0eca992",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-04-rollout-and-policy-enforcement.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-04-rollout-and-policy-enforcement.md"
       },
       {
         "digest": "17d09af10eadd4ff7a0eff2cad1e8e9815155e08fba6ffce5db63c49ab03df30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-05-outcome-memory-and-promotion.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-05-outcome-memory-and-promotion.md"
       },
       {
         "digest": "d29a32eaa5156a3a56a9d3514f52a2a50e8e580af7ed799344ce7815f7a1b295",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-06-admin-api-and-tenant-controls.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-06-admin-api-and-tenant-controls.md"
       },
       {
         "digest": "43ef1d8bdc7b71f5dce7857a84545961b66c6bd17c2c0ca10d181515191d6dfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-07-runtime-integration-and-adapters.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-07-runtime-integration-and-adapters.md"
       },
       {
         "digest": "7cd9bf124a07bc94a482137caaeb2fe5257495f7d949fa28eca68ec3f137de12",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-08-observability-security-and-rollout-gates.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-08-observability-security-and-rollout-gates.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -220,89 +220,89 @@
       {
         "digest": "7498a70229d58a87f1c70ac834f0b550ac43c2d60e03070e3aadc530720cd9ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/claude-plan.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/claude-plan.md"
       },
       {
         "digest": "10031617345ba72b659f512aad030cfdcd16455e6c57dae20682f9701356c46e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/claude-spec.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/claude-spec.md"
       },
       {
         "digest": "68383f0c6ebf372ae6229221aaf852fe64a45a7a433ed86e4f6483e827997e91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/implementation/deep_implement_config.json"
+        "path": "specs/feature/083-agent-registry-and-organization-model/implementation/deep_implement_config.json"
       },
       {
         "digest": "e0ea6cb121f82d9c89a71546e90158e5729114bdc44f59f5c3955d4dbb3f8e96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/section-cross-consistency.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/section-cross-consistency.md"
       },
       {
         "digest": "8c672731f89579b5dbfa7c48a36cfd9f93926ac893ddaf678bf940a0b7692d18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-1.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-1.md"
       },
       {
         "digest": "1e040dbeb84b59b3beb85b674efc306e5517e3f1f2e11b1e652d317f024275a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-2.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-2.md"
       },
       {
         "digest": "fd2f96fecbf443981fafd98d46d002aa4ca059db30efc6f39058024fddc81c66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/index.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/index.md"
       },
       {
         "digest": "9918a97af05fcc5bd7c47444f9b1ce75bffdb10a87bd1b5070493f28b5f66f15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-01-schema-foundation.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-01-schema-foundation.md"
       },
       {
         "digest": "d10259b68ca462ce1140b620a71faae1db7287a5e94bcc166d421dd84fbbb041",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-02-registry-contracts-and-validation.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-02-registry-contracts-and-validation.md"
       },
       {
         "digest": "f8bb779f7a4ad1d7e6e0e446a1c720de7ee2420c650cb12fbd44e9fcae11c2bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-03-registry-services-and-resolution.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-03-registry-services-and-resolution.md"
       },
       {
         "digest": "c0b0e55d2ed701e04a28c30ee4332f4fd7a79e93d83dd02cac6486d5e0eca992",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-04-rollout-and-policy-enforcement.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-04-rollout-and-policy-enforcement.md"
       },
       {
         "digest": "17d09af10eadd4ff7a0eff2cad1e8e9815155e08fba6ffce5db63c49ab03df30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-05-outcome-memory-and-promotion.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-05-outcome-memory-and-promotion.md"
       },
       {
         "digest": "d29a32eaa5156a3a56a9d3514f52a2a50e8e580af7ed799344ce7815f7a1b295",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-06-admin-api-and-tenant-controls.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-06-admin-api-and-tenant-controls.md"
       },
       {
         "digest": "43ef1d8bdc7b71f5dce7857a84545961b66c6bd17c2c0ca10d181515191d6dfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-07-runtime-integration-and-adapters.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-07-runtime-integration-and-adapters.md"
       },
       {
         "digest": "7cd9bf124a07bc94a482137caaeb2fe5257495f7d949fa28eca68ec3f137de12",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-08-observability-security-and-rollout-gates.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-08-observability-security-and-rollout-gates.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/083-agent-registry-and-organization-model/spec.md",
     "digest": "094057219d7bac1823d3714aabd2255ed16da7eefb5617af68eed275522f884c",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.855867Z",
+      "last_evidence_at": "2026-10-06T03:28:15.348483Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-15T08:00:16+07:00",
       "spec_last_changed_at": "2026-04-15T20:27:12+07:00"
@@ -329,7 +329,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.855867Z"
+    "updated_at": "2026-10-06T03:28:15.348483Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -339,7 +339,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.855867Z",
+    "reconciled_at": "2026-10-06T03:28:15.348483Z",
     "sources": [
       {
         "digest": "094057219d7bac1823d3714aabd2255ed16da7eefb5617af68eed275522f884c",
@@ -349,77 +349,77 @@
       {
         "digest": "7498a70229d58a87f1c70ac834f0b550ac43c2d60e03070e3aadc530720cd9ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/claude-plan.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/claude-plan.md"
       },
       {
         "digest": "10031617345ba72b659f512aad030cfdcd16455e6c57dae20682f9701356c46e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/claude-spec.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/claude-spec.md"
       },
       {
         "digest": "68383f0c6ebf372ae6229221aaf852fe64a45a7a433ed86e4f6483e827997e91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/implementation/deep_implement_config.json"
+        "path": "specs/feature/083-agent-registry-and-organization-model/implementation/deep_implement_config.json"
       },
       {
         "digest": "e0ea6cb121f82d9c89a71546e90158e5729114bdc44f59f5c3955d4dbb3f8e96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/section-cross-consistency.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/section-cross-consistency.md"
       },
       {
         "digest": "8c672731f89579b5dbfa7c48a36cfd9f93926ac893ddaf678bf940a0b7692d18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-1.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-1.md"
       },
       {
         "digest": "1e040dbeb84b59b3beb85b674efc306e5517e3f1f2e11b1e652d317f024275a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-2.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-2.md"
       },
       {
         "digest": "fd2f96fecbf443981fafd98d46d002aa4ca059db30efc6f39058024fddc81c66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/index.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/index.md"
       },
       {
         "digest": "9918a97af05fcc5bd7c47444f9b1ce75bffdb10a87bd1b5070493f28b5f66f15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-01-schema-foundation.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-01-schema-foundation.md"
       },
       {
         "digest": "d10259b68ca462ce1140b620a71faae1db7287a5e94bcc166d421dd84fbbb041",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-02-registry-contracts-and-validation.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-02-registry-contracts-and-validation.md"
       },
       {
         "digest": "f8bb779f7a4ad1d7e6e0e446a1c720de7ee2420c650cb12fbd44e9fcae11c2bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-03-registry-services-and-resolution.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-03-registry-services-and-resolution.md"
       },
       {
         "digest": "c0b0e55d2ed701e04a28c30ee4332f4fd7a79e93d83dd02cac6486d5e0eca992",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-04-rollout-and-policy-enforcement.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-04-rollout-and-policy-enforcement.md"
       },
       {
         "digest": "17d09af10eadd4ff7a0eff2cad1e8e9815155e08fba6ffce5db63c49ab03df30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-05-outcome-memory-and-promotion.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-05-outcome-memory-and-promotion.md"
       },
       {
         "digest": "d29a32eaa5156a3a56a9d3514f52a2a50e8e580af7ed799344ce7815f7a1b295",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-06-admin-api-and-tenant-controls.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-06-admin-api-and-tenant-controls.md"
       },
       {
         "digest": "43ef1d8bdc7b71f5dce7857a84545961b66c6bd17c2c0ca10d181515191d6dfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-07-runtime-integration-and-adapters.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-07-runtime-integration-and-adapters.md"
       },
       {
         "digest": "7cd9bf124a07bc94a482137caaeb2fe5257495f7d949fa28eca68ec3f137de12",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-08-observability-security-and-rollout-gates.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-08-observability-security-and-rollout-gates.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -469,77 +469,77 @@
       {
         "digest": "7498a70229d58a87f1c70ac834f0b550ac43c2d60e03070e3aadc530720cd9ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/claude-plan.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/claude-plan.md"
       },
       {
         "digest": "10031617345ba72b659f512aad030cfdcd16455e6c57dae20682f9701356c46e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/claude-spec.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/claude-spec.md"
       },
       {
         "digest": "68383f0c6ebf372ae6229221aaf852fe64a45a7a433ed86e4f6483e827997e91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/implementation/deep_implement_config.json"
+        "path": "specs/feature/083-agent-registry-and-organization-model/implementation/deep_implement_config.json"
       },
       {
         "digest": "e0ea6cb121f82d9c89a71546e90158e5729114bdc44f59f5c3955d4dbb3f8e96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/section-cross-consistency.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/section-cross-consistency.md"
       },
       {
         "digest": "8c672731f89579b5dbfa7c48a36cfd9f93926ac893ddaf678bf940a0b7692d18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-1.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-1.md"
       },
       {
         "digest": "1e040dbeb84b59b3beb85b674efc306e5517e3f1f2e11b1e652d317f024275a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-2.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/reviews/self-review-round-2.md"
       },
       {
         "digest": "fd2f96fecbf443981fafd98d46d002aa4ca059db30efc6f39058024fddc81c66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/index.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/index.md"
       },
       {
         "digest": "9918a97af05fcc5bd7c47444f9b1ce75bffdb10a87bd1b5070493f28b5f66f15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-01-schema-foundation.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-01-schema-foundation.md"
       },
       {
         "digest": "d10259b68ca462ce1140b620a71faae1db7287a5e94bcc166d421dd84fbbb041",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-02-registry-contracts-and-validation.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-02-registry-contracts-and-validation.md"
       },
       {
         "digest": "f8bb779f7a4ad1d7e6e0e446a1c720de7ee2420c650cb12fbd44e9fcae11c2bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-03-registry-services-and-resolution.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-03-registry-services-and-resolution.md"
       },
       {
         "digest": "c0b0e55d2ed701e04a28c30ee4332f4fd7a79e93d83dd02cac6486d5e0eca992",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-04-rollout-and-policy-enforcement.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-04-rollout-and-policy-enforcement.md"
       },
       {
         "digest": "17d09af10eadd4ff7a0eff2cad1e8e9815155e08fba6ffce5db63c49ab03df30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-05-outcome-memory-and-promotion.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-05-outcome-memory-and-promotion.md"
       },
       {
         "digest": "d29a32eaa5156a3a56a9d3514f52a2a50e8e580af7ed799344ce7815f7a1b295",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-06-admin-api-and-tenant-controls.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-06-admin-api-and-tenant-controls.md"
       },
       {
         "digest": "43ef1d8bdc7b71f5dce7857a84545961b66c6bd17c2c0ca10d181515191d6dfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-07-runtime-integration-and-adapters.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-07-runtime-integration-and-adapters.md"
       },
       {
         "digest": "7cd9bf124a07bc94a482137caaeb2fe5257495f7d949fa28eca68ec3f137de12",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/sections/section-08-observability-security-and-rollout-gates.md"
+        "path": "specs/feature/083-agent-registry-and-organization-model/sections/section-08-observability-security-and-rollout-gates.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -557,7 +557,7 @@
     "unresolved": 52
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.855867Z",
+  "updated_at": "2026-10-06T03:28:15.348483Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

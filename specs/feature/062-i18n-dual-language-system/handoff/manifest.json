@@ -17,97 +17,97 @@
       {
         "digest": "c47d29f58311a39cf786287fc2fdd33c2357c4ba9521bce0b90173be747b44bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/claude-plan.md"
+        "path": "specs/feature/062-i18n-dual-language-system/claude-plan.md"
       },
       {
         "digest": "bcd580354286b26c153bcb29ecd4a0511de164fd66ec20f49d19fe200e9c21f2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/claude-spec.md"
+        "path": "specs/feature/062-i18n-dual-language-system/claude-spec.md"
       },
       {
         "digest": "a7a5f6534f4ab5e70277bbb5ad1b56af1a33c241996579553ea5b8e0e14146c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/implementation/deep_implement_config.json"
+        "path": "specs/feature/062-i18n-dual-language-system/implementation/deep_implement_config.json"
       },
       {
         "digest": "d57e33a303a534aaf427a8346ff999db95dfcb9c352d7352836eb73f41da668e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/implementation/usage.md"
+        "path": "specs/feature/062-i18n-dual-language-system/implementation/usage.md"
       },
       {
         "digest": "f9aa6b0fc4a1445602f074ce1ee9dd655698e9654940d41adff954194158b195",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/reviews/self-review-round-1.md"
+        "path": "specs/feature/062-i18n-dual-language-system/reviews/self-review-round-1.md"
       },
       {
         "digest": "5dc0976c2e0d6b145b59808eb002030f13a99b610018fbfcf5ebd8ee8bc24112",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/index.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/index.md"
       },
       {
         "digest": "4b6973673519f2284f2afcaa944108e9ce687698fb9519db3f1fa2023fe44b64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-01-shared-config.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-01-shared-config.md"
       },
       {
         "digest": "b4c348995ba2e774ecdb2b4371026f42de16cf7547c7a5f342bbf20744220c61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-02-i18n-core.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-02-i18n-core.md"
       },
       {
         "digest": "6b0ac2435ceb1c61862ab965d8f4029695ae28dd2e5b9ccde4ce98e731d8db3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-03-loader-detector.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-03-loader-detector.md"
       },
       {
         "digest": "51bde762547af2fd26b6ab781f9e14c2dfe144e6960510bb4a4fa884b49b44c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-04-namespace-preloader.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-04-namespace-preloader.md"
       },
       {
         "digest": "581b1a3e2c8c5a545cd5268fc6ed89913dfa1ea95f3fb8027032c8940db7cae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-05-app-integration.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-05-app-integration.md"
       },
       {
         "digest": "12b7cbb199559a52a07eb8461a5e27e7dad4e1e69674cd597b84066773b49fec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-06-backward-compat.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-06-backward-compat.md"
       },
       {
         "digest": "5788ad8624daaf65890127a892f9e1d91e03ba2e48b88b87831a62f148568cf9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-07-server-allowlist.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-07-server-allowlist.md"
       },
       {
         "digest": "f1d4d3605949aeca4e77958927fd4fa214d9f5044e6f93b5a289e51d52b8f455",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-08-locale-files.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-08-locale-files.md"
       },
       {
         "digest": "01f9dafb9c0eb50170c1df4d731edb4947d735eb863af2bbc327ed1509a9f168",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-09-welcome-picker.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-09-welcome-picker.md"
       },
       {
         "digest": "6bf65adb9ad9a735b8671f130c21fd3b25115707406ca8972ea6cecb07a22015",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-10-locale-toggle.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-10-locale-toggle.md"
       },
       {
         "digest": "1930c3227a56737186e772ce59b055b5746af6f087b9a8a0735974a7a4a98f64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-11-settings-language.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-11-settings-language.md"
       },
       {
         "digest": "8850336eb3ba3d924e463101df2817d9f242215dad8a273306e8725355e4bfeb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-12-wave1-nav-auth.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-12-wave1-nav-auth.md"
       },
       {
         "digest": "9b5d8f3bf739584a46ec7f63d8001580cd5f77f100caa9d3f92cd8dcafffc2b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-13-wave1-dashboard-common.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-13-wave1-dashboard-common.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "c47d29f58311a39cf786287fc2fdd33c2357c4ba9521bce0b90173be747b44bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/claude-plan.md"
+        "path": "specs/feature/062-i18n-dual-language-system/claude-plan.md"
       },
       {
         "digest": "bcd580354286b26c153bcb29ecd4a0511de164fd66ec20f49d19fe200e9c21f2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/claude-spec.md"
+        "path": "specs/feature/062-i18n-dual-language-system/claude-spec.md"
       },
       {
         "digest": "a7a5f6534f4ab5e70277bbb5ad1b56af1a33c241996579553ea5b8e0e14146c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/implementation/deep_implement_config.json"
+        "path": "specs/feature/062-i18n-dual-language-system/implementation/deep_implement_config.json"
       },
       {
         "digest": "d57e33a303a534aaf427a8346ff999db95dfcb9c352d7352836eb73f41da668e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/implementation/usage.md"
+        "path": "specs/feature/062-i18n-dual-language-system/implementation/usage.md"
       },
       {
         "digest": "f9aa6b0fc4a1445602f074ce1ee9dd655698e9654940d41adff954194158b195",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/reviews/self-review-round-1.md"
+        "path": "specs/feature/062-i18n-dual-language-system/reviews/self-review-round-1.md"
       },
       {
         "digest": "5dc0976c2e0d6b145b59808eb002030f13a99b610018fbfcf5ebd8ee8bc24112",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/index.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/index.md"
       },
       {
         "digest": "4b6973673519f2284f2afcaa944108e9ce687698fb9519db3f1fa2023fe44b64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-01-shared-config.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-01-shared-config.md"
       },
       {
         "digest": "b4c348995ba2e774ecdb2b4371026f42de16cf7547c7a5f342bbf20744220c61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-02-i18n-core.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-02-i18n-core.md"
       },
       {
         "digest": "6b0ac2435ceb1c61862ab965d8f4029695ae28dd2e5b9ccde4ce98e731d8db3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-03-loader-detector.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-03-loader-detector.md"
       },
       {
         "digest": "51bde762547af2fd26b6ab781f9e14c2dfe144e6960510bb4a4fa884b49b44c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-04-namespace-preloader.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-04-namespace-preloader.md"
       },
       {
         "digest": "581b1a3e2c8c5a545cd5268fc6ed89913dfa1ea95f3fb8027032c8940db7cae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-05-app-integration.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-05-app-integration.md"
       },
       {
         "digest": "12b7cbb199559a52a07eb8461a5e27e7dad4e1e69674cd597b84066773b49fec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-06-backward-compat.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-06-backward-compat.md"
       },
       {
         "digest": "5788ad8624daaf65890127a892f9e1d91e03ba2e48b88b87831a62f148568cf9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-07-server-allowlist.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-07-server-allowlist.md"
       },
       {
         "digest": "f1d4d3605949aeca4e77958927fd4fa214d9f5044e6f93b5a289e51d52b8f455",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-08-locale-files.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-08-locale-files.md"
       },
       {
         "digest": "01f9dafb9c0eb50170c1df4d731edb4947d735eb863af2bbc327ed1509a9f168",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-09-welcome-picker.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-09-welcome-picker.md"
       },
       {
         "digest": "6bf65adb9ad9a735b8671f130c21fd3b25115707406ca8972ea6cecb07a22015",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-10-locale-toggle.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-10-locale-toggle.md"
       },
       {
         "digest": "1930c3227a56737186e772ce59b055b5746af6f087b9a8a0735974a7a4a98f64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-11-settings-language.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-11-settings-language.md"
       },
       {
         "digest": "8850336eb3ba3d924e463101df2817d9f242215dad8a273306e8725355e4bfeb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-12-wave1-nav-auth.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-12-wave1-nav-auth.md"
       },
       {
         "digest": "9b5d8f3bf739584a46ec7f63d8001580cd5f77f100caa9d3f92cd8dcafffc2b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-13-wave1-dashboard-common.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-13-wave1-dashboard-common.md"
       },
       {
         "excerpt": "// See spec 062 Security Requirements S1.",
@@ -267,109 +267,109 @@
       {
         "digest": "c47d29f58311a39cf786287fc2fdd33c2357c4ba9521bce0b90173be747b44bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/claude-plan.md"
+        "path": "specs/feature/062-i18n-dual-language-system/claude-plan.md"
       },
       {
         "digest": "bcd580354286b26c153bcb29ecd4a0511de164fd66ec20f49d19fe200e9c21f2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/claude-spec.md"
+        "path": "specs/feature/062-i18n-dual-language-system/claude-spec.md"
       },
       {
         "digest": "a7a5f6534f4ab5e70277bbb5ad1b56af1a33c241996579553ea5b8e0e14146c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/implementation/deep_implement_config.json"
+        "path": "specs/feature/062-i18n-dual-language-system/implementation/deep_implement_config.json"
       },
       {
         "digest": "d57e33a303a534aaf427a8346ff999db95dfcb9c352d7352836eb73f41da668e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/implementation/usage.md"
+        "path": "specs/feature/062-i18n-dual-language-system/implementation/usage.md"
       },
       {
         "digest": "f9aa6b0fc4a1445602f074ce1ee9dd655698e9654940d41adff954194158b195",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/reviews/self-review-round-1.md"
+        "path": "specs/feature/062-i18n-dual-language-system/reviews/self-review-round-1.md"
       },
       {
         "digest": "5dc0976c2e0d6b145b59808eb002030f13a99b610018fbfcf5ebd8ee8bc24112",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/index.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/index.md"
       },
       {
         "digest": "4b6973673519f2284f2afcaa944108e9ce687698fb9519db3f1fa2023fe44b64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-01-shared-config.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-01-shared-config.md"
       },
       {
         "digest": "b4c348995ba2e774ecdb2b4371026f42de16cf7547c7a5f342bbf20744220c61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-02-i18n-core.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-02-i18n-core.md"
       },
       {
         "digest": "6b0ac2435ceb1c61862ab965d8f4029695ae28dd2e5b9ccde4ce98e731d8db3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-03-loader-detector.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-03-loader-detector.md"
       },
       {
         "digest": "51bde762547af2fd26b6ab781f9e14c2dfe144e6960510bb4a4fa884b49b44c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-04-namespace-preloader.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-04-namespace-preloader.md"
       },
       {
         "digest": "581b1a3e2c8c5a545cd5268fc6ed89913dfa1ea95f3fb8027032c8940db7cae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-05-app-integration.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-05-app-integration.md"
       },
       {
         "digest": "12b7cbb199559a52a07eb8461a5e27e7dad4e1e69674cd597b84066773b49fec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-06-backward-compat.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-06-backward-compat.md"
       },
       {
         "digest": "5788ad8624daaf65890127a892f9e1d91e03ba2e48b88b87831a62f148568cf9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-07-server-allowlist.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-07-server-allowlist.md"
       },
       {
         "digest": "f1d4d3605949aeca4e77958927fd4fa214d9f5044e6f93b5a289e51d52b8f455",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-08-locale-files.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-08-locale-files.md"
       },
       {
         "digest": "01f9dafb9c0eb50170c1df4d731edb4947d735eb863af2bbc327ed1509a9f168",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-09-welcome-picker.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-09-welcome-picker.md"
       },
       {
         "digest": "6bf65adb9ad9a735b8671f130c21fd3b25115707406ca8972ea6cecb07a22015",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-10-locale-toggle.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-10-locale-toggle.md"
       },
       {
         "digest": "1930c3227a56737186e772ce59b055b5746af6f087b9a8a0735974a7a4a98f64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-11-settings-language.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-11-settings-language.md"
       },
       {
         "digest": "8850336eb3ba3d924e463101df2817d9f242215dad8a273306e8725355e4bfeb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-12-wave1-nav-auth.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-12-wave1-nav-auth.md"
       },
       {
         "digest": "9b5d8f3bf739584a46ec7f63d8001580cd5f77f100caa9d3f92cd8dcafffc2b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-13-wave1-dashboard-common.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-13-wave1-dashboard-common.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/062-i18n-dual-language-system/spec.md",
     "digest": "9570fedc53722872b310e0ed107bf0b05f98e5c66ce7a3cc0884837eb70d9876",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.737743Z",
+      "last_evidence_at": "2026-10-06T03:28:15.110194Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-03-25T13:24:59+07:00",
       "spec_last_changed_at": "2026-03-25T13:24:59+07:00"
@@ -396,7 +396,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.737743Z"
+    "updated_at": "2026-10-06T03:28:15.110194Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -406,7 +406,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.737743Z",
+    "reconciled_at": "2026-10-06T03:28:15.110194Z",
     "sources": [
       {
         "digest": "9570fedc53722872b310e0ed107bf0b05f98e5c66ce7a3cc0884837eb70d9876",
@@ -416,97 +416,97 @@
       {
         "digest": "c47d29f58311a39cf786287fc2fdd33c2357c4ba9521bce0b90173be747b44bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/claude-plan.md"
+        "path": "specs/feature/062-i18n-dual-language-system/claude-plan.md"
       },
       {
         "digest": "bcd580354286b26c153bcb29ecd4a0511de164fd66ec20f49d19fe200e9c21f2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/claude-spec.md"
+        "path": "specs/feature/062-i18n-dual-language-system/claude-spec.md"
       },
       {
         "digest": "a7a5f6534f4ab5e70277bbb5ad1b56af1a33c241996579553ea5b8e0e14146c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/implementation/deep_implement_config.json"
+        "path": "specs/feature/062-i18n-dual-language-system/implementation/deep_implement_config.json"
       },
       {
         "digest": "d57e33a303a534aaf427a8346ff999db95dfcb9c352d7352836eb73f41da668e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/implementation/usage.md"
+        "path": "specs/feature/062-i18n-dual-language-system/implementation/usage.md"
       },
       {
         "digest": "f9aa6b0fc4a1445602f074ce1ee9dd655698e9654940d41adff954194158b195",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/reviews/self-review-round-1.md"
+        "path": "specs/feature/062-i18n-dual-language-system/reviews/self-review-round-1.md"
       },
       {
         "digest": "5dc0976c2e0d6b145b59808eb002030f13a99b610018fbfcf5ebd8ee8bc24112",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/index.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/index.md"
       },
       {
         "digest": "4b6973673519f2284f2afcaa944108e9ce687698fb9519db3f1fa2023fe44b64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-01-shared-config.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-01-shared-config.md"
       },
       {
         "digest": "b4c348995ba2e774ecdb2b4371026f42de16cf7547c7a5f342bbf20744220c61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-02-i18n-core.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-02-i18n-core.md"
       },
       {
         "digest": "6b0ac2435ceb1c61862ab965d8f4029695ae28dd2e5b9ccde4ce98e731d8db3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-03-loader-detector.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-03-loader-detector.md"
       },
       {
         "digest": "51bde762547af2fd26b6ab781f9e14c2dfe144e6960510bb4a4fa884b49b44c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-04-namespace-preloader.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-04-namespace-preloader.md"
       },
       {
         "digest": "581b1a3e2c8c5a545cd5268fc6ed89913dfa1ea95f3fb8027032c8940db7cae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-05-app-integration.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-05-app-integration.md"
       },
       {
         "digest": "12b7cbb199559a52a07eb8461a5e27e7dad4e1e69674cd597b84066773b49fec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-06-backward-compat.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-06-backward-compat.md"
       },
       {
         "digest": "5788ad8624daaf65890127a892f9e1d91e03ba2e48b88b87831a62f148568cf9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-07-server-allowlist.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-07-server-allowlist.md"
       },
       {
         "digest": "f1d4d3605949aeca4e77958927fd4fa214d9f5044e6f93b5a289e51d52b8f455",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-08-locale-files.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-08-locale-files.md"
       },
       {
         "digest": "01f9dafb9c0eb50170c1df4d731edb4947d735eb863af2bbc327ed1509a9f168",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-09-welcome-picker.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-09-welcome-picker.md"
       },
       {
         "digest": "6bf65adb9ad9a735b8671f130c21fd3b25115707406ca8972ea6cecb07a22015",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-10-locale-toggle.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-10-locale-toggle.md"
       },
       {
         "digest": "1930c3227a56737186e772ce59b055b5746af6f087b9a8a0735974a7a4a98f64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-11-settings-language.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-11-settings-language.md"
       },
       {
         "digest": "8850336eb3ba3d924e463101df2817d9f242215dad8a273306e8725355e4bfeb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-12-wave1-nav-auth.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-12-wave1-nav-auth.md"
       },
       {
         "digest": "9b5d8f3bf739584a46ec7f63d8001580cd5f77f100caa9d3f92cd8dcafffc2b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-13-wave1-dashboard-common.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-13-wave1-dashboard-common.md"
       },
       {
         "excerpt": "// See spec 062 Security Requirements S1.",
@@ -901,97 +901,97 @@
       {
         "digest": "c47d29f58311a39cf786287fc2fdd33c2357c4ba9521bce0b90173be747b44bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/claude-plan.md"
+        "path": "specs/feature/062-i18n-dual-language-system/claude-plan.md"
       },
       {
         "digest": "bcd580354286b26c153bcb29ecd4a0511de164fd66ec20f49d19fe200e9c21f2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/claude-spec.md"
+        "path": "specs/feature/062-i18n-dual-language-system/claude-spec.md"
       },
       {
         "digest": "a7a5f6534f4ab5e70277bbb5ad1b56af1a33c241996579553ea5b8e0e14146c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/implementation/deep_implement_config.json"
+        "path": "specs/feature/062-i18n-dual-language-system/implementation/deep_implement_config.json"
       },
       {
         "digest": "d57e33a303a534aaf427a8346ff999db95dfcb9c352d7352836eb73f41da668e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/implementation/usage.md"
+        "path": "specs/feature/062-i18n-dual-language-system/implementation/usage.md"
       },
       {
         "digest": "f9aa6b0fc4a1445602f074ce1ee9dd655698e9654940d41adff954194158b195",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/reviews/self-review-round-1.md"
+        "path": "specs/feature/062-i18n-dual-language-system/reviews/self-review-round-1.md"
       },
       {
         "digest": "5dc0976c2e0d6b145b59808eb002030f13a99b610018fbfcf5ebd8ee8bc24112",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/index.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/index.md"
       },
       {
         "digest": "4b6973673519f2284f2afcaa944108e9ce687698fb9519db3f1fa2023fe44b64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-01-shared-config.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-01-shared-config.md"
       },
       {
         "digest": "b4c348995ba2e774ecdb2b4371026f42de16cf7547c7a5f342bbf20744220c61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-02-i18n-core.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-02-i18n-core.md"
       },
       {
         "digest": "6b0ac2435ceb1c61862ab965d8f4029695ae28dd2e5b9ccde4ce98e731d8db3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-03-loader-detector.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-03-loader-detector.md"
       },
       {
         "digest": "51bde762547af2fd26b6ab781f9e14c2dfe144e6960510bb4a4fa884b49b44c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-04-namespace-preloader.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-04-namespace-preloader.md"
       },
       {
         "digest": "581b1a3e2c8c5a545cd5268fc6ed89913dfa1ea95f3fb8027032c8940db7cae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-05-app-integration.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-05-app-integration.md"
       },
       {
         "digest": "12b7cbb199559a52a07eb8461a5e27e7dad4e1e69674cd597b84066773b49fec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-06-backward-compat.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-06-backward-compat.md"
       },
       {
         "digest": "5788ad8624daaf65890127a892f9e1d91e03ba2e48b88b87831a62f148568cf9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-07-server-allowlist.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-07-server-allowlist.md"
       },
       {
         "digest": "f1d4d3605949aeca4e77958927fd4fa214d9f5044e6f93b5a289e51d52b8f455",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-08-locale-files.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-08-locale-files.md"
       },
       {
         "digest": "01f9dafb9c0eb50170c1df4d731edb4947d735eb863af2bbc327ed1509a9f168",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-09-welcome-picker.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-09-welcome-picker.md"
       },
       {
         "digest": "6bf65adb9ad9a735b8671f130c21fd3b25115707406ca8972ea6cecb07a22015",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-10-locale-toggle.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-10-locale-toggle.md"
       },
       {
         "digest": "1930c3227a56737186e772ce59b055b5746af6f087b9a8a0735974a7a4a98f64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-11-settings-language.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-11-settings-language.md"
       },
       {
         "digest": "8850336eb3ba3d924e463101df2817d9f242215dad8a273306e8725355e4bfeb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-12-wave1-nav-auth.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-12-wave1-nav-auth.md"
       },
       {
         "digest": "9b5d8f3bf739584a46ec7f63d8001580cd5f77f100caa9d3f92cd8dcafffc2b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/062-i18n-dual-language-system/sections/section-13-wave1-dashboard-common.md"
+        "path": "specs/feature/062-i18n-dual-language-system/sections/section-13-wave1-dashboard-common.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -1009,7 +1009,7 @@
     "unresolved": 40
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.737743Z",
+  "updated_at": "2026-10-06T03:28:15.110194Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L92"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L92"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L92",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L93"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L93"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L93",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L93",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L94"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L94"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L94",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L128"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L128"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L128",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L178"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L178"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L178",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L192"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L192"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L192",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L192",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L193"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L193"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L193",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L193",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L194"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L194"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L194",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L195"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L195"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L195",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L196"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L196"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L196",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L196",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L197"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L197"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L197",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L198"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L198"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L198",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L199"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L199"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L199",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L404"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L404"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L404",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L575"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L575"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L575",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L575",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L583"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L583"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L583",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L583",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L585"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L585"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L585",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L585",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L610"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L610"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L610",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L610",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L627"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L627"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L627",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L628"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L628"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L628",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L733"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L733"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L733",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L761"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L761"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L761",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L761",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L777"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L777"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L777",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L779"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L779"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L779",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L826"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L826"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L826",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L826",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L899"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L899"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L899",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L899",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L900"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L900"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L900",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L900",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L901"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L901"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L901",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L901",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L939"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L939"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L939",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L939",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L954"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L954"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L954",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L954",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L960"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L960"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L960",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L960",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L964"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L964"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L964",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L964",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L971"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L971"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L971",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L971",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L979"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L979"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L979",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L979",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L995"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L995"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L995",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L995",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L996"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L996"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L996",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1024"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1024"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1024",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1024",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1045"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1045"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1045",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1045",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1093"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1093"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1093",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1093",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1111"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1111"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1111",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1169"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1169"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1169",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1170"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1170"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1170",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1170",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1174"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1174"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1174",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1175"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1175"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1175",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1175",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1176"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1176"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1176",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1190"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1190"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1190",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1207"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1207"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1207",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1212"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1212"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1212",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1236"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1236"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1236",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1304"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1304"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1304",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1340"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1340"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1340",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1344"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1344"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1344",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1352"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1352"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1352",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1384"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1384"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1384",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1404"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1404"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1404",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1442"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1442"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1442",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1442",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1450"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1450"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1450",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1450",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1466"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1466"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1466",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1466",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1489"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1489"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1489",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1510"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1510"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1510",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1510",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1512"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1512"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1512",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1512",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1516"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1516"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1516",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1516",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1554"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1554"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1554",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1554",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1579"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1579"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1579",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1579",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1581"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1581"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1581",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1581",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1654"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1654"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1654",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1654",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1663"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1663"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1663",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1663",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1703"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1703"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1703",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1718"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1718"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1718",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1718",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1720"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1720"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1720",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1720",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1722"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1722"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1722",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1722",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1723"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1723"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1723",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1724"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1724"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1724",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1730"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1730"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1730",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1730",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1733"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1733"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1733",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1734"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1734"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1734",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1779"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1779"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1779",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1783"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1783"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1783",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1783",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1812"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1812"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1812",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1812",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1820"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1820"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1820",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1820",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1823"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1823"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1823",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1823",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1829"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1829"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1829",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1829",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1830"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1830"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1830",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1830",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1831"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1831"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1831",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1831",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1832"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1832"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1832",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1832",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1833"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1833"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1833",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1833",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1834"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1834"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1834",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1834",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1847"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1847"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1847",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1847",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1848"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1848"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1848",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1848",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1849"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1849"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1849",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1849",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1853"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1853"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1853",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1853",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1854"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1854"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1854",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1854",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1855"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1855"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1855",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1855",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1856"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1856"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1856",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1856",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1857"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1857"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1857",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1857",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1863"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1863"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1863",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1863",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1864"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1864"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1864",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1864",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1865"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1865"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1865",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1865",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1866"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1866"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1866",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1866",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1872"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1872"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1872",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1872",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1873"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1873"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1873",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1873",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1874"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1874"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1874",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1874",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1875"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1875"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1875",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1875",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1877"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1877"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1877",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1877",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1930"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1930"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1930",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1930",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1931"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1931"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1931",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1931",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1932"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1932"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1932",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1932",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1933"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1933"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1933",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1933",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1934"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1934"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1934",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1934",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1935"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1935"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1935",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1935",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1936"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1936"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1936",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1936",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1937"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1937"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1937",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1937",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1938"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1938"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1938",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1938",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1939"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1939"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1939",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1939",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1940"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1940"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1940",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1940",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1941"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1941"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1941",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1941",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1942"
+        "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1942"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1942",
+      "authority_source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md#L1942",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

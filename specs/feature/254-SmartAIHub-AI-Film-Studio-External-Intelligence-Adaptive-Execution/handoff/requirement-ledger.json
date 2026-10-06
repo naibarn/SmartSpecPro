@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L31"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L31"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L31",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L40"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L40"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L40",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L40",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L75"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L75",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L83"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L83"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L83",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L85"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L85"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L85",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L86"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L86"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L86",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L87"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L87"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L87",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L88"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L88"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L88",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L89"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L89"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L89",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L90"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L90"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L90",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L91"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L91"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L91",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L92"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L92"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L92",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L93"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L93"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L93",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L93",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L94"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L94"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L94",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L98"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L98"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L98",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L164"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L164"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L164",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L170"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L170"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L170",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L170",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L172"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L172"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L172",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L172",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L174"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L174"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L174",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L182"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L182"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L182",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L184"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L184"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L184",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L190"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L190"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L190",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L191"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L191"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L191",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L192"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L192"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L192",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L192",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L193"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L193"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L193",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L193",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L194"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L194"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L194",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L195"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L195"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L195",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L196"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L196"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L196",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L196",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L198"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L198"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L198",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L216"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L216"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L216",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L220"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L220"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L220",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L220",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L228"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L228"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L228",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L228",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L242"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L242"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L242",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L246"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L246"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L246",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L256"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L256"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L256",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L260"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L260"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L260",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L278"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L278"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L278",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L280"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L280"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L280",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L281"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L281"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L281",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L282"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L282"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L282",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L283"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L283"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L283",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L284"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L284"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L284",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L285"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L285"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L285",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L286"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L286"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L286",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L287"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L287"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L287",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L287",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L288"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L288"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L288",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L289"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L289"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L289",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L290"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L290"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L290",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L291"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L291"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L291",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L291",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L292"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L292"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L292",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L293"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L293"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L293",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L294"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L294"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L294",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L295"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L295"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L295",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L296"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L296"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L296",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L297"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L297"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L297",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L298"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L298"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L298",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L298",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L299"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L299"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L299",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L300"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L300"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L300",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L300",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L301"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L301"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L301",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L301",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L302"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L302"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L302",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L303"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L303"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L303",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L304"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L304"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L304",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L305"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L305"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L305",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L305",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L306"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L306"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L306",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L306",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L307"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L307"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L307",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L307",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L308"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L308"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L308",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L308",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L309"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L309"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L309",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L309",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L310"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L310"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L310",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L311"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L311"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L311",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L311",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L312"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L312"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L312",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L312",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L313"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L313"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L313",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L313",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L314"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L314"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L314",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L314",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L315"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L315"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L315",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L315",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L316"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L316"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L316",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L316",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L317"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L317"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L317",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L318"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L318"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L318",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L318",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L319"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L319"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L319",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L319",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L320"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L320"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L320",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L321"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L321"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L321",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L321",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L322"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L322"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L322",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L323"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L323"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L323",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L324"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L324"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L324",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L324",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L352"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L352"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L352",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L354"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L354"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L354",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L354",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L366"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L366"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L366",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L372"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L372"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L372",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L376"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L376"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L376",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L392"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L392"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L392",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L413"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L413"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L413",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L413",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L419"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L419"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L419",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L425"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L425"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L425",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L431"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L431"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L431",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L437"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L437"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L437",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L445"
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L445"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L445",
+      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

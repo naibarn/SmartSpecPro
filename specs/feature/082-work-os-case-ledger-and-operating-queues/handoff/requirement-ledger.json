@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L67"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L67"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L67",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L68"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L68"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L68",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L69"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L69"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L69",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L70"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L70"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L70",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L71"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L71"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L71",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L72"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L72"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L72",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L73"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L73"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L73",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L109"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L109"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L109",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L113"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L113"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L113",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L115"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L115"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L115",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L119"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L119"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L119",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L122"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L122"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L122",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L127"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L127"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L127",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,10 +291,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L153",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L331"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L153",
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L331"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L153",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -314,10 +314,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L185",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L372"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L185",
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L372"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L185",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -337,9 +337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L203"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L203"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L203",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L203",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -359,9 +359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L211"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L211"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L211",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -381,9 +381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L212"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L212"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L212",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -403,9 +403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L213"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L213"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L213",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -425,9 +425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L214"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L214"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L214",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -447,9 +447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L215"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L215"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L215",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -469,9 +469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L216"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L216"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L216",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -491,9 +491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L217"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L217"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L217",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -513,9 +513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L218"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L218"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L218",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -535,9 +535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L219"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L219"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L219",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -557,9 +557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L220"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L220"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L220",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L220",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -579,9 +579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L224"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L224"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L224",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L224",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -601,9 +601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L225"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L225"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L225",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -623,9 +623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L226"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L226"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L226",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L226",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -645,9 +645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L230"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L230"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L230",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -667,9 +667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L231"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L231"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L231",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -689,9 +689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L232"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L232"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L232",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -711,9 +711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L233"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L233"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L233",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -733,9 +733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L234"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L234"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L234",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -755,9 +755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L235"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L235"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L235",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L235",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -777,9 +777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L236"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L236"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L236",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -799,9 +799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L237"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L237"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L237",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -821,9 +821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L241"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L241"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L241",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -843,9 +843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L242"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L242"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L242",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -865,9 +865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L243"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L243"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L243",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L243",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -887,9 +887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L244"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L244"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L244",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -909,9 +909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L245"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L245"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L245",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -931,9 +931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L246"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L246"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L246",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -953,9 +953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L247"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L247"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L247",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -975,9 +975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L248"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L248"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L248",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -997,9 +997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L252"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L252"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L252",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L252",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1019,9 +1019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L253"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L253"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L253",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L253",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1041,9 +1041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L254"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L254"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L254",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1063,9 +1063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L255"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L255"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L255",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1085,9 +1085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L256"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L256"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L256",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1107,9 +1107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L257"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L257"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L257",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1129,9 +1129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L258"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L258"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L258",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1151,9 +1151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L276"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L276"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L276",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1173,9 +1173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L280"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L280"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L280",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1195,9 +1195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L281"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L281"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L281",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1217,9 +1217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L282"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L282"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L282",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1239,9 +1239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L283"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L283"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L283",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1261,9 +1261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L322"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L322"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L322",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1283,9 +1283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L323"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L323"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L323",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1305,9 +1305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L324"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L324"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L324",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L324",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1327,9 +1327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L325"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L325"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L325",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L325",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1349,9 +1349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L326"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L326"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L326",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L326",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1371,9 +1371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L353"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L353"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L353",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1393,9 +1393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L354"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L354"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L354",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L354",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1415,9 +1415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L388"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L388"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L388",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L388",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1437,9 +1437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L415"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L415"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L415",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1459,9 +1459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L416"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L416"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L416",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L416",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1481,9 +1481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L422"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L422"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L422",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L422",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1503,9 +1503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L423"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L423"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L423",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L423",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1525,9 +1525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L424"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L424"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L424",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L424",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1547,9 +1547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L430"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L430"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L430",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1569,9 +1569,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L431"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L431"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L431",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1591,9 +1591,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L432"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L432"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L432",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1613,9 +1613,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L433"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L433"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L433",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L433",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1635,9 +1635,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L434"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L434"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L434",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L434",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1657,9 +1657,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L435"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L435"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L435",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L435",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1679,9 +1679,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L436"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L436"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L436",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L436",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1701,9 +1701,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L518"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L518"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L518",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1723,9 +1723,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L536"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L536"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L536",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L536",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1745,9 +1745,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L542"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L542"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L542",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L542",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1767,9 +1767,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L543"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L543"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L543",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1789,9 +1789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L544"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L544"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L544",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1811,9 +1811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L545"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L545"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L545",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L545",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1833,9 +1833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L546"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L546"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L546",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L546",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1855,9 +1855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L547"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L547"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L547",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L547",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1877,9 +1877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L548"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L548"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L548",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L548",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1899,9 +1899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L549"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L549"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L549",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1921,9 +1921,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L550"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L550"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L550",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L550",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1943,9 +1943,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L551"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L551"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L551",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1965,9 +1965,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L552"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L552"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L552",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L552",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1987,9 +1987,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L553"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L553"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L553",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L553",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2009,9 +2009,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L554"
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L554"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L554",
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L554",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

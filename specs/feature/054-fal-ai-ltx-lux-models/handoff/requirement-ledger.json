@@ -5,14 +5,14 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L61",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L122",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L171",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L201",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L230",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L259"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L61",
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L122",
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L171",
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L201",
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L230",
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L259"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L61",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -32,9 +32,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L178"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L178"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L178",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -54,9 +54,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L320"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L320"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L320",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -76,9 +76,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L351"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L351"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L351",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -98,9 +98,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L369"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L369"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L369",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L369",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -120,11 +120,11 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L846",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L867",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L888"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L846",
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L867",
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L888"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L846",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L846",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -144,9 +144,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L903"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L903"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L903",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L903",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -166,9 +166,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L919"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L919"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L919",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L919",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -188,9 +188,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L933"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L933"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L933",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L933",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -210,9 +210,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L954"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L954"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L954",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L954",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -232,9 +232,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L955"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L955"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L955",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L955",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -254,9 +254,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L956"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L956"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L956",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L956",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -276,9 +276,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L960"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L960"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L960",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L960",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -298,9 +298,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L964"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L964"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L964",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L964",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -320,9 +320,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L967"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L967"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L967",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L967",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -342,9 +342,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L968"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L968"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L968",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L968",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -364,9 +364,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L969"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L969"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L969",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L969",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -386,9 +386,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L982"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L982"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L982",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L982",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -408,9 +408,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L983"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L983"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L983",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L983",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -430,9 +430,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1000"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1000"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1000",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1000",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -452,9 +452,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1002"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1002"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1002",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -474,9 +474,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1003"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1003"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1003",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -496,9 +496,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1004"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1004"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1004",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -518,9 +518,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1005"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1005"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1005",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -540,9 +540,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1024"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1024"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1024",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1024",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -562,9 +562,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1026"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1026"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1026",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1026",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -584,9 +584,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1027"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1027"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1027",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1027",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -606,9 +606,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1028"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1028"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1028",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1028",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -628,9 +628,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1029"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1029"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1029",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1029",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -650,9 +650,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1065"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1065"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1065",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1065",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -672,9 +672,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1066"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1066"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1066",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1066",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -694,9 +694,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1067"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1067"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1067",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1067",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -716,9 +716,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1101"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1101"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1101",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -738,9 +738,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1102"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1102"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1102",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -760,9 +760,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1103"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1103"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1103",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -782,9 +782,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1110"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1110"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1110",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -804,9 +804,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1111"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1111"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1111",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -826,9 +826,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1131"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1131"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1131",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -848,9 +848,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1247"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1247"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1247",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -870,9 +870,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1254"
+        "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1254"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1254",
+      "authority_source": "specs/feature/054-fal-ai-ltx-lux-models/spec.md#L1254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

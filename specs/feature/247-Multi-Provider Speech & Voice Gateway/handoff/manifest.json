@@ -14,7 +14,7 @@
         "referencing_spec_id": "247",
         "relation_text": "replaceable",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L94",
+        "source": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L94",
         "source_digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
         "successor_spec_id": "247"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "237",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L522",
+        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L522",
         "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
         "successor_spec_id": "237"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "237",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L623",
+        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L623",
         "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
         "successor_spec_id": "237"
       },
@@ -53,7 +53,7 @@
           "R1.9",
           "R3.4"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L669",
+        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L669",
         "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
         "successor_spec_id": "237"
       },
@@ -65,7 +65,7 @@
         "referencing_spec_id": "248",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L15",
+        "source": "specs/feature/248-MCP Skills Extension/spec.md#L15",
         "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
         "successor_spec_id": "248"
       }
@@ -135,18 +135,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md",
     "digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.472778Z",
+      "last_evidence_at": "2026-10-06T03:28:18.218998Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-28T00:04:37+07:00"
     },
-    "revision": null,
+    "revision": "1.10",
     "slug": "247-Multi-Provider Speech & Voice Gateway",
     "spec_id": "247",
     "title": "Spec 247 — Multi-Provider Speech & Voice Gateway"
@@ -168,7 +168,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.472778Z"
+    "updated_at": "2026-10-06T03:28:18.218998Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -178,7 +178,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.472778Z",
+    "reconciled_at": "2026-10-06T03:28:18.218998Z",
     "sources": [
       {
         "digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
@@ -246,7 +246,7 @@
     "unresolved": 114
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.472778Z",
+  "updated_at": "2026-10-06T03:28:18.218998Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

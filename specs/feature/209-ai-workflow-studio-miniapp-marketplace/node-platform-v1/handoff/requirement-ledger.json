@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L56"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L56"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L56",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L56",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L57"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L57"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L57",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L57",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L69"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L69"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L69",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L72"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L72"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L72",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L79"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L79"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L79",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L121"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L121"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L121",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,17 +137,17 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L125",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L139",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L157",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L172",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L187",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L205",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L220",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L238",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L256"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L125",
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L139",
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L157",
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L172",
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L187",
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L205",
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L220",
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L238",
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L256"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L125",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -167,9 +167,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L127"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L127"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L127",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -189,9 +189,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L289"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L289"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L289",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -211,9 +211,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L327"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L327"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L327",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L327",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -233,9 +233,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L332"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L332"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L332",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -255,9 +255,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L338"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L338"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L338",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L338",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -277,9 +277,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L363"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L363"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L363",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -299,9 +299,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L375"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L375"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L375",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -321,9 +321,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L383"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L383"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L383",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -343,9 +343,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L384"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L384"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L384",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -365,9 +365,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L439"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L439"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L439",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L439",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -387,9 +387,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L441"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L441"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L441",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L441",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -409,9 +409,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L443"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L443"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L443",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L443",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -431,9 +431,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L446"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L446"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L446",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -453,9 +453,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L449"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L449"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L449",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -475,9 +475,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L451"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L451"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L451",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -497,9 +497,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L453"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L453"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L453",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L453",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -519,9 +519,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L455"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L455"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L455",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L455",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -541,9 +541,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L457"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L457"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L457",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L457",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -563,9 +563,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L459"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L459"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L459",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -585,9 +585,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L461"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L461"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L461",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L461",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -607,9 +607,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L464"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L464"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L464",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L464",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -629,9 +629,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L467"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L467"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L467",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -651,9 +651,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L470"
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L470"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L470",
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md#L470",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

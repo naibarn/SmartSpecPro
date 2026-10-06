@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L9"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L9"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L9",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L9",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L15"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L15"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L15",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L15",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L30"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L30"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L30",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L30",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L36"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L36"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L36",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L36",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L46"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L46"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L46",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,10 +115,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L80",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3337"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L80",
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3337"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L80",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -138,9 +138,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L82"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L82"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L82",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -160,9 +160,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L83"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L83"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L83",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -182,9 +182,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L84"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L84"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L84",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -204,9 +204,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L85"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L85"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L85",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -226,9 +226,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L86"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L86"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L86",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -248,9 +248,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L87"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L87"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L87",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -270,9 +270,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L88"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L88"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L88",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -292,9 +292,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L89"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L89"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L89",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -314,9 +314,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L90"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L90"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L90",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -336,9 +336,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L91"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L91"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L91",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -358,9 +358,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L92"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L92"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L92",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -380,9 +380,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L93"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L93"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L93",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L93",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -402,9 +402,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L94"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L94"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L94",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -424,9 +424,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L95"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L95"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L95",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -446,9 +446,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L96"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L96"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L96",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -468,9 +468,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L97"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L97"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L97",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L97",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -490,9 +490,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L98"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L98"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L98",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -512,9 +512,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L99"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L99",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -534,9 +534,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L100"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L100"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L100",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -556,9 +556,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L101"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L101"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L101",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -578,9 +578,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L102"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L102"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L102",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -600,9 +600,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L103"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L103"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L103",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -622,9 +622,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L104"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L104"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L104",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -644,9 +644,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L105"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L105"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L105",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -666,9 +666,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L106"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L106"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L106",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -688,9 +688,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L107"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L107"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L107",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -710,9 +710,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L108"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L108"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L108",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -732,9 +732,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L109"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L109"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L109",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -754,9 +754,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L110"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L110"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L110",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -776,9 +776,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L116"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L116"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L116",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -798,9 +798,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L241"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L241"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L241",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -820,9 +820,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L259"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L259"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L259",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -842,9 +842,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L261"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L261"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L261",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -864,9 +864,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L320"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L320"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L320",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -886,9 +886,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L328"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L328"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L328",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L328",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -908,9 +908,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L346"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L346"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L346",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -930,9 +930,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L367"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L367"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L367",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L367",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -952,9 +952,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L416"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L416"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L416",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L416",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -974,9 +974,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L420"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L420"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L420",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -996,9 +996,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L432"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L432"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L432",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1018,9 +1018,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L434"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L434"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L434",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L434",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1040,9 +1040,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L438"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L438"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L438",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L438",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1062,9 +1062,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L472"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L472"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L472",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L472",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1084,9 +1084,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L474"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L474"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L474",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L474",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1106,9 +1106,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L476"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L476"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L476",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L476",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1128,9 +1128,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L488"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L488"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L488",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L488",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1150,9 +1150,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L490"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L490"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L490",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L490",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1172,9 +1172,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L496"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L496"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L496",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L496",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1194,9 +1194,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L512"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L512"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L512",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L512",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1216,9 +1216,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L516"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L516"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L516",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L516",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1238,9 +1238,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L540"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L540"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L540",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L540",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1260,9 +1260,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L556"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L556"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L556",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L556",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1282,9 +1282,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L572"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L572"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L572",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L572",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1304,9 +1304,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L576"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L576"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L576",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L576",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1326,9 +1326,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L593"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L593"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L593",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L593",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1348,9 +1348,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L646"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L646"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L646",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1370,9 +1370,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L708"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L708"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L708",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1392,9 +1392,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L799"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L799"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L799",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L799",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1414,9 +1414,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L803"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L803"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L803",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L803",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1436,9 +1436,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L814"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L814"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L814",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1458,9 +1458,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L825"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L825"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L825",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L825",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1480,9 +1480,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L845"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L845"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L845",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L845",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1502,9 +1502,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L911"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L911"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L911",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L911",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1524,9 +1524,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L925"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L925"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L925",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L925",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1546,9 +1546,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L992"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L992"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L992",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L992",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1568,9 +1568,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1037"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1037"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1037",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1037",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1590,9 +1590,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1043"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1043"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1043",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1043",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1612,9 +1612,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1404"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1404"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1404",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1634,9 +1634,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1432"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1432"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1432",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1656,9 +1656,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1481"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1481"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1481",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1481",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1678,9 +1678,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1483"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1483"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1483",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1700,9 +1700,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1627"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1627"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1627",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1722,9 +1722,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1721"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1721"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1721",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1744,9 +1744,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1757"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1757"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1757",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1766,9 +1766,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1860"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1860"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1860",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1860",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1788,9 +1788,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1876"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1876"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1876",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1876",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1810,9 +1810,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1916"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1916"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1916",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1916",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1832,9 +1832,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1977"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1977"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1977",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1977",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1854,9 +1854,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1990"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1990"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1990",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1990",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1876,9 +1876,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1998"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L1998"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L1998",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L1998",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1898,9 +1898,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2002"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2002"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2002",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1920,9 +1920,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2016"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2016"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2016",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2016",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1942,9 +1942,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2229"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2229"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2229",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1964,9 +1964,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2243"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2243"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2243",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2243",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1986,9 +1986,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2251"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2251"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2251",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2008,9 +2008,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2302"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2302"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2302",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2030,9 +2030,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2306"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2306"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2306",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2306",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2052,9 +2052,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2318"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2318"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2318",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2318",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2074,9 +2074,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2328"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2328"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2328",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2328",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2096,9 +2096,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2330"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2330"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2330",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2118,9 +2118,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2339"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2339"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2339",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2339",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2140,9 +2140,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2346"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2346"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2346",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2162,9 +2162,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2384"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2384"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2384",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2184,9 +2184,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2386"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2386"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2386",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2386",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2206,9 +2206,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2526"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2526"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2526",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2228,9 +2228,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2656"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2656"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2656",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2656",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2250,9 +2250,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2712"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2712"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2712",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2272,9 +2272,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2774"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2774"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2774",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2294,9 +2294,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2776"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2776"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2776",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2776",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2316,9 +2316,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2782"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2782"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2782",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2782",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2338,9 +2338,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2784"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2784"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2784",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2784",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2360,9 +2360,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2802"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2802"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2802",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2802",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2382,9 +2382,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2804"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2804"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2804",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2804",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2404,9 +2404,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2805"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2805"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2805",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2805",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2426,9 +2426,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2891"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2891"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2891",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2891",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2448,9 +2448,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2910"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2910"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2910",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2910",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2470,9 +2470,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2959"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2959"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2959",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2959",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2492,9 +2492,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2965"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2965"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2965",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2965",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2514,9 +2514,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2997"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L2997"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L2997",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L2997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2536,9 +2536,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3013"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3013"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3013",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3013",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2558,9 +2558,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3056"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3056"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3056",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3056",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2580,9 +2580,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3186"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3186"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3186",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2602,9 +2602,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3339"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3339"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3339",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3339",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2624,9 +2624,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3340"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3340"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3340",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2646,9 +2646,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3341"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3341"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3341",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2668,9 +2668,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3342"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3342"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3342",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3342",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2690,9 +2690,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3343"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3343"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3343",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3343",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2712,9 +2712,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3344"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3344"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3344",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2734,9 +2734,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3345"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3345"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3345",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3345",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2756,9 +2756,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3346"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3346"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3346",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2778,9 +2778,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3350"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3350"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3350",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3350",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2800,9 +2800,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3351"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3351"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3351",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2822,9 +2822,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3352"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3352"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3352",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2844,9 +2844,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3353"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3353"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3353",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2866,9 +2866,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3409"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3409"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3409",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2888,9 +2888,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3413"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3413"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3413",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3413",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2910,9 +2910,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3423"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3423"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3423",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3423",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2932,9 +2932,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3603"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3603"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3603",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2954,9 +2954,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3604"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3604"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3604",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3604",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2976,9 +2976,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3605"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3605"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3605",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3605",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2998,9 +2998,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3606"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3606"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3606",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3606",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3020,9 +3020,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3607"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3607"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3607",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3607",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3042,9 +3042,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3608"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3608"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3608",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3608",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3064,9 +3064,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3609"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3609"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3609",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3609",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3086,9 +3086,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3610"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3610"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3610",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3610",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3108,9 +3108,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3611"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3611"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3611",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3130,9 +3130,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3612"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3612"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3612",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3612",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3152,9 +3152,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3613"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3613"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3613",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3613",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3174,9 +3174,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3614"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3614"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3614",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3614",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3196,9 +3196,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3615"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3615"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3615",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3615",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3218,9 +3218,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3616"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3616"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3616",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3240,9 +3240,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3617"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3617"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3617",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3262,9 +3262,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3618"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3618"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3618",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3284,9 +3284,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3619"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3619"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3619",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3306,9 +3306,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3620"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3620"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3620",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3620",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3328,9 +3328,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3621"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3621"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3621",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3350,9 +3350,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3622"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3622"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3622",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3372,9 +3372,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3623"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3623"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3623",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3394,9 +3394,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3624"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3624"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3624",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3416,9 +3416,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3625"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3625"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3625",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3438,9 +3438,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3626"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3626"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3626",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3460,9 +3460,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3627"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3627"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3627",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3482,9 +3482,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3628"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3628"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3628",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3504,9 +3504,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3629"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3629"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3629",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3526,9 +3526,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3630"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3630"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3630",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3630",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3548,9 +3548,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3631"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3631"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3631",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3570,9 +3570,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3632"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3632"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3632",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3592,9 +3592,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3633"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3633"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3633",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3633",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3614,9 +3614,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3634"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3634"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3634",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3636,9 +3636,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3635"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3635"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3635",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3635",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3658,9 +3658,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3636"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3636"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3636",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3680,9 +3680,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3637"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3637"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3637",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3702,9 +3702,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3638"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3638"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3638",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3638",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3724,9 +3724,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3639"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3639"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3639",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3639",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3746,9 +3746,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3640"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3640"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3640",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3768,9 +3768,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3646"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3646"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3646",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3790,9 +3790,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3647"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3647"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3647",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3647",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3812,9 +3812,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3648"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3648"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3648",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3648",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3834,9 +3834,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3649"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3649"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3649",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3856,9 +3856,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3650"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3650"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3650",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3650",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3878,9 +3878,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3651"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3651"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3651",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3651",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3900,9 +3900,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3652"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3652"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3652",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3922,9 +3922,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3653"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3653"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3653",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3944,9 +3944,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3654"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3654"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3654",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3654",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3966,9 +3966,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3655"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3655"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3655",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3655",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3988,9 +3988,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3656"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3656"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3656",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3656",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4010,9 +4010,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3657"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3657"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3657",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4032,9 +4032,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3658"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3658"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3658",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4054,9 +4054,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3664"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3664"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3664",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3664",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4076,9 +4076,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3665"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3665"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3665",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3665",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4098,9 +4098,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3666"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3666"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3666",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4120,9 +4120,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3667"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3667"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3667",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3667",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4142,9 +4142,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3668"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3668"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3668",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3668",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4164,9 +4164,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3669"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3669"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3669",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4186,9 +4186,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3670"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3670"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3670",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4208,9 +4208,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3671"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3671"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3671",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3671",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4230,9 +4230,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3672"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3672"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3672",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4252,9 +4252,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3673"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3673"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3673",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4274,9 +4274,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3866"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3866"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3866",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3866",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4296,9 +4296,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3882"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3882"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3882",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3882",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4318,9 +4318,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3897"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3897"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3897",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3897",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4340,9 +4340,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3926"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3926"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3926",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3926",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4362,9 +4362,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3934"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3934"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3934",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3934",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4384,9 +4384,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3940"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3940"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3940",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3940",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4406,9 +4406,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3952"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L3952"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L3952",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L3952",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4428,9 +4428,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4003"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4003"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4003",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4450,9 +4450,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4071"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4071"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4071",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4071",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4472,9 +4472,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4105"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4105"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4105",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4494,9 +4494,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4163"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4163"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4163",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4516,9 +4516,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4184"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4184"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4184",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4538,9 +4538,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4201"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4201"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4201",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4201",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4560,9 +4560,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4285"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4285"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4285",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4582,11 +4582,11 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4289",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4356",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4409"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4289",
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4356",
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4409"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4289",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4606,9 +4606,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4379"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4379"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4379",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4628,9 +4628,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4459"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4459"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4459",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4650,9 +4650,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4487"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4487"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4487",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4487",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4672,9 +4672,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4489"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4489"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4489",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4694,9 +4694,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4518"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4518"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4518",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4716,9 +4716,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4559"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4559"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4559",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4559",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4738,9 +4738,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4584"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4584"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4584",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4584",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4760,9 +4760,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4611"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4611"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4611",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4782,9 +4782,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4640"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4640"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4640",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4804,9 +4804,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4650"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4650"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4650",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4650",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4826,9 +4826,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4673"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4673"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4673",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4848,9 +4848,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4690"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4690"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4690",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4870,9 +4870,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4696"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4696"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4696",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4696",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4892,9 +4892,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4723"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4723"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4723",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4914,9 +4914,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4868"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4868"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4868",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4868",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4936,9 +4936,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4988"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4988"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4988",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4988",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4958,9 +4958,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4990"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L4990"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L4990",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L4990",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4980,9 +4980,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5001"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5001"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5001",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5001",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5002,9 +5002,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5011"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5011"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5011",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5011",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5024,9 +5024,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5058"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5058"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5058",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5058",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5046,9 +5046,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5059"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5059"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5059",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5059",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5068,9 +5068,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5060"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5060"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5060",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5060",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5090,9 +5090,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5061"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5061"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5061",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5061",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5112,9 +5112,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5062"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5062"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5062",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5062",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5134,9 +5134,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5063"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5063"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5063",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5063",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5156,9 +5156,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5064"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5064"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5064",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5064",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5178,9 +5178,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5065"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5065"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5065",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5065",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5200,9 +5200,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5066"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5066"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5066",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5066",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5222,9 +5222,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5067"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5067"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5067",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5067",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5244,9 +5244,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5068"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5068"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5068",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5068",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5266,9 +5266,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5069"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5069"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5069",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5069",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5288,9 +5288,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5070"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5070"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5070",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5070",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5310,9 +5310,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5071"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5071"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5071",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5071",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5332,9 +5332,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5072"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5072"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5072",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5072",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5354,9 +5354,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5073"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5073"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5073",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5073",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5376,9 +5376,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5074"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5074"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5074",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5398,9 +5398,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5075"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5075"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5075",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5075",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5420,9 +5420,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5076"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5076"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5076",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5076",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5442,9 +5442,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5077"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5077"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5077",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5077",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5464,9 +5464,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5078"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5078"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5078",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5078",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5486,9 +5486,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5079"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5079"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5079",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5079",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5508,9 +5508,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5080"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5080"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5080",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5080",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5530,9 +5530,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5081"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5081"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5081",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5081",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5552,9 +5552,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5082"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5082"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5082",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5082",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5574,9 +5574,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5083"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5083"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5083",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5083",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5596,9 +5596,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5084"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5084"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5084",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5084",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5618,9 +5618,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5085"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5085"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5085",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5085",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5640,9 +5640,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5086"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5086"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5086",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5086",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5662,9 +5662,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5087"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5087"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5087",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5087",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5684,9 +5684,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5088"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5088"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5088",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5088",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5706,9 +5706,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5089"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5089"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5089",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5089",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5728,9 +5728,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5090"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5090"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5090",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5090",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5750,9 +5750,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5091"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5091"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5091",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5091",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5772,9 +5772,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5092"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5092"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5092",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5092",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5794,9 +5794,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5098"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5098"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5098",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5098",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5816,9 +5816,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5110"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5110"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5110",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5838,9 +5838,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5112"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5112",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5860,9 +5860,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5113"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5113"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5113",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5882,9 +5882,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5114"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5114"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5114",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5904,9 +5904,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5115"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5115"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5115",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5926,9 +5926,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5170"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5170"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5170",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5170",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5948,9 +5948,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5176"
+        "specs/feature/201-content-provenance-copyright-protection/spec.md#L5176"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/spec.md#L5176",
+      "authority_source": "specs/feature/201-content-provenance-copyright-protection/spec.md#L5176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

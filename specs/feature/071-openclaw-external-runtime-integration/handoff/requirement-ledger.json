@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L55"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L55"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L55",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L55",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L56"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L56"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L56",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L56",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L57"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L57"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L57",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L57",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L58"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L58"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L58",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L59"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L59"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L59",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L59",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L60"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L60"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L60",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L60",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L86"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L86"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L86",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L101"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L101"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L101",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L105"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L105"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L105",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L123"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L123"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L123",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L141"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L141"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L141",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L146"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L146"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L146",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L150"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L150",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L152"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L152"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L152",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L153"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L153"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L153",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L157"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L157"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L157",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L158"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L158"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L158",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L166"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L166"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L166",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L179"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L179"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L179",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L193"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L193"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L193",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L193",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L194"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L194"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L194",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L283"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L283"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L283",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L469"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L469"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L469",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L469",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L509"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L509"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L509",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L509",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L510"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L510"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L510",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L510",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L516"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L516"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L516",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L516",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L532"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L532"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L532",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L532",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L540"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L540"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L540",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L540",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L546"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L546"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L546",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L546",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L564"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L564"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L564",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L564",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L566"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L566"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L566",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L566",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L595"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L595"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L595",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L595",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L602"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L602"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L602",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L624"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L624"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L624",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L625"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L625"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L625",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L626"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L626"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L626",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L627"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L627"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L627",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L631"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L631"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L631",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L632"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L632"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L632",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L633"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L633"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L633",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L633",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L634"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L634"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L634",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L640"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L640"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L640",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L641"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L641"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L641",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L641",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L642"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L642"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L642",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L643"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L643"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L643",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L644"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L644"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L644",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L652"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L652"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L652",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L653"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L653"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L653",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L654"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L654"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L654",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L654",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L655"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L655"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L655",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L655",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L656"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L656"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L656",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L656",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L657"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L657"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L657",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L663"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L663"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L663",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L663",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L664"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L664"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L664",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L664",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L665"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L665"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L665",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L665",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L673"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L673"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L673",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L674"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L674"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L674",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L674",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L675"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L675"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L675",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L675",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L701"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L701"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L701",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L703"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L703"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L703",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L709"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L709"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L709",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L709",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L710"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L710"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L710",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L710",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L711"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L711"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L711",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L711",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L712"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L712"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L712",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L713"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L713"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L713",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L714"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L714"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L714",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L714",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L715"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L715"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L715",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L715",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L716"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L716"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L716",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L716",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L717"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L717"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L717",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L717",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L718"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L718"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L718",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L718",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L719"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L719"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L719",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L719",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L720"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L720"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L720",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L720",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L721"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L721"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L721",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L722"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L722"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L722",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L722",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L723"
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L723"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/071-openclaw-external-runtime-integration/spec.md#L723",
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

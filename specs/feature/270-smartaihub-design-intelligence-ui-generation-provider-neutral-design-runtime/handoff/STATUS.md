@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
-# 270 — Spec 270 — SmartAIHub Design Intelligence, UI Generation & Provider-Neutral Design Runtime R1.4
+# 270 — SmartAIHub Design Intelligence, UI Generation & Provider-Neutral Design Runtime
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 348 unresolved of 348
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 7
+- Manifest generation: 8
 
 ## Source-declared status and relationship claims
 

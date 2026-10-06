@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/spec.md#L19"
+        "specs/feature/162-163-gap-closure/spec.md#L19"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/spec.md#L19",
+      "authority_source": "specs/feature/162-163-gap-closure/spec.md#L19",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/spec.md#L34"
+        "specs/feature/162-163-gap-closure/spec.md#L34"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/spec.md#L34",
+      "authority_source": "specs/feature/162-163-gap-closure/spec.md#L34",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

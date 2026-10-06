@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L13"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L13"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L13",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L13",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L26"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L26"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L26",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L26",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L27"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L27"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L27",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L27",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L62"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L62"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L62",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L64"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L64"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L64",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L64",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L74"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L74"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L74",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L99"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L99",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L101"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L101"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L101",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L159"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L159"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L159",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L160"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L160"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L160",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L161"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L161"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L161",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L163"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L163"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L163",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L194"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L194"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L194",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L195"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L195"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L195",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L245"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L245"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L245",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L250"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L250"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L250",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L252"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L252"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L252",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L252",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L255"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L255"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L255",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L269"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L269"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L269",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L272"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L272"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L272",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L278"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L278"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L278",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L280"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L280"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L280",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L281"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L281"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L281",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L286"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L286"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L286",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L289"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L289"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L289",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L290"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L290"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L290",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L292"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L292"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L292",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L294"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L294"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L294",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L297"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L297"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L297",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L302"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L302"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L302",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L309"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L309"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L309",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L309",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L313"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L313"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L313",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L313",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L324"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L324"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L324",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L324",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L325"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L325"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L325",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L325",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L328"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L328"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L328",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L328",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L329"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L329"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L329",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L329",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L330"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L330"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L330",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L331"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L331"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L331",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L333"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L333"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L333",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L333",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L335"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L335"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L335",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L341"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L341"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L341",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L347"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L347"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L347",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L362"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L362"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L362",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L362",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L363"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L363"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L363",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L366"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L366"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L366",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L369"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L369"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L369",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L369",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L376"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L376"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L376",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L388"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L388"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L388",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L388",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L392"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L392"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L392",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L396"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L396"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L396",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L408"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L408"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L408",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L410"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L410"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L410",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L410",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L426"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L426"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L426",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L432"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L432"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L432",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L436"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L436"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L436",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L436",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L439"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L439"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L439",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L439",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L442"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L442"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L442",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L442",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L447"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L447"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L447",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L447",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L448"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L448"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L448",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L448",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L451"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L451"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L451",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L452"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L452"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L452",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L452",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L455"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L455"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L455",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L455",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L476"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L476"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L476",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L476",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L477"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L477"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L477",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L477",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L485"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L485"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L485",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L485",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L486"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L486"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L486",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L486",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L489"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L489"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L489",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L494"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L494"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L494",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L494",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L495"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L495"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L495",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L495",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L496"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L496"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L496",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L496",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L498"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L498"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L498",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L504"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L504"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L504",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L504",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L507"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L507"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L507",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L507",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L515"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L515"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L515",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L520"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L520"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L520",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L520",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L528"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L528"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L528",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L528",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L529"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L529"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L529",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L555"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L555"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L555",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L555",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L556"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L556"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L556",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L556",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L557"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L557"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L557",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L557",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L558"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L558"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L558",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L558",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L559"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L559"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L559",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L559",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L561"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L561"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L561",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L561",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L563"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L563"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L563",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L563",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L566"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L566"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L566",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L566",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L570"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L570"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L570",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L570",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L573"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L573"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L573",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L573",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L574"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L574"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L574",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L574",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L575"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L575"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L575",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L575",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L579"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L579"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L579",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L579",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L581"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L581"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L581",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L581",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L584"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L584"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L584",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L584",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L589"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L589"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L589",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L589",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L591"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L591"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L591",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L591",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L596"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L596"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L596",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L596",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L604"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L604"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L604",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L604",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L606"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L606"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L606",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L606",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L614"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L614"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L614",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L614",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L624"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L624"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L624",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L629"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L629"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L629",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L630"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L630"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L630",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L630",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L634"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L634"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L634",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L643"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L643"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L643",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L644"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L644"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L644",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L646"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L646"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L646",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L647"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L647"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L647",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L647",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L649"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L649"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L649",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L651"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L651"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L651",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L651",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L653"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L653"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L653",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L657"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L657"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L657",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L658"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L658"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L658",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L663"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L663"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L663",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L663",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L669"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L669"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L669",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L670"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L670"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L670",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L675"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L675"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L675",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L675",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L684"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L684"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L684",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L684",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L716"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L716"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L716",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L716",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L719"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L719"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L719",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L719",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L723"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L723"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L723",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L728"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L728"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L728",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L728",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L729"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L729"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L729",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L729",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L731"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L731"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L731",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L731",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L732"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L732"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L732",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L732",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L735"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L735"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L735",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L735",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L736"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L736"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L736",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L736",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L737"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L737"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L737",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L737",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L738"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L738"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L738",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L738",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L739"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L739"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L739",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L739",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L740"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L740"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L740",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L744"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L744"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L744",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L744",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L745"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L745"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L745",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L745",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L746"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L746"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L746",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L747"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L747"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L747",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L748"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L748"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L748",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L749"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L749"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L749",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L749",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L750"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L750"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L750",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L750",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L751"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L751"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L751",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L751",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L755"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L755"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L755",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L756"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L756"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L756",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L757"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L757"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L757",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L758"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L758"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L758",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L759"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L759"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L759",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L759",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L761"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L761"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L761",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L761",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L762"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L762"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L762",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L762",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L763"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L763"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L763",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L763",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L765"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L765"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L765",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L765",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L766"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L766"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L766",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L766",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L770"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L770"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L770",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L770",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L771"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L771"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L771",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L771",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L773"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L773"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L773",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L774"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L774"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L774",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L778"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L778"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L778",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L780"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L780"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L780",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L780",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L781"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L781"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L781",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L781",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L783"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L783"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L783",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L783",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L785"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L785"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L785",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L785",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L789"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L789"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L789",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L791"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L791"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L791",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L791",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L793"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L793"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L793",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L793",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L798"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L798"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L798",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L798",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L799"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L799"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L799",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L799",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L803"
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L803"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/205-smartaihub-runner-cross-platform/spec.md#L803",
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L803",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

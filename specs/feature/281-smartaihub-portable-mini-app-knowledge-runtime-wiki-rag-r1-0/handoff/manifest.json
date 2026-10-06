@@ -1,0 +1,232 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "229",
+        "referenced_spec_id": "229",
+        "referencing_spec_id": "281",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md#L1710",
+        "source_digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+        "successor_spec_id": "281"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "261",
+        "referenced_spec_id": "261",
+        "referencing_spec_id": "281",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md#L1708",
+        "source_digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+        "successor_spec_id": "281"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "266",
+        "referenced_spec_id": "266",
+        "referencing_spec_id": "281",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md#L1709",
+        "source_digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+        "successor_spec_id": "281"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md",
+    "digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T03:28:18.894722Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-10-06T10:12:48+07:00",
+      "spec_last_changed_at": "2026-10-06T10:12:48+07:00"
+    },
+    "revision": "1.0",
+    "slug": "281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0",
+    "spec_id": "281",
+    "title": "Spec 281 — SmartAIHub Portable Mini App Knowledge Runtime & Wiki RAG"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T03:28:18.894722Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T03:28:18.894722Z",
+    "sources": [
+      {
+        "digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed — Additive / Implementation-Ready",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md",
+        "source_digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+        "value": "Proposed — Additive / Implementation-Ready"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed — Additive / Implementation-Ready",
+        "line": 6,
+        "source": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md",
+        "source_digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+        "value": "Proposed — Additive / Implementation-Ready"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 131,
+    "unresolved": 131
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T03:28:18.894722Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

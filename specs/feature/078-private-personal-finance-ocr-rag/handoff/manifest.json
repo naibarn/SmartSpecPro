@@ -17,67 +17,67 @@
       {
         "digest": "269ea872a5269d4900bfbe24d89cd87800ac1edd4cb1cee8eb63de2b6135777c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
       },
       {
         "digest": "29b8714717e2d19aa96feb765539f4c6285f07b001dcb25eecbcf1d070699fd4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
       },
       {
         "digest": "f47091b8caae3f8af9bc23dbab609690d9d6f10f97543ace2a994c588df952d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
       },
       {
         "digest": "03365d5c1b363a02460e70addca9cc66fbee521a01f77a27c9e86af9e2e28e9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
       },
       {
         "digest": "e625c3c24bc35d3eab5aa9ecebcb328c30df2d470f555b738facc2144a3fd0f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "2fcba9e311628948777ccadfa7548d3f6568f7c54b8f12cd7ad9f284c502fae6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
       },
       {
         "digest": "5186f51632c4cc31fd7dc6e6f0d75fe6c11df908d90b9a32cb4035dc060b6b05",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
       },
       {
         "digest": "d5be2e699c691ccde2890d4f1d9e8eee4f133448aa8f7b944930a44d1c7f679b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
       },
       {
         "digest": "448be9a4bd4789d2c73b9f1281a549e67cb09bb0a1e649743c16a53d07dea445",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
       },
       {
         "digest": "d674042915117df2cda29225b3702ed697aed62f44e76c6cc1d545b63d7ae9bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
       },
       {
         "digest": "08369eee82efb88cf0aec74198ab5ffb92b31a86d6be13c9a379a6574a0bdf0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
       },
       {
         "digest": "e03a421e7270e2caff2332d3c056065da3f06765a75741f47dce35fdee99af9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
       },
       {
         "digest": "ade455ec166ada7a21e17bc693ed65ad0221397ed1db076222cfa5403079e850",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
       }
     ],
     "predecessors": [],
@@ -108,67 +108,67 @@
       {
         "digest": "269ea872a5269d4900bfbe24d89cd87800ac1edd4cb1cee8eb63de2b6135777c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
       },
       {
         "digest": "29b8714717e2d19aa96feb765539f4c6285f07b001dcb25eecbcf1d070699fd4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
       },
       {
         "digest": "f47091b8caae3f8af9bc23dbab609690d9d6f10f97543ace2a994c588df952d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
       },
       {
         "digest": "03365d5c1b363a02460e70addca9cc66fbee521a01f77a27c9e86af9e2e28e9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
       },
       {
         "digest": "e625c3c24bc35d3eab5aa9ecebcb328c30df2d470f555b738facc2144a3fd0f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "2fcba9e311628948777ccadfa7548d3f6568f7c54b8f12cd7ad9f284c502fae6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
       },
       {
         "digest": "5186f51632c4cc31fd7dc6e6f0d75fe6c11df908d90b9a32cb4035dc060b6b05",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
       },
       {
         "digest": "d5be2e699c691ccde2890d4f1d9e8eee4f133448aa8f7b944930a44d1c7f679b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
       },
       {
         "digest": "448be9a4bd4789d2c73b9f1281a549e67cb09bb0a1e649743c16a53d07dea445",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
       },
       {
         "digest": "d674042915117df2cda29225b3702ed697aed62f44e76c6cc1d545b63d7ae9bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
       },
       {
         "digest": "08369eee82efb88cf0aec74198ab5ffb92b31a86d6be13c9a379a6574a0bdf0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
       },
       {
         "digest": "e03a421e7270e2caff2332d3c056065da3f06765a75741f47dce35fdee99af9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
       },
       {
         "digest": "ade455ec166ada7a21e17bc693ed65ad0221397ed1db076222cfa5403079e850",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -200,79 +200,79 @@
       {
         "digest": "269ea872a5269d4900bfbe24d89cd87800ac1edd4cb1cee8eb63de2b6135777c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
       },
       {
         "digest": "29b8714717e2d19aa96feb765539f4c6285f07b001dcb25eecbcf1d070699fd4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
       },
       {
         "digest": "f47091b8caae3f8af9bc23dbab609690d9d6f10f97543ace2a994c588df952d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
       },
       {
         "digest": "03365d5c1b363a02460e70addca9cc66fbee521a01f77a27c9e86af9e2e28e9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
       },
       {
         "digest": "e625c3c24bc35d3eab5aa9ecebcb328c30df2d470f555b738facc2144a3fd0f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "2fcba9e311628948777ccadfa7548d3f6568f7c54b8f12cd7ad9f284c502fae6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
       },
       {
         "digest": "5186f51632c4cc31fd7dc6e6f0d75fe6c11df908d90b9a32cb4035dc060b6b05",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
       },
       {
         "digest": "d5be2e699c691ccde2890d4f1d9e8eee4f133448aa8f7b944930a44d1c7f679b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
       },
       {
         "digest": "448be9a4bd4789d2c73b9f1281a549e67cb09bb0a1e649743c16a53d07dea445",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
       },
       {
         "digest": "d674042915117df2cda29225b3702ed697aed62f44e76c6cc1d545b63d7ae9bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
       },
       {
         "digest": "08369eee82efb88cf0aec74198ab5ffb92b31a86d6be13c9a379a6574a0bdf0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
       },
       {
         "digest": "e03a421e7270e2caff2332d3c056065da3f06765a75741f47dce35fdee99af9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
       },
       {
         "digest": "ade455ec166ada7a21e17bc693ed65ad0221397ed1db076222cfa5403079e850",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/078-private-personal-finance-ocr-rag/spec.md",
     "digest": "d06c65cc588c6a5084fa109706f29ce5ba54f1519b42ec48cf9b37acd482b09c",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.827222Z",
+      "last_evidence_at": "2026-10-06T03:28:15.284133Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-09T21:04:42+07:00",
       "spec_last_changed_at": "2026-04-09T21:04:42+07:00"
@@ -299,7 +299,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.827222Z"
+    "updated_at": "2026-10-06T03:28:15.284133Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -309,7 +309,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.827222Z",
+    "reconciled_at": "2026-10-06T03:28:15.284133Z",
     "sources": [
       {
         "digest": "d06c65cc588c6a5084fa109706f29ce5ba54f1519b42ec48cf9b37acd482b09c",
@@ -319,67 +319,67 @@
       {
         "digest": "269ea872a5269d4900bfbe24d89cd87800ac1edd4cb1cee8eb63de2b6135777c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
       },
       {
         "digest": "29b8714717e2d19aa96feb765539f4c6285f07b001dcb25eecbcf1d070699fd4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
       },
       {
         "digest": "f47091b8caae3f8af9bc23dbab609690d9d6f10f97543ace2a994c588df952d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
       },
       {
         "digest": "03365d5c1b363a02460e70addca9cc66fbee521a01f77a27c9e86af9e2e28e9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
       },
       {
         "digest": "e625c3c24bc35d3eab5aa9ecebcb328c30df2d470f555b738facc2144a3fd0f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "2fcba9e311628948777ccadfa7548d3f6568f7c54b8f12cd7ad9f284c502fae6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
       },
       {
         "digest": "5186f51632c4cc31fd7dc6e6f0d75fe6c11df908d90b9a32cb4035dc060b6b05",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
       },
       {
         "digest": "d5be2e699c691ccde2890d4f1d9e8eee4f133448aa8f7b944930a44d1c7f679b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
       },
       {
         "digest": "448be9a4bd4789d2c73b9f1281a549e67cb09bb0a1e649743c16a53d07dea445",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
       },
       {
         "digest": "d674042915117df2cda29225b3702ed697aed62f44e76c6cc1d545b63d7ae9bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
       },
       {
         "digest": "08369eee82efb88cf0aec74198ab5ffb92b31a86d6be13c9a379a6574a0bdf0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
       },
       {
         "digest": "e03a421e7270e2caff2332d3c056065da3f06765a75741f47dce35fdee99af9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
       },
       {
         "digest": "ade455ec166ada7a21e17bc693ed65ad0221397ed1db076222cfa5403079e850",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -456,67 +456,67 @@
       {
         "digest": "269ea872a5269d4900bfbe24d89cd87800ac1edd4cb1cee8eb63de2b6135777c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-plan.md"
       },
       {
         "digest": "29b8714717e2d19aa96feb765539f4c6285f07b001dcb25eecbcf1d070699fd4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/claude-spec.md"
       },
       {
         "digest": "f47091b8caae3f8af9bc23dbab609690d9d6f10f97543ace2a994c588df952d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/deep_implement_config.json"
       },
       {
         "digest": "03365d5c1b363a02460e70addca9cc66fbee521a01f77a27c9e86af9e2e28e9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/implementation/usage.md"
       },
       {
         "digest": "e625c3c24bc35d3eab5aa9ecebcb328c30df2d470f555b738facc2144a3fd0f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "2fcba9e311628948777ccadfa7548d3f6568f7c54b8f12cd7ad9f284c502fae6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/reviews/self-review-round-1.md"
       },
       {
         "digest": "5186f51632c4cc31fd7dc6e6f0d75fe6c11df908d90b9a32cb4035dc060b6b05",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/index.md"
       },
       {
         "digest": "d5be2e699c691ccde2890d4f1d9e8eee4f133448aa8f7b944930a44d1c7f679b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-01-schema-and-migrations.md"
       },
       {
         "digest": "448be9a4bd4789d2c73b9f1281a549e67cb09bb0a1e649743c16a53d07dea445",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-02-personal-chat-lock.md"
       },
       {
         "digest": "d674042915117df2cda29225b3702ed697aed62f44e76c6cc1d545b63d7ae9bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-03-finance-core.md"
       },
       {
         "digest": "08369eee82efb88cf0aec74198ab5ffb92b31a86d6be13c9a379a6574a0bdf0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-04-ocr-ingestion.md"
       },
       {
         "digest": "e03a421e7270e2caff2332d3c056065da3f06765a75741f47dce35fdee99af9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-05-rag-isolation.md"
       },
       {
         "digest": "ade455ec166ada7a21e17bc693ed65ad0221397ed1db076222cfa5403079e850",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
+        "path": "specs/feature/078-private-personal-finance-ocr-rag/sections/section-06-security-tests.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -534,7 +534,7 @@
     "unresolved": 73
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.827222Z",
+  "updated_at": "2026-10-06T03:28:15.284133Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

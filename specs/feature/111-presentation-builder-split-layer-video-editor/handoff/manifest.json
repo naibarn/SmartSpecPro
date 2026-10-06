@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md",
     "digest": "997fff19bfba7fbc50d0d465c06d87e4fb0384954d4823870ebbea3c746c478a",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.017993Z",
+      "last_evidence_at": "2026-10-06T03:28:15.609905Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-05-10T08:01:02+07:00",
       "spec_last_changed_at": "2026-05-10T08:30:04+07:00"
@@ -104,7 +104,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.017993Z"
+    "updated_at": "2026-10-06T03:28:15.609905Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,7 +114,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.017993Z",
+    "reconciled_at": "2026-10-06T03:28:15.609905Z",
     "sources": [
       {
         "digest": "997fff19bfba7fbc50d0d465c06d87e4fb0384954d4823870ebbea3c746c478a",
@@ -182,7 +182,7 @@
     "unresolved": 53
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.017993Z",
+  "updated_at": "2026-10-06T03:28:15.609905Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

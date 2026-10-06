@@ -6,16 +6,8 @@
   },
   "authority": {
     "claims": [],
-    "confidence": "LOW",
-    "conflicts": [
-      {
-        "kind": "DUPLICATE_SPEC_ID",
-        "paths": [
-          "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract",
-          "specs/project/013-features-195-200/requirements.deep-project/02-feature-196-goal-orchestration"
-        ]
-      }
-    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
     "evidence": [
       {
         "digest": "a7c0200cae02596e4816f673e495a044e300cd9ed64c59b26511b2ef5406ae62",
@@ -24,7 +16,7 @@
       }
     ],
     "predecessors": [],
-    "status": "AUTHORITY_CONFLICT",
+    "status": "UNRESOLVED",
     "successors": []
   },
   "blockers": [],
@@ -50,7 +42,7 @@
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -79,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/02-dynamic-spec-inventory/spec.md",
     "digest": "a7c0200cae02596e4816f673e495a044e300cd9ed64c59b26511b2ef5406ae62",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.823053Z",
+      "last_evidence_at": "2026-10-06T03:28:19.028473Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T08:02:24+07:00",
       "spec_last_changed_at": "2026-10-06T08:02:24+07:00"
@@ -112,7 +104,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.823053Z"
+    "updated_at": "2026-10-06T03:28:19.028473Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -122,7 +114,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.823053Z",
+    "reconciled_at": "2026-10-06T03:28:19.028473Z",
     "sources": [
       {
         "digest": "a7c0200cae02596e4816f673e495a044e300cd9ed64c59b26511b2ef5406ae62",
@@ -168,7 +160,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.823053Z",
+  "updated_at": "2026-10-06T03:28:19.028473Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

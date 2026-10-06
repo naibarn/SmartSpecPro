@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/012-chat-agency-control-plane/requirements.deep-project/07-observability-and-governance/spec.md#L5"
+        "specs/project/012-chat-agency-control-plane/requirements.deep-project/07-observability-and-governance/spec.md#L5"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/012-chat-agency-control-plane/requirements.deep-project/07-observability-and-governance/spec.md#L5",
+      "authority_source": "specs/project/012-chat-agency-control-plane/requirements.deep-project/07-observability-and-governance/spec.md#L5",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

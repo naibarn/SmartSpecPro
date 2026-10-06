@@ -17,97 +17,97 @@
       {
         "digest": "cc0af7f806e5730f71b534297907125546be0544b7fb3957a5e3010590aba9c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/claude-plan.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/claude-plan.md"
       },
       {
         "digest": "971c4d7ec803c8178a435a857aaa00823c18f02cffe4f89902dd343a329b0e69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/claude-spec.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/claude-spec.md"
       },
       {
         "digest": "e25afcfaa5af7bc0472494a0f4ae5c0da629511634fd2d32a2f28e2dba854bee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/implementation/deep_implement_config.json"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/implementation/deep_implement_config.json"
       },
       {
         "digest": "6c18329282f246baa135bd17f3914da8be4de35627b742a0a86bd80fded8a0d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/implementation/usage.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/implementation/usage.md"
       },
       {
         "digest": "09009b54cf77e9c60c560722542574fed64546cb6288c645a83af47f42a8a7ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/final-gap-report.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/final-gap-report.md"
       },
       {
         "digest": "dad4d97e7321bc8f8b2a790da534527c0bbe811bda51360c43bad9772fa18aa4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/follow-up-20260915.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/follow-up-20260915.md"
       },
       {
         "digest": "d39d87819ea978490ced04f287b7aad93afb05beaa0f0077623b46b940d70fb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/index.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/index.md"
       },
       {
         "digest": "339e07915093a7bda8a181cef2c08ae776885b9848b051301289444735b1df5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-01.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-01.md"
       },
       {
         "digest": "ed8eea42343755f161c647ed77cacb93ad9a580b28414514eee42a7e29dd9271",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-02.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-02.md"
       },
       {
         "digest": "9f684e1630f33d8b3713634ebbd4777c1e301666223c7c0bd46ede18648d687b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-03.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-03.md"
       },
       {
         "digest": "525fd4f79f6fd97765e70a1783956bf83534aa24951fd48bab0d7624561927cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-04.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-04.md"
       },
       {
         "digest": "0b6185a04ccca31c387a79cb9e363dbf1d9ddea0540d06399187e30dc413767f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-05.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-05.md"
       },
       {
         "digest": "83ad7c19626c8bd17f7fa49f2cfe38f77497d820fd9ccff3626d5384eaa405af",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-06.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-06.md"
       },
       {
         "digest": "7dfbf12cf0ff597d205a5b73e2b197ccf2a5dc96b184431af1ce9cd511961c9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-07.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-07.md"
       },
       {
         "digest": "fc230341e7230b61ab6eefa5f5c3be2a3bc067834e306e04328dd1253cfa7773",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-08.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-08.md"
       },
       {
         "digest": "963ce53c2afcc195c9f8bf075ed3406715de68f6b48a1343e06f234ed1280278",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-09.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-09.md"
       },
       {
         "digest": "5849e37e74bc12f45d33d353510989a819e39ad4a01ecc5a3120ce1815fff51b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-10.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-10.md"
       },
       {
         "digest": "2720649e0c8787ef8f8ed1c04681e32bb05aeac1d1e3f8737fa3d693cc5b0ede",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/section-cross-consistency.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/section-cross-consistency.md"
       },
       {
         "digest": "859fc4be3ab3126eb672f682f42ae798f010a95196b5381246e805bba91cad36",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-1.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-1.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "cc0af7f806e5730f71b534297907125546be0544b7fb3957a5e3010590aba9c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/claude-plan.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/claude-plan.md"
       },
       {
         "digest": "971c4d7ec803c8178a435a857aaa00823c18f02cffe4f89902dd343a329b0e69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/claude-spec.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/claude-spec.md"
       },
       {
         "digest": "e25afcfaa5af7bc0472494a0f4ae5c0da629511634fd2d32a2f28e2dba854bee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/implementation/deep_implement_config.json"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/implementation/deep_implement_config.json"
       },
       {
         "digest": "6c18329282f246baa135bd17f3914da8be4de35627b742a0a86bd80fded8a0d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/implementation/usage.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/implementation/usage.md"
       },
       {
         "digest": "09009b54cf77e9c60c560722542574fed64546cb6288c645a83af47f42a8a7ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/final-gap-report.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/final-gap-report.md"
       },
       {
         "digest": "dad4d97e7321bc8f8b2a790da534527c0bbe811bda51360c43bad9772fa18aa4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/follow-up-20260915.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/follow-up-20260915.md"
       },
       {
         "digest": "d39d87819ea978490ced04f287b7aad93afb05beaa0f0077623b46b940d70fb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/index.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/index.md"
       },
       {
         "digest": "339e07915093a7bda8a181cef2c08ae776885b9848b051301289444735b1df5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-01.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-01.md"
       },
       {
         "digest": "ed8eea42343755f161c647ed77cacb93ad9a580b28414514eee42a7e29dd9271",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-02.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-02.md"
       },
       {
         "digest": "9f684e1630f33d8b3713634ebbd4777c1e301666223c7c0bd46ede18648d687b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-03.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-03.md"
       },
       {
         "digest": "525fd4f79f6fd97765e70a1783956bf83534aa24951fd48bab0d7624561927cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-04.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-04.md"
       },
       {
         "digest": "0b6185a04ccca31c387a79cb9e363dbf1d9ddea0540d06399187e30dc413767f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-05.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-05.md"
       },
       {
         "digest": "83ad7c19626c8bd17f7fa49f2cfe38f77497d820fd9ccff3626d5384eaa405af",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-06.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-06.md"
       },
       {
         "digest": "7dfbf12cf0ff597d205a5b73e2b197ccf2a5dc96b184431af1ce9cd511961c9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-07.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-07.md"
       },
       {
         "digest": "fc230341e7230b61ab6eefa5f5c3be2a3bc067834e306e04328dd1253cfa7773",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-08.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-08.md"
       },
       {
         "digest": "963ce53c2afcc195c9f8bf075ed3406715de68f6b48a1343e06f234ed1280278",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-09.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-09.md"
       },
       {
         "digest": "5849e37e74bc12f45d33d353510989a819e39ad4a01ecc5a3120ce1815fff51b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-10.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-10.md"
       },
       {
         "digest": "2720649e0c8787ef8f8ed1c04681e32bb05aeac1d1e3f8737fa3d693cc5b0ede",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/section-cross-consistency.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/section-cross-consistency.md"
       },
       {
         "digest": "859fc4be3ab3126eb672f682f42ae798f010a95196b5381246e805bba91cad36",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-1.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-1.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "cc0af7f806e5730f71b534297907125546be0544b7fb3957a5e3010590aba9c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/claude-plan.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/claude-plan.md"
       },
       {
         "digest": "971c4d7ec803c8178a435a857aaa00823c18f02cffe4f89902dd343a329b0e69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/claude-spec.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/claude-spec.md"
       },
       {
         "digest": "e25afcfaa5af7bc0472494a0f4ae5c0da629511634fd2d32a2f28e2dba854bee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/implementation/deep_implement_config.json"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/implementation/deep_implement_config.json"
       },
       {
         "digest": "6c18329282f246baa135bd17f3914da8be4de35627b742a0a86bd80fded8a0d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/implementation/usage.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/implementation/usage.md"
       },
       {
         "digest": "09009b54cf77e9c60c560722542574fed64546cb6288c645a83af47f42a8a7ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/final-gap-report.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/final-gap-report.md"
       },
       {
         "digest": "dad4d97e7321bc8f8b2a790da534527c0bbe811bda51360c43bad9772fa18aa4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/follow-up-20260915.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/follow-up-20260915.md"
       },
       {
         "digest": "d39d87819ea978490ced04f287b7aad93afb05beaa0f0077623b46b940d70fb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/index.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/index.md"
       },
       {
         "digest": "339e07915093a7bda8a181cef2c08ae776885b9848b051301289444735b1df5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-01.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-01.md"
       },
       {
         "digest": "ed8eea42343755f161c647ed77cacb93ad9a580b28414514eee42a7e29dd9271",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-02.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-02.md"
       },
       {
         "digest": "9f684e1630f33d8b3713634ebbd4777c1e301666223c7c0bd46ede18648d687b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-03.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-03.md"
       },
       {
         "digest": "525fd4f79f6fd97765e70a1783956bf83534aa24951fd48bab0d7624561927cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-04.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-04.md"
       },
       {
         "digest": "0b6185a04ccca31c387a79cb9e363dbf1d9ddea0540d06399187e30dc413767f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-05.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-05.md"
       },
       {
         "digest": "83ad7c19626c8bd17f7fa49f2cfe38f77497d820fd9ccff3626d5384eaa405af",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-06.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-06.md"
       },
       {
         "digest": "7dfbf12cf0ff597d205a5b73e2b197ccf2a5dc96b184431af1ce9cd511961c9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-07.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-07.md"
       },
       {
         "digest": "fc230341e7230b61ab6eefa5f5c3be2a3bc067834e306e04328dd1253cfa7773",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-08.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-08.md"
       },
       {
         "digest": "963ce53c2afcc195c9f8bf075ed3406715de68f6b48a1343e06f234ed1280278",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-09.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-09.md"
       },
       {
         "digest": "5849e37e74bc12f45d33d353510989a819e39ad4a01ecc5a3120ce1815fff51b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-10.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-10.md"
       },
       {
         "digest": "2720649e0c8787ef8f8ed1c04681e32bb05aeac1d1e3f8737fa3d693cc5b0ede",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/section-cross-consistency.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/section-cross-consistency.md"
       },
       {
         "digest": "859fc4be3ab3126eb672f682f42ae798f010a95196b5381246e805bba91cad36",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-1.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-1.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/192-cloudflare-local-migration-readiness/spec.md",
     "digest": "c96d52fe7810612ae4178e04de48cca06c0c275dcc5c9f28b82531fc69608829",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.631021Z",
+      "last_evidence_at": "2026-10-06T03:28:16.753336Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-15T08:20:57+07:00",
       "spec_last_changed_at": "2026-09-15T08:20:57+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.631021Z"
+    "updated_at": "2026-10-06T03:28:16.753336Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.631021Z",
+    "reconciled_at": "2026-10-06T03:28:16.753336Z",
     "sources": [
       {
         "digest": "c96d52fe7810612ae4178e04de48cca06c0c275dcc5c9f28b82531fc69608829",
@@ -409,147 +409,147 @@
       {
         "digest": "cc0af7f806e5730f71b534297907125546be0544b7fb3957a5e3010590aba9c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/claude-plan.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/claude-plan.md"
       },
       {
         "digest": "971c4d7ec803c8178a435a857aaa00823c18f02cffe4f89902dd343a329b0e69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/claude-spec.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/claude-spec.md"
       },
       {
         "digest": "e25afcfaa5af7bc0472494a0f4ae5c0da629511634fd2d32a2f28e2dba854bee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/implementation/deep_implement_config.json"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/implementation/deep_implement_config.json"
       },
       {
         "digest": "6c18329282f246baa135bd17f3914da8be4de35627b742a0a86bd80fded8a0d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/implementation/usage.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/implementation/usage.md"
       },
       {
         "digest": "09009b54cf77e9c60c560722542574fed64546cb6288c645a83af47f42a8a7ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/final-gap-report.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/final-gap-report.md"
       },
       {
         "digest": "dad4d97e7321bc8f8b2a790da534527c0bbe811bda51360c43bad9772fa18aa4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/follow-up-20260915.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/follow-up-20260915.md"
       },
       {
         "digest": "d39d87819ea978490ced04f287b7aad93afb05beaa0f0077623b46b940d70fb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/index.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/index.md"
       },
       {
         "digest": "339e07915093a7bda8a181cef2c08ae776885b9848b051301289444735b1df5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-01.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-01.md"
       },
       {
         "digest": "ed8eea42343755f161c647ed77cacb93ad9a580b28414514eee42a7e29dd9271",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-02.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-02.md"
       },
       {
         "digest": "9f684e1630f33d8b3713634ebbd4777c1e301666223c7c0bd46ede18648d687b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-03.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-03.md"
       },
       {
         "digest": "525fd4f79f6fd97765e70a1783956bf83534aa24951fd48bab0d7624561927cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-04.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-04.md"
       },
       {
         "digest": "0b6185a04ccca31c387a79cb9e363dbf1d9ddea0540d06399187e30dc413767f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-05.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-05.md"
       },
       {
         "digest": "83ad7c19626c8bd17f7fa49f2cfe38f77497d820fd9ccff3626d5384eaa405af",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-06.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-06.md"
       },
       {
         "digest": "7dfbf12cf0ff597d205a5b73e2b197ccf2a5dc96b184431af1ce9cd511961c9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-07.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-07.md"
       },
       {
         "digest": "fc230341e7230b61ab6eefa5f5c3be2a3bc067834e306e04328dd1253cfa7773",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-08.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-08.md"
       },
       {
         "digest": "963ce53c2afcc195c9f8bf075ed3406715de68f6b48a1343e06f234ed1280278",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-09.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-09.md"
       },
       {
         "digest": "5849e37e74bc12f45d33d353510989a819e39ad4a01ecc5a3120ce1815fff51b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-10.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-10.md"
       },
       {
         "digest": "2720649e0c8787ef8f8ed1c04681e32bb05aeac1d1e3f8737fa3d693cc5b0ede",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/section-cross-consistency.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/section-cross-consistency.md"
       },
       {
         "digest": "859fc4be3ab3126eb672f682f42ae798f010a95196b5381246e805bba91cad36",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-1.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-1.md"
       },
       {
         "digest": "73b0b4d58db4c95fb724ac09288dab248027af3d46aa313c7e1a0c2872a54e3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-2.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-2.md"
       },
       {
         "digest": "35d2b9ec197ad155a83e1c71653b64e57b05261250944b32c0d5adecf4cdfcbb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/index.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/index.md"
       },
       {
         "digest": "79f8d1b623c526a6c8956bc42b6017799b0eb081c52042e1f548a82f44cfb211",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-01-inventory-and-evidence.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-01-inventory-and-evidence.md"
       },
       {
         "digest": "f1c5ebf4c27966b636fafd0a3f5f42bfad1e6eff8f8f6faf288b40cebcd74b61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-02-hard-cutover-startup.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-02-hard-cutover-startup.md"
       },
       {
         "digest": "507f03629cf6cded9fe4280821ea1a5a9351ad34cccee0aa8674d139e8faf828",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-03-canonical-worker-handler.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-03-canonical-worker-handler.md"
       },
       {
         "digest": "20b64b1fa50ef54058d46f1f72e31cc53132f018210322c286e535ed4d7d9ff8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-04-scheduler-provider-admission.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-04-scheduler-provider-admission.md"
       },
       {
         "digest": "27048318299773b667aa3c9e8f34011d981be76396f36d25eb0d4b99e306a9c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-05-compatibility-drain.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-05-compatibility-drain.md"
       },
       {
         "digest": "4fd88441c26f39be82347cfca64e869ea489b5f92aa46beb79aedb1aa12626c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-06-migration-reconciliation.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-06-migration-reconciliation.md"
       },
       {
         "digest": "85b45890cc22446a075ae03fc42f38760f0b713e8dc05b50c729f057a3b9392e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-07-python-parity-and-failure-ci.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-07-python-parity-and-failure-ci.md"
       },
       {
         "digest": "74e3ec735319f6f44401b97bb9d173a664a9b1a70be865ffbe56de3e0e5ee435",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-08-local-handoff-and-gap-review.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-08-local-handoff-and-gap-review.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -815,147 +815,147 @@
       {
         "digest": "cc0af7f806e5730f71b534297907125546be0544b7fb3957a5e3010590aba9c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/claude-plan.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/claude-plan.md"
       },
       {
         "digest": "971c4d7ec803c8178a435a857aaa00823c18f02cffe4f89902dd343a329b0e69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/claude-spec.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/claude-spec.md"
       },
       {
         "digest": "e25afcfaa5af7bc0472494a0f4ae5c0da629511634fd2d32a2f28e2dba854bee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/implementation/deep_implement_config.json"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/implementation/deep_implement_config.json"
       },
       {
         "digest": "6c18329282f246baa135bd17f3914da8be4de35627b742a0a86bd80fded8a0d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/implementation/usage.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/implementation/usage.md"
       },
       {
         "digest": "09009b54cf77e9c60c560722542574fed64546cb6288c645a83af47f42a8a7ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/final-gap-report.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/final-gap-report.md"
       },
       {
         "digest": "dad4d97e7321bc8f8b2a790da534527c0bbe811bda51360c43bad9772fa18aa4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/follow-up-20260915.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/follow-up-20260915.md"
       },
       {
         "digest": "d39d87819ea978490ced04f287b7aad93afb05beaa0f0077623b46b940d70fb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/index.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/index.md"
       },
       {
         "digest": "339e07915093a7bda8a181cef2c08ae776885b9848b051301289444735b1df5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-01.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-01.md"
       },
       {
         "digest": "ed8eea42343755f161c647ed77cacb93ad9a580b28414514eee42a7e29dd9271",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-02.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-02.md"
       },
       {
         "digest": "9f684e1630f33d8b3713634ebbd4777c1e301666223c7c0bd46ede18648d687b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-03.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-03.md"
       },
       {
         "digest": "525fd4f79f6fd97765e70a1783956bf83534aa24951fd48bab0d7624561927cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-04.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-04.md"
       },
       {
         "digest": "0b6185a04ccca31c387a79cb9e363dbf1d9ddea0540d06399187e30dc413767f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-05.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-05.md"
       },
       {
         "digest": "83ad7c19626c8bd17f7fa49f2cfe38f77497d820fd9ccff3626d5384eaa405af",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-06.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-06.md"
       },
       {
         "digest": "7dfbf12cf0ff597d205a5b73e2b197ccf2a5dc96b184431af1ce9cd511961c9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-07.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-07.md"
       },
       {
         "digest": "fc230341e7230b61ab6eefa5f5c3be2a3bc067834e306e04328dd1253cfa7773",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-08.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-08.md"
       },
       {
         "digest": "963ce53c2afcc195c9f8bf075ed3406715de68f6b48a1343e06f234ed1280278",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-09.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-09.md"
       },
       {
         "digest": "5849e37e74bc12f45d33d353510989a819e39ad4a01ecc5a3120ce1815fff51b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/round-10.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/round-10.md"
       },
       {
         "digest": "2720649e0c8787ef8f8ed1c04681e32bb05aeac1d1e3f8737fa3d693cc5b0ede",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/section-cross-consistency.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/section-cross-consistency.md"
       },
       {
         "digest": "859fc4be3ab3126eb672f682f42ae798f010a95196b5381246e805bba91cad36",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-1.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-1.md"
       },
       {
         "digest": "73b0b4d58db4c95fb724ac09288dab248027af3d46aa313c7e1a0c2872a54e3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-2.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/reviews/self-review-round-2.md"
       },
       {
         "digest": "35d2b9ec197ad155a83e1c71653b64e57b05261250944b32c0d5adecf4cdfcbb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/index.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/index.md"
       },
       {
         "digest": "79f8d1b623c526a6c8956bc42b6017799b0eb081c52042e1f548a82f44cfb211",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-01-inventory-and-evidence.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-01-inventory-and-evidence.md"
       },
       {
         "digest": "f1c5ebf4c27966b636fafd0a3f5f42bfad1e6eff8f8f6faf288b40cebcd74b61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-02-hard-cutover-startup.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-02-hard-cutover-startup.md"
       },
       {
         "digest": "507f03629cf6cded9fe4280821ea1a5a9351ad34cccee0aa8674d139e8faf828",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-03-canonical-worker-handler.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-03-canonical-worker-handler.md"
       },
       {
         "digest": "20b64b1fa50ef54058d46f1f72e31cc53132f018210322c286e535ed4d7d9ff8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-04-scheduler-provider-admission.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-04-scheduler-provider-admission.md"
       },
       {
         "digest": "27048318299773b667aa3c9e8f34011d981be76396f36d25eb0d4b99e306a9c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-05-compatibility-drain.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-05-compatibility-drain.md"
       },
       {
         "digest": "4fd88441c26f39be82347cfca64e869ea489b5f92aa46beb79aedb1aa12626c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-06-migration-reconciliation.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-06-migration-reconciliation.md"
       },
       {
         "digest": "85b45890cc22446a075ae03fc42f38760f0b713e8dc05b50c729f057a3b9392e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-07-python-parity-and-failure-ci.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-07-python-parity-and-failure-ci.md"
       },
       {
         "digest": "74e3ec735319f6f44401b97bb9d173a664a9b1a70be865ffbe56de3e0e5ee435",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/192-cloudflare-local-migration-readiness/sections/section-08-local-handoff-and-gap-review.md"
+        "path": "specs/feature/192-cloudflare-local-migration-readiness/sections/section-08-local-handoff-and-gap-review.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -973,7 +973,7 @@
     "unresolved": 49
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.631021Z",
+  "updated_at": "2026-10-06T03:28:16.753336Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/013-features-195-200/requirements.deep-project/01-feature-195-job-control-plane/spec.md#L31"
+        "specs/project/013-features-195-200/requirements.deep-project/01-feature-195-job-control-plane/spec.md#L31"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/013-features-195-200/requirements.deep-project/01-feature-195-job-control-plane/spec.md#L31",
+      "authority_source": "specs/project/013-features-195-200/requirements.deep-project/01-feature-195-job-control-plane/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

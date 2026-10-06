@@ -14,7 +14,7 @@
         "referencing_spec_id": "266",
         "relation_text": "absorbed",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2105",
+        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2105",
         "source_digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
         "successor_spec_id": "266"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "266",
         "relation_text": "absorbed",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2105",
+        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2105",
         "source_digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
         "successor_spec_id": "266"
       },
@@ -40,7 +40,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2685",
+        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2685",
         "source_digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
         "successor_spec_id": "266"
       },
@@ -54,7 +54,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L3132",
+        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L3132",
         "source_digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
         "successor_spec_id": "266"
       },
@@ -68,9 +68,21 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L8",
+        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L8",
         "source_digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
         "successor_spec_id": "266"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "266",
+        "referenced_spec_id": "266",
+        "referencing_spec_id": "281",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md#L1709",
+        "source_digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+        "successor_spec_id": "281"
       },
       {
         "confidence": "LOW",
@@ -80,9 +92,21 @@
         "referencing_spec_id": "282",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
+        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "266",
+        "referenced_spec_id": "266",
+        "referencing_spec_id": "284",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/284-project-evidence-retrieval-artifact-continuity-source-preservation-r1-0/spec.md#L112",
+        "source_digest": "b54cdedb2260c5a481e928112c186294370381fbd73a23e006b22f7fda995647",
+        "successor_spec_id": "284"
       }
     ],
     "confidence": "UNRESOLVED",
@@ -96,82 +120,82 @@
       {
         "digest": "eb4abda62e259c7220cec9af123435ab6384873ea791b791b7fd8cdf5d630588",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-plan.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-plan.md"
       },
       {
         "digest": "0e5a32c283707c0d085a4c729b4d988a6721b6929e6eea2e5fc50ed0823988a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-spec.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-spec.md"
       },
       {
         "digest": "ae2f024531a2fc93d4e3e0f87e146d1f377a5c01f2c019c83a3f559304db6032",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation/deep_implement_config.json"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "8175f1ea0a5813f94c64434067c1485c6a6aeacdaac085d80a8cb47df1cc166b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/acceptance-evidence-map.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/acceptance-evidence-map.md"
       },
       {
         "digest": "25e23b9b7c72ec20f5b800ea8b4fc02b24cc2b3807e0ba66b005ef7f2a50a903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/gap-audit-rounds.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/gap-audit-rounds.md"
       },
       {
         "digest": "60c2d4b7cea41bfbfd8f132e7c4aa8253fc7be95ec846810f04a741ca5340e42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "37edbb4de784fb1ba4295f02f92d96dadb1a0774b1a3c8ff48b3d61770788ed7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/self-review-round-1.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/self-review-round-1.md"
       },
       {
         "digest": "8077217a108d5de115e582138204cbf3f66afeb359e34929c2130f4421125b69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/index.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/index.md"
       },
       {
         "digest": "96283419c55516ab9bd31db7b7628f76cbb1cd672acfd62e1082529529aadba3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-01-authority-and-contracts.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-01-authority-and-contracts.md"
       },
       {
         "digest": "14b2a4f78008813e0f08c92db987f19a194a12b75545abc0eb70c1090d714cc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-02-registry-rights-provenance.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-02-registry-rights-provenance.md"
       },
       {
         "digest": "b4e9cb0ffcf63e3b06169294b6dfbf7e462b472df5813e270e0eda45aab68f7b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-03-semantic-geo-temporal.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-03-semantic-geo-temporal.md"
       },
       {
         "digest": "2c8c2b5b0de03b104c3c3c4724cca4d8bd7b46d4d5175addf352f25409be05e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-04-data-resolution-and-retrieval.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-04-data-resolution-and-retrieval.md"
       },
       {
         "digest": "f88c59f02309ca8da50d139f26a8e2b506aed521e27b50aacc703b4b8a8ca411",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-05-research-plane.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-05-research-plane.md"
       },
       {
         "digest": "01b759adf25f1e31749916e2c44f281c0a085837c7aa65d011864976b6c393fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-06-emergency-profile-compatibility.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-06-emergency-profile-compatibility.md"
       },
       {
         "digest": "1c7bf40fca2d54a1d6de57490e7be055ee67c81d9ddec673c5a4a42cda87fadc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-07-governance-admin-observability.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-07-governance-admin-observability.md"
       },
       {
         "digest": "6f1ab302730c373837927e221585b89481d35b6e681364c924380975840d5a37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-08-migration-acceptance-and-production-gates.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-08-migration-acceptance-and-production-gates.md"
       }
     ],
     "predecessors": [],
@@ -202,82 +226,82 @@
       {
         "digest": "eb4abda62e259c7220cec9af123435ab6384873ea791b791b7fd8cdf5d630588",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-plan.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-plan.md"
       },
       {
         "digest": "0e5a32c283707c0d085a4c729b4d988a6721b6929e6eea2e5fc50ed0823988a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-spec.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-spec.md"
       },
       {
         "digest": "ae2f024531a2fc93d4e3e0f87e146d1f377a5c01f2c019c83a3f559304db6032",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation/deep_implement_config.json"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "8175f1ea0a5813f94c64434067c1485c6a6aeacdaac085d80a8cb47df1cc166b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/acceptance-evidence-map.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/acceptance-evidence-map.md"
       },
       {
         "digest": "25e23b9b7c72ec20f5b800ea8b4fc02b24cc2b3807e0ba66b005ef7f2a50a903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/gap-audit-rounds.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/gap-audit-rounds.md"
       },
       {
         "digest": "60c2d4b7cea41bfbfd8f132e7c4aa8253fc7be95ec846810f04a741ca5340e42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "37edbb4de784fb1ba4295f02f92d96dadb1a0774b1a3c8ff48b3d61770788ed7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/self-review-round-1.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/self-review-round-1.md"
       },
       {
         "digest": "8077217a108d5de115e582138204cbf3f66afeb359e34929c2130f4421125b69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/index.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/index.md"
       },
       {
         "digest": "96283419c55516ab9bd31db7b7628f76cbb1cd672acfd62e1082529529aadba3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-01-authority-and-contracts.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-01-authority-and-contracts.md"
       },
       {
         "digest": "14b2a4f78008813e0f08c92db987f19a194a12b75545abc0eb70c1090d714cc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-02-registry-rights-provenance.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-02-registry-rights-provenance.md"
       },
       {
         "digest": "b4e9cb0ffcf63e3b06169294b6dfbf7e462b472df5813e270e0eda45aab68f7b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-03-semantic-geo-temporal.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-03-semantic-geo-temporal.md"
       },
       {
         "digest": "2c8c2b5b0de03b104c3c3c4724cca4d8bd7b46d4d5175addf352f25409be05e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-04-data-resolution-and-retrieval.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-04-data-resolution-and-retrieval.md"
       },
       {
         "digest": "f88c59f02309ca8da50d139f26a8e2b506aed521e27b50aacc703b4b8a8ca411",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-05-research-plane.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-05-research-plane.md"
       },
       {
         "digest": "01b759adf25f1e31749916e2c44f281c0a085837c7aa65d011864976b6c393fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-06-emergency-profile-compatibility.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-06-emergency-profile-compatibility.md"
       },
       {
         "digest": "1c7bf40fca2d54a1d6de57490e7be055ee67c81d9ddec673c5a4a42cda87fadc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-07-governance-admin-observability.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-07-governance-admin-observability.md"
       },
       {
         "digest": "6f1ab302730c373837927e221585b89481d35b6e681364c924380975840d5a37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-08-migration-acceptance-and-production-gates.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-08-migration-acceptance-and-production-gates.md"
       },
       {
         "excerpt": "/** Spec 266 shared source identity. Runtime fetch authority remains in server policy, never this row. */",
@@ -407,99 +431,99 @@
       {
         "digest": "eb4abda62e259c7220cec9af123435ab6384873ea791b791b7fd8cdf5d630588",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-plan.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-plan.md"
       },
       {
         "digest": "0e5a32c283707c0d085a4c729b4d988a6721b6929e6eea2e5fc50ed0823988a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-spec.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-spec.md"
       },
       {
         "digest": "ae2f024531a2fc93d4e3e0f87e146d1f377a5c01f2c019c83a3f559304db6032",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation/deep_implement_config.json"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "8175f1ea0a5813f94c64434067c1485c6a6aeacdaac085d80a8cb47df1cc166b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/acceptance-evidence-map.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/acceptance-evidence-map.md"
       },
       {
         "digest": "25e23b9b7c72ec20f5b800ea8b4fc02b24cc2b3807e0ba66b005ef7f2a50a903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/gap-audit-rounds.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/gap-audit-rounds.md"
       },
       {
         "digest": "60c2d4b7cea41bfbfd8f132e7c4aa8253fc7be95ec846810f04a741ca5340e42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "37edbb4de784fb1ba4295f02f92d96dadb1a0774b1a3c8ff48b3d61770788ed7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/self-review-round-1.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/self-review-round-1.md"
       },
       {
         "digest": "8077217a108d5de115e582138204cbf3f66afeb359e34929c2130f4421125b69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/index.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/index.md"
       },
       {
         "digest": "96283419c55516ab9bd31db7b7628f76cbb1cd672acfd62e1082529529aadba3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-01-authority-and-contracts.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-01-authority-and-contracts.md"
       },
       {
         "digest": "14b2a4f78008813e0f08c92db987f19a194a12b75545abc0eb70c1090d714cc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-02-registry-rights-provenance.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-02-registry-rights-provenance.md"
       },
       {
         "digest": "b4e9cb0ffcf63e3b06169294b6dfbf7e462b472df5813e270e0eda45aab68f7b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-03-semantic-geo-temporal.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-03-semantic-geo-temporal.md"
       },
       {
         "digest": "2c8c2b5b0de03b104c3c3c4724cca4d8bd7b46d4d5175addf352f25409be05e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-04-data-resolution-and-retrieval.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-04-data-resolution-and-retrieval.md"
       },
       {
         "digest": "f88c59f02309ca8da50d139f26a8e2b506aed521e27b50aacc703b4b8a8ca411",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-05-research-plane.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-05-research-plane.md"
       },
       {
         "digest": "01b759adf25f1e31749916e2c44f281c0a085837c7aa65d011864976b6c393fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-06-emergency-profile-compatibility.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-06-emergency-profile-compatibility.md"
       },
       {
         "digest": "1c7bf40fca2d54a1d6de57490e7be055ee67c81d9ddec673c5a4a42cda87fadc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-07-governance-admin-observability.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-07-governance-admin-observability.md"
       },
       {
         "digest": "6f1ab302730c373837927e221585b89481d35b6e681364c924380975840d5a37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-08-migration-acceptance-and-production-gates.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-08-migration-acceptance-and-production-gates.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md",
     "digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.723295Z",
+      "last_evidence_at": "2026-10-06T03:28:18.699161Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-02T19:34:42+07:00",
       "spec_last_changed_at": "2026-10-05T07:48:30+07:00"
     },
-    "revision": null,
+    "revision": "1.2",
     "slug": "266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric",
     "spec_id": "266",
     "title": "Spec 266 — SmartAIHub Unified Data, Evidence, Knowledge & Spatial Intelligence Fabric"
@@ -521,7 +545,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.723295Z"
+    "updated_at": "2026-10-06T03:28:18.699161Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -531,7 +555,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.723295Z",
+    "reconciled_at": "2026-10-06T03:28:18.699161Z",
     "sources": [
       {
         "digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
@@ -541,82 +565,82 @@
       {
         "digest": "eb4abda62e259c7220cec9af123435ab6384873ea791b791b7fd8cdf5d630588",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-plan.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-plan.md"
       },
       {
         "digest": "0e5a32c283707c0d085a4c729b4d988a6721b6929e6eea2e5fc50ed0823988a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-spec.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-spec.md"
       },
       {
         "digest": "ae2f024531a2fc93d4e3e0f87e146d1f377a5c01f2c019c83a3f559304db6032",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation/deep_implement_config.json"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "8175f1ea0a5813f94c64434067c1485c6a6aeacdaac085d80a8cb47df1cc166b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/acceptance-evidence-map.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/acceptance-evidence-map.md"
       },
       {
         "digest": "25e23b9b7c72ec20f5b800ea8b4fc02b24cc2b3807e0ba66b005ef7f2a50a903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/gap-audit-rounds.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/gap-audit-rounds.md"
       },
       {
         "digest": "60c2d4b7cea41bfbfd8f132e7c4aa8253fc7be95ec846810f04a741ca5340e42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "37edbb4de784fb1ba4295f02f92d96dadb1a0774b1a3c8ff48b3d61770788ed7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/self-review-round-1.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/self-review-round-1.md"
       },
       {
         "digest": "8077217a108d5de115e582138204cbf3f66afeb359e34929c2130f4421125b69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/index.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/index.md"
       },
       {
         "digest": "96283419c55516ab9bd31db7b7628f76cbb1cd672acfd62e1082529529aadba3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-01-authority-and-contracts.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-01-authority-and-contracts.md"
       },
       {
         "digest": "14b2a4f78008813e0f08c92db987f19a194a12b75545abc0eb70c1090d714cc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-02-registry-rights-provenance.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-02-registry-rights-provenance.md"
       },
       {
         "digest": "b4e9cb0ffcf63e3b06169294b6dfbf7e462b472df5813e270e0eda45aab68f7b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-03-semantic-geo-temporal.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-03-semantic-geo-temporal.md"
       },
       {
         "digest": "2c8c2b5b0de03b104c3c3c4724cca4d8bd7b46d4d5175addf352f25409be05e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-04-data-resolution-and-retrieval.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-04-data-resolution-and-retrieval.md"
       },
       {
         "digest": "f88c59f02309ca8da50d139f26a8e2b506aed521e27b50aacc703b4b8a8ca411",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-05-research-plane.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-05-research-plane.md"
       },
       {
         "digest": "01b759adf25f1e31749916e2c44f281c0a085837c7aa65d011864976b6c393fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-06-emergency-profile-compatibility.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-06-emergency-profile-compatibility.md"
       },
       {
         "digest": "1c7bf40fca2d54a1d6de57490e7be055ee67c81d9ddec673c5a4a42cda87fadc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-07-governance-admin-observability.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-07-governance-admin-observability.md"
       },
       {
         "digest": "6f1ab302730c373837927e221585b89481d35b6e681364c924380975840d5a37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-08-migration-acceptance-and-production-gates.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-08-migration-acceptance-and-production-gates.md"
       },
       {
         "excerpt": "/** Spec 266 shared source identity. Runtime fetch authority remains in server policy, never this row. */",
@@ -1079,82 +1103,82 @@
       {
         "digest": "eb4abda62e259c7220cec9af123435ab6384873ea791b791b7fd8cdf5d630588",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-plan.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-plan.md"
       },
       {
         "digest": "0e5a32c283707c0d085a4c729b4d988a6721b6929e6eea2e5fc50ed0823988a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-spec.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/claude-spec.md"
       },
       {
         "digest": "ae2f024531a2fc93d4e3e0f87e146d1f377a5c01f2c019c83a3f559304db6032",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation/deep_implement_config.json"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "8175f1ea0a5813f94c64434067c1485c6a6aeacdaac085d80a8cb47df1cc166b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/acceptance-evidence-map.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/acceptance-evidence-map.md"
       },
       {
         "digest": "25e23b9b7c72ec20f5b800ea8b4fc02b24cc2b3807e0ba66b005ef7f2a50a903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/gap-audit-rounds.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/gap-audit-rounds.md"
       },
       {
         "digest": "60c2d4b7cea41bfbfd8f132e7c4aa8253fc7be95ec846810f04a741ca5340e42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "37edbb4de784fb1ba4295f02f92d96dadb1a0774b1a3c8ff48b3d61770788ed7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/self-review-round-1.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/reviews/self-review-round-1.md"
       },
       {
         "digest": "8077217a108d5de115e582138204cbf3f66afeb359e34929c2130f4421125b69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/index.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/index.md"
       },
       {
         "digest": "96283419c55516ab9bd31db7b7628f76cbb1cd672acfd62e1082529529aadba3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-01-authority-and-contracts.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-01-authority-and-contracts.md"
       },
       {
         "digest": "14b2a4f78008813e0f08c92db987f19a194a12b75545abc0eb70c1090d714cc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-02-registry-rights-provenance.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-02-registry-rights-provenance.md"
       },
       {
         "digest": "b4e9cb0ffcf63e3b06169294b6dfbf7e462b472df5813e270e0eda45aab68f7b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-03-semantic-geo-temporal.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-03-semantic-geo-temporal.md"
       },
       {
         "digest": "2c8c2b5b0de03b104c3c3c4724cca4d8bd7b46d4d5175addf352f25409be05e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-04-data-resolution-and-retrieval.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-04-data-resolution-and-retrieval.md"
       },
       {
         "digest": "f88c59f02309ca8da50d139f26a8e2b506aed521e27b50aacc703b4b8a8ca411",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-05-research-plane.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-05-research-plane.md"
       },
       {
         "digest": "01b759adf25f1e31749916e2c44f281c0a085837c7aa65d011864976b6c393fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-06-emergency-profile-compatibility.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-06-emergency-profile-compatibility.md"
       },
       {
         "digest": "1c7bf40fca2d54a1d6de57490e7be055ee67c81d9ddec673c5a4a42cda87fadc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-07-governance-admin-observability.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-07-governance-admin-observability.md"
       },
       {
         "digest": "6f1ab302730c373837927e221585b89481d35b6e681364c924380975840d5a37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-08-migration-acceptance-and-production-gates.md"
+        "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-08-migration-acceptance-and-production-gates.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -1172,7 +1196,7 @@
     "unresolved": 206
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.723295Z",
+  "updated_at": "2026-10-06T03:28:18.699161Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -14,7 +14,7 @@
         "referencing_spec_id": "213",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L2613",
+        "source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L2613",
         "source_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
         "successor_spec_id": "213"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "213",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L9181",
+        "source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L9181",
         "source_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
         "successor_spec_id": "213"
       }
@@ -96,18 +96,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md",
     "digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.044788Z",
+      "last_evidence_at": "2026-10-06T03:28:17.462746Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-20T12:59:58+07:00",
       "spec_last_changed_at": "2026-09-20T12:59:58+07:00"
     },
-    "revision": "8",
+    "revision": "9",
     "slug": "213-jev-system-one-post-implementation-upgrade",
     "spec_id": "213",
     "title": "Spec 213 — SmartAIHub Jev / System-One Post-Implementation Upgrade & Hardening"
@@ -129,7 +129,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.044788Z"
+    "updated_at": "2026-10-06T03:28:17.462746Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -139,7 +139,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.044788Z",
+    "reconciled_at": "2026-10-06T03:28:17.462746Z",
     "sources": [
       {
         "digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
@@ -207,7 +207,7 @@
     "unresolved": 997
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.044788Z",
+  "updated_at": "2026-10-06T03:28:17.462746Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

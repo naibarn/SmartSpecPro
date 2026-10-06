@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L7"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L7"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L7",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L7",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L10"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L10"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L10",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L10",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L11"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L11"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L11",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L11",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L68"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L68"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L68",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L75"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L75",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L82"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L82"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L82",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L87"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L87"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L87",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L91"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L91"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L91",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L99"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L99",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L108"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L108"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L108",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L114"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L114"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L114",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L162"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L162"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L162",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L164"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L164"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L164",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L176"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L176"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L176",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L200"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L200"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L200",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L219"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L219"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L219",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L221"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L221"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L221",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L225"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L225"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L225",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L235"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L235"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L235",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L235",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L239"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L239"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L239",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L258"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L258"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L258",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L281"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L281"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L281",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L299"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L299"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L299",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L335"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L335"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L335",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L337"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L337"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L337",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L345"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L345"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L345",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L345",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L346"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L346"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L346",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L350"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L350"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L350",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L350",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L356"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L356"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L356",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L394"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L394"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L394",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L394",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L517"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L517"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L517",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L517",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L527"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L527"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L527",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L551"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L551"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L551",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L553"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L553"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L553",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L553",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L555"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L555"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L555",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L555",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L557"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L557"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L557",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L557",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L560"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L560"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L560",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L560",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L561"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L561"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L561",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L561",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L562"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L562"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L562",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L562",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L566"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L566"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L566",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L566",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L581"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L581"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L581",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L581",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L603"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L603"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L603",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L607"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L607"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L607",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L607",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L621"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L621"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L621",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L625"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L625"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L625",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L626"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L626"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L626",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L627"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L627"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L627",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L628"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L628"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L628",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L629"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L629"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L629",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L630"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L630"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L630",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L630",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L644"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L644"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L644",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L646"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L646"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L646",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L658"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L658"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L658",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,14 +1171,14 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L666",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L680",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L694",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L708",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L722",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L736"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L666",
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L680",
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L694",
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L708",
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L722",
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L736"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L666",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1198,9 +1198,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L720"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L720"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L720",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L720",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1220,9 +1220,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L727"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L727"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L727",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L727",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1242,9 +1242,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L738"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L738"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L738",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L738",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1264,9 +1264,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L746"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L746"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L746",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1286,9 +1286,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L755"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L755"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L755",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1308,9 +1308,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L759"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L759"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L759",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L759",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1330,9 +1330,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L778"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L778"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L778",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1352,9 +1352,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L784"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L784"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L784",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L784",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1374,9 +1374,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L785"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L785"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L785",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L785",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1396,9 +1396,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L786"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L786"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L786",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L786",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1418,9 +1418,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L790"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L790"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L790",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L790",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1440,9 +1440,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L791"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L791"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L791",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L791",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1462,9 +1462,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L795"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L795"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L795",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L795",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1484,9 +1484,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L796"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L796"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L796",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L796",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1506,9 +1506,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L800"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L800"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L800",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L800",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1528,9 +1528,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L801"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L801"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L801",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L801",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1550,9 +1550,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L802"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L802"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L802",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L802",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1572,9 +1572,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L803"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L803"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L803",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L803",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1594,9 +1594,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L807"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L807"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L807",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L807",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1616,9 +1616,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L808"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L808"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L808",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L808",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1638,9 +1638,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L812"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L812"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L812",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L812",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1660,9 +1660,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L813"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L813"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L813",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L813",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1682,9 +1682,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L814"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L814"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L814",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1704,9 +1704,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L815"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L815"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L815",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L815",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1726,9 +1726,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L816"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L816"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L816",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L816",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1748,9 +1748,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L817"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L817"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L817",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L817",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1770,9 +1770,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L818"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L818"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L818",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L818",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1792,9 +1792,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L819"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L819"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L819",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L819",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1814,9 +1814,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L820"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L820"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L820",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L820",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1836,9 +1836,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L821"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L821"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L821",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L821",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1858,9 +1858,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L822"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L822"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L822",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L822",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1880,9 +1880,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L823"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L823"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L823",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L823",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1902,9 +1902,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L824"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L824"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L824",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L824",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1924,9 +1924,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L825"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L825"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L825",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L825",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1946,9 +1946,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L826"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L826"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L826",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L826",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1968,9 +1968,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L827"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L827"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L827",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L827",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1990,9 +1990,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L828"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L828"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L828",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L828",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2012,9 +2012,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L829"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L829"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L829",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L829",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2034,9 +2034,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L830"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L830"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L830",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L830",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2056,9 +2056,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L831"
+        "specs/feature/096-goal-driven-auto-team-automation/spec.md#L831"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/096-goal-driven-auto-team-automation/spec.md#L831",
+      "authority_source": "specs/feature/096-goal-driven-auto-team-automation/spec.md#L831",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

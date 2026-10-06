@@ -11,6 +11,7 @@
       {
         "kind": "DUPLICATE_SPEC_ID",
         "paths": [
+          "specs/feature/162-163-gap-closure",
           "specs/feature/162-vertical-drama-broll-media-intelligence-worker"
         ]
       }
@@ -24,97 +25,97 @@
       {
         "digest": "80175121e19211171fe9e0ab085edbfc12d934bafb727fb47191cb75d2fe0df7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/claude-plan.md"
+        "path": "specs/feature/162-163-gap-closure/claude-plan.md"
       },
       {
         "digest": "8844f46c27e8315e2bc70d611be8513e0623dca0edfdc1482502751fdcd90c29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/claude-spec.md"
+        "path": "specs/feature/162-163-gap-closure/claude-spec.md"
       },
       {
         "digest": "de3f4d9d67db7b0b82755f4e27b9e3d57a699bf302c54bb633b59e7ed5d5fa68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/implementation/deep_implement_config.json"
+        "path": "specs/feature/162-163-gap-closure/implementation/deep_implement_config.json"
       },
       {
         "digest": "7f973416f3a9e684aaf03ef5af690bc7afd6b399787fb46049aa79ff67f47f90",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/completeness-audit-original-specs-2026-08-25.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/completeness-audit-original-specs-2026-08-25.md"
       },
       {
         "digest": "27e710f3b758a02a15b616c85f0d2733f6928e28afb21796236495b33d0d6911",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/convergence-rounds.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/convergence-rounds.md"
       },
       {
         "digest": "3dec06c990607d6fde18864e17fea7776488199681bd35e18179b9aa19df3511",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/current-runtime-gap-closure-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/current-runtime-gap-closure-2026-08-26.md"
       },
       {
         "digest": "a466ed66ee689285ede01d869a3d1b30de935ae6eb9f98585b801bd71b2d84d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-10-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-10-rounds-2026-08-26.md"
       },
       {
         "digest": "16526586d44ebf62345a2d29c7d55445e217cf630e3b7344e21ab964775807dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-20-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-20-rounds-2026-08-26.md"
       },
       {
         "digest": "64577a0f7ebb3cbec2ac4a7eba6c79e4f2436810ddb5564b63f1bfd3e75539fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-2026-08-26.md"
       },
       {
         "digest": "a8686bc6458c4eddbfc08d9ce9a97742b6bcb69cd09e45e03f72c90c78bcf52f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-30-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-30-rounds-2026-08-26.md"
       },
       {
         "digest": "8ccaff21301cf161692375df72e559c7fee54bf0b7a7f3076631716f8bf96413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-70-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-70-rounds-2026-08-26.md"
       },
       {
         "digest": "a00bed6e614b36005b51f697cbc5c964f47139f2aaccb772402a444d568d9a74",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-closeout-2026-08-25.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-closeout-2026-08-25.md"
       },
       {
         "digest": "f4c61a942065eaa3fa8a40e1ed739c3f16589a8afcb775a02022df98a36249bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/index.md"
+        "path": "specs/feature/162-163-gap-closure/sections/index.md"
       },
       {
         "digest": "1e9c3accc562f3303b60eb4930dc3d8bd523ddb461931b1a06d0ca5e31a77646",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-01-server-access-workflow-migration.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-01-server-access-workflow-migration.md"
       },
       {
         "digest": "747817aa879521cc63b23b1d0b42f66e065a5010be2b1c8435a759167f2f05ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-02-shot-dispatch-publication.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-02-shot-dispatch-publication.md"
       },
       {
         "digest": "f806da576eb62e6369d916ce130179ca2ab701cac4dcdce9a66e64cc37452017",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-03-native-mcp-analysis.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-03-native-mcp-analysis.md"
       },
       {
         "digest": "84cfa82f3a017cff842fc98b864b1db55f5ecc5345c9454f37eb1fe39169a72b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-04-storyboard-shot-inspector.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-04-storyboard-shot-inspector.md"
       },
       {
         "digest": "823963c2005686a213f2152113ba89bf29a59684a9573767409435fb60fdb678",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-05-worker-canonical-shell.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-05-worker-canonical-shell.md"
       },
       {
         "digest": "5cf3fb849f8bbc51babe3225779e9e06194f433ff3943c30bf7436f30795da8a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-06-media-workspace-batch.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-06-media-workspace-batch.md"
       }
     ],
     "predecessors": [],
@@ -145,97 +146,97 @@
       {
         "digest": "80175121e19211171fe9e0ab085edbfc12d934bafb727fb47191cb75d2fe0df7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/claude-plan.md"
+        "path": "specs/feature/162-163-gap-closure/claude-plan.md"
       },
       {
         "digest": "8844f46c27e8315e2bc70d611be8513e0623dca0edfdc1482502751fdcd90c29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/claude-spec.md"
+        "path": "specs/feature/162-163-gap-closure/claude-spec.md"
       },
       {
         "digest": "de3f4d9d67db7b0b82755f4e27b9e3d57a699bf302c54bb633b59e7ed5d5fa68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/implementation/deep_implement_config.json"
+        "path": "specs/feature/162-163-gap-closure/implementation/deep_implement_config.json"
       },
       {
         "digest": "7f973416f3a9e684aaf03ef5af690bc7afd6b399787fb46049aa79ff67f47f90",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/completeness-audit-original-specs-2026-08-25.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/completeness-audit-original-specs-2026-08-25.md"
       },
       {
         "digest": "27e710f3b758a02a15b616c85f0d2733f6928e28afb21796236495b33d0d6911",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/convergence-rounds.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/convergence-rounds.md"
       },
       {
         "digest": "3dec06c990607d6fde18864e17fea7776488199681bd35e18179b9aa19df3511",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/current-runtime-gap-closure-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/current-runtime-gap-closure-2026-08-26.md"
       },
       {
         "digest": "a466ed66ee689285ede01d869a3d1b30de935ae6eb9f98585b801bd71b2d84d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-10-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-10-rounds-2026-08-26.md"
       },
       {
         "digest": "16526586d44ebf62345a2d29c7d55445e217cf630e3b7344e21ab964775807dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-20-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-20-rounds-2026-08-26.md"
       },
       {
         "digest": "64577a0f7ebb3cbec2ac4a7eba6c79e4f2436810ddb5564b63f1bfd3e75539fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-2026-08-26.md"
       },
       {
         "digest": "a8686bc6458c4eddbfc08d9ce9a97742b6bcb69cd09e45e03f72c90c78bcf52f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-30-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-30-rounds-2026-08-26.md"
       },
       {
         "digest": "8ccaff21301cf161692375df72e559c7fee54bf0b7a7f3076631716f8bf96413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-70-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-70-rounds-2026-08-26.md"
       },
       {
         "digest": "a00bed6e614b36005b51f697cbc5c964f47139f2aaccb772402a444d568d9a74",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-closeout-2026-08-25.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-closeout-2026-08-25.md"
       },
       {
         "digest": "f4c61a942065eaa3fa8a40e1ed739c3f16589a8afcb775a02022df98a36249bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/index.md"
+        "path": "specs/feature/162-163-gap-closure/sections/index.md"
       },
       {
         "digest": "1e9c3accc562f3303b60eb4930dc3d8bd523ddb461931b1a06d0ca5e31a77646",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-01-server-access-workflow-migration.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-01-server-access-workflow-migration.md"
       },
       {
         "digest": "747817aa879521cc63b23b1d0b42f66e065a5010be2b1c8435a759167f2f05ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-02-shot-dispatch-publication.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-02-shot-dispatch-publication.md"
       },
       {
         "digest": "f806da576eb62e6369d916ce130179ca2ab701cac4dcdce9a66e64cc37452017",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-03-native-mcp-analysis.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-03-native-mcp-analysis.md"
       },
       {
         "digest": "84cfa82f3a017cff842fc98b864b1db55f5ecc5345c9454f37eb1fe39169a72b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-04-storyboard-shot-inspector.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-04-storyboard-shot-inspector.md"
       },
       {
         "digest": "823963c2005686a213f2152113ba89bf29a59684a9573767409435fb60fdb678",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-05-worker-canonical-shell.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-05-worker-canonical-shell.md"
       },
       {
         "digest": "5cf3fb849f8bbc51babe3225779e9e06194f433ff3943c30bf7436f30795da8a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-06-media-workspace-batch.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-06-media-workspace-batch.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -267,109 +268,109 @@
       {
         "digest": "80175121e19211171fe9e0ab085edbfc12d934bafb727fb47191cb75d2fe0df7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/claude-plan.md"
+        "path": "specs/feature/162-163-gap-closure/claude-plan.md"
       },
       {
         "digest": "8844f46c27e8315e2bc70d611be8513e0623dca0edfdc1482502751fdcd90c29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/claude-spec.md"
+        "path": "specs/feature/162-163-gap-closure/claude-spec.md"
       },
       {
         "digest": "de3f4d9d67db7b0b82755f4e27b9e3d57a699bf302c54bb633b59e7ed5d5fa68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/implementation/deep_implement_config.json"
+        "path": "specs/feature/162-163-gap-closure/implementation/deep_implement_config.json"
       },
       {
         "digest": "7f973416f3a9e684aaf03ef5af690bc7afd6b399787fb46049aa79ff67f47f90",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/completeness-audit-original-specs-2026-08-25.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/completeness-audit-original-specs-2026-08-25.md"
       },
       {
         "digest": "27e710f3b758a02a15b616c85f0d2733f6928e28afb21796236495b33d0d6911",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/convergence-rounds.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/convergence-rounds.md"
       },
       {
         "digest": "3dec06c990607d6fde18864e17fea7776488199681bd35e18179b9aa19df3511",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/current-runtime-gap-closure-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/current-runtime-gap-closure-2026-08-26.md"
       },
       {
         "digest": "a466ed66ee689285ede01d869a3d1b30de935ae6eb9f98585b801bd71b2d84d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-10-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-10-rounds-2026-08-26.md"
       },
       {
         "digest": "16526586d44ebf62345a2d29c7d55445e217cf630e3b7344e21ab964775807dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-20-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-20-rounds-2026-08-26.md"
       },
       {
         "digest": "64577a0f7ebb3cbec2ac4a7eba6c79e4f2436810ddb5564b63f1bfd3e75539fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-2026-08-26.md"
       },
       {
         "digest": "a8686bc6458c4eddbfc08d9ce9a97742b6bcb69cd09e45e03f72c90c78bcf52f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-30-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-30-rounds-2026-08-26.md"
       },
       {
         "digest": "8ccaff21301cf161692375df72e559c7fee54bf0b7a7f3076631716f8bf96413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-70-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-70-rounds-2026-08-26.md"
       },
       {
         "digest": "a00bed6e614b36005b51f697cbc5c964f47139f2aaccb772402a444d568d9a74",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-closeout-2026-08-25.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-closeout-2026-08-25.md"
       },
       {
         "digest": "f4c61a942065eaa3fa8a40e1ed739c3f16589a8afcb775a02022df98a36249bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/index.md"
+        "path": "specs/feature/162-163-gap-closure/sections/index.md"
       },
       {
         "digest": "1e9c3accc562f3303b60eb4930dc3d8bd523ddb461931b1a06d0ca5e31a77646",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-01-server-access-workflow-migration.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-01-server-access-workflow-migration.md"
       },
       {
         "digest": "747817aa879521cc63b23b1d0b42f66e065a5010be2b1c8435a759167f2f05ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-02-shot-dispatch-publication.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-02-shot-dispatch-publication.md"
       },
       {
         "digest": "f806da576eb62e6369d916ce130179ca2ab701cac4dcdce9a66e64cc37452017",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-03-native-mcp-analysis.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-03-native-mcp-analysis.md"
       },
       {
         "digest": "84cfa82f3a017cff842fc98b864b1db55f5ecc5345c9454f37eb1fe39169a72b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-04-storyboard-shot-inspector.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-04-storyboard-shot-inspector.md"
       },
       {
         "digest": "823963c2005686a213f2152113ba89bf29a59684a9573767409435fb60fdb678",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-05-worker-canonical-shell.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-05-worker-canonical-shell.md"
       },
       {
         "digest": "5cf3fb849f8bbc51babe3225779e9e06194f433ff3943c30bf7436f30795da8a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-06-media-workspace-batch.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-06-media-workspace-batch.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/162-163-gap-closure/spec.md",
     "digest": "2ed8abffe582e178650ff2ebce21c2883591682d9415b5e668eed597b277bded",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.423147Z",
+      "last_evidence_at": "2026-10-06T03:28:16.397769Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-30T21:05:27+07:00",
       "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
@@ -396,7 +397,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.423147Z"
+    "updated_at": "2026-10-06T03:28:16.397769Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -406,7 +407,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.423147Z",
+    "reconciled_at": "2026-10-06T03:28:16.397769Z",
     "sources": [
       {
         "digest": "2ed8abffe582e178650ff2ebce21c2883591682d9415b5e668eed597b277bded",
@@ -416,102 +417,102 @@
       {
         "digest": "80175121e19211171fe9e0ab085edbfc12d934bafb727fb47191cb75d2fe0df7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/claude-plan.md"
+        "path": "specs/feature/162-163-gap-closure/claude-plan.md"
       },
       {
         "digest": "8844f46c27e8315e2bc70d611be8513e0623dca0edfdc1482502751fdcd90c29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/claude-spec.md"
+        "path": "specs/feature/162-163-gap-closure/claude-spec.md"
       },
       {
         "digest": "de3f4d9d67db7b0b82755f4e27b9e3d57a699bf302c54bb633b59e7ed5d5fa68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/implementation/deep_implement_config.json"
+        "path": "specs/feature/162-163-gap-closure/implementation/deep_implement_config.json"
       },
       {
         "digest": "7f973416f3a9e684aaf03ef5af690bc7afd6b399787fb46049aa79ff67f47f90",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/completeness-audit-original-specs-2026-08-25.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/completeness-audit-original-specs-2026-08-25.md"
       },
       {
         "digest": "27e710f3b758a02a15b616c85f0d2733f6928e28afb21796236495b33d0d6911",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/convergence-rounds.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/convergence-rounds.md"
       },
       {
         "digest": "3dec06c990607d6fde18864e17fea7776488199681bd35e18179b9aa19df3511",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/current-runtime-gap-closure-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/current-runtime-gap-closure-2026-08-26.md"
       },
       {
         "digest": "a466ed66ee689285ede01d869a3d1b30de935ae6eb9f98585b801bd71b2d84d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-10-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-10-rounds-2026-08-26.md"
       },
       {
         "digest": "16526586d44ebf62345a2d29c7d55445e217cf630e3b7344e21ab964775807dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-20-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-20-rounds-2026-08-26.md"
       },
       {
         "digest": "64577a0f7ebb3cbec2ac4a7eba6c79e4f2436810ddb5564b63f1bfd3e75539fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-2026-08-26.md"
       },
       {
         "digest": "a8686bc6458c4eddbfc08d9ce9a97742b6bcb69cd09e45e03f72c90c78bcf52f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-30-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-30-rounds-2026-08-26.md"
       },
       {
         "digest": "8ccaff21301cf161692375df72e559c7fee54bf0b7a7f3076631716f8bf96413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-70-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-70-rounds-2026-08-26.md"
       },
       {
         "digest": "a00bed6e614b36005b51f697cbc5c964f47139f2aaccb772402a444d568d9a74",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-closeout-2026-08-25.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-closeout-2026-08-25.md"
       },
       {
         "digest": "f4c61a942065eaa3fa8a40e1ed739c3f16589a8afcb775a02022df98a36249bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/index.md"
+        "path": "specs/feature/162-163-gap-closure/sections/index.md"
       },
       {
         "digest": "1e9c3accc562f3303b60eb4930dc3d8bd523ddb461931b1a06d0ca5e31a77646",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-01-server-access-workflow-migration.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-01-server-access-workflow-migration.md"
       },
       {
         "digest": "747817aa879521cc63b23b1d0b42f66e065a5010be2b1c8435a759167f2f05ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-02-shot-dispatch-publication.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-02-shot-dispatch-publication.md"
       },
       {
         "digest": "f806da576eb62e6369d916ce130179ca2ab701cac4dcdce9a66e64cc37452017",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-03-native-mcp-analysis.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-03-native-mcp-analysis.md"
       },
       {
         "digest": "84cfa82f3a017cff842fc98b864b1db55f5ecc5345c9454f37eb1fe39169a72b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-04-storyboard-shot-inspector.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-04-storyboard-shot-inspector.md"
       },
       {
         "digest": "823963c2005686a213f2152113ba89bf29a59684a9573767409435fb60fdb678",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-05-worker-canonical-shell.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-05-worker-canonical-shell.md"
       },
       {
         "digest": "5cf3fb849f8bbc51babe3225779e9e06194f433ff3943c30bf7436f30795da8a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-06-media-workspace-batch.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-06-media-workspace-batch.md"
       },
       {
         "digest": "12466a1ae7925882501d7afe77d5880b99bd0d455d4daabe6ac2c571a24a2656",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-07-integration-verification.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-07-integration-verification.md"
       }
     ],
     "stale_fields": [],
@@ -539,102 +540,102 @@
       {
         "digest": "80175121e19211171fe9e0ab085edbfc12d934bafb727fb47191cb75d2fe0df7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/claude-plan.md"
+        "path": "specs/feature/162-163-gap-closure/claude-plan.md"
       },
       {
         "digest": "8844f46c27e8315e2bc70d611be8513e0623dca0edfdc1482502751fdcd90c29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/claude-spec.md"
+        "path": "specs/feature/162-163-gap-closure/claude-spec.md"
       },
       {
         "digest": "de3f4d9d67db7b0b82755f4e27b9e3d57a699bf302c54bb633b59e7ed5d5fa68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/implementation/deep_implement_config.json"
+        "path": "specs/feature/162-163-gap-closure/implementation/deep_implement_config.json"
       },
       {
         "digest": "7f973416f3a9e684aaf03ef5af690bc7afd6b399787fb46049aa79ff67f47f90",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/completeness-audit-original-specs-2026-08-25.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/completeness-audit-original-specs-2026-08-25.md"
       },
       {
         "digest": "27e710f3b758a02a15b616c85f0d2733f6928e28afb21796236495b33d0d6911",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/convergence-rounds.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/convergence-rounds.md"
       },
       {
         "digest": "3dec06c990607d6fde18864e17fea7776488199681bd35e18179b9aa19df3511",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/current-runtime-gap-closure-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/current-runtime-gap-closure-2026-08-26.md"
       },
       {
         "digest": "a466ed66ee689285ede01d869a3d1b30de935ae6eb9f98585b801bd71b2d84d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-10-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-10-rounds-2026-08-26.md"
       },
       {
         "digest": "16526586d44ebf62345a2d29c7d55445e217cf630e3b7344e21ab964775807dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-20-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-20-rounds-2026-08-26.md"
       },
       {
         "digest": "64577a0f7ebb3cbec2ac4a7eba6c79e4f2436810ddb5564b63f1bfd3e75539fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-2026-08-26.md"
       },
       {
         "digest": "a8686bc6458c4eddbfc08d9ce9a97742b6bcb69cd09e45e03f72c90c78bcf52f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-30-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-30-rounds-2026-08-26.md"
       },
       {
         "digest": "8ccaff21301cf161692375df72e559c7fee54bf0b7a7f3076631716f8bf96413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-audit-70-rounds-2026-08-26.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-audit-70-rounds-2026-08-26.md"
       },
       {
         "digest": "a00bed6e614b36005b51f697cbc5c964f47139f2aaccb772402a444d568d9a74",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/reviews/implementation-closeout-2026-08-25.md"
+        "path": "specs/feature/162-163-gap-closure/reviews/implementation-closeout-2026-08-25.md"
       },
       {
         "digest": "f4c61a942065eaa3fa8a40e1ed739c3f16589a8afcb775a02022df98a36249bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/index.md"
+        "path": "specs/feature/162-163-gap-closure/sections/index.md"
       },
       {
         "digest": "1e9c3accc562f3303b60eb4930dc3d8bd523ddb461931b1a06d0ca5e31a77646",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-01-server-access-workflow-migration.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-01-server-access-workflow-migration.md"
       },
       {
         "digest": "747817aa879521cc63b23b1d0b42f66e065a5010be2b1c8435a759167f2f05ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-02-shot-dispatch-publication.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-02-shot-dispatch-publication.md"
       },
       {
         "digest": "f806da576eb62e6369d916ce130179ca2ab701cac4dcdce9a66e64cc37452017",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-03-native-mcp-analysis.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-03-native-mcp-analysis.md"
       },
       {
         "digest": "84cfa82f3a017cff842fc98b864b1db55f5ecc5345c9454f37eb1fe39169a72b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-04-storyboard-shot-inspector.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-04-storyboard-shot-inspector.md"
       },
       {
         "digest": "823963c2005686a213f2152113ba89bf29a59684a9573767409435fb60fdb678",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-05-worker-canonical-shell.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-05-worker-canonical-shell.md"
       },
       {
         "digest": "5cf3fb849f8bbc51babe3225779e9e06194f433ff3943c30bf7436f30795da8a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-06-media-workspace-batch.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-06-media-workspace-batch.md"
       },
       {
         "digest": "12466a1ae7925882501d7afe77d5880b99bd0d455d4daabe6ac2c571a24a2656",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-163-gap-closure/sections/section-07-integration-verification.md"
+        "path": "specs/feature/162-163-gap-closure/sections/section-07-integration-verification.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -652,7 +653,7 @@
     "unresolved": 2
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.423147Z",
+  "updated_at": "2026-10-06T03:28:16.397769Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

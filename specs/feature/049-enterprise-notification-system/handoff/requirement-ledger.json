@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L672"
+        "specs/feature/049-enterprise-notification-system/spec.md#L672"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L672",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L676"
+        "specs/feature/049-enterprise-notification-system/spec.md#L676"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L676",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L676",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L703"
+        "specs/feature/049-enterprise-notification-system/spec.md#L703"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L703",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L729"
+        "specs/feature/049-enterprise-notification-system/spec.md#L729"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L729",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L729",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L761"
+        "specs/feature/049-enterprise-notification-system/spec.md#L761"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L761",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L761",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L779"
+        "specs/feature/049-enterprise-notification-system/spec.md#L779"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L779",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L783"
+        "specs/feature/049-enterprise-notification-system/spec.md#L783"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L783",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L783",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L784"
+        "specs/feature/049-enterprise-notification-system/spec.md#L784"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L784",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L784",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L898"
+        "specs/feature/049-enterprise-notification-system/spec.md#L898"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L898",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L898",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L970"
+        "specs/feature/049-enterprise-notification-system/spec.md#L970"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L970",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L1029"
+        "specs/feature/049-enterprise-notification-system/spec.md#L1029"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L1029",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L1029",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L1032"
+        "specs/feature/049-enterprise-notification-system/spec.md#L1032"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L1032",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L1032",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L1103"
+        "specs/feature/049-enterprise-notification-system/spec.md#L1103"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/049-enterprise-notification-system/spec.md#L1103",
+      "authority_source": "specs/feature/049-enterprise-notification-system/spec.md#L1103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

@@ -17,67 +17,67 @@
       {
         "digest": "f7731182d1e71b1f111026ae77ca4eb21be306c57f8f3631a5d0bead0e6e82ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/claude-plan.md"
+        "path": "specs/feature/196-universal-goal-orchestration/claude-plan.md"
       },
       {
         "digest": "29143b2c82d7683aac61f8fdeb53b7ae00e242dbe118bc146a93c13ca95bb7b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/claude-spec.md"
+        "path": "specs/feature/196-universal-goal-orchestration/claude-spec.md"
       },
       {
         "digest": "73e4e0986f0b744e07460509b5ce1b362ac07bd3ae3c7e89ff9d3de5f4c7c3fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/completion.md"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/completion.md"
       },
       {
         "digest": "ceda8f89906fa943b3ab8b7db1cfb1f37f79f48cf7d59caf51ffefa9cc88d74e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "325da9e9e0f1a336c5b7ae3f5e64bf7abbf510d5fca81adbd660bacca1054eb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/review.md"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/review.md"
       },
       {
         "digest": "04f696a4b85f723a29da355878ad2018916ce1b2299f108b40340cb8b7fc07ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
+        "path": "specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
       },
       {
         "digest": "29fe10f1c8a7efa14a7502d9be82e9d07d08f87df698410e358b03ab6cd6480a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/index.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/index.md"
       },
       {
         "digest": "a8b2d4ff6a9c7fce8d52226d2e55c499e162c6337cffee91b94653299df20bc9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
       },
       {
         "digest": "642a578b801ed41771d812df4d0760e05221da5df24ba78d7a1712e4e5884f5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
       },
       {
         "digest": "8514349a06e8290c28ad67afef48747934cc62a9492ee1fb37bf577fa86a9bd0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
       },
       {
         "digest": "c5dda0e60d2d9c2f70236bb81d418b7270dabdb636597d99aa3e81077cd3ac41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
       },
       {
         "digest": "21d1a3a60ec5da0b61ccfcb0a85482e79b1f9986d523f3060c108b1930a26f62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
       },
       {
         "digest": "5b028fb32f2b84d3a4b4ef23b1b68a7fa90a7490486ca9ba89f682225d9fc465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
       }
     ],
     "predecessors": [],
@@ -108,67 +108,67 @@
       {
         "digest": "f7731182d1e71b1f111026ae77ca4eb21be306c57f8f3631a5d0bead0e6e82ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/claude-plan.md"
+        "path": "specs/feature/196-universal-goal-orchestration/claude-plan.md"
       },
       {
         "digest": "29143b2c82d7683aac61f8fdeb53b7ae00e242dbe118bc146a93c13ca95bb7b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/claude-spec.md"
+        "path": "specs/feature/196-universal-goal-orchestration/claude-spec.md"
       },
       {
         "digest": "73e4e0986f0b744e07460509b5ce1b362ac07bd3ae3c7e89ff9d3de5f4c7c3fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/completion.md"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/completion.md"
       },
       {
         "digest": "ceda8f89906fa943b3ab8b7db1cfb1f37f79f48cf7d59caf51ffefa9cc88d74e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "325da9e9e0f1a336c5b7ae3f5e64bf7abbf510d5fca81adbd660bacca1054eb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/review.md"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/review.md"
       },
       {
         "digest": "04f696a4b85f723a29da355878ad2018916ce1b2299f108b40340cb8b7fc07ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
+        "path": "specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
       },
       {
         "digest": "29fe10f1c8a7efa14a7502d9be82e9d07d08f87df698410e358b03ab6cd6480a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/index.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/index.md"
       },
       {
         "digest": "a8b2d4ff6a9c7fce8d52226d2e55c499e162c6337cffee91b94653299df20bc9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
       },
       {
         "digest": "642a578b801ed41771d812df4d0760e05221da5df24ba78d7a1712e4e5884f5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
       },
       {
         "digest": "8514349a06e8290c28ad67afef48747934cc62a9492ee1fb37bf577fa86a9bd0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
       },
       {
         "digest": "c5dda0e60d2d9c2f70236bb81d418b7270dabdb636597d99aa3e81077cd3ac41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
       },
       {
         "digest": "21d1a3a60ec5da0b61ccfcb0a85482e79b1f9986d523f3060c108b1930a26f62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
       },
       {
         "digest": "5b028fb32f2b84d3a4b4ef23b1b68a7fa90a7490486ca9ba89f682225d9fc465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -200,79 +200,79 @@
       {
         "digest": "f7731182d1e71b1f111026ae77ca4eb21be306c57f8f3631a5d0bead0e6e82ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/claude-plan.md"
+        "path": "specs/feature/196-universal-goal-orchestration/claude-plan.md"
       },
       {
         "digest": "29143b2c82d7683aac61f8fdeb53b7ae00e242dbe118bc146a93c13ca95bb7b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/claude-spec.md"
+        "path": "specs/feature/196-universal-goal-orchestration/claude-spec.md"
       },
       {
         "digest": "73e4e0986f0b744e07460509b5ce1b362ac07bd3ae3c7e89ff9d3de5f4c7c3fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/completion.md"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/completion.md"
       },
       {
         "digest": "ceda8f89906fa943b3ab8b7db1cfb1f37f79f48cf7d59caf51ffefa9cc88d74e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "325da9e9e0f1a336c5b7ae3f5e64bf7abbf510d5fca81adbd660bacca1054eb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/review.md"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/review.md"
       },
       {
         "digest": "04f696a4b85f723a29da355878ad2018916ce1b2299f108b40340cb8b7fc07ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
+        "path": "specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
       },
       {
         "digest": "29fe10f1c8a7efa14a7502d9be82e9d07d08f87df698410e358b03ab6cd6480a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/index.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/index.md"
       },
       {
         "digest": "a8b2d4ff6a9c7fce8d52226d2e55c499e162c6337cffee91b94653299df20bc9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
       },
       {
         "digest": "642a578b801ed41771d812df4d0760e05221da5df24ba78d7a1712e4e5884f5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
       },
       {
         "digest": "8514349a06e8290c28ad67afef48747934cc62a9492ee1fb37bf577fa86a9bd0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
       },
       {
         "digest": "c5dda0e60d2d9c2f70236bb81d418b7270dabdb636597d99aa3e81077cd3ac41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
       },
       {
         "digest": "21d1a3a60ec5da0b61ccfcb0a85482e79b1f9986d523f3060c108b1930a26f62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
       },
       {
         "digest": "5b028fb32f2b84d3a4b4ef23b1b68a7fa90a7490486ca9ba89f682225d9fc465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/196-universal-goal-orchestration/spec.md",
     "digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.668019Z",
+      "last_evidence_at": "2026-10-06T03:28:16.812267Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -299,7 +299,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.668019Z"
+    "updated_at": "2026-10-06T03:28:16.812267Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -309,7 +309,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.668019Z",
+    "reconciled_at": "2026-10-06T03:28:16.812267Z",
     "sources": [
       {
         "digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
@@ -319,67 +319,67 @@
       {
         "digest": "f7731182d1e71b1f111026ae77ca4eb21be306c57f8f3631a5d0bead0e6e82ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/claude-plan.md"
+        "path": "specs/feature/196-universal-goal-orchestration/claude-plan.md"
       },
       {
         "digest": "29143b2c82d7683aac61f8fdeb53b7ae00e242dbe118bc146a93c13ca95bb7b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/claude-spec.md"
+        "path": "specs/feature/196-universal-goal-orchestration/claude-spec.md"
       },
       {
         "digest": "73e4e0986f0b744e07460509b5ce1b362ac07bd3ae3c7e89ff9d3de5f4c7c3fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/completion.md"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/completion.md"
       },
       {
         "digest": "ceda8f89906fa943b3ab8b7db1cfb1f37f79f48cf7d59caf51ffefa9cc88d74e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "325da9e9e0f1a336c5b7ae3f5e64bf7abbf510d5fca81adbd660bacca1054eb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/review.md"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/review.md"
       },
       {
         "digest": "04f696a4b85f723a29da355878ad2018916ce1b2299f108b40340cb8b7fc07ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
+        "path": "specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
       },
       {
         "digest": "29fe10f1c8a7efa14a7502d9be82e9d07d08f87df698410e358b03ab6cd6480a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/index.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/index.md"
       },
       {
         "digest": "a8b2d4ff6a9c7fce8d52226d2e55c499e162c6337cffee91b94653299df20bc9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
       },
       {
         "digest": "642a578b801ed41771d812df4d0760e05221da5df24ba78d7a1712e4e5884f5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
       },
       {
         "digest": "8514349a06e8290c28ad67afef48747934cc62a9492ee1fb37bf577fa86a9bd0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
       },
       {
         "digest": "c5dda0e60d2d9c2f70236bb81d418b7270dabdb636597d99aa3e81077cd3ac41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
       },
       {
         "digest": "21d1a3a60ec5da0b61ccfcb0a85482e79b1f9986d523f3060c108b1930a26f62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
       },
       {
         "digest": "5b028fb32f2b84d3a4b4ef23b1b68a7fa90a7490486ca9ba89f682225d9fc465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -591,67 +591,67 @@
       {
         "digest": "f7731182d1e71b1f111026ae77ca4eb21be306c57f8f3631a5d0bead0e6e82ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/claude-plan.md"
+        "path": "specs/feature/196-universal-goal-orchestration/claude-plan.md"
       },
       {
         "digest": "29143b2c82d7683aac61f8fdeb53b7ae00e242dbe118bc146a93c13ca95bb7b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/claude-spec.md"
+        "path": "specs/feature/196-universal-goal-orchestration/claude-spec.md"
       },
       {
         "digest": "73e4e0986f0b744e07460509b5ce1b362ac07bd3ae3c7e89ff9d3de5f4c7c3fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/completion.md"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/completion.md"
       },
       {
         "digest": "ceda8f89906fa943b3ab8b7db1cfb1f37f79f48cf7d59caf51ffefa9cc88d74e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "325da9e9e0f1a336c5b7ae3f5e64bf7abbf510d5fca81adbd660bacca1054eb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/implementation/review.md"
+        "path": "specs/feature/196-universal-goal-orchestration/implementation/review.md"
       },
       {
         "digest": "04f696a4b85f723a29da355878ad2018916ce1b2299f108b40340cb8b7fc07ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
+        "path": "specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
       },
       {
         "digest": "29fe10f1c8a7efa14a7502d9be82e9d07d08f87df698410e358b03ab6cd6480a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/index.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/index.md"
       },
       {
         "digest": "a8b2d4ff6a9c7fce8d52226d2e55c499e162c6337cffee91b94653299df20bc9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
       },
       {
         "digest": "642a578b801ed41771d812df4d0760e05221da5df24ba78d7a1712e4e5884f5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
       },
       {
         "digest": "8514349a06e8290c28ad67afef48747934cc62a9492ee1fb37bf577fa86a9bd0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
       },
       {
         "digest": "c5dda0e60d2d9c2f70236bb81d418b7270dabdb636597d99aa3e81077cd3ac41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
       },
       {
         "digest": "21d1a3a60ec5da0b61ccfcb0a85482e79b1f9986d523f3060c108b1930a26f62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
       },
       {
         "digest": "5b028fb32f2b84d3a4b4ef23b1b68a7fa90a7490486ca9ba89f682225d9fc465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
+        "path": "specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -669,7 +669,7 @@
     "unresolved": 203
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.668019Z",
+  "updated_at": "2026-10-06T03:28:16.812267Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

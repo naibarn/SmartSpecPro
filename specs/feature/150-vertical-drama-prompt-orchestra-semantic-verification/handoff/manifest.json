@@ -71,18 +71,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md",
     "digest": "f7f88ad54a8672e48b25b040c0f9142ad9cd9a515dfee9ad3bb7157f5d94ded5",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.356308Z",
+      "last_evidence_at": "2026-10-06T03:28:16.252058Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-19T02:18:53+07:00",
       "spec_last_changed_at": "2026-08-19T02:18:53+07:00"
     },
-    "revision": null,
+    "revision": "1.0.0",
     "slug": "150-vertical-drama-prompt-orchestra-semantic-verification",
     "spec_id": "150",
     "title": "Feature 150: Vertical Drama Prompt Orchestra and Semantic Verification"
@@ -104,7 +104,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.356308Z"
+    "updated_at": "2026-10-06T03:28:16.252058Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,7 +114,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.356308Z",
+    "reconciled_at": "2026-10-06T03:28:16.252058Z",
     "sources": [
       {
         "digest": "f7f88ad54a8672e48b25b040c0f9142ad9cd9a515dfee9ad3bb7157f5d94ded5",
@@ -182,7 +182,7 @@
     "unresolved": 85
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.356308Z",
+  "updated_at": "2026-10-06T03:28:16.252058Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

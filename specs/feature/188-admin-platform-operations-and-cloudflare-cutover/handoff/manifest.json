@@ -17,87 +17,87 @@
       {
         "digest": "795ba06278158d1e7c8ff946ac58b6a2e9aab8bc5e400e5f21e148e1e1f3cb24",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-plan.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-plan.md"
       },
       {
         "digest": "48859d6ab724bc8acd26789a7b4cd1b1629af48fac6307794a29cb5dc060fd4f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-spec.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-spec.md"
       },
       {
         "digest": "07ea8ddee5f61826afdc148ade624d033268ac046531e68063c0c3ac1743bbbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "8075639e0d8fdf0f2078879d3a96bd72a970bde01dfd914dfe1d7fd0f06ae2ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/completeness-review-rounds-1-10.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/completeness-review-rounds-1-10.md"
       },
       {
         "digest": "7c7a32caaeb3ad9c9a55bb2cc171a97673e5a450a0fe4d446611e64acd122843",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "8490973b34ed28219895cf90ee4674454bbdb9e242df872312564f28f17aa2f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "1e6c6d1e93ba17dce300494ddf85480be7a03ee47093ca468c672f4072fae346",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/index.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/index.md"
       },
       {
         "digest": "11f105a99e2d66ecea1e436c765076a5be241271851d4cba4aa0b4ed4a949817",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-01-contracts-schema.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-01-contracts-schema.md"
       },
       {
         "digest": "75c9bda2e69cd78c743b2e6d569061869e0544b713aa55f25ec97a6647121223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-02-platform-control-plane.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-02-platform-control-plane.md"
       },
       {
         "digest": "182882d64b5bc399dc1dd1d45345ed1b77a1c85a0ec44290e55d33091270c2a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-03-data-promotion.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-03-data-promotion.md"
       },
       {
         "digest": "e9bdf54fb0479b48f3d8ee5608c1e6f17f8df32042ed79d96267b6f9f07566c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-04-hyperdrive-cloudflare.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-04-hyperdrive-cloudflare.md"
       },
       {
         "digest": "008e6933a623ba1f98c03a3a8bf1996f37a5ca4bf4e6afd4fb973432b078dffc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-05-feature-186-legacy.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-05-feature-186-legacy.md"
       },
       {
         "digest": "a57e53e24602436edbb3b9d8f98e7080d2e0e818e47c78ed083ac0f40c13e507",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-06-admin-api-ui.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-06-admin-api-ui.md"
       },
       {
         "digest": "d94ead720732fbe9b96353808b197edfe273c85f6429ab301d12cb69c4742f9a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-07-release-workflows.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-07-release-workflows.md"
       },
       {
         "digest": "5ef22fd46d51773ecaa21d96dc8be3f5551a12eb5b280bdcb258d111723b81dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-08-cutover-runbooks.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-08-cutover-runbooks.md"
       },
       {
         "digest": "da9a66e98dfaedc13a526c59a5383d9fe7338719313da800e19235a073d889d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-09-verification-observability.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-09-verification-observability.md"
       },
       {
         "digest": "54a7b409f1a0b13d056cd042b61746b6ab3e0d55604a752f074cb2e5a8886b0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-10-integration-gates.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-10-integration-gates.md"
       }
     ],
     "predecessors": [],
@@ -128,87 +128,87 @@
       {
         "digest": "795ba06278158d1e7c8ff946ac58b6a2e9aab8bc5e400e5f21e148e1e1f3cb24",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-plan.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-plan.md"
       },
       {
         "digest": "48859d6ab724bc8acd26789a7b4cd1b1629af48fac6307794a29cb5dc060fd4f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-spec.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-spec.md"
       },
       {
         "digest": "07ea8ddee5f61826afdc148ade624d033268ac046531e68063c0c3ac1743bbbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "8075639e0d8fdf0f2078879d3a96bd72a970bde01dfd914dfe1d7fd0f06ae2ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/completeness-review-rounds-1-10.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/completeness-review-rounds-1-10.md"
       },
       {
         "digest": "7c7a32caaeb3ad9c9a55bb2cc171a97673e5a450a0fe4d446611e64acd122843",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "8490973b34ed28219895cf90ee4674454bbdb9e242df872312564f28f17aa2f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "1e6c6d1e93ba17dce300494ddf85480be7a03ee47093ca468c672f4072fae346",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/index.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/index.md"
       },
       {
         "digest": "11f105a99e2d66ecea1e436c765076a5be241271851d4cba4aa0b4ed4a949817",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-01-contracts-schema.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-01-contracts-schema.md"
       },
       {
         "digest": "75c9bda2e69cd78c743b2e6d569061869e0544b713aa55f25ec97a6647121223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-02-platform-control-plane.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-02-platform-control-plane.md"
       },
       {
         "digest": "182882d64b5bc399dc1dd1d45345ed1b77a1c85a0ec44290e55d33091270c2a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-03-data-promotion.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-03-data-promotion.md"
       },
       {
         "digest": "e9bdf54fb0479b48f3d8ee5608c1e6f17f8df32042ed79d96267b6f9f07566c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-04-hyperdrive-cloudflare.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-04-hyperdrive-cloudflare.md"
       },
       {
         "digest": "008e6933a623ba1f98c03a3a8bf1996f37a5ca4bf4e6afd4fb973432b078dffc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-05-feature-186-legacy.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-05-feature-186-legacy.md"
       },
       {
         "digest": "a57e53e24602436edbb3b9d8f98e7080d2e0e818e47c78ed083ac0f40c13e507",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-06-admin-api-ui.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-06-admin-api-ui.md"
       },
       {
         "digest": "d94ead720732fbe9b96353808b197edfe273c85f6429ab301d12cb69c4742f9a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-07-release-workflows.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-07-release-workflows.md"
       },
       {
         "digest": "5ef22fd46d51773ecaa21d96dc8be3f5551a12eb5b280bdcb258d111723b81dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-08-cutover-runbooks.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-08-cutover-runbooks.md"
       },
       {
         "digest": "da9a66e98dfaedc13a526c59a5383d9fe7338719313da800e19235a073d889d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-09-verification-observability.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-09-verification-observability.md"
       },
       {
         "digest": "54a7b409f1a0b13d056cd042b61746b6ab3e0d55604a752f074cb2e5a8886b0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-10-integration-gates.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-10-integration-gates.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -240,99 +240,99 @@
       {
         "digest": "795ba06278158d1e7c8ff946ac58b6a2e9aab8bc5e400e5f21e148e1e1f3cb24",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-plan.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-plan.md"
       },
       {
         "digest": "48859d6ab724bc8acd26789a7b4cd1b1629af48fac6307794a29cb5dc060fd4f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-spec.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-spec.md"
       },
       {
         "digest": "07ea8ddee5f61826afdc148ade624d033268ac046531e68063c0c3ac1743bbbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "8075639e0d8fdf0f2078879d3a96bd72a970bde01dfd914dfe1d7fd0f06ae2ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/completeness-review-rounds-1-10.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/completeness-review-rounds-1-10.md"
       },
       {
         "digest": "7c7a32caaeb3ad9c9a55bb2cc171a97673e5a450a0fe4d446611e64acd122843",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "8490973b34ed28219895cf90ee4674454bbdb9e242df872312564f28f17aa2f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "1e6c6d1e93ba17dce300494ddf85480be7a03ee47093ca468c672f4072fae346",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/index.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/index.md"
       },
       {
         "digest": "11f105a99e2d66ecea1e436c765076a5be241271851d4cba4aa0b4ed4a949817",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-01-contracts-schema.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-01-contracts-schema.md"
       },
       {
         "digest": "75c9bda2e69cd78c743b2e6d569061869e0544b713aa55f25ec97a6647121223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-02-platform-control-plane.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-02-platform-control-plane.md"
       },
       {
         "digest": "182882d64b5bc399dc1dd1d45345ed1b77a1c85a0ec44290e55d33091270c2a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-03-data-promotion.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-03-data-promotion.md"
       },
       {
         "digest": "e9bdf54fb0479b48f3d8ee5608c1e6f17f8df32042ed79d96267b6f9f07566c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-04-hyperdrive-cloudflare.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-04-hyperdrive-cloudflare.md"
       },
       {
         "digest": "008e6933a623ba1f98c03a3a8bf1996f37a5ca4bf4e6afd4fb973432b078dffc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-05-feature-186-legacy.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-05-feature-186-legacy.md"
       },
       {
         "digest": "a57e53e24602436edbb3b9d8f98e7080d2e0e818e47c78ed083ac0f40c13e507",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-06-admin-api-ui.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-06-admin-api-ui.md"
       },
       {
         "digest": "d94ead720732fbe9b96353808b197edfe273c85f6429ab301d12cb69c4742f9a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-07-release-workflows.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-07-release-workflows.md"
       },
       {
         "digest": "5ef22fd46d51773ecaa21d96dc8be3f5551a12eb5b280bdcb258d111723b81dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-08-cutover-runbooks.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-08-cutover-runbooks.md"
       },
       {
         "digest": "da9a66e98dfaedc13a526c59a5383d9fe7338719313da800e19235a073d889d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-09-verification-observability.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-09-verification-observability.md"
       },
       {
         "digest": "54a7b409f1a0b13d056cd042b61746b6ab3e0d55604a752f074cb2e5a8886b0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-10-integration-gates.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-10-integration-gates.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/spec.md",
     "digest": "82f4e1143c31f3ebc39842029b539d8b8f50e99ad93e88a6b590c470aa1b25d4",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.612971Z",
+      "last_evidence_at": "2026-10-06T03:28:16.723418Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-13T10:29:00+07:00",
       "spec_last_changed_at": "2026-09-15T08:20:57+07:00"
@@ -359,7 +359,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.612971Z"
+    "updated_at": "2026-10-06T03:28:16.723418Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -369,7 +369,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.612971Z",
+    "reconciled_at": "2026-10-06T03:28:16.723418Z",
     "sources": [
       {
         "digest": "82f4e1143c31f3ebc39842029b539d8b8f50e99ad93e88a6b590c470aa1b25d4",
@@ -379,87 +379,87 @@
       {
         "digest": "795ba06278158d1e7c8ff946ac58b6a2e9aab8bc5e400e5f21e148e1e1f3cb24",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-plan.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-plan.md"
       },
       {
         "digest": "48859d6ab724bc8acd26789a7b4cd1b1629af48fac6307794a29cb5dc060fd4f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-spec.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-spec.md"
       },
       {
         "digest": "07ea8ddee5f61826afdc148ade624d033268ac046531e68063c0c3ac1743bbbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "8075639e0d8fdf0f2078879d3a96bd72a970bde01dfd914dfe1d7fd0f06ae2ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/completeness-review-rounds-1-10.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/completeness-review-rounds-1-10.md"
       },
       {
         "digest": "7c7a32caaeb3ad9c9a55bb2cc171a97673e5a450a0fe4d446611e64acd122843",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "8490973b34ed28219895cf90ee4674454bbdb9e242df872312564f28f17aa2f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "1e6c6d1e93ba17dce300494ddf85480be7a03ee47093ca468c672f4072fae346",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/index.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/index.md"
       },
       {
         "digest": "11f105a99e2d66ecea1e436c765076a5be241271851d4cba4aa0b4ed4a949817",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-01-contracts-schema.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-01-contracts-schema.md"
       },
       {
         "digest": "75c9bda2e69cd78c743b2e6d569061869e0544b713aa55f25ec97a6647121223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-02-platform-control-plane.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-02-platform-control-plane.md"
       },
       {
         "digest": "182882d64b5bc399dc1dd1d45345ed1b77a1c85a0ec44290e55d33091270c2a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-03-data-promotion.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-03-data-promotion.md"
       },
       {
         "digest": "e9bdf54fb0479b48f3d8ee5608c1e6f17f8df32042ed79d96267b6f9f07566c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-04-hyperdrive-cloudflare.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-04-hyperdrive-cloudflare.md"
       },
       {
         "digest": "008e6933a623ba1f98c03a3a8bf1996f37a5ca4bf4e6afd4fb973432b078dffc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-05-feature-186-legacy.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-05-feature-186-legacy.md"
       },
       {
         "digest": "a57e53e24602436edbb3b9d8f98e7080d2e0e818e47c78ed083ac0f40c13e507",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-06-admin-api-ui.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-06-admin-api-ui.md"
       },
       {
         "digest": "d94ead720732fbe9b96353808b197edfe273c85f6429ab301d12cb69c4742f9a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-07-release-workflows.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-07-release-workflows.md"
       },
       {
         "digest": "5ef22fd46d51773ecaa21d96dc8be3f5551a12eb5b280bdcb258d111723b81dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-08-cutover-runbooks.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-08-cutover-runbooks.md"
       },
       {
         "digest": "da9a66e98dfaedc13a526c59a5383d9fe7338719313da800e19235a073d889d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-09-verification-observability.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-09-verification-observability.md"
       },
       {
         "digest": "54a7b409f1a0b13d056cd042b61746b6ab3e0d55604a752f074cb2e5a8886b0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-10-integration-gates.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-10-integration-gates.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -509,87 +509,87 @@
       {
         "digest": "795ba06278158d1e7c8ff946ac58b6a2e9aab8bc5e400e5f21e148e1e1f3cb24",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-plan.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-plan.md"
       },
       {
         "digest": "48859d6ab724bc8acd26789a7b4cd1b1629af48fac6307794a29cb5dc060fd4f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-spec.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/claude-spec.md"
       },
       {
         "digest": "07ea8ddee5f61826afdc148ade624d033268ac046531e68063c0c3ac1743bbbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/adversarial-self-review-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/adversarial-self-review-round-1.md"
       },
       {
         "digest": "8075639e0d8fdf0f2078879d3a96bd72a970bde01dfd914dfe1d7fd0f06ae2ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/completeness-review-rounds-1-10.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/completeness-review-rounds-1-10.md"
       },
       {
         "digest": "7c7a32caaeb3ad9c9a55bb2cc171a97673e5a450a0fe4d446611e64acd122843",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "8490973b34ed28219895cf90ee4674454bbdb9e242df872312564f28f17aa2f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/section-cross-consistency-round-1.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "1e6c6d1e93ba17dce300494ddf85480be7a03ee47093ca468c672f4072fae346",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/index.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/index.md"
       },
       {
         "digest": "11f105a99e2d66ecea1e436c765076a5be241271851d4cba4aa0b4ed4a949817",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-01-contracts-schema.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-01-contracts-schema.md"
       },
       {
         "digest": "75c9bda2e69cd78c743b2e6d569061869e0544b713aa55f25ec97a6647121223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-02-platform-control-plane.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-02-platform-control-plane.md"
       },
       {
         "digest": "182882d64b5bc399dc1dd1d45345ed1b77a1c85a0ec44290e55d33091270c2a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-03-data-promotion.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-03-data-promotion.md"
       },
       {
         "digest": "e9bdf54fb0479b48f3d8ee5608c1e6f17f8df32042ed79d96267b6f9f07566c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-04-hyperdrive-cloudflare.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-04-hyperdrive-cloudflare.md"
       },
       {
         "digest": "008e6933a623ba1f98c03a3a8bf1996f37a5ca4bf4e6afd4fb973432b078dffc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-05-feature-186-legacy.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-05-feature-186-legacy.md"
       },
       {
         "digest": "a57e53e24602436edbb3b9d8f98e7080d2e0e818e47c78ed083ac0f40c13e507",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-06-admin-api-ui.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-06-admin-api-ui.md"
       },
       {
         "digest": "d94ead720732fbe9b96353808b197edfe273c85f6429ab301d12cb69c4742f9a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-07-release-workflows.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-07-release-workflows.md"
       },
       {
         "digest": "5ef22fd46d51773ecaa21d96dc8be3f5551a12eb5b280bdcb258d111723b81dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-08-cutover-runbooks.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-08-cutover-runbooks.md"
       },
       {
         "digest": "da9a66e98dfaedc13a526c59a5383d9fe7338719313da800e19235a073d889d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-09-verification-observability.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-09-verification-observability.md"
       },
       {
         "digest": "54a7b409f1a0b13d056cd042b61746b6ab3e0d55604a752f074cb2e5a8886b0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-10-integration-gates.md"
+        "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-10-integration-gates.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -607,7 +607,7 @@
     "unresolved": 77
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.612971Z",
+  "updated_at": "2026-10-06T03:28:16.723418Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

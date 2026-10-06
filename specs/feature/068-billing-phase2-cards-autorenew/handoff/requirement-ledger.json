@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L20"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L20"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L20",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L20",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L21"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L21"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L21",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L21",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L22"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L22"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L22",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L22",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L23"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L23"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L23",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L23",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L27"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L27"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L27",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L27",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L28"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L28"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L28",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L28",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L29"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L29"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L29",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L33"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L33"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L33",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L33",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L34"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L34"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L34",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L34",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L35"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L35"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L35",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L35",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L39"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L39"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L39",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L39",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L40"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L40"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L40",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L40",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L41"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L41"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L41",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L41",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L70"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L70"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L70",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L78"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L78"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L78",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L80"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L80"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L80",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L87"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L87"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L87",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L99"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L99",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L103"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L103"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L103",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L105"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L105"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L105",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L112"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L112",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L114"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L114"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L114",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L116"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L116"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L116",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L117"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L117"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L117",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L123"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L123"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L123",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L148"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L148"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L148",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L165"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L165"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L165",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L183"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L183"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L183",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L188"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L188"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L188",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L199"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L199"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L199",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L200"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L200"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L200",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L206"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L206"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L206",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L207"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L207"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L207",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L208"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L208"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L208",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L208",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L216"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L216"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L216",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L217"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L217"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L217",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L218"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L218"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L218",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L380"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L380"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L380",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L380",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L381"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L381"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L381",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L382"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L382"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L382",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L383"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L383"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L383",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L384"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L384"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L384",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L385"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L385"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L385",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L385",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L386"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L386"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L386",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L386",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L387"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L387"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L387",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L387",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L388"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L388"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L388",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L388",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L389"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L389"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L389",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L390"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L390"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L390",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L391"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L391"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L391",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L397"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L397"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L397",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L398"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L398"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L398",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L398",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L399"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L399"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L399",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L400"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L400"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L400",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L400",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L401"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L401"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L401",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L402"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L402"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L402",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L403"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L403"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L403",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L403",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L404"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L404"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L404",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L405"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L405"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L405",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L405",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L418"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L418"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L418",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L418",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L419"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L419"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L419",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L420"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L420"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L420",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L440"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L440"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L440",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L440",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L441"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L441"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L441",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L441",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L442"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L442"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L442",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L442",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L443"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L443"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L443",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L443",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L444"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L444"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L444",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L444",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L445"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L445"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L445",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L446"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L446"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L446",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L447"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L447"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L447",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L447",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L448"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L448"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L448",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L448",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L449"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L449"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L449",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L450"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L450"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L450",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L450",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L494"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L494"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L494",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L494",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L496"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L496"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L496",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L496",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L497"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L497"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L497",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L497",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L498"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L498"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L498",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L499"
+        "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L499"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/068-billing-phase2-cards-autorenew/spec.md#L499",
+      "authority_source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md#L499",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

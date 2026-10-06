@@ -132,13 +132,13 @@
     "rationale": "Current code and focused tests show this unique Security Spec remains relevant; exact acceptance is partially unverified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 17,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/security/20260211/spec.md",
     "digest": "b34db11e9ba244dc46588ae93601cf5c2983a3b554382c6f62831b1f6151d3cc",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.855051Z",
+      "last_evidence_at": "2026-10-06T03:28:19.064890Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-02-11T23:41:04+07:00",
       "spec_last_changed_at": "2026-02-11T23:41:04+07:00"
@@ -334,9 +334,9 @@
       "REQ-165894D8FE94": {
         "applicability": "APPLICABLE",
         "authority_refs": [
-          "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L62"
+          "specs/security/20260211/spec.md#L62"
         ],
-        "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L62",
+        "authority_source": "specs/security/20260211/spec.md#L62",
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
@@ -361,9 +361,9 @@
       "REQ-4A9C3CE1319F": {
         "applicability": "APPLICABLE",
         "authority_refs": [
-          "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L66"
+          "specs/security/20260211/spec.md#L66"
         ],
-        "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L66",
+        "authority_source": "specs/security/20260211/spec.md#L66",
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
@@ -390,9 +390,9 @@
       "REQ-716ABD462B56": {
         "applicability": "APPLICABLE",
         "authority_refs": [
-          "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L60"
+          "specs/security/20260211/spec.md#L60"
         ],
-        "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L60",
+        "authority_source": "specs/security/20260211/spec.md#L60",
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
@@ -423,9 +423,9 @@
       "REQ-8B6C46523B88": {
         "applicability": "APPLICABLE",
         "authority_refs": [
-          "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L63"
+          "specs/security/20260211/spec.md#L63"
         ],
-        "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L63",
+        "authority_source": "specs/security/20260211/spec.md#L63",
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
@@ -449,9 +449,9 @@
       "REQ-A35B7691CE6F": {
         "applicability": "APPLICABLE",
         "authority_refs": [
-          "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L65"
+          "specs/security/20260211/spec.md#L65"
         ],
-        "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L65",
+        "authority_source": "specs/security/20260211/spec.md#L65",
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
@@ -477,9 +477,9 @@
       "REQ-EBB62D70DA6D": {
         "applicability": "APPLICABLE",
         "authority_refs": [
-          "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L61"
+          "specs/security/20260211/spec.md#L61"
         ],
-        "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L61",
+        "authority_source": "specs/security/20260211/spec.md#L61",
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
@@ -504,9 +504,9 @@
       "REQ-FC8427931F5D": {
         "applicability": "APPLICABLE",
         "authority_refs": [
-          "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L64"
+          "specs/security/20260211/spec.md#L64"
         ],
-        "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L64",
+        "authority_source": "specs/security/20260211/spec.md#L64",
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
@@ -541,7 +541,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.855051Z",
+    "reconciled_at": "2026-10-06T03:28:19.064890Z",
     "sources": [
       {
         "digest": "b34db11e9ba244dc46588ae93601cf5c2983a3b554382c6f62831b1f6151d3cc",
@@ -551,117 +551,117 @@
       {
         "digest": "939533f06a7ce7ece37f2437c4ddfe6d99e328edc439e33dc27d354cf9fab2fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/iteration-1-self-review.md"
+        "path": "specs/security/20260211/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "cc5a8f2305070f48da6cdaf1786f298cf55102a983881b29d418fec5fd28c84f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/iteration-1-summary.md"
+        "path": "specs/security/20260211/reviews/iteration-1-summary.md"
       },
       {
         "digest": "2412a5db983cbf6c496897f33a395e03eb18a34b05bf59c82b6c94a1f8607e08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-01-review.md"
+        "path": "specs/security/20260211/reviews/section-01-review.md"
       },
       {
         "digest": "03e048e7422bc4dc1f44441e0dfd973ad9fd20f139e6ffecea82a59e4c65c38c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-02-review.md"
+        "path": "specs/security/20260211/reviews/section-02-review.md"
       },
       {
         "digest": "d97489226acde119ce5fea21eac3cd00e4a28bf97f340ede23f21ffa1541dec6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-03-review.md"
+        "path": "specs/security/20260211/reviews/section-03-review.md"
       },
       {
         "digest": "2649e3757b15a6076bba1621c712cc119289ce43dfa9a0d4645665a3f96eb093",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-04-review.md"
+        "path": "specs/security/20260211/reviews/section-04-review.md"
       },
       {
         "digest": "8f051da80381b0e82c5fcee583343ee89eb40ac896b41e9cf28901a08fb1e166",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-05-review.md"
+        "path": "specs/security/20260211/reviews/section-05-review.md"
       },
       {
         "digest": "daae0d249963f62cfe86f2c0e2b8cea792f8253266b8ac806e0e757906133371",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-06-review.md"
+        "path": "specs/security/20260211/reviews/section-06-review.md"
       },
       {
         "digest": "96aa70d33157d6e15928f5fbfb11a7738d335d07b02fca0bd91ca088bda59de9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-07-review.md"
+        "path": "specs/security/20260211/reviews/section-07-review.md"
       },
       {
         "digest": "4401022135a4bd687cd68278aeef540faa98719c03c20b822f1a6f59a180294b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-08-review.md"
+        "path": "specs/security/20260211/reviews/section-08-review.md"
       },
       {
         "digest": "af4ebcda5ae0a05874391a916765d8bd05d2e915cc81d7d96f394def6707062c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-09-review.md"
+        "path": "specs/security/20260211/reviews/section-09-review.md"
       },
       {
         "digest": "7daefa496c7ebeb48bde542c4a15b4e80358673d2c994408bc50c6e4d746fd7b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-10-review.md"
+        "path": "specs/security/20260211/reviews/section-10-review.md"
       },
       {
         "digest": "283bc12ba4212e8ea00e13ed2af1027165b718606457f2e50771c8050664b84c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/index.md"
+        "path": "specs/security/20260211/sections/index.md"
       },
       {
         "digest": "848b55776a2d5563e56b3e38a4e5b9236d8fa38dc35eaf7c8a2f6b64a6942513",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-01-url-policy-foundation.md"
+        "path": "specs/security/20260211/sections/section-01-url-policy-foundation.md"
       },
       {
         "digest": "72925b4674c36eba1551f2c9f9a5d4010d76020b2b14ed9c6134b81c5947d8f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-02-legacy-url-migration.md"
+        "path": "specs/security/20260211/sections/section-02-legacy-url-migration.md"
       },
       {
         "digest": "3d6d2181f7b7905befe9024adf65a57ab8730832c3702c65b12863307c68a52b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-03-library-url-policy-integration.md"
+        "path": "specs/security/20260211/sections/section-03-library-url-policy-integration.md"
       },
       {
         "digest": "31c51d678eff00570372778e20f38e2688962764dad408db212bde729407f81c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-04-active-content-upload-protection.md"
+        "path": "specs/security/20260211/sections/section-04-active-content-upload-protection.md"
       },
       {
         "digest": "59594bf5ece3ebe650e99de90234c989833a1fd261b9458dfb9f09de148d3a92",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-05-tenant-feature-gating.md"
+        "path": "specs/security/20260211/sections/section-05-tenant-feature-gating.md"
       },
       {
         "digest": "02231592ac45f7b0bffe4122ed1f7e93c2f547432b64a5f953eb384d3733474e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-06-library-ops-tenant-scope-phase1.md"
+        "path": "specs/security/20260211/sections/section-06-library-ops-tenant-scope-phase1.md"
       },
       {
         "digest": "96fc9f51d705f855db2d0864ba7c261afa11cad43fa1647c476e91d452768bed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-07-library-ops-tenant-attribution-phase2.md"
+        "path": "specs/security/20260211/sections/section-07-library-ops-tenant-attribution-phase2.md"
       },
       {
         "digest": "af24fb5a7f67f42870cf35173a8866b9385e9949647ebe625d0e33772c14f0ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-08-office-preview-safety.md"
+        "path": "specs/security/20260211/sections/section-08-office-preview-safety.md"
       },
       {
         "digest": "c39958cb0684385ad0b1e8690c22ad2c8b53082232f1635299ef4953affb51a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-09-image-proxy-hardening.md"
+        "path": "specs/security/20260211/sections/section-09-image-proxy-hardening.md"
       },
       {
         "digest": "9102803f538f0c90a6c46d4cfe69e394568b2e2a1ca9af8de922495193fe0098",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-10-security-regression-release-gate.md"
+        "path": "specs/security/20260211/sections/section-10-security-regression-release-gate.md"
       }
     ],
     "stale_fields": [],
@@ -689,117 +689,117 @@
       {
         "digest": "939533f06a7ce7ece37f2437c4ddfe6d99e328edc439e33dc27d354cf9fab2fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/iteration-1-self-review.md"
+        "path": "specs/security/20260211/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "cc5a8f2305070f48da6cdaf1786f298cf55102a983881b29d418fec5fd28c84f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/iteration-1-summary.md"
+        "path": "specs/security/20260211/reviews/iteration-1-summary.md"
       },
       {
         "digest": "2412a5db983cbf6c496897f33a395e03eb18a34b05bf59c82b6c94a1f8607e08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-01-review.md"
+        "path": "specs/security/20260211/reviews/section-01-review.md"
       },
       {
         "digest": "03e048e7422bc4dc1f44441e0dfd973ad9fd20f139e6ffecea82a59e4c65c38c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-02-review.md"
+        "path": "specs/security/20260211/reviews/section-02-review.md"
       },
       {
         "digest": "d97489226acde119ce5fea21eac3cd00e4a28bf97f340ede23f21ffa1541dec6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-03-review.md"
+        "path": "specs/security/20260211/reviews/section-03-review.md"
       },
       {
         "digest": "2649e3757b15a6076bba1621c712cc119289ce43dfa9a0d4645665a3f96eb093",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-04-review.md"
+        "path": "specs/security/20260211/reviews/section-04-review.md"
       },
       {
         "digest": "8f051da80381b0e82c5fcee583343ee89eb40ac896b41e9cf28901a08fb1e166",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-05-review.md"
+        "path": "specs/security/20260211/reviews/section-05-review.md"
       },
       {
         "digest": "daae0d249963f62cfe86f2c0e2b8cea792f8253266b8ac806e0e757906133371",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-06-review.md"
+        "path": "specs/security/20260211/reviews/section-06-review.md"
       },
       {
         "digest": "96aa70d33157d6e15928f5fbfb11a7738d335d07b02fca0bd91ca088bda59de9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-07-review.md"
+        "path": "specs/security/20260211/reviews/section-07-review.md"
       },
       {
         "digest": "4401022135a4bd687cd68278aeef540faa98719c03c20b822f1a6f59a180294b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-08-review.md"
+        "path": "specs/security/20260211/reviews/section-08-review.md"
       },
       {
         "digest": "af4ebcda5ae0a05874391a916765d8bd05d2e915cc81d7d96f394def6707062c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-09-review.md"
+        "path": "specs/security/20260211/reviews/section-09-review.md"
       },
       {
         "digest": "7daefa496c7ebeb48bde542c4a15b4e80358673d2c994408bc50c6e4d746fd7b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/reviews/section-10-review.md"
+        "path": "specs/security/20260211/reviews/section-10-review.md"
       },
       {
         "digest": "283bc12ba4212e8ea00e13ed2af1027165b718606457f2e50771c8050664b84c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/index.md"
+        "path": "specs/security/20260211/sections/index.md"
       },
       {
         "digest": "848b55776a2d5563e56b3e38a4e5b9236d8fa38dc35eaf7c8a2f6b64a6942513",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-01-url-policy-foundation.md"
+        "path": "specs/security/20260211/sections/section-01-url-policy-foundation.md"
       },
       {
         "digest": "72925b4674c36eba1551f2c9f9a5d4010d76020b2b14ed9c6134b81c5947d8f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-02-legacy-url-migration.md"
+        "path": "specs/security/20260211/sections/section-02-legacy-url-migration.md"
       },
       {
         "digest": "3d6d2181f7b7905befe9024adf65a57ab8730832c3702c65b12863307c68a52b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-03-library-url-policy-integration.md"
+        "path": "specs/security/20260211/sections/section-03-library-url-policy-integration.md"
       },
       {
         "digest": "31c51d678eff00570372778e20f38e2688962764dad408db212bde729407f81c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-04-active-content-upload-protection.md"
+        "path": "specs/security/20260211/sections/section-04-active-content-upload-protection.md"
       },
       {
         "digest": "59594bf5ece3ebe650e99de90234c989833a1fd261b9458dfb9f09de148d3a92",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-05-tenant-feature-gating.md"
+        "path": "specs/security/20260211/sections/section-05-tenant-feature-gating.md"
       },
       {
         "digest": "02231592ac45f7b0bffe4122ed1f7e93c2f547432b64a5f953eb384d3733474e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-06-library-ops-tenant-scope-phase1.md"
+        "path": "specs/security/20260211/sections/section-06-library-ops-tenant-scope-phase1.md"
       },
       {
         "digest": "96fc9f51d705f855db2d0864ba7c261afa11cad43fa1647c476e91d452768bed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-07-library-ops-tenant-attribution-phase2.md"
+        "path": "specs/security/20260211/sections/section-07-library-ops-tenant-attribution-phase2.md"
       },
       {
         "digest": "af24fb5a7f67f42870cf35173a8866b9385e9949647ebe625d0e33772c14f0ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-08-office-preview-safety.md"
+        "path": "specs/security/20260211/sections/section-08-office-preview-safety.md"
       },
       {
         "digest": "c39958cb0684385ad0b1e8690c22ad2c8b53082232f1635299ef4953affb51a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-09-image-proxy-hardening.md"
+        "path": "specs/security/20260211/sections/section-09-image-proxy-hardening.md"
       },
       {
         "digest": "9102803f538f0c90a6c46d4cfe69e394568b2e2a1ca9af8de922495193fe0098",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/sections/section-10-security-regression-release-gate.md"
+        "path": "specs/security/20260211/sections/section-10-security-regression-release-gate.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -817,7 +817,7 @@
     "unresolved": 3
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.855051Z",
+  "updated_at": "2026-10-06T03:28:19.064890Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

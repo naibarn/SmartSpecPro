@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L36"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L36"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L36",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L36",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L45"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L45"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L45",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L45",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L46"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L46"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L46",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L47"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L47"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L47",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L47",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L48"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L48"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L48",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L49"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L49"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L49",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L49",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L50"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L50"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L50",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L51"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L51"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L51",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L71"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L71"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L71",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L72"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L72"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L72",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L73"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L73"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L73",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L74"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L74"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L74",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L75"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L75",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L76"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L76"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L76",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L76",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L77"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L77"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L77",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L77",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L78"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L78"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L78",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L79"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L79"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L79",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L80"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L80"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L80",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L84"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L84"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L84",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L85"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L85"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L85",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L86"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L86"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L86",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,10 +467,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L87",
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L104"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L87",
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L104"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L87",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -490,9 +490,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L88"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L88"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L88",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -512,9 +512,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L89"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L89"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L89",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -534,9 +534,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L90"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L90"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L90",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -556,9 +556,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L91"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L91"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L91",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -578,9 +578,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L92"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L92"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L92",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -600,9 +600,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L93"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L93"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L93",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L93",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -622,9 +622,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L94"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L94"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L94",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -644,9 +644,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L95"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L95"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L95",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -666,9 +666,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L96"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L96"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L96",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -688,9 +688,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L97"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L97"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L97",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L97",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -710,9 +710,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L98"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L98"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L98",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -732,9 +732,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L99"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L99"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L99",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -754,9 +754,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L100"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L100"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L100",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -776,9 +776,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L101"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L101"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L101",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -798,9 +798,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L102"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L102"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L102",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -820,9 +820,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L103"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L103"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L103",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -842,9 +842,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L105"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L105"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L105",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -864,9 +864,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L106"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L106"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L106",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -886,9 +886,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L107"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L107"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L107",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -908,9 +908,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L111"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L111"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L111",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -930,9 +930,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L112"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L112",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -952,9 +952,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L113"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L113"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L113",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -974,9 +974,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L114"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L114"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L114",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -996,9 +996,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L115"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L115"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L115",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1018,9 +1018,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L116"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L116"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L116",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1040,9 +1040,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L117"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L117"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L117",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1062,9 +1062,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L121"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L121"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L121",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1084,9 +1084,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L122"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L122"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L122",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1106,9 +1106,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L123"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L123"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L123",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1128,9 +1128,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L124"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L124"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L124",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1150,9 +1150,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L125"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L125"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L125",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1172,9 +1172,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L126"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L126"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L126",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1194,9 +1194,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L127"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L127"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L127",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1216,9 +1216,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L133"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L133",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1238,9 +1238,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L134"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L134"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L134",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L134",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1260,9 +1260,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L135"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L135"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L135",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1282,9 +1282,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L136"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L136"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L136",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L136",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1304,9 +1304,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L137"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L137"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L137",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1326,9 +1326,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L138"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L138"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L138",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1348,9 +1348,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L139"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L139"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L139",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1370,9 +1370,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L140"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L140"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L140",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1392,9 +1392,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L146"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L146"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L146",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1414,9 +1414,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L147"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L147"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L147",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1436,9 +1436,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L148"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L148"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L148",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1458,9 +1458,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L149"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L149"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L149",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1480,9 +1480,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L150"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L150",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1502,9 +1502,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L151"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L151"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L151",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1524,9 +1524,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L152"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L152"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L152",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1546,9 +1546,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L158"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L158"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L158",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1568,9 +1568,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L159"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L159"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L159",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1590,9 +1590,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L160"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L160"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L160",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1612,9 +1612,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L161"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L161"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L161",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1634,9 +1634,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L162"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L162"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L162",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1656,9 +1656,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L163"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L163"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L163",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1678,9 +1678,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L164"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L164"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L164",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1700,9 +1700,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L165"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L165"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L165",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1722,9 +1722,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L166"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L166"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L166",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1744,9 +1744,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L167"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L167"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L167",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L167",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1766,9 +1766,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L168"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L168"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L168",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1788,9 +1788,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L169"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L169"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L169",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1810,9 +1810,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L170"
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L170"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L170",
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L170",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

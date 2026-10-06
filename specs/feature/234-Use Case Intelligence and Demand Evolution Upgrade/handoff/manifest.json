@@ -17,7 +17,7 @@
           "R20",
           "R21-LIVING-USE-CASE-DEMAND-ALIGNMENT.MD"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L152",
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L152",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -32,7 +32,7 @@
           "R1",
           "R2"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L158",
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L158",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -44,7 +44,7 @@
         "referencing_spec_id": "234",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L261",
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L261",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -56,7 +56,7 @@
         "referencing_spec_id": "234",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L38",
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L38",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -68,7 +68,7 @@
         "referencing_spec_id": "234",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L168",
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L168",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -80,7 +80,7 @@
         "referencing_spec_id": "234",
         "relation_text": "supersedes",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L223",
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L223",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -95,7 +95,7 @@
           "R20",
           "R21-LIVING-USE-CASE-DEMAND-ALIGNMENT.MD"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L152",
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L152",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -107,7 +107,7 @@
         "referencing_spec_id": "234",
         "relation_text": "successor",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L187",
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L187",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": null
       },
@@ -119,7 +119,7 @@
         "referencing_spec_id": "235",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L307",
+        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L307",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": "235"
       },
@@ -133,7 +133,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -148,7 +148,7 @@
           "R1",
           "R2"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L158",
+        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L158",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       }
@@ -218,21 +218,21 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md",
     "digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.341628Z",
+      "last_evidence_at": "2026-10-06T03:28:18.009840Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-28T00:04:37+07:00"
     },
-    "revision": null,
+    "revision": "3.1",
     "slug": "234-Use Case Intelligence and Demand Evolution Upgrade",
     "spec_id": "234",
-    "title": "Spec 234 — SmartAIHub Use Case Intelligence & Demand Evolution Upgrade"
+    "title": "SmartAIHub Use Case Intelligence and Demand Evolution Upgrade"
   },
   "implementation": {
     "checkpoint_shas": [],
@@ -251,7 +251,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.341628Z"
+    "updated_at": "2026-10-06T03:28:18.009840Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -261,7 +261,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.341628Z",
+    "reconciled_at": "2026-10-06T03:28:18.009840Z",
     "sources": [
       {
         "digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
@@ -329,7 +329,7 @@
     "unresolved": 63
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.341628Z",
+  "updated_at": "2026-10-06T03:28:18.009840Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

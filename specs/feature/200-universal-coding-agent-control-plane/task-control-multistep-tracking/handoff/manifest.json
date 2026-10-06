@@ -17,52 +17,52 @@
       {
         "digest": "eae607a90ea8c7e6b061e626b916a25c0460f3e1035ce480acd56419d7a9bd50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/claude-plan.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/claude-plan.md"
       },
       {
         "digest": "b5f479ebffe52cab2d07b03d52df245d14e5d3ebbea3861068c61a52a55f96b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-1.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-1.md"
       },
       {
         "digest": "37c866e5e555b27241ababc1365892ef25d30cb8e94dd3cc19f698ce38618569",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-2.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-2.md"
       },
       {
         "digest": "4a948cf4a7b34aa36c31138e71da4fc901fc4f1622f36f357f176a8fd6929a96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-3.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-3.md"
       },
       {
         "digest": "2dc8c206f895f9f8e506eb9f034db610cc97869c606bba2f8c18bbec854f36bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/index.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/index.md"
       },
       {
         "digest": "e40c8d941731baf2dc5176c0994ca290dbb85138cd97151e4bfe1ec28093c673",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-01-safe-worker-projection.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-01-safe-worker-projection.md"
       },
       {
         "digest": "a638c8b454d21c50d43baf000f36ed9cfcccf9e6387264856e6145d36d0091ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-02-grouping-aggregate.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-02-grouping-aggregate.md"
       },
       {
         "digest": "9e0039a5467614ca8f241d21f110154e88ea71b1ea52972d905df55649119676",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-03-router-contract.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-03-router-contract.md"
       },
       {
         "digest": "a01130c099a52d7d3ab1631957b0a6e338a6038b4b40ee6402362ddea164203c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-04-task-control-ui.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-04-task-control-ui.md"
       },
       {
         "digest": "82c8868141b77581b2e8320d88808c37be39231aa6f54f735a41fe3beeecd8cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-05-integration-proof.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-05-integration-proof.md"
       }
     ],
     "predecessors": [],
@@ -93,52 +93,52 @@
       {
         "digest": "eae607a90ea8c7e6b061e626b916a25c0460f3e1035ce480acd56419d7a9bd50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/claude-plan.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/claude-plan.md"
       },
       {
         "digest": "b5f479ebffe52cab2d07b03d52df245d14e5d3ebbea3861068c61a52a55f96b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-1.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-1.md"
       },
       {
         "digest": "37c866e5e555b27241ababc1365892ef25d30cb8e94dd3cc19f698ce38618569",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-2.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-2.md"
       },
       {
         "digest": "4a948cf4a7b34aa36c31138e71da4fc901fc4f1622f36f357f176a8fd6929a96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-3.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-3.md"
       },
       {
         "digest": "2dc8c206f895f9f8e506eb9f034db610cc97869c606bba2f8c18bbec854f36bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/index.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/index.md"
       },
       {
         "digest": "e40c8d941731baf2dc5176c0994ca290dbb85138cd97151e4bfe1ec28093c673",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-01-safe-worker-projection.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-01-safe-worker-projection.md"
       },
       {
         "digest": "a638c8b454d21c50d43baf000f36ed9cfcccf9e6387264856e6145d36d0091ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-02-grouping-aggregate.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-02-grouping-aggregate.md"
       },
       {
         "digest": "9e0039a5467614ca8f241d21f110154e88ea71b1ea52972d905df55649119676",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-03-router-contract.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-03-router-contract.md"
       },
       {
         "digest": "a01130c099a52d7d3ab1631957b0a6e338a6038b4b40ee6402362ddea164203c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-04-task-control-ui.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-04-task-control-ui.md"
       },
       {
         "digest": "82c8868141b77581b2e8320d88808c37be39231aa6f54f735a41fe3beeecd8cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-05-integration-proof.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-05-integration-proof.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -170,64 +170,64 @@
       {
         "digest": "eae607a90ea8c7e6b061e626b916a25c0460f3e1035ce480acd56419d7a9bd50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/claude-plan.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/claude-plan.md"
       },
       {
         "digest": "b5f479ebffe52cab2d07b03d52df245d14e5d3ebbea3861068c61a52a55f96b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-1.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-1.md"
       },
       {
         "digest": "37c866e5e555b27241ababc1365892ef25d30cb8e94dd3cc19f698ce38618569",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-2.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-2.md"
       },
       {
         "digest": "4a948cf4a7b34aa36c31138e71da4fc901fc4f1622f36f357f176a8fd6929a96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-3.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-3.md"
       },
       {
         "digest": "2dc8c206f895f9f8e506eb9f034db610cc97869c606bba2f8c18bbec854f36bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/index.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/index.md"
       },
       {
         "digest": "e40c8d941731baf2dc5176c0994ca290dbb85138cd97151e4bfe1ec28093c673",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-01-safe-worker-projection.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-01-safe-worker-projection.md"
       },
       {
         "digest": "a638c8b454d21c50d43baf000f36ed9cfcccf9e6387264856e6145d36d0091ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-02-grouping-aggregate.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-02-grouping-aggregate.md"
       },
       {
         "digest": "9e0039a5467614ca8f241d21f110154e88ea71b1ea52972d905df55649119676",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-03-router-contract.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-03-router-contract.md"
       },
       {
         "digest": "a01130c099a52d7d3ab1631957b0a6e338a6038b4b40ee6402362ddea164203c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-04-task-control-ui.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-04-task-control-ui.md"
       },
       {
         "digest": "82c8868141b77581b2e8320d88808c37be39231aa6f54f735a41fe3beeecd8cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-05-integration-proof.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-05-integration-proof.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/spec.md",
     "digest": "c95dcb0e7fab8c60b9526ddf6baae9d05f704c4c386e91131885e8920d8ea472",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.784300Z",
+      "last_evidence_at": "2026-10-06T03:28:17.026627Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-18T14:42:46+07:00",
       "spec_last_changed_at": "2026-09-18T14:42:46+07:00"
@@ -254,7 +254,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.784300Z"
+    "updated_at": "2026-10-06T03:28:17.026627Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -264,7 +264,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.784300Z",
+    "reconciled_at": "2026-10-06T03:28:17.026627Z",
     "sources": [
       {
         "digest": "c95dcb0e7fab8c60b9526ddf6baae9d05f704c4c386e91131885e8920d8ea472",
@@ -274,52 +274,52 @@
       {
         "digest": "eae607a90ea8c7e6b061e626b916a25c0460f3e1035ce480acd56419d7a9bd50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/claude-plan.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/claude-plan.md"
       },
       {
         "digest": "b5f479ebffe52cab2d07b03d52df245d14e5d3ebbea3861068c61a52a55f96b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-1.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-1.md"
       },
       {
         "digest": "37c866e5e555b27241ababc1365892ef25d30cb8e94dd3cc19f698ce38618569",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-2.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-2.md"
       },
       {
         "digest": "4a948cf4a7b34aa36c31138e71da4fc901fc4f1622f36f357f176a8fd6929a96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-3.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-3.md"
       },
       {
         "digest": "2dc8c206f895f9f8e506eb9f034db610cc97869c606bba2f8c18bbec854f36bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/index.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/index.md"
       },
       {
         "digest": "e40c8d941731baf2dc5176c0994ca290dbb85138cd97151e4bfe1ec28093c673",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-01-safe-worker-projection.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-01-safe-worker-projection.md"
       },
       {
         "digest": "a638c8b454d21c50d43baf000f36ed9cfcccf9e6387264856e6145d36d0091ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-02-grouping-aggregate.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-02-grouping-aggregate.md"
       },
       {
         "digest": "9e0039a5467614ca8f241d21f110154e88ea71b1ea52972d905df55649119676",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-03-router-contract.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-03-router-contract.md"
       },
       {
         "digest": "a01130c099a52d7d3ab1631957b0a6e338a6038b4b40ee6402362ddea164203c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-04-task-control-ui.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-04-task-control-ui.md"
       },
       {
         "digest": "82c8868141b77581b2e8320d88808c37be39231aa6f54f735a41fe3beeecd8cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-05-integration-proof.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-05-integration-proof.md"
       }
     ],
     "stale_fields": [],
@@ -347,52 +347,52 @@
       {
         "digest": "eae607a90ea8c7e6b061e626b916a25c0460f3e1035ce480acd56419d7a9bd50",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/claude-plan.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/claude-plan.md"
       },
       {
         "digest": "b5f479ebffe52cab2d07b03d52df245d14e5d3ebbea3861068c61a52a55f96b0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-1.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-1.md"
       },
       {
         "digest": "37c866e5e555b27241ababc1365892ef25d30cb8e94dd3cc19f698ce38618569",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-2.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-2.md"
       },
       {
         "digest": "4a948cf4a7b34aa36c31138e71da4fc901fc4f1622f36f357f176a8fd6929a96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-3.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/reviews/self-review-round-3.md"
       },
       {
         "digest": "2dc8c206f895f9f8e506eb9f034db610cc97869c606bba2f8c18bbec854f36bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/index.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/index.md"
       },
       {
         "digest": "e40c8d941731baf2dc5176c0994ca290dbb85138cd97151e4bfe1ec28093c673",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-01-safe-worker-projection.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-01-safe-worker-projection.md"
       },
       {
         "digest": "a638c8b454d21c50d43baf000f36ed9cfcccf9e6387264856e6145d36d0091ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-02-grouping-aggregate.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-02-grouping-aggregate.md"
       },
       {
         "digest": "9e0039a5467614ca8f241d21f110154e88ea71b1ea52972d905df55649119676",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-03-router-contract.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-03-router-contract.md"
       },
       {
         "digest": "a01130c099a52d7d3ab1631957b0a6e338a6038b4b40ee6402362ddea164203c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-04-task-control-ui.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-04-task-control-ui.md"
       },
       {
         "digest": "82c8868141b77581b2e8320d88808c37be39231aa6f54f735a41fe3beeecd8cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-05-integration-proof.md"
+        "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking/sections/section-05-integration-proof.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -410,7 +410,7 @@
     "unresolved": 15
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.784300Z",
+  "updated_at": "2026-10-06T03:28:17.026627Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

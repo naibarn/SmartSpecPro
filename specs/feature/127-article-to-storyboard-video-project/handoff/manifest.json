@@ -17,62 +17,62 @@
       {
         "digest": "1d897133134ca2aa21af4f0a69edfddafa6fa71d2032a2e0aec93441449cc1fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/claude-plan.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/claude-plan.md"
       },
       {
         "digest": "49884825357faa0c00ed039e4481a5113ced9f85755d6cc6be0c73df08ba967c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/claude-spec.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/claude-spec.md"
       },
       {
         "digest": "23d081772d62a8f07752eed43a6ad0f757035bddb23ae4daecb73a450fc81542",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/implementation/deep_implement_config.json"
+        "path": "specs/feature/127-article-to-storyboard-video-project/implementation/deep_implement_config.json"
       },
       {
         "digest": "7a474d8b4fd7e9507cb523c12f31fe566938b8b4f6e20be4076267c56a85cae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/implementation/verification-evidence.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/implementation/verification-evidence.md"
       },
       {
         "digest": "3e2f08addb204f6d354d0b63a20a865f57441de7bbd14649c139c0c6930935e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/index.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/index.md"
       },
       {
         "digest": "df62cfcbf96b1da6fdbe3a2b55ffc4b0271941418cac62f072ec68993eac3135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-01-contracts-flags.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-01-contracts-flags.md"
       },
       {
         "digest": "40fc25c7f4e051cf333b3203feecd21041b8fc4754f23e4aefbcba449b8314c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-02-builder-preview.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-02-builder-preview.md"
       },
       {
         "digest": "81f067bc327ee15e5390c260d201839b26d252b1f5158dd2586563933dec481b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-03-references-prompts-scripts.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-03-references-prompts-scripts.md"
       },
       {
         "digest": "dfd327e76c44fe1dc74515a488b53e8326b7c13f53c4da889939f147e91be92b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-04-storyboard-handoff.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-04-storyboard-handoff.md"
       },
       {
         "digest": "e0085bd9ca747fdb07036c25a8e7305e5e09b020c8f1ca0adc94e1c537f90f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-05-storyboard-ui-overlay-audio.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-05-storyboard-ui-overlay-audio.md"
       },
       {
         "digest": "ba39de878ebe7f54a154e7041ebb24005ed006f96e911e98a878cd140fb460bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-06-tts-native-render.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-06-tts-native-render.md"
       },
       {
         "digest": "0e83f2bbe01c192233f8d52f8249eec65092badbb62c09018bacd6bd12f65c31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-07-verification-hardening.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-07-verification-hardening.md"
       }
     ],
     "predecessors": [],
@@ -103,62 +103,62 @@
       {
         "digest": "1d897133134ca2aa21af4f0a69edfddafa6fa71d2032a2e0aec93441449cc1fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/claude-plan.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/claude-plan.md"
       },
       {
         "digest": "49884825357faa0c00ed039e4481a5113ced9f85755d6cc6be0c73df08ba967c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/claude-spec.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/claude-spec.md"
       },
       {
         "digest": "23d081772d62a8f07752eed43a6ad0f757035bddb23ae4daecb73a450fc81542",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/implementation/deep_implement_config.json"
+        "path": "specs/feature/127-article-to-storyboard-video-project/implementation/deep_implement_config.json"
       },
       {
         "digest": "7a474d8b4fd7e9507cb523c12f31fe566938b8b4f6e20be4076267c56a85cae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/implementation/verification-evidence.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/implementation/verification-evidence.md"
       },
       {
         "digest": "3e2f08addb204f6d354d0b63a20a865f57441de7bbd14649c139c0c6930935e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/index.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/index.md"
       },
       {
         "digest": "df62cfcbf96b1da6fdbe3a2b55ffc4b0271941418cac62f072ec68993eac3135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-01-contracts-flags.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-01-contracts-flags.md"
       },
       {
         "digest": "40fc25c7f4e051cf333b3203feecd21041b8fc4754f23e4aefbcba449b8314c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-02-builder-preview.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-02-builder-preview.md"
       },
       {
         "digest": "81f067bc327ee15e5390c260d201839b26d252b1f5158dd2586563933dec481b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-03-references-prompts-scripts.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-03-references-prompts-scripts.md"
       },
       {
         "digest": "dfd327e76c44fe1dc74515a488b53e8326b7c13f53c4da889939f147e91be92b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-04-storyboard-handoff.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-04-storyboard-handoff.md"
       },
       {
         "digest": "e0085bd9ca747fdb07036c25a8e7305e5e09b020c8f1ca0adc94e1c537f90f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-05-storyboard-ui-overlay-audio.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-05-storyboard-ui-overlay-audio.md"
       },
       {
         "digest": "ba39de878ebe7f54a154e7041ebb24005ed006f96e911e98a878cd140fb460bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-06-tts-native-render.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-06-tts-native-render.md"
       },
       {
         "digest": "0e83f2bbe01c192233f8d52f8249eec65092badbb62c09018bacd6bd12f65c31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-07-verification-hardening.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-07-verification-hardening.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -190,74 +190,74 @@
       {
         "digest": "1d897133134ca2aa21af4f0a69edfddafa6fa71d2032a2e0aec93441449cc1fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/claude-plan.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/claude-plan.md"
       },
       {
         "digest": "49884825357faa0c00ed039e4481a5113ced9f85755d6cc6be0c73df08ba967c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/claude-spec.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/claude-spec.md"
       },
       {
         "digest": "23d081772d62a8f07752eed43a6ad0f757035bddb23ae4daecb73a450fc81542",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/implementation/deep_implement_config.json"
+        "path": "specs/feature/127-article-to-storyboard-video-project/implementation/deep_implement_config.json"
       },
       {
         "digest": "7a474d8b4fd7e9507cb523c12f31fe566938b8b4f6e20be4076267c56a85cae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/implementation/verification-evidence.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/implementation/verification-evidence.md"
       },
       {
         "digest": "3e2f08addb204f6d354d0b63a20a865f57441de7bbd14649c139c0c6930935e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/index.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/index.md"
       },
       {
         "digest": "df62cfcbf96b1da6fdbe3a2b55ffc4b0271941418cac62f072ec68993eac3135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-01-contracts-flags.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-01-contracts-flags.md"
       },
       {
         "digest": "40fc25c7f4e051cf333b3203feecd21041b8fc4754f23e4aefbcba449b8314c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-02-builder-preview.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-02-builder-preview.md"
       },
       {
         "digest": "81f067bc327ee15e5390c260d201839b26d252b1f5158dd2586563933dec481b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-03-references-prompts-scripts.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-03-references-prompts-scripts.md"
       },
       {
         "digest": "dfd327e76c44fe1dc74515a488b53e8326b7c13f53c4da889939f147e91be92b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-04-storyboard-handoff.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-04-storyboard-handoff.md"
       },
       {
         "digest": "e0085bd9ca747fdb07036c25a8e7305e5e09b020c8f1ca0adc94e1c537f90f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-05-storyboard-ui-overlay-audio.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-05-storyboard-ui-overlay-audio.md"
       },
       {
         "digest": "ba39de878ebe7f54a154e7041ebb24005ed006f96e911e98a878cd140fb460bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-06-tts-native-render.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-06-tts-native-render.md"
       },
       {
         "digest": "0e83f2bbe01c192233f8d52f8249eec65092badbb62c09018bacd6bd12f65c31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-07-verification-hardening.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-07-verification-hardening.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/127-article-to-storyboard-video-project/spec.md",
     "digest": "4891007aef1a9a3753a83c904740949e9168bdbe5fda40caa8ffbc7ac6756a7f",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.175205Z",
+      "last_evidence_at": "2026-10-06T03:28:15.935390Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-07-01T06:22:39+07:00",
       "spec_last_changed_at": "2026-07-01T06:22:39+07:00"
@@ -284,7 +284,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.175205Z"
+    "updated_at": "2026-10-06T03:28:15.935390Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -294,7 +294,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.175205Z",
+    "reconciled_at": "2026-10-06T03:28:15.935390Z",
     "sources": [
       {
         "digest": "4891007aef1a9a3753a83c904740949e9168bdbe5fda40caa8ffbc7ac6756a7f",
@@ -304,62 +304,62 @@
       {
         "digest": "1d897133134ca2aa21af4f0a69edfddafa6fa71d2032a2e0aec93441449cc1fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/claude-plan.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/claude-plan.md"
       },
       {
         "digest": "49884825357faa0c00ed039e4481a5113ced9f85755d6cc6be0c73df08ba967c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/claude-spec.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/claude-spec.md"
       },
       {
         "digest": "23d081772d62a8f07752eed43a6ad0f757035bddb23ae4daecb73a450fc81542",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/implementation/deep_implement_config.json"
+        "path": "specs/feature/127-article-to-storyboard-video-project/implementation/deep_implement_config.json"
       },
       {
         "digest": "7a474d8b4fd7e9507cb523c12f31fe566938b8b4f6e20be4076267c56a85cae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/implementation/verification-evidence.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/implementation/verification-evidence.md"
       },
       {
         "digest": "3e2f08addb204f6d354d0b63a20a865f57441de7bbd14649c139c0c6930935e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/index.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/index.md"
       },
       {
         "digest": "df62cfcbf96b1da6fdbe3a2b55ffc4b0271941418cac62f072ec68993eac3135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-01-contracts-flags.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-01-contracts-flags.md"
       },
       {
         "digest": "40fc25c7f4e051cf333b3203feecd21041b8fc4754f23e4aefbcba449b8314c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-02-builder-preview.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-02-builder-preview.md"
       },
       {
         "digest": "81f067bc327ee15e5390c260d201839b26d252b1f5158dd2586563933dec481b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-03-references-prompts-scripts.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-03-references-prompts-scripts.md"
       },
       {
         "digest": "dfd327e76c44fe1dc74515a488b53e8326b7c13f53c4da889939f147e91be92b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-04-storyboard-handoff.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-04-storyboard-handoff.md"
       },
       {
         "digest": "e0085bd9ca747fdb07036c25a8e7305e5e09b020c8f1ca0adc94e1c537f90f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-05-storyboard-ui-overlay-audio.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-05-storyboard-ui-overlay-audio.md"
       },
       {
         "digest": "ba39de878ebe7f54a154e7041ebb24005ed006f96e911e98a878cd140fb460bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-06-tts-native-render.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-06-tts-native-render.md"
       },
       {
         "digest": "0e83f2bbe01c192233f8d52f8249eec65092badbb62c09018bacd6bd12f65c31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-07-verification-hardening.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-07-verification-hardening.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -409,62 +409,62 @@
       {
         "digest": "1d897133134ca2aa21af4f0a69edfddafa6fa71d2032a2e0aec93441449cc1fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/claude-plan.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/claude-plan.md"
       },
       {
         "digest": "49884825357faa0c00ed039e4481a5113ced9f85755d6cc6be0c73df08ba967c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/claude-spec.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/claude-spec.md"
       },
       {
         "digest": "23d081772d62a8f07752eed43a6ad0f757035bddb23ae4daecb73a450fc81542",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/implementation/deep_implement_config.json"
+        "path": "specs/feature/127-article-to-storyboard-video-project/implementation/deep_implement_config.json"
       },
       {
         "digest": "7a474d8b4fd7e9507cb523c12f31fe566938b8b4f6e20be4076267c56a85cae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/implementation/verification-evidence.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/implementation/verification-evidence.md"
       },
       {
         "digest": "3e2f08addb204f6d354d0b63a20a865f57441de7bbd14649c139c0c6930935e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/index.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/index.md"
       },
       {
         "digest": "df62cfcbf96b1da6fdbe3a2b55ffc4b0271941418cac62f072ec68993eac3135",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-01-contracts-flags.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-01-contracts-flags.md"
       },
       {
         "digest": "40fc25c7f4e051cf333b3203feecd21041b8fc4754f23e4aefbcba449b8314c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-02-builder-preview.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-02-builder-preview.md"
       },
       {
         "digest": "81f067bc327ee15e5390c260d201839b26d252b1f5158dd2586563933dec481b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-03-references-prompts-scripts.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-03-references-prompts-scripts.md"
       },
       {
         "digest": "dfd327e76c44fe1dc74515a488b53e8326b7c13f53c4da889939f147e91be92b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-04-storyboard-handoff.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-04-storyboard-handoff.md"
       },
       {
         "digest": "e0085bd9ca747fdb07036c25a8e7305e5e09b020c8f1ca0adc94e1c537f90f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-05-storyboard-ui-overlay-audio.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-05-storyboard-ui-overlay-audio.md"
       },
       {
         "digest": "ba39de878ebe7f54a154e7041ebb24005ed006f96e911e98a878cd140fb460bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-06-tts-native-render.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-06-tts-native-render.md"
       },
       {
         "digest": "0e83f2bbe01c192233f8d52f8249eec65092badbb62c09018bacd6bd12f65c31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/127-article-to-storyboard-video-project/sections/section-07-verification-hardening.md"
+        "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-07-verification-hardening.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -482,7 +482,7 @@
     "unresolved": 72
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.175205Z",
+  "updated_at": "2026-10-06T03:28:15.935390Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

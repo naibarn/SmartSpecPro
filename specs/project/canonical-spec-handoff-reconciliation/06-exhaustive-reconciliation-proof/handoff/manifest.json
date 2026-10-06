@@ -6,16 +6,8 @@
   },
   "authority": {
     "claims": [],
-    "confidence": "LOW",
-    "conflicts": [
-      {
-        "kind": "DUPLICATE_SPEC_ID",
-        "paths": [
-          "specs/project/012-chat-agency-control-plane/requirements.deep-project/06-chat-control-plane-ux",
-          "specs/project/013-features-195-200/requirements.deep-project/06-feature-200-external-agent-control-plane"
-        ]
-      }
-    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
     "evidence": [
       {
         "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -24,20 +16,20 @@
       }
     ],
     "predecessors": [],
-    "status": "AUTHORITY_CONFLICT",
+    "status": "UNRESOLVED",
     "successors": []
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3e47dab0d59acd274d3e5d897813ca0f6d5d8513",
+    "expected_canonical_sha": "ade174b306e6e4fcc9b078a616fa1a5634686722",
     "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
   },
   "continuation": {
-    "next_action": "WAITING_POST_RECOVERY_SPEC_UPLOAD: 9 non-conflicting Specs are integrated at 5c11b0d671bddbd63e9fe425d3c0c98bf99db463. Recovered Spec 278 is a whitespace-only duplicate of canonical main and is not a normative conflict. Recovered Work Context Spec 282 materially conflicts with current canonical Spec 282; Specs 284 and 285 depend on the recovered meaning. Spec 281 remains held for its Docker/OCI deployment target. Resolve the Spec 282 authority/numbering and Spec 281 policy disposition before declaring the recovered set uploaded, validated, and integrated. Keep generated inventory views provisional and do not bulk reconcile. See handoff/evidence/recovery-candidate-content-comparison-826979a.md.",
-    "next_ready_workunit": null,
-    "reactivation_predicate": "Recovered/canonical Spec set has been uploaded, validated, and integrated into canonical ref",
-    "resume_point": "Framework ready at ad560a5d05b498f2f1881cb96daac526c7588827; parser follow-up 3e47dab0d59acd274d3e5d897813ca0f6d5d8513; nine candidate Specs partially integrated at 5c11b0d671bddbd63e9fe425d3c0c98bf99db463. Recovered Spec 278 is a whitespace-only duplicate; remaining blocker is distinct Work Context Spec 282 authority/numbering plus Spec 281 runtime policy. Resume bulk migration only after those dispositions and integration of the selected canonical set.",
-    "waiting_predicate": "Recovered/canonical Spec set has been uploaded, validated, and integrated into canonical ref"
+    "next_action": "RESUME_REPOSITORY_WIDE_RECONCILIATION: post-recovery inventory is refreshed at ade174b306e6e4fcc9b078a616fa1a5634686722 with 291 canonical Specs, 447/447 indexed records, 286 relationship edges, and 315 open review records. Review the eight remaining duplicate-ID groups first; do not close unsupported classifications.",
+    "next_ready_workunit": "REVIEW_DUPLICATE_SPEC_ID_GROUPS",
+    "reactivation_predicate": null,
+    "resume_point": "Upload predicate satisfied at ade174b306e6e4fcc9b078a616fa1a5634686722. Inventory and global projections are regenerated and validated. Continue with evidence-based review of the eight duplicate-ID groups, then remaining 315 open review records.",
+    "waiting_predicate": null
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -56,8 +48,8 @@
         "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
       }
     ],
-    "next_action": "WAITING_POST_RECOVERY_SPEC_UPLOAD: resolve the recovered Work Context Spec 282 authority/numbering conflict with current canonical Spec 282 and reconcile Spec 281 Docker/OCI deployment text against repository policy. Spec 278 is a whitespace-only duplicate of the current canonical Spec. Do not regenerate inventory-derived outputs or begin bulk reconciliation before the selected canonical set is integrated.",
-    "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+    "next_action": "RESUME_REPOSITORY_WIDE_RECONCILIATION: post-recovery inventory is refreshed at ade174b306e6e4fcc9b078a616fa1a5634686722 with 291 canonical Specs, 447/447 indexed records, 286 relationship edges, and 315 open review records. Review the eight remaining duplicate-ID groups first; do not close unsupported classifications.",
+    "rationale": "The recovered canonical Spec set is uploaded, validated, and integrated. Repository-wide evidence reconciliation remains open with 315 current review records; no overall completion claim is made.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -86,13 +78,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 13,
+  "generation": 17,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.838078Z",
+      "last_evidence_at": "2026-10-06T03:28:19.043588Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T08:02:24+07:00",
       "spec_last_changed_at": "2026-10-06T08:02:24+07:00"
@@ -111,13 +103,13 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3e47dab0d59acd274d3e5d897813ca0f6d5d8513",
+    "canonical_sha": "ade174b306e6e4fcc9b078a616fa1a5634686722",
     "integrated": true,
-    "integrated_at": "2026-10-06T02:47:35Z"
+    "integrated_at": "2026-10-06T03:12:48Z"
   },
   "lifecycle": {
-    "current_state": "WAITING_DEPENDENCY",
-    "previous_state": null,
+    "current_state": "WORKING",
+    "previous_state": "WAITING_DEPENDENCY",
     "state_evidence": [
       {
         "kind": "FRAMEWORK_CHECKPOINT",
@@ -138,6 +130,11 @@
         "kind": "PRE_RECOVERY_DUPLICATE_REVISION_OBSERVATION",
         "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/pre-recovery-identity-observation-f4a9d00c.md",
         "sha": "f4a9d00c638c04ac74b15ddb8942fc786942524f"
+      },
+      {
+        "kind": "POST_RECOVERY_SPEC_UPLOAD_INTEGRATED",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/post-recovery-reconciliation-resumed-ade174b.md",
+        "sha": "ade174b306e6e4fcc9b078a616fa1a5634686722"
       }
     ],
     "updated_at": "2026-10-06T00:43:01.838078Z"
@@ -160,13 +157,13 @@
           "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
         }
       ],
-      "next_action": "WAITING_POST_RECOVERY_SPEC_UPLOAD: resolve the recovered Work Context Spec 282 authority/numbering conflict with current canonical Spec 282 and reconcile Spec 281 Docker/OCI deployment text against repository policy. Spec 278 is a whitespace-only duplicate of the current canonical Spec. Do not regenerate inventory-derived outputs or begin bulk reconciliation before the selected canonical set is integrated.",
-      "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+      "next_action": "RESUME_REPOSITORY_WIDE_RECONCILIATION: post-recovery inventory is refreshed at ade174b306e6e4fcc9b078a616fa1a5634686722 with 291 canonical Specs, 447/447 indexed records, 286 relationship edges, and 315 open review records. Review the eight remaining duplicate-ID groups first; do not close unsupported classifications.",
+      "rationale": "The recovered canonical Spec set is uploaded, validated, and integrated. Repository-wide evidence reconciliation remains open with 315 current review records; no overall completion claim is made.",
       "residual_requirements": []
     },
     "lifecycle": {
-      "current_state": "WAITING_DEPENDENCY",
-      "previous_state": null,
+      "current_state": "WORKING",
+      "previous_state": "WAITING_DEPENDENCY",
       "state_evidence": [
         {
           "kind": "FRAMEWORK_CHECKPOINT",
@@ -187,6 +184,11 @@
           "kind": "PRE_RECOVERY_DUPLICATE_REVISION_OBSERVATION",
           "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/pre-recovery-identity-observation-f4a9d00c.md",
           "sha": "f4a9d00c638c04ac74b15ddb8942fc786942524f"
+        },
+        {
+          "kind": "POST_RECOVERY_SPEC_UPLOAD_INTEGRATED",
+          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/post-recovery-reconciliation-resumed-ade174b.md",
+          "sha": "ade174b306e6e4fcc9b078a616fa1a5634686722"
         }
       ],
       "updated_at": "2026-10-06T00:43:01.838078Z"
@@ -200,7 +202,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.838078Z",
+    "reconciled_at": "2026-10-06T03:28:19.043588Z",
     "sources": [
       {
         "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -261,7 +263,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:03:02.251278Z",
+  "updated_at": "2026-10-06T03:30:14.711206Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

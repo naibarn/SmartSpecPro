@@ -14,7 +14,7 @@
         "referencing_spec_id": "216",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
         "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
         "successor_spec_id": "216"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "216",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L54",
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L54",
         "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
         "successor_spec_id": "216"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "216",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
         "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
         "successor_spec_id": "216"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "216",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L75",
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L75",
         "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
         "successor_spec_id": "216"
       }
@@ -127,18 +127,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md",
     "digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.103280Z",
+      "last_evidence_at": "2026-10-06T03:28:17.564890Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-20T12:59:58+07:00",
       "spec_last_changed_at": "2026-09-28T00:04:37+07:00"
     },
-    "revision": "20",
+    "revision": "4",
     "slug": "216-workflow-studio-node-runtime-miniapp-upgrade",
     "spec_id": "216",
     "title": "Spec 216 — SmartAIHub Workflow Studio Upgrade Program"
@@ -160,7 +160,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.103280Z"
+    "updated_at": "2026-10-06T03:28:17.564890Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -170,7 +170,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.103280Z",
+    "reconciled_at": "2026-10-06T03:28:17.564890Z",
     "sources": [
       {
         "digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
@@ -253,7 +253,7 @@
     "unresolved": 146
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.103280Z",
+  "updated_at": "2026-10-06T03:28:17.564890Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

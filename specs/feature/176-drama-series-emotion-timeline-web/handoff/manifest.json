@@ -99,13 +99,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/176-drama-series-emotion-timeline-web/spec.md",
     "digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.535034Z",
+      "last_evidence_at": "2026-10-06T03:28:16.598476Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-05T07:29:01+07:00",
       "spec_last_changed_at": "2026-09-05T21:39:19+07:00"
@@ -132,7 +132,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.535034Z"
+    "updated_at": "2026-10-06T03:28:16.598476Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -142,7 +142,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.535034Z",
+    "reconciled_at": "2026-10-06T03:28:16.598476Z",
     "sources": [
       {
         "digest": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0",
@@ -267,7 +267,7 @@
     "unresolved": 37
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.535034Z",
+  "updated_at": "2026-10-06T03:28:16.598476Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

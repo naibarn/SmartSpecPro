@@ -14,7 +14,7 @@
         "referencing_spec_id": "249",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md#L707",
+        "source": "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md#L707",
         "source_digest": "769f585b63b4e9eb008eaf7b7ad248b17a45a2ffa2418e7cf4162dfe16c2eb76",
         "successor_spec_id": "249"
       }
@@ -84,13 +84,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md",
     "digest": "769f585b63b4e9eb008eaf7b7ad248b17a45a2ffa2418e7cf4162dfe16c2eb76",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.494876Z",
+      "last_evidence_at": "2026-10-06T03:28:18.249839Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -98,7 +98,7 @@
     "revision": "1.4",
     "slug": "249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry",
     "spec_id": "249",
-    "title": "Spec 249 — SmartAIHub Adaptive Multimodal Tutor & Course Foundry"
+    "title": "SmartAIHub Adaptive Multimodal Tutor & Course Foundry"
   },
   "implementation": {
     "checkpoint_shas": [],
@@ -117,7 +117,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.494876Z"
+    "updated_at": "2026-10-06T03:28:18.249839Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -127,7 +127,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.494876Z",
+    "reconciled_at": "2026-10-06T03:28:18.249839Z",
     "sources": [
       {
         "digest": "769f585b63b4e9eb008eaf7b7ad248b17a45a2ffa2418e7cf4162dfe16c2eb76",
@@ -195,7 +195,7 @@
     "unresolved": 275
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.494876Z",
+  "updated_at": "2026-10-06T03:28:18.249839Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

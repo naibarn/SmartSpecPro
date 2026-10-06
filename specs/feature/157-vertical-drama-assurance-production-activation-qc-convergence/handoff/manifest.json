@@ -17,92 +17,92 @@
       {
         "digest": "ccc0c964e414e126b10dab62743243b5fd1e2a9bfc891e2ad3a4dba81a212db7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-plan.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-plan.md"
       },
       {
         "digest": "227b475f907fd64a543ac3604c304ed09b8ad0957311e03d91706479aea81b27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-spec.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-spec.md"
       },
       {
         "digest": "e245ba3b790bfa0088c53a341ba01a534178a5aea4a7427d8391cccf2f4aae44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/audit-rounds.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/audit-rounds.md"
       },
       {
         "digest": "c2c3e9dd76614dd50f848ab31da91489ace7d90865937c921f1f676fb1d9838e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/deep_implement_config.json"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/deep_implement_config.json"
       },
       {
         "digest": "aedb13f1a1ff13d311df082a40dde8f45ef229dbe0e51e82a930e56224b3f82d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/gap-audit-round-5.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/gap-audit-round-5.md"
       },
       {
         "digest": "74296fcd1453ab0f0cd31f2a113aaf73b39ec02403a0db1f6efb9c729a44f6ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/cross-consistency-review.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/cross-consistency-review.md"
       },
       {
         "digest": "fe3ff4dfa97aac95152be18286c167b5510af851fbb789436e9bf613992ff92c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/self-review-round-1.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/self-review-round-1.md"
       },
       {
         "digest": "9012b3aa8c1824c2cb07f9d6a04efb78f3f86bd7afcd7d694dfe414fcec85ade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/index.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/index.md"
       },
       {
         "digest": "e9f0524eb26ec65f9991ca667a005f5791f89814c6d462bfb2ccc1a4d46032de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-01-assurance-contracts-context.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-01-assurance-contracts-context.md"
       },
       {
         "digest": "4866301ec17ebae4ddc5314c5239a9bccbc6eb46a5a2a78bbf0be667dce07de6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-02-durable-attempts-reconciliation.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-02-durable-attempts-reconciliation.md"
       },
       {
         "digest": "5b272c7075cbe3290282e12a9a27ab45e737aafdee652a7301650dc89859a74d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-03-credit-provider-final-gate.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-03-credit-provider-final-gate.md"
       },
       {
         "digest": "4777b34876da3dba02d781378e2d180e6731a992f287b8ca04976bbbc45ad517",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-04-draft-qc-recovery.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-04-draft-qc-recovery.md"
       },
       {
         "digest": "7aaa9381642b15dae39da78a69b49e6b64a270d753d6ce825672e31666e90259",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-05-profile-source-admission.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-05-profile-source-admission.md"
       },
       {
         "digest": "85f401e0f544f40c4a37b782a8308b98b720e5c8b6e07a4ac14328d6bd386919",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-06-agent-runtime-fallback.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-06-agent-runtime-fallback.md"
       },
       {
         "digest": "529809001fba0f8d5ea111bb9101a805ca8473c5c61ea7545cad14e578842f63",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-07-story-prompt-media-adapters.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-07-story-prompt-media-adapters.md"
       },
       {
         "digest": "0921ac5a09753e0c1ef72e6dd823786ecebe6d1c6ff1017e4f5f4b4ad2f14058",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-08-api-ui-continuity.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-08-api-ui-continuity.md"
       },
       {
         "digest": "eb85689a0515a91d4c2cdd7d785ac1f4924a715ca207d026e8969fe573227a0d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-09-security-operations-rollout.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-09-security-operations-rollout.md"
       },
       {
         "digest": "8e904ecc6bdf16713467c4c767ecd6ffaac6452307d0b99febbed042b92f5da4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-10-integration-production-proof.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-10-integration-production-proof.md"
       }
     ],
     "predecessors": [],
@@ -133,92 +133,92 @@
       {
         "digest": "ccc0c964e414e126b10dab62743243b5fd1e2a9bfc891e2ad3a4dba81a212db7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-plan.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-plan.md"
       },
       {
         "digest": "227b475f907fd64a543ac3604c304ed09b8ad0957311e03d91706479aea81b27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-spec.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-spec.md"
       },
       {
         "digest": "e245ba3b790bfa0088c53a341ba01a534178a5aea4a7427d8391cccf2f4aae44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/audit-rounds.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/audit-rounds.md"
       },
       {
         "digest": "c2c3e9dd76614dd50f848ab31da91489ace7d90865937c921f1f676fb1d9838e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/deep_implement_config.json"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/deep_implement_config.json"
       },
       {
         "digest": "aedb13f1a1ff13d311df082a40dde8f45ef229dbe0e51e82a930e56224b3f82d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/gap-audit-round-5.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/gap-audit-round-5.md"
       },
       {
         "digest": "74296fcd1453ab0f0cd31f2a113aaf73b39ec02403a0db1f6efb9c729a44f6ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/cross-consistency-review.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/cross-consistency-review.md"
       },
       {
         "digest": "fe3ff4dfa97aac95152be18286c167b5510af851fbb789436e9bf613992ff92c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/self-review-round-1.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/self-review-round-1.md"
       },
       {
         "digest": "9012b3aa8c1824c2cb07f9d6a04efb78f3f86bd7afcd7d694dfe414fcec85ade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/index.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/index.md"
       },
       {
         "digest": "e9f0524eb26ec65f9991ca667a005f5791f89814c6d462bfb2ccc1a4d46032de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-01-assurance-contracts-context.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-01-assurance-contracts-context.md"
       },
       {
         "digest": "4866301ec17ebae4ddc5314c5239a9bccbc6eb46a5a2a78bbf0be667dce07de6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-02-durable-attempts-reconciliation.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-02-durable-attempts-reconciliation.md"
       },
       {
         "digest": "5b272c7075cbe3290282e12a9a27ab45e737aafdee652a7301650dc89859a74d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-03-credit-provider-final-gate.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-03-credit-provider-final-gate.md"
       },
       {
         "digest": "4777b34876da3dba02d781378e2d180e6731a992f287b8ca04976bbbc45ad517",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-04-draft-qc-recovery.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-04-draft-qc-recovery.md"
       },
       {
         "digest": "7aaa9381642b15dae39da78a69b49e6b64a270d753d6ce825672e31666e90259",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-05-profile-source-admission.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-05-profile-source-admission.md"
       },
       {
         "digest": "85f401e0f544f40c4a37b782a8308b98b720e5c8b6e07a4ac14328d6bd386919",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-06-agent-runtime-fallback.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-06-agent-runtime-fallback.md"
       },
       {
         "digest": "529809001fba0f8d5ea111bb9101a805ca8473c5c61ea7545cad14e578842f63",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-07-story-prompt-media-adapters.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-07-story-prompt-media-adapters.md"
       },
       {
         "digest": "0921ac5a09753e0c1ef72e6dd823786ecebe6d1c6ff1017e4f5f4b4ad2f14058",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-08-api-ui-continuity.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-08-api-ui-continuity.md"
       },
       {
         "digest": "eb85689a0515a91d4c2cdd7d785ac1f4924a715ca207d026e8969fe573227a0d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-09-security-operations-rollout.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-09-security-operations-rollout.md"
       },
       {
         "digest": "8e904ecc6bdf16713467c4c767ecd6ffaac6452307d0b99febbed042b92f5da4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-10-integration-production-proof.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-10-integration-production-proof.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -250,109 +250,109 @@
       {
         "digest": "ccc0c964e414e126b10dab62743243b5fd1e2a9bfc891e2ad3a4dba81a212db7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-plan.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-plan.md"
       },
       {
         "digest": "227b475f907fd64a543ac3604c304ed09b8ad0957311e03d91706479aea81b27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-spec.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-spec.md"
       },
       {
         "digest": "e245ba3b790bfa0088c53a341ba01a534178a5aea4a7427d8391cccf2f4aae44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/audit-rounds.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/audit-rounds.md"
       },
       {
         "digest": "c2c3e9dd76614dd50f848ab31da91489ace7d90865937c921f1f676fb1d9838e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/deep_implement_config.json"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/deep_implement_config.json"
       },
       {
         "digest": "aedb13f1a1ff13d311df082a40dde8f45ef229dbe0e51e82a930e56224b3f82d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/gap-audit-round-5.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/gap-audit-round-5.md"
       },
       {
         "digest": "74296fcd1453ab0f0cd31f2a113aaf73b39ec02403a0db1f6efb9c729a44f6ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/cross-consistency-review.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/cross-consistency-review.md"
       },
       {
         "digest": "fe3ff4dfa97aac95152be18286c167b5510af851fbb789436e9bf613992ff92c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/self-review-round-1.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/self-review-round-1.md"
       },
       {
         "digest": "9012b3aa8c1824c2cb07f9d6a04efb78f3f86bd7afcd7d694dfe414fcec85ade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/index.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/index.md"
       },
       {
         "digest": "e9f0524eb26ec65f9991ca667a005f5791f89814c6d462bfb2ccc1a4d46032de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-01-assurance-contracts-context.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-01-assurance-contracts-context.md"
       },
       {
         "digest": "4866301ec17ebae4ddc5314c5239a9bccbc6eb46a5a2a78bbf0be667dce07de6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-02-durable-attempts-reconciliation.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-02-durable-attempts-reconciliation.md"
       },
       {
         "digest": "5b272c7075cbe3290282e12a9a27ab45e737aafdee652a7301650dc89859a74d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-03-credit-provider-final-gate.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-03-credit-provider-final-gate.md"
       },
       {
         "digest": "4777b34876da3dba02d781378e2d180e6731a992f287b8ca04976bbbc45ad517",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-04-draft-qc-recovery.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-04-draft-qc-recovery.md"
       },
       {
         "digest": "7aaa9381642b15dae39da78a69b49e6b64a270d753d6ce825672e31666e90259",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-05-profile-source-admission.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-05-profile-source-admission.md"
       },
       {
         "digest": "85f401e0f544f40c4a37b782a8308b98b720e5c8b6e07a4ac14328d6bd386919",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-06-agent-runtime-fallback.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-06-agent-runtime-fallback.md"
       },
       {
         "digest": "529809001fba0f8d5ea111bb9101a805ca8473c5c61ea7545cad14e578842f63",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-07-story-prompt-media-adapters.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-07-story-prompt-media-adapters.md"
       },
       {
         "digest": "0921ac5a09753e0c1ef72e6dd823786ecebe6d1c6ff1017e4f5f4b4ad2f14058",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-08-api-ui-continuity.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-08-api-ui-continuity.md"
       },
       {
         "digest": "eb85689a0515a91d4c2cdd7d785ac1f4924a715ca207d026e8969fe573227a0d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-09-security-operations-rollout.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-09-security-operations-rollout.md"
       },
       {
         "digest": "8e904ecc6bdf16713467c4c767ecd6ffaac6452307d0b99febbed042b92f5da4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-10-integration-production-proof.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-10-integration-production-proof.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md",
     "digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.405856Z",
+      "last_evidence_at": "2026-10-06T03:28:16.363172Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-30T21:05:27+07:00",
       "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
     },
-    "revision": null,
+    "revision": "1.3.0",
     "slug": "157-vertical-drama-assurance-production-activation-qc-convergence",
     "spec_id": "157",
     "title": "Feature 157: Vertical Drama Assurance Production Activation & QC Convergence"
@@ -374,7 +374,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.405856Z"
+    "updated_at": "2026-10-06T03:28:16.363172Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -384,7 +384,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.405856Z",
+    "reconciled_at": "2026-10-06T03:28:16.363172Z",
     "sources": [
       {
         "digest": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
@@ -394,92 +394,92 @@
       {
         "digest": "ccc0c964e414e126b10dab62743243b5fd1e2a9bfc891e2ad3a4dba81a212db7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-plan.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-plan.md"
       },
       {
         "digest": "227b475f907fd64a543ac3604c304ed09b8ad0957311e03d91706479aea81b27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-spec.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-spec.md"
       },
       {
         "digest": "e245ba3b790bfa0088c53a341ba01a534178a5aea4a7427d8391cccf2f4aae44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/audit-rounds.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/audit-rounds.md"
       },
       {
         "digest": "c2c3e9dd76614dd50f848ab31da91489ace7d90865937c921f1f676fb1d9838e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/deep_implement_config.json"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/deep_implement_config.json"
       },
       {
         "digest": "aedb13f1a1ff13d311df082a40dde8f45ef229dbe0e51e82a930e56224b3f82d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/gap-audit-round-5.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/gap-audit-round-5.md"
       },
       {
         "digest": "74296fcd1453ab0f0cd31f2a113aaf73b39ec02403a0db1f6efb9c729a44f6ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/cross-consistency-review.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/cross-consistency-review.md"
       },
       {
         "digest": "fe3ff4dfa97aac95152be18286c167b5510af851fbb789436e9bf613992ff92c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/self-review-round-1.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/self-review-round-1.md"
       },
       {
         "digest": "9012b3aa8c1824c2cb07f9d6a04efb78f3f86bd7afcd7d694dfe414fcec85ade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/index.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/index.md"
       },
       {
         "digest": "e9f0524eb26ec65f9991ca667a005f5791f89814c6d462bfb2ccc1a4d46032de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-01-assurance-contracts-context.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-01-assurance-contracts-context.md"
       },
       {
         "digest": "4866301ec17ebae4ddc5314c5239a9bccbc6eb46a5a2a78bbf0be667dce07de6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-02-durable-attempts-reconciliation.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-02-durable-attempts-reconciliation.md"
       },
       {
         "digest": "5b272c7075cbe3290282e12a9a27ab45e737aafdee652a7301650dc89859a74d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-03-credit-provider-final-gate.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-03-credit-provider-final-gate.md"
       },
       {
         "digest": "4777b34876da3dba02d781378e2d180e6731a992f287b8ca04976bbbc45ad517",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-04-draft-qc-recovery.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-04-draft-qc-recovery.md"
       },
       {
         "digest": "7aaa9381642b15dae39da78a69b49e6b64a270d753d6ce825672e31666e90259",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-05-profile-source-admission.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-05-profile-source-admission.md"
       },
       {
         "digest": "85f401e0f544f40c4a37b782a8308b98b720e5c8b6e07a4ac14328d6bd386919",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-06-agent-runtime-fallback.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-06-agent-runtime-fallback.md"
       },
       {
         "digest": "529809001fba0f8d5ea111bb9101a805ca8473c5c61ea7545cad14e578842f63",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-07-story-prompt-media-adapters.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-07-story-prompt-media-adapters.md"
       },
       {
         "digest": "0921ac5a09753e0c1ef72e6dd823786ecebe6d1c6ff1017e4f5f4b4ad2f14058",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-08-api-ui-continuity.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-08-api-ui-continuity.md"
       },
       {
         "digest": "eb85689a0515a91d4c2cdd7d785ac1f4924a715ca207d026e8969fe573227a0d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-09-security-operations-rollout.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-09-security-operations-rollout.md"
       },
       {
         "digest": "8e904ecc6bdf16713467c4c767ecd6ffaac6452307d0b99febbed042b92f5da4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-10-integration-production-proof.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-10-integration-production-proof.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -529,92 +529,92 @@
       {
         "digest": "ccc0c964e414e126b10dab62743243b5fd1e2a9bfc891e2ad3a4dba81a212db7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-plan.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-plan.md"
       },
       {
         "digest": "227b475f907fd64a543ac3604c304ed09b8ad0957311e03d91706479aea81b27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-spec.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/claude-spec.md"
       },
       {
         "digest": "e245ba3b790bfa0088c53a341ba01a534178a5aea4a7427d8391cccf2f4aae44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/audit-rounds.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/audit-rounds.md"
       },
       {
         "digest": "c2c3e9dd76614dd50f848ab31da91489ace7d90865937c921f1f676fb1d9838e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/deep_implement_config.json"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/deep_implement_config.json"
       },
       {
         "digest": "aedb13f1a1ff13d311df082a40dde8f45ef229dbe0e51e82a930e56224b3f82d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/gap-audit-round-5.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/implementation/gap-audit-round-5.md"
       },
       {
         "digest": "74296fcd1453ab0f0cd31f2a113aaf73b39ec02403a0db1f6efb9c729a44f6ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/cross-consistency-review.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/cross-consistency-review.md"
       },
       {
         "digest": "fe3ff4dfa97aac95152be18286c167b5510af851fbb789436e9bf613992ff92c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/self-review-round-1.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/reviews/self-review-round-1.md"
       },
       {
         "digest": "9012b3aa8c1824c2cb07f9d6a04efb78f3f86bd7afcd7d694dfe414fcec85ade",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/index.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/index.md"
       },
       {
         "digest": "e9f0524eb26ec65f9991ca667a005f5791f89814c6d462bfb2ccc1a4d46032de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-01-assurance-contracts-context.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-01-assurance-contracts-context.md"
       },
       {
         "digest": "4866301ec17ebae4ddc5314c5239a9bccbc6eb46a5a2a78bbf0be667dce07de6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-02-durable-attempts-reconciliation.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-02-durable-attempts-reconciliation.md"
       },
       {
         "digest": "5b272c7075cbe3290282e12a9a27ab45e737aafdee652a7301650dc89859a74d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-03-credit-provider-final-gate.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-03-credit-provider-final-gate.md"
       },
       {
         "digest": "4777b34876da3dba02d781378e2d180e6731a992f287b8ca04976bbbc45ad517",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-04-draft-qc-recovery.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-04-draft-qc-recovery.md"
       },
       {
         "digest": "7aaa9381642b15dae39da78a69b49e6b64a270d753d6ce825672e31666e90259",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-05-profile-source-admission.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-05-profile-source-admission.md"
       },
       {
         "digest": "85f401e0f544f40c4a37b782a8308b98b720e5c8b6e07a4ac14328d6bd386919",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-06-agent-runtime-fallback.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-06-agent-runtime-fallback.md"
       },
       {
         "digest": "529809001fba0f8d5ea111bb9101a805ca8473c5c61ea7545cad14e578842f63",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-07-story-prompt-media-adapters.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-07-story-prompt-media-adapters.md"
       },
       {
         "digest": "0921ac5a09753e0c1ef72e6dd823786ecebe6d1c6ff1017e4f5f4b4ad2f14058",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-08-api-ui-continuity.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-08-api-ui-continuity.md"
       },
       {
         "digest": "eb85689a0515a91d4c2cdd7d785ac1f4924a715ca207d026e8969fe573227a0d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-09-security-operations-rollout.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-09-security-operations-rollout.md"
       },
       {
         "digest": "8e904ecc6bdf16713467c4c767ecd6ffaac6452307d0b99febbed042b92f5da4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-10-integration-production-proof.md"
+        "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/sections/section-10-integration-production-proof.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -632,7 +632,7 @@
     "unresolved": 170
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.405856Z",
+  "updated_at": "2026-10-06T03:28:16.363172Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -6,7 +6,7 @@
 - Continuation: `DO_NOT_CONTINUE_SUPERSEDED` (HIGH)
 - Requirements: 0 pass / 191 unresolved of 191
 - Next action: Reconcile the 191 open requirement candidates against Feature 151 and current architecture; move only proven residual requirements to the governing Spec.
-- Manifest generation: 7
+- Manifest generation: 9
 
 ## Source-declared status and relationship claims
 

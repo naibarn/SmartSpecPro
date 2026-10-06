@@ -17,82 +17,82 @@
       {
         "digest": "45b5e6ff034598244fdcda1cdf0bf6f7d270f94c4a01485b6f984cf87f5b0c8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/claude-plan.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/claude-plan.md"
       },
       {
         "digest": "998a819ff14dabd99cd51d05efb2cdd2dff0853c558d292b3d1dd58ab8153413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/claude-spec.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/claude-spec.md"
       },
       {
         "digest": "099aa5983dc2add50088ea3d088ecb8720f1ac8c1f8fe4085bb8ce5e843eabfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/deep_implement_config.json"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/deep_implement_config.json"
       },
       {
         "digest": "9733ac4494e3a943221d8b30b0ea3749a400669d047d35b6b0c4dc8016369a1d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-1.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-1.md"
       },
       {
         "digest": "da8ff4bb3da31206b9643c38308f4d3fbfe61cd8083e6737cd2efb9f1274db84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-2.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-2.md"
       },
       {
         "digest": "2a7e91d8603ebae577c89c76312f9229dbb18288ea386e5494a09bbfec4aba4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-3.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-3.md"
       },
       {
         "digest": "7c238cad5bb6a09a1facc85fc703e1a30e0996c31d8df818541f6eaafb59bfb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-4.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-4.md"
       },
       {
         "digest": "3bc9119cd99c785cfd40eb2f35d3d63a82e04acafe4ce4054dacc4c1499c54b5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-5.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-5.md"
       },
       {
         "digest": "f5372850671dd6176a0d9223b1d76678ef543f5c7dd485efbe4e27f54cbeb21f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/reviews/self-review-round-1.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/reviews/self-review-round-1.md"
       },
       {
         "digest": "45b408b75483a7d5eacc304e68bd0e10f75c353a702aa77624d413b93f8f75bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/index.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/index.md"
       },
       {
         "digest": "d9505daca5550616ff3c9f53ed72267a4b8b24d3b85596388a8731dc38166af7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-01-role-aware-prompt-contract.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-01-role-aware-prompt-contract.md"
       },
       {
         "digest": "929c1f2dc3eafe716043e0d702ebd66e7b70e834006e6d8a28a62b08669e90cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-02-stop-persistence-and-jobs.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-02-stop-persistence-and-jobs.md"
       },
       {
         "digest": "cc75d2eebe34279231024e14bae9a7ac35aca40016886f19743b71c8804705ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-03-video-media-integration.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-03-video-media-integration.md"
       },
       {
         "digest": "7b98e522c58049d87289fe22b44493a849a75857c82662f4d6386bd03c55d903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-04-storyboard-stop-frame-ui.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-04-storyboard-stop-frame-ui.md"
       },
       {
         "digest": "2da8da2fd124bc5206e8a1a25fad55f537a354e9346c47c4d5d945a571889eb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-05-tests-and-verification.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-05-tests-and-verification.md"
       },
       {
         "digest": "6e1831c4b393e87f202a902f85a5c3eb6acf43d16ec99bb75234346c655afdb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-06-rollout-observability.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-06-rollout-observability.md"
       }
     ],
     "predecessors": [],
@@ -123,82 +123,82 @@
       {
         "digest": "45b5e6ff034598244fdcda1cdf0bf6f7d270f94c4a01485b6f984cf87f5b0c8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/claude-plan.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/claude-plan.md"
       },
       {
         "digest": "998a819ff14dabd99cd51d05efb2cdd2dff0853c558d292b3d1dd58ab8153413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/claude-spec.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/claude-spec.md"
       },
       {
         "digest": "099aa5983dc2add50088ea3d088ecb8720f1ac8c1f8fe4085bb8ce5e843eabfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/deep_implement_config.json"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/deep_implement_config.json"
       },
       {
         "digest": "9733ac4494e3a943221d8b30b0ea3749a400669d047d35b6b0c4dc8016369a1d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-1.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-1.md"
       },
       {
         "digest": "da8ff4bb3da31206b9643c38308f4d3fbfe61cd8083e6737cd2efb9f1274db84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-2.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-2.md"
       },
       {
         "digest": "2a7e91d8603ebae577c89c76312f9229dbb18288ea386e5494a09bbfec4aba4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-3.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-3.md"
       },
       {
         "digest": "7c238cad5bb6a09a1facc85fc703e1a30e0996c31d8df818541f6eaafb59bfb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-4.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-4.md"
       },
       {
         "digest": "3bc9119cd99c785cfd40eb2f35d3d63a82e04acafe4ce4054dacc4c1499c54b5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-5.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-5.md"
       },
       {
         "digest": "f5372850671dd6176a0d9223b1d76678ef543f5c7dd485efbe4e27f54cbeb21f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/reviews/self-review-round-1.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/reviews/self-review-round-1.md"
       },
       {
         "digest": "45b408b75483a7d5eacc304e68bd0e10f75c353a702aa77624d413b93f8f75bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/index.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/index.md"
       },
       {
         "digest": "d9505daca5550616ff3c9f53ed72267a4b8b24d3b85596388a8731dc38166af7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-01-role-aware-prompt-contract.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-01-role-aware-prompt-contract.md"
       },
       {
         "digest": "929c1f2dc3eafe716043e0d702ebd66e7b70e834006e6d8a28a62b08669e90cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-02-stop-persistence-and-jobs.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-02-stop-persistence-and-jobs.md"
       },
       {
         "digest": "cc75d2eebe34279231024e14bae9a7ac35aca40016886f19743b71c8804705ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-03-video-media-integration.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-03-video-media-integration.md"
       },
       {
         "digest": "7b98e522c58049d87289fe22b44493a849a75857c82662f4d6386bd03c55d903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-04-storyboard-stop-frame-ui.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-04-storyboard-stop-frame-ui.md"
       },
       {
         "digest": "2da8da2fd124bc5206e8a1a25fad55f537a354e9346c47c4d5d945a571889eb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-05-tests-and-verification.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-05-tests-and-verification.md"
       },
       {
         "digest": "6e1831c4b393e87f202a902f85a5c3eb6acf43d16ec99bb75234346c655afdb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-06-rollout-observability.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-06-rollout-observability.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -230,94 +230,94 @@
       {
         "digest": "45b5e6ff034598244fdcda1cdf0bf6f7d270f94c4a01485b6f984cf87f5b0c8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/claude-plan.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/claude-plan.md"
       },
       {
         "digest": "998a819ff14dabd99cd51d05efb2cdd2dff0853c558d292b3d1dd58ab8153413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/claude-spec.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/claude-spec.md"
       },
       {
         "digest": "099aa5983dc2add50088ea3d088ecb8720f1ac8c1f8fe4085bb8ce5e843eabfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/deep_implement_config.json"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/deep_implement_config.json"
       },
       {
         "digest": "9733ac4494e3a943221d8b30b0ea3749a400669d047d35b6b0c4dc8016369a1d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-1.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-1.md"
       },
       {
         "digest": "da8ff4bb3da31206b9643c38308f4d3fbfe61cd8083e6737cd2efb9f1274db84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-2.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-2.md"
       },
       {
         "digest": "2a7e91d8603ebae577c89c76312f9229dbb18288ea386e5494a09bbfec4aba4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-3.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-3.md"
       },
       {
         "digest": "7c238cad5bb6a09a1facc85fc703e1a30e0996c31d8df818541f6eaafb59bfb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-4.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-4.md"
       },
       {
         "digest": "3bc9119cd99c785cfd40eb2f35d3d63a82e04acafe4ce4054dacc4c1499c54b5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-5.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-5.md"
       },
       {
         "digest": "f5372850671dd6176a0d9223b1d76678ef543f5c7dd485efbe4e27f54cbeb21f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/reviews/self-review-round-1.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/reviews/self-review-round-1.md"
       },
       {
         "digest": "45b408b75483a7d5eacc304e68bd0e10f75c353a702aa77624d413b93f8f75bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/index.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/index.md"
       },
       {
         "digest": "d9505daca5550616ff3c9f53ed72267a4b8b24d3b85596388a8731dc38166af7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-01-role-aware-prompt-contract.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-01-role-aware-prompt-contract.md"
       },
       {
         "digest": "929c1f2dc3eafe716043e0d702ebd66e7b70e834006e6d8a28a62b08669e90cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-02-stop-persistence-and-jobs.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-02-stop-persistence-and-jobs.md"
       },
       {
         "digest": "cc75d2eebe34279231024e14bae9a7ac35aca40016886f19743b71c8804705ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-03-video-media-integration.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-03-video-media-integration.md"
       },
       {
         "digest": "7b98e522c58049d87289fe22b44493a849a75857c82662f4d6386bd03c55d903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-04-storyboard-stop-frame-ui.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-04-storyboard-stop-frame-ui.md"
       },
       {
         "digest": "2da8da2fd124bc5206e8a1a25fad55f537a354e9346c47c4d5d945a571889eb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-05-tests-and-verification.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-05-tests-and-verification.md"
       },
       {
         "digest": "6e1831c4b393e87f202a902f85a5c3eb6acf43d16ec99bb75234346c655afdb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-06-rollout-observability.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-06-rollout-observability.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md",
     "digest": "f44dcf090d1c772b98a6a1f5702666853f1b1e0f38eb613e4c59636f4f8276e9",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.475736Z",
+      "last_evidence_at": "2026-10-06T03:28:16.494520Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-30T21:05:27+07:00",
       "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
@@ -344,7 +344,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.475736Z"
+    "updated_at": "2026-10-06T03:28:16.494520Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -354,7 +354,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.475736Z",
+    "reconciled_at": "2026-10-06T03:28:16.494520Z",
     "sources": [
       {
         "digest": "f44dcf090d1c772b98a6a1f5702666853f1b1e0f38eb613e4c59636f4f8276e9",
@@ -364,82 +364,82 @@
       {
         "digest": "45b5e6ff034598244fdcda1cdf0bf6f7d270f94c4a01485b6f984cf87f5b0c8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/claude-plan.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/claude-plan.md"
       },
       {
         "digest": "998a819ff14dabd99cd51d05efb2cdd2dff0853c558d292b3d1dd58ab8153413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/claude-spec.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/claude-spec.md"
       },
       {
         "digest": "099aa5983dc2add50088ea3d088ecb8720f1ac8c1f8fe4085bb8ce5e843eabfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/deep_implement_config.json"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/deep_implement_config.json"
       },
       {
         "digest": "9733ac4494e3a943221d8b30b0ea3749a400669d047d35b6b0c4dc8016369a1d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-1.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-1.md"
       },
       {
         "digest": "da8ff4bb3da31206b9643c38308f4d3fbfe61cd8083e6737cd2efb9f1274db84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-2.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-2.md"
       },
       {
         "digest": "2a7e91d8603ebae577c89c76312f9229dbb18288ea386e5494a09bbfec4aba4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-3.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-3.md"
       },
       {
         "digest": "7c238cad5bb6a09a1facc85fc703e1a30e0996c31d8df818541f6eaafb59bfb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-4.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-4.md"
       },
       {
         "digest": "3bc9119cd99c785cfd40eb2f35d3d63a82e04acafe4ce4054dacc4c1499c54b5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-5.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-5.md"
       },
       {
         "digest": "f5372850671dd6176a0d9223b1d76678ef543f5c7dd485efbe4e27f54cbeb21f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/reviews/self-review-round-1.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/reviews/self-review-round-1.md"
       },
       {
         "digest": "45b408b75483a7d5eacc304e68bd0e10f75c353a702aa77624d413b93f8f75bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/index.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/index.md"
       },
       {
         "digest": "d9505daca5550616ff3c9f53ed72267a4b8b24d3b85596388a8731dc38166af7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-01-role-aware-prompt-contract.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-01-role-aware-prompt-contract.md"
       },
       {
         "digest": "929c1f2dc3eafe716043e0d702ebd66e7b70e834006e6d8a28a62b08669e90cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-02-stop-persistence-and-jobs.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-02-stop-persistence-and-jobs.md"
       },
       {
         "digest": "cc75d2eebe34279231024e14bae9a7ac35aca40016886f19743b71c8804705ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-03-video-media-integration.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-03-video-media-integration.md"
       },
       {
         "digest": "7b98e522c58049d87289fe22b44493a849a75857c82662f4d6386bd03c55d903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-04-storyboard-stop-frame-ui.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-04-storyboard-stop-frame-ui.md"
       },
       {
         "digest": "2da8da2fd124bc5206e8a1a25fad55f537a354e9346c47c4d5d945a571889eb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-05-tests-and-verification.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-05-tests-and-verification.md"
       },
       {
         "digest": "6e1831c4b393e87f202a902f85a5c3eb6acf43d16ec99bb75234346c655afdb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-06-rollout-observability.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-06-rollout-observability.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -489,82 +489,82 @@
       {
         "digest": "45b5e6ff034598244fdcda1cdf0bf6f7d270f94c4a01485b6f984cf87f5b0c8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/claude-plan.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/claude-plan.md"
       },
       {
         "digest": "998a819ff14dabd99cd51d05efb2cdd2dff0853c558d292b3d1dd58ab8153413",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/claude-spec.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/claude-spec.md"
       },
       {
         "digest": "099aa5983dc2add50088ea3d088ecb8720f1ac8c1f8fe4085bb8ce5e843eabfb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/deep_implement_config.json"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/deep_implement_config.json"
       },
       {
         "digest": "9733ac4494e3a943221d8b30b0ea3749a400669d047d35b6b0c4dc8016369a1d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-1.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-1.md"
       },
       {
         "digest": "da8ff4bb3da31206b9643c38308f4d3fbfe61cd8083e6737cd2efb9f1274db84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-2.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-2.md"
       },
       {
         "digest": "2a7e91d8603ebae577c89c76312f9229dbb18288ea386e5494a09bbfec4aba4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-3.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-3.md"
       },
       {
         "digest": "7c238cad5bb6a09a1facc85fc703e1a30e0996c31d8df818541f6eaafb59bfb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-4.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-4.md"
       },
       {
         "digest": "3bc9119cd99c785cfd40eb2f35d3d63a82e04acafe4ce4054dacc4c1499c54b5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-5.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/implementation/gap-review-round-5.md"
       },
       {
         "digest": "f5372850671dd6176a0d9223b1d76678ef543f5c7dd485efbe4e27f54cbeb21f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/reviews/self-review-round-1.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/reviews/self-review-round-1.md"
       },
       {
         "digest": "45b408b75483a7d5eacc304e68bd0e10f75c353a702aa77624d413b93f8f75bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/index.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/index.md"
       },
       {
         "digest": "d9505daca5550616ff3c9f53ed72267a4b8b24d3b85596388a8731dc38166af7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-01-role-aware-prompt-contract.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-01-role-aware-prompt-contract.md"
       },
       {
         "digest": "929c1f2dc3eafe716043e0d702ebd66e7b70e834006e6d8a28a62b08669e90cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-02-stop-persistence-and-jobs.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-02-stop-persistence-and-jobs.md"
       },
       {
         "digest": "cc75d2eebe34279231024e14bae9a7ac35aca40016886f19743b71c8804705ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-03-video-media-integration.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-03-video-media-integration.md"
       },
       {
         "digest": "7b98e522c58049d87289fe22b44493a849a75857c82662f4d6386bd03c55d903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-04-storyboard-stop-frame-ui.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-04-storyboard-stop-frame-ui.md"
       },
       {
         "digest": "2da8da2fd124bc5206e8a1a25fad55f537a354e9346c47c4d5d945a571889eb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-05-tests-and-verification.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-05-tests-and-verification.md"
       },
       {
         "digest": "6e1831c4b393e87f202a902f85a5c3eb6acf43d16ec99bb75234346c655afdb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-06-rollout-observability.md"
+        "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/sections/section-06-rollout-observability.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -582,7 +582,7 @@
     "unresolved": 116
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.475736Z",
+  "updated_at": "2026-10-06T03:28:16.494520Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

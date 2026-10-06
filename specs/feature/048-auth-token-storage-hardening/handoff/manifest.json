@@ -17,67 +17,67 @@
       {
         "digest": "640d63b46b068aed3b56c7af393fd2de298c9350bba77114e08ee615107a0c04",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/claude-plan.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/claude-plan.md"
       },
       {
         "digest": "e45fefb2b03023d48fcbdbbffbadc807bf14bab1d691821ae481d4754aaad7a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/claude-spec.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/claude-spec.md"
       },
       {
         "digest": "18b63a26eb436a3e1e527e446c987b75e80c5b6c92ab4ada3357982ff83475b5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/implementation/deep_implement_config.json"
+        "path": "specs/feature/048-auth-token-storage-hardening/implementation/deep_implement_config.json"
       },
       {
         "digest": "d40750e28697a3816acd2c9a382c50de6e0c3c473c40d63bb2727facd6dc14cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/implementation/usage.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/implementation/usage.md"
       },
       {
         "digest": "b93e9d6d29beea2cbaf95e19bbc6eb39050aaa17b87fc56d1fc4cc3b0b01d301",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/index.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/index.md"
       },
       {
         "digest": "edbd6e4cf9b7d288eee1a3cf88127c3327d0ef083776cbe22a681d6f0291ef70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-01-auth-service-browser-hardening.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-01-auth-service-browser-hardening.md"
       },
       {
         "digest": "5e9dcc824e21214291604030cad6feb441b8cd810b490ee6310cc3833c7c4c1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-02-startup-cleanup-and-trpc-verify.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-02-startup-cleanup-and-trpc-verify.md"
       },
       {
         "digest": "424bbf81544b5c7d9dd97157491c997b40423fbdc4d63d993852b39c5931da33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-03-phase1-tests.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-03-phase1-tests.md"
       },
       {
         "digest": "a0681ad27433ea6d40a0d59f12b9a9cb845c1c9ede4e090bfb376aa58ab72151",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-04-db-schema-and-migration.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-04-db-schema-and-migration.md"
       },
       {
         "digest": "50af70644d5cc144c1f4b43fdea80c7b7157f4e465592ef173ddab04277f7eb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-05-api-key-service.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-05-api-key-service.md"
       },
       {
         "digest": "24b8103a24da35164e805a52c62db61362828b918343249217f93f879123d750",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-06-api-key-trpc-router.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-06-api-key-trpc-router.md"
       },
       {
         "digest": "6d6c1e6268654e23f908ca4e3ed6c1ce844b4cade74eae186b50b4202650b920",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-07-frontend-api-key-panel.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-07-frontend-api-key-panel.md"
       },
       {
         "digest": "e2024d33175248e89cec7662a3844231c418ed1bea09cd27161c087ba63903d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-08-phase2-tests.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-08-phase2-tests.md"
       }
     ],
     "predecessors": [],
@@ -108,67 +108,67 @@
       {
         "digest": "640d63b46b068aed3b56c7af393fd2de298c9350bba77114e08ee615107a0c04",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/claude-plan.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/claude-plan.md"
       },
       {
         "digest": "e45fefb2b03023d48fcbdbbffbadc807bf14bab1d691821ae481d4754aaad7a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/claude-spec.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/claude-spec.md"
       },
       {
         "digest": "18b63a26eb436a3e1e527e446c987b75e80c5b6c92ab4ada3357982ff83475b5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/implementation/deep_implement_config.json"
+        "path": "specs/feature/048-auth-token-storage-hardening/implementation/deep_implement_config.json"
       },
       {
         "digest": "d40750e28697a3816acd2c9a382c50de6e0c3c473c40d63bb2727facd6dc14cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/implementation/usage.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/implementation/usage.md"
       },
       {
         "digest": "b93e9d6d29beea2cbaf95e19bbc6eb39050aaa17b87fc56d1fc4cc3b0b01d301",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/index.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/index.md"
       },
       {
         "digest": "edbd6e4cf9b7d288eee1a3cf88127c3327d0ef083776cbe22a681d6f0291ef70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-01-auth-service-browser-hardening.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-01-auth-service-browser-hardening.md"
       },
       {
         "digest": "5e9dcc824e21214291604030cad6feb441b8cd810b490ee6310cc3833c7c4c1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-02-startup-cleanup-and-trpc-verify.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-02-startup-cleanup-and-trpc-verify.md"
       },
       {
         "digest": "424bbf81544b5c7d9dd97157491c997b40423fbdc4d63d993852b39c5931da33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-03-phase1-tests.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-03-phase1-tests.md"
       },
       {
         "digest": "a0681ad27433ea6d40a0d59f12b9a9cb845c1c9ede4e090bfb376aa58ab72151",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-04-db-schema-and-migration.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-04-db-schema-and-migration.md"
       },
       {
         "digest": "50af70644d5cc144c1f4b43fdea80c7b7157f4e465592ef173ddab04277f7eb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-05-api-key-service.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-05-api-key-service.md"
       },
       {
         "digest": "24b8103a24da35164e805a52c62db61362828b918343249217f93f879123d750",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-06-api-key-trpc-router.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-06-api-key-trpc-router.md"
       },
       {
         "digest": "6d6c1e6268654e23f908ca4e3ed6c1ce844b4cade74eae186b50b4202650b920",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-07-frontend-api-key-panel.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-07-frontend-api-key-panel.md"
       },
       {
         "digest": "e2024d33175248e89cec7662a3844231c418ed1bea09cd27161c087ba63903d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-08-phase2-tests.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-08-phase2-tests.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -200,79 +200,79 @@
       {
         "digest": "640d63b46b068aed3b56c7af393fd2de298c9350bba77114e08ee615107a0c04",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/claude-plan.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/claude-plan.md"
       },
       {
         "digest": "e45fefb2b03023d48fcbdbbffbadc807bf14bab1d691821ae481d4754aaad7a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/claude-spec.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/claude-spec.md"
       },
       {
         "digest": "18b63a26eb436a3e1e527e446c987b75e80c5b6c92ab4ada3357982ff83475b5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/implementation/deep_implement_config.json"
+        "path": "specs/feature/048-auth-token-storage-hardening/implementation/deep_implement_config.json"
       },
       {
         "digest": "d40750e28697a3816acd2c9a382c50de6e0c3c473c40d63bb2727facd6dc14cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/implementation/usage.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/implementation/usage.md"
       },
       {
         "digest": "b93e9d6d29beea2cbaf95e19bbc6eb39050aaa17b87fc56d1fc4cc3b0b01d301",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/index.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/index.md"
       },
       {
         "digest": "edbd6e4cf9b7d288eee1a3cf88127c3327d0ef083776cbe22a681d6f0291ef70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-01-auth-service-browser-hardening.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-01-auth-service-browser-hardening.md"
       },
       {
         "digest": "5e9dcc824e21214291604030cad6feb441b8cd810b490ee6310cc3833c7c4c1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-02-startup-cleanup-and-trpc-verify.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-02-startup-cleanup-and-trpc-verify.md"
       },
       {
         "digest": "424bbf81544b5c7d9dd97157491c997b40423fbdc4d63d993852b39c5931da33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-03-phase1-tests.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-03-phase1-tests.md"
       },
       {
         "digest": "a0681ad27433ea6d40a0d59f12b9a9cb845c1c9ede4e090bfb376aa58ab72151",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-04-db-schema-and-migration.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-04-db-schema-and-migration.md"
       },
       {
         "digest": "50af70644d5cc144c1f4b43fdea80c7b7157f4e465592ef173ddab04277f7eb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-05-api-key-service.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-05-api-key-service.md"
       },
       {
         "digest": "24b8103a24da35164e805a52c62db61362828b918343249217f93f879123d750",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-06-api-key-trpc-router.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-06-api-key-trpc-router.md"
       },
       {
         "digest": "6d6c1e6268654e23f908ca4e3ed6c1ce844b4cade74eae186b50b4202650b920",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-07-frontend-api-key-panel.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-07-frontend-api-key-panel.md"
       },
       {
         "digest": "e2024d33175248e89cec7662a3844231c418ed1bea09cd27161c087ba63903d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-08-phase2-tests.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-08-phase2-tests.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/048-auth-token-storage-hardening/spec.md",
     "digest": "1a518d571e893ee8b3b74807723341a77ec3243ea10014225d451f565bad9672",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.638469Z",
+      "last_evidence_at": "2026-10-06T03:28:14.976037Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-03-22T10:13:38+07:00",
       "spec_last_changed_at": "2026-03-22T10:13:38+07:00"
@@ -299,7 +299,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.638469Z"
+    "updated_at": "2026-10-06T03:28:14.976037Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -309,7 +309,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.638469Z",
+    "reconciled_at": "2026-10-06T03:28:14.976037Z",
     "sources": [
       {
         "digest": "1a518d571e893ee8b3b74807723341a77ec3243ea10014225d451f565bad9672",
@@ -319,67 +319,67 @@
       {
         "digest": "640d63b46b068aed3b56c7af393fd2de298c9350bba77114e08ee615107a0c04",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/claude-plan.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/claude-plan.md"
       },
       {
         "digest": "e45fefb2b03023d48fcbdbbffbadc807bf14bab1d691821ae481d4754aaad7a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/claude-spec.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/claude-spec.md"
       },
       {
         "digest": "18b63a26eb436a3e1e527e446c987b75e80c5b6c92ab4ada3357982ff83475b5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/implementation/deep_implement_config.json"
+        "path": "specs/feature/048-auth-token-storage-hardening/implementation/deep_implement_config.json"
       },
       {
         "digest": "d40750e28697a3816acd2c9a382c50de6e0c3c473c40d63bb2727facd6dc14cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/implementation/usage.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/implementation/usage.md"
       },
       {
         "digest": "b93e9d6d29beea2cbaf95e19bbc6eb39050aaa17b87fc56d1fc4cc3b0b01d301",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/index.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/index.md"
       },
       {
         "digest": "edbd6e4cf9b7d288eee1a3cf88127c3327d0ef083776cbe22a681d6f0291ef70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-01-auth-service-browser-hardening.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-01-auth-service-browser-hardening.md"
       },
       {
         "digest": "5e9dcc824e21214291604030cad6feb441b8cd810b490ee6310cc3833c7c4c1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-02-startup-cleanup-and-trpc-verify.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-02-startup-cleanup-and-trpc-verify.md"
       },
       {
         "digest": "424bbf81544b5c7d9dd97157491c997b40423fbdc4d63d993852b39c5931da33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-03-phase1-tests.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-03-phase1-tests.md"
       },
       {
         "digest": "a0681ad27433ea6d40a0d59f12b9a9cb845c1c9ede4e090bfb376aa58ab72151",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-04-db-schema-and-migration.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-04-db-schema-and-migration.md"
       },
       {
         "digest": "50af70644d5cc144c1f4b43fdea80c7b7157f4e465592ef173ddab04277f7eb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-05-api-key-service.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-05-api-key-service.md"
       },
       {
         "digest": "24b8103a24da35164e805a52c62db61362828b918343249217f93f879123d750",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-06-api-key-trpc-router.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-06-api-key-trpc-router.md"
       },
       {
         "digest": "6d6c1e6268654e23f908ca4e3ed6c1ce844b4cade74eae186b50b4202650b920",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-07-frontend-api-key-panel.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-07-frontend-api-key-panel.md"
       },
       {
         "digest": "e2024d33175248e89cec7662a3844231c418ed1bea09cd27161c087ba63903d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-08-phase2-tests.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-08-phase2-tests.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -624,67 +624,67 @@
       {
         "digest": "640d63b46b068aed3b56c7af393fd2de298c9350bba77114e08ee615107a0c04",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/claude-plan.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/claude-plan.md"
       },
       {
         "digest": "e45fefb2b03023d48fcbdbbffbadc807bf14bab1d691821ae481d4754aaad7a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/claude-spec.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/claude-spec.md"
       },
       {
         "digest": "18b63a26eb436a3e1e527e446c987b75e80c5b6c92ab4ada3357982ff83475b5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/implementation/deep_implement_config.json"
+        "path": "specs/feature/048-auth-token-storage-hardening/implementation/deep_implement_config.json"
       },
       {
         "digest": "d40750e28697a3816acd2c9a382c50de6e0c3c473c40d63bb2727facd6dc14cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/implementation/usage.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/implementation/usage.md"
       },
       {
         "digest": "b93e9d6d29beea2cbaf95e19bbc6eb39050aaa17b87fc56d1fc4cc3b0b01d301",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/index.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/index.md"
       },
       {
         "digest": "edbd6e4cf9b7d288eee1a3cf88127c3327d0ef083776cbe22a681d6f0291ef70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-01-auth-service-browser-hardening.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-01-auth-service-browser-hardening.md"
       },
       {
         "digest": "5e9dcc824e21214291604030cad6feb441b8cd810b490ee6310cc3833c7c4c1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-02-startup-cleanup-and-trpc-verify.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-02-startup-cleanup-and-trpc-verify.md"
       },
       {
         "digest": "424bbf81544b5c7d9dd97157491c997b40423fbdc4d63d993852b39c5931da33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-03-phase1-tests.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-03-phase1-tests.md"
       },
       {
         "digest": "a0681ad27433ea6d40a0d59f12b9a9cb845c1c9ede4e090bfb376aa58ab72151",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-04-db-schema-and-migration.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-04-db-schema-and-migration.md"
       },
       {
         "digest": "50af70644d5cc144c1f4b43fdea80c7b7157f4e465592ef173ddab04277f7eb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-05-api-key-service.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-05-api-key-service.md"
       },
       {
         "digest": "24b8103a24da35164e805a52c62db61362828b918343249217f93f879123d750",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-06-api-key-trpc-router.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-06-api-key-trpc-router.md"
       },
       {
         "digest": "6d6c1e6268654e23f908ca4e3ed6c1ce844b4cade74eae186b50b4202650b920",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-07-frontend-api-key-panel.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-07-frontend-api-key-panel.md"
       },
       {
         "digest": "e2024d33175248e89cec7662a3844231c418ed1bea09cd27161c087ba63903d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/048-auth-token-storage-hardening/sections/section-08-phase2-tests.md"
+        "path": "specs/feature/048-auth-token-storage-hardening/sections/section-08-phase2-tests.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -702,7 +702,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.638469Z",
+  "updated_at": "2026-10-06T03:28:14.976037Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

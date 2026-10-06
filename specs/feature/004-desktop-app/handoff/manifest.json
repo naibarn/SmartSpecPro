@@ -17,7 +17,7 @@
       {
         "digest": "83b188a3f77436d97f7c0295c820aea87e877b7d2a79186699f6c74ed52e0dc4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/004-desktop-app/plan.md"
+        "path": "specs/feature/004-desktop-app/plan.md"
       }
     ],
     "predecessors": [],
@@ -48,7 +48,7 @@
       {
         "digest": "83b188a3f77436d97f7c0295c820aea87e877b7d2a79186699f6c74ed52e0dc4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/004-desktop-app/plan.md"
+        "path": "specs/feature/004-desktop-app/plan.md"
       },
       {
         "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
@@ -87,19 +87,19 @@
       {
         "digest": "83b188a3f77436d97f7c0295c820aea87e877b7d2a79186699f6c74ed52e0dc4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/004-desktop-app/plan.md"
+        "path": "specs/feature/004-desktop-app/plan.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/004-desktop-app/spec.md",
     "digest": "59b1e20bd3dc0766c7f8ac968988d641330be2709180113eaf067ac533ac46c8",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.379161Z",
+      "last_evidence_at": "2026-10-06T03:28:14.605008Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-01-05T10:47:02+07:00",
       "spec_last_changed_at": "2026-01-07T01:06:08+07:00"
@@ -126,7 +126,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.379161Z"
+    "updated_at": "2026-10-06T03:28:14.605008Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -136,7 +136,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.379161Z",
+    "reconciled_at": "2026-10-06T03:28:14.605008Z",
     "sources": [
       {
         "digest": "59b1e20bd3dc0766c7f8ac968988d641330be2709180113eaf067ac533ac46c8",
@@ -146,7 +146,7 @@
       {
         "digest": "83b188a3f77436d97f7c0295c820aea87e877b7d2a79186699f6c74ed52e0dc4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/004-desktop-app/plan.md"
+        "path": "specs/feature/004-desktop-app/plan.md"
       },
       {
         "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
@@ -211,7 +211,7 @@
       {
         "digest": "83b188a3f77436d97f7c0295c820aea87e877b7d2a79186699f6c74ed52e0dc4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/004-desktop-app/plan.md"
+        "path": "specs/feature/004-desktop-app/plan.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -229,7 +229,7 @@
     "unresolved": 5
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.379161Z",
+  "updated_at": "2026-10-06T03:28:14.605008Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

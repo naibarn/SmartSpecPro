@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L82"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L82"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L82",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L117"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L117"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L117",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L118"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L118"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L118",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L118",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L119"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L119"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L119",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L123"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L123"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L123",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L124"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L124"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L124",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L125"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L125"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L125",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L129"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L129"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L129",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L130"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L130"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L130",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L131"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L131"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L131",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L135"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L135"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L135",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L136"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L136"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L136",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L136",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L137"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L137"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L137",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L138"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L138"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L138",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L142"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L142"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L142",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L143"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L143"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L143",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L144"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L144"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L144",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L148"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L148"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L148",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L149"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L149"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L149",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L150"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L150"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L150",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L151"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L151"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L151",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L178"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L178"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L178",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L184"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L184"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L184",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L188"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L188"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L188",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L197"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L197"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L197",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L202"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L202"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L202",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L202",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L237"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L237"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L237",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L240"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L240"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L240",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L256"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L256"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L256",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L277"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L277"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L277",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L286"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L286"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L286",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L304"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L304"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L304",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L481"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L481"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L481",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L481",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L483"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L483"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L483",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L545"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L545"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L545",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L545",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L575"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L575"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L575",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L575",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L684"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L684"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L684",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L684",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L685"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L685"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L685",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L685",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L686"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L686"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L686",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L686",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L690"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L690"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L690",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L691"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L691"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L691",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L692"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L692"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L692",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L693"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L693"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L693",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L693",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L694"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L694"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L694",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L694",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L698"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L698"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L698",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L698",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L699"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L699"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L699",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L700"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L700"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L700",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L700",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L701"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L701"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L701",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L705"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L705"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L705",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L705",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L706"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L706"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L706",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L706",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L707"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L707"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L707",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L707",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L711"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L711"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L711",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L711",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L712"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L712"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L712",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L713"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L713"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L713",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L717"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L717"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L717",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L717",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L718"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L718"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L718",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L718",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L719"
+        "specs/feature/073-nvidia-nim-provider/spec.md#L719"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/073-nvidia-nim-provider/spec.md#L719",
+      "authority_source": "specs/feature/073-nvidia-nim-provider/spec.md#L719",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

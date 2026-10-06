@@ -14,7 +14,7 @@
         "referencing_spec_id": "223",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/223-zcode-external-harness-adapter/spec.md#L191",
+        "source": "specs/feature/223-zcode-external-harness-adapter/spec.md#L191",
         "source_digest": "e64e0a641a1396c934bd6bb03e6557969c423001de897ee9deed1984b06f5e61",
         "successor_spec_id": "223"
       }
@@ -84,18 +84,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/223-zcode-external-harness-adapter/spec.md",
     "digest": "e64e0a641a1396c934bd6bb03e6557969c423001de897ee9deed1984b06f5e61",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.180434Z",
+      "last_evidence_at": "2026-10-06T03:28:17.709032Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
     },
-    "revision": "3",
+    "revision": "5",
     "slug": "223-zcode-external-harness-adapter",
     "spec_id": "223",
     "title": "Spec 223 — SmartAIHub ZCode External Harness Adapter"
@@ -117,7 +117,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.180434Z"
+    "updated_at": "2026-10-06T03:28:17.709032Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -127,7 +127,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.180434Z",
+    "reconciled_at": "2026-10-06T03:28:17.709032Z",
     "sources": [
       {
         "digest": "e64e0a641a1396c934bd6bb03e6557969c423001de897ee9deed1984b06f5e61",
@@ -195,7 +195,7 @@
     "unresolved": 417
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.180434Z",
+  "updated_at": "2026-10-06T03:28:17.709032Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

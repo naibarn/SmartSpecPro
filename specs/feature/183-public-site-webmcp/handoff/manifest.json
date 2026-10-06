@@ -17,32 +17,32 @@
       {
         "digest": "c382caf35cd18c876a237961bf16920af0d10a8179ee632a3a03323f4d564551",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/index.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/index.md"
       },
       {
         "digest": "821efb83a7b18a2eaacff119a71fdf89c6fb987b3c1f4ae3e368bc942853960f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-01-foundation.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-01-foundation.md"
       },
       {
         "digest": "2d31b7585bc16929d69e3fdb4ae6cbad2ecfd0cb21470009b63e41e471548f51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-02-public-content.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-02-public-content.md"
       },
       {
         "digest": "0721879fa081df97a5672d19dbf438cbf96e69894fe9499524019288f2de0a5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-03-marketplace.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-03-marketplace.md"
       },
       {
         "digest": "27f7a1865b66596d2611737e8a18c318e39eef6320329041168069baede744d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-04-contact.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-04-contact.md"
       },
       {
         "digest": "c1d10a45e5c1799238e3b62acec3eff52d8102f36c2d073d78440cc351a9e3a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-05-proof-rollout.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-05-proof-rollout.md"
       }
     ],
     "predecessors": [],
@@ -73,32 +73,32 @@
       {
         "digest": "c382caf35cd18c876a237961bf16920af0d10a8179ee632a3a03323f4d564551",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/index.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/index.md"
       },
       {
         "digest": "821efb83a7b18a2eaacff119a71fdf89c6fb987b3c1f4ae3e368bc942853960f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-01-foundation.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-01-foundation.md"
       },
       {
         "digest": "2d31b7585bc16929d69e3fdb4ae6cbad2ecfd0cb21470009b63e41e471548f51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-02-public-content.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-02-public-content.md"
       },
       {
         "digest": "0721879fa081df97a5672d19dbf438cbf96e69894fe9499524019288f2de0a5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-03-marketplace.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-03-marketplace.md"
       },
       {
         "digest": "27f7a1865b66596d2611737e8a18c318e39eef6320329041168069baede744d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-04-contact.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-04-contact.md"
       },
       {
         "digest": "c1d10a45e5c1799238e3b62acec3eff52d8102f36c2d073d78440cc351a9e3a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-05-proof-rollout.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-05-proof-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -130,44 +130,44 @@
       {
         "digest": "c382caf35cd18c876a237961bf16920af0d10a8179ee632a3a03323f4d564551",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/index.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/index.md"
       },
       {
         "digest": "821efb83a7b18a2eaacff119a71fdf89c6fb987b3c1f4ae3e368bc942853960f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-01-foundation.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-01-foundation.md"
       },
       {
         "digest": "2d31b7585bc16929d69e3fdb4ae6cbad2ecfd0cb21470009b63e41e471548f51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-02-public-content.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-02-public-content.md"
       },
       {
         "digest": "0721879fa081df97a5672d19dbf438cbf96e69894fe9499524019288f2de0a5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-03-marketplace.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-03-marketplace.md"
       },
       {
         "digest": "27f7a1865b66596d2611737e8a18c318e39eef6320329041168069baede744d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-04-contact.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-04-contact.md"
       },
       {
         "digest": "c1d10a45e5c1799238e3b62acec3eff52d8102f36c2d073d78440cc351a9e3a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-05-proof-rollout.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-05-proof-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/183-public-site-webmcp/spec.md",
     "digest": "71d90a0bbd49fbabc69b61dbbe2af1e3f327d0b2fa8f9195c6f1293696b5c195",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.567302Z",
+      "last_evidence_at": "2026-10-06T03:28:16.648732Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-13T07:28:45+07:00",
       "spec_last_changed_at": "2026-09-13T07:28:45+07:00"
@@ -194,7 +194,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.567302Z"
+    "updated_at": "2026-10-06T03:28:16.648732Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -204,7 +204,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.567302Z",
+    "reconciled_at": "2026-10-06T03:28:16.648732Z",
     "sources": [
       {
         "digest": "71d90a0bbd49fbabc69b61dbbe2af1e3f327d0b2fa8f9195c6f1293696b5c195",
@@ -214,32 +214,32 @@
       {
         "digest": "c382caf35cd18c876a237961bf16920af0d10a8179ee632a3a03323f4d564551",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/index.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/index.md"
       },
       {
         "digest": "821efb83a7b18a2eaacff119a71fdf89c6fb987b3c1f4ae3e368bc942853960f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-01-foundation.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-01-foundation.md"
       },
       {
         "digest": "2d31b7585bc16929d69e3fdb4ae6cbad2ecfd0cb21470009b63e41e471548f51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-02-public-content.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-02-public-content.md"
       },
       {
         "digest": "0721879fa081df97a5672d19dbf438cbf96e69894fe9499524019288f2de0a5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-03-marketplace.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-03-marketplace.md"
       },
       {
         "digest": "27f7a1865b66596d2611737e8a18c318e39eef6320329041168069baede744d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-04-contact.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-04-contact.md"
       },
       {
         "digest": "c1d10a45e5c1799238e3b62acec3eff52d8102f36c2d073d78440cc351a9e3a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-05-proof-rollout.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-05-proof-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -289,32 +289,32 @@
       {
         "digest": "c382caf35cd18c876a237961bf16920af0d10a8179ee632a3a03323f4d564551",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/index.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/index.md"
       },
       {
         "digest": "821efb83a7b18a2eaacff119a71fdf89c6fb987b3c1f4ae3e368bc942853960f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-01-foundation.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-01-foundation.md"
       },
       {
         "digest": "2d31b7585bc16929d69e3fdb4ae6cbad2ecfd0cb21470009b63e41e471548f51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-02-public-content.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-02-public-content.md"
       },
       {
         "digest": "0721879fa081df97a5672d19dbf438cbf96e69894fe9499524019288f2de0a5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-03-marketplace.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-03-marketplace.md"
       },
       {
         "digest": "27f7a1865b66596d2611737e8a18c318e39eef6320329041168069baede744d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-04-contact.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-04-contact.md"
       },
       {
         "digest": "c1d10a45e5c1799238e3b62acec3eff52d8102f36c2d073d78440cc351a9e3a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/183-public-site-webmcp/sections/section-05-proof-rollout.md"
+        "path": "specs/feature/183-public-site-webmcp/sections/section-05-proof-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -332,7 +332,7 @@
     "unresolved": 17
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.567302Z",
+  "updated_at": "2026-10-06T03:28:16.648732Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -14,7 +14,7 @@
         "referencing_spec_id": "254",
         "relation_text": "merging",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L341",
+        "source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L341",
         "source_digest": "2119f2c178a34009653a17dddded659d1bd25d0a6bc7b71dd545104009933b58",
         "successor_spec_id": "254"
       }
@@ -84,13 +84,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md",
     "digest": "2119f2c178a34009653a17dddded659d1bd25d0a6bc7b71dd545104009933b58",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.543823Z",
+      "last_evidence_at": "2026-10-06T03:28:18.325330Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-28T00:04:37+07:00",
       "spec_last_changed_at": "2026-09-28T00:04:37+07:00"
@@ -98,7 +98,7 @@
     "revision": "1.2",
     "slug": "254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution",
     "spec_id": "254",
-    "title": "Spec 254 — AI Film Studio: External Intelligence & Adaptive Execution"
+    "title": "SmartAIHub AI Film Studio — External Intelligence & Adaptive Execution"
   },
   "implementation": {
     "checkpoint_shas": [],
@@ -117,7 +117,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.543823Z"
+    "updated_at": "2026-10-06T03:28:18.325330Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -127,7 +127,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.543823Z",
+    "reconciled_at": "2026-10-06T03:28:18.325330Z",
     "sources": [
       {
         "digest": "2119f2c178a34009653a17dddded659d1bd25d0a6bc7b71dd545104009933b58",
@@ -195,7 +195,7 @@
     "unresolved": 94
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.543823Z",
+  "updated_at": "2026-10-06T03:28:18.325330Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

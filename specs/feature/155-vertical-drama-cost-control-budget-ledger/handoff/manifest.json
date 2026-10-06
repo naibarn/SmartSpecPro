@@ -71,18 +71,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/155-vertical-drama-cost-control-budget-ledger/spec.md",
     "digest": "4271bc3fa5724e72956dbb81d1491e6e168f5970cbf44aa0b2029edfc4b568d7",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.392477Z",
+      "last_evidence_at": "2026-10-06T03:28:16.340377Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-30T21:05:27+07:00",
       "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
     },
-    "revision": null,
+    "revision": "1.0.0",
     "slug": "155-vertical-drama-cost-control-budget-ledger",
     "spec_id": "155",
     "title": "Feature 155: Vertical Drama Cost Control, Budget Forecast, and Production Cost Ledger"
@@ -104,7 +104,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.392477Z"
+    "updated_at": "2026-10-06T03:28:16.340377Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,7 +114,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.392477Z",
+    "reconciled_at": "2026-10-06T03:28:16.340377Z",
     "sources": [
       {
         "digest": "4271bc3fa5724e72956dbb81d1491e6e168f5970cbf44aa0b2029edfc4b568d7",
@@ -182,7 +182,7 @@
     "unresolved": 114
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.392477Z",
+  "updated_at": "2026-10-06T03:28:16.340377Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

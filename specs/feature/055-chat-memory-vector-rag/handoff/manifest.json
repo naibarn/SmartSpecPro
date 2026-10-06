@@ -17,97 +17,97 @@
       {
         "digest": "16da3a053dfffa217d26b83bd23b3c7b4875c69f09a1d184ff25b5f62066088a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/claude-plan.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/claude-plan.md"
       },
       {
         "digest": "e5a7e0adfc96cfe74eed11a57139f4c51a9ea71914b6fa50ec07144a96547bf2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/claude-spec.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/claude-spec.md"
       },
       {
         "digest": "6c91b44eccc6373bc0603c44bb334e81bfc4b0e605ae74b739583660f524a9be",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/decision-log.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/decision-log.md"
       },
       {
         "digest": "23181a793f1ff8722d16637305c78339c43936f0fde24c78096ecf715ef66bb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/deep_implement_config.json"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/deep_implement_config.json"
       },
       {
         "digest": "2191e43780c3f512761dd1bb5d4bc72c6b14d8f2f31afad13cb1672e3b0c2a8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan-tdd.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan-tdd.md"
       },
       {
         "digest": "45a275c75aa0bac163f6f09a830e2025ec28357cf0c36d5fed39a96aa5de9287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan.md"
       },
       {
         "digest": "0d6797d7f6894414008880a444a015a8782d9c5d17e45a3009152e833e1bf470",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/request.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/request.md"
       },
       {
         "digest": "567df8967bcb0a6b780db926034625fc7bfd9e4beb885610d529cd2e67f016bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/research-notes.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/research-notes.md"
       },
       {
         "digest": "0cc0c570427f8d7f4e0299104186ffc2789de06f0b89a491a489cc196abdb187",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/index.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/index.md"
       },
       {
         "digest": "f5199fd965d35fcdbc94fcf2a1b8b28366afd4fbe95da0d1c3bd653e1de9ed27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-01-retrieval-policy.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-01-retrieval-policy.md"
       },
       {
         "digest": "ad2a93d7351ef9fdacaaa2979d378a1abcb7778457a1df70e943ad51e8805ccd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-02-context-assembly.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-02-context-assembly.md"
       },
       {
         "digest": "fafc75838212c36daa16631841e80dac763d0f009854862af175879ef9fc5594",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-03-writeback-and-rollout.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-03-writeback-and-rollout.md"
       },
       {
         "digest": "f68d97b5e8cb5d639379adab41d6e22b694c651267058754de8a2d88e20a55fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/reviews/self-review-round-1.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/reviews/self-review-round-1.md"
       },
       {
         "digest": "d48cbc0ac24265351b5ed2b4b89f9bdbb30dfa00c91561da2670ea34fb29d647",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/index.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/index.md"
       },
       {
         "digest": "ae436f7e578d03899c20940f72c6f578302d25fc4591c478a195a9633e9357e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-01-schema-migration.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-01-schema-migration.md"
       },
       {
         "digest": "db18b051cd70646e71530a2882183bb62561d44aa8eb4fa230e9c3e48e69c3c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-02-archive-service.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-02-archive-service.md"
       },
       {
         "digest": "10465e2bedab392e1384de30b879b829b8f4e086989eda81d538abc830c39d28",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-03-embedding-pipeline.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-03-embedding-pipeline.md"
       },
       {
         "digest": "3f2303c783399e6a89da6df2f7818b58cd9badd95088b76375ad4d570e911e19",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-04-fact-extractor.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-04-fact-extractor.md"
       },
       {
         "digest": "8229e6117c2f19d7cadd8b3155ddab0ca1494f08fa3a76e2839963ce09aad57b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-05-message-chunker.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-05-message-chunker.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "16da3a053dfffa217d26b83bd23b3c7b4875c69f09a1d184ff25b5f62066088a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/claude-plan.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/claude-plan.md"
       },
       {
         "digest": "e5a7e0adfc96cfe74eed11a57139f4c51a9ea71914b6fa50ec07144a96547bf2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/claude-spec.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/claude-spec.md"
       },
       {
         "digest": "6c91b44eccc6373bc0603c44bb334e81bfc4b0e605ae74b739583660f524a9be",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/decision-log.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/decision-log.md"
       },
       {
         "digest": "23181a793f1ff8722d16637305c78339c43936f0fde24c78096ecf715ef66bb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/deep_implement_config.json"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/deep_implement_config.json"
       },
       {
         "digest": "2191e43780c3f512761dd1bb5d4bc72c6b14d8f2f31afad13cb1672e3b0c2a8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan-tdd.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan-tdd.md"
       },
       {
         "digest": "45a275c75aa0bac163f6f09a830e2025ec28357cf0c36d5fed39a96aa5de9287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan.md"
       },
       {
         "digest": "0d6797d7f6894414008880a444a015a8782d9c5d17e45a3009152e833e1bf470",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/request.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/request.md"
       },
       {
         "digest": "567df8967bcb0a6b780db926034625fc7bfd9e4beb885610d529cd2e67f016bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/research-notes.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/research-notes.md"
       },
       {
         "digest": "0cc0c570427f8d7f4e0299104186ffc2789de06f0b89a491a489cc196abdb187",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/index.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/index.md"
       },
       {
         "digest": "f5199fd965d35fcdbc94fcf2a1b8b28366afd4fbe95da0d1c3bd653e1de9ed27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-01-retrieval-policy.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-01-retrieval-policy.md"
       },
       {
         "digest": "ad2a93d7351ef9fdacaaa2979d378a1abcb7778457a1df70e943ad51e8805ccd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-02-context-assembly.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-02-context-assembly.md"
       },
       {
         "digest": "fafc75838212c36daa16631841e80dac763d0f009854862af175879ef9fc5594",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-03-writeback-and-rollout.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-03-writeback-and-rollout.md"
       },
       {
         "digest": "f68d97b5e8cb5d639379adab41d6e22b694c651267058754de8a2d88e20a55fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/reviews/self-review-round-1.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/reviews/self-review-round-1.md"
       },
       {
         "digest": "d48cbc0ac24265351b5ed2b4b89f9bdbb30dfa00c91561da2670ea34fb29d647",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/index.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/index.md"
       },
       {
         "digest": "ae436f7e578d03899c20940f72c6f578302d25fc4591c478a195a9633e9357e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-01-schema-migration.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-01-schema-migration.md"
       },
       {
         "digest": "db18b051cd70646e71530a2882183bb62561d44aa8eb4fa230e9c3e48e69c3c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-02-archive-service.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-02-archive-service.md"
       },
       {
         "digest": "10465e2bedab392e1384de30b879b829b8f4e086989eda81d538abc830c39d28",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-03-embedding-pipeline.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-03-embedding-pipeline.md"
       },
       {
         "digest": "3f2303c783399e6a89da6df2f7818b58cd9badd95088b76375ad4d570e911e19",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-04-fact-extractor.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-04-fact-extractor.md"
       },
       {
         "digest": "8229e6117c2f19d7cadd8b3155ddab0ca1494f08fa3a76e2839963ce09aad57b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-05-message-chunker.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-05-message-chunker.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "16da3a053dfffa217d26b83bd23b3c7b4875c69f09a1d184ff25b5f62066088a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/claude-plan.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/claude-plan.md"
       },
       {
         "digest": "e5a7e0adfc96cfe74eed11a57139f4c51a9ea71914b6fa50ec07144a96547bf2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/claude-spec.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/claude-spec.md"
       },
       {
         "digest": "6c91b44eccc6373bc0603c44bb334e81bfc4b0e605ae74b739583660f524a9be",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/decision-log.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/decision-log.md"
       },
       {
         "digest": "23181a793f1ff8722d16637305c78339c43936f0fde24c78096ecf715ef66bb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/deep_implement_config.json"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/deep_implement_config.json"
       },
       {
         "digest": "2191e43780c3f512761dd1bb5d4bc72c6b14d8f2f31afad13cb1672e3b0c2a8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan-tdd.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan-tdd.md"
       },
       {
         "digest": "45a275c75aa0bac163f6f09a830e2025ec28357cf0c36d5fed39a96aa5de9287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan.md"
       },
       {
         "digest": "0d6797d7f6894414008880a444a015a8782d9c5d17e45a3009152e833e1bf470",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/request.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/request.md"
       },
       {
         "digest": "567df8967bcb0a6b780db926034625fc7bfd9e4beb885610d529cd2e67f016bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/research-notes.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/research-notes.md"
       },
       {
         "digest": "0cc0c570427f8d7f4e0299104186ffc2789de06f0b89a491a489cc196abdb187",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/index.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/index.md"
       },
       {
         "digest": "f5199fd965d35fcdbc94fcf2a1b8b28366afd4fbe95da0d1c3bd653e1de9ed27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-01-retrieval-policy.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-01-retrieval-policy.md"
       },
       {
         "digest": "ad2a93d7351ef9fdacaaa2979d378a1abcb7778457a1df70e943ad51e8805ccd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-02-context-assembly.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-02-context-assembly.md"
       },
       {
         "digest": "fafc75838212c36daa16631841e80dac763d0f009854862af175879ef9fc5594",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-03-writeback-and-rollout.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-03-writeback-and-rollout.md"
       },
       {
         "digest": "f68d97b5e8cb5d639379adab41d6e22b694c651267058754de8a2d88e20a55fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/reviews/self-review-round-1.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/reviews/self-review-round-1.md"
       },
       {
         "digest": "d48cbc0ac24265351b5ed2b4b89f9bdbb30dfa00c91561da2670ea34fb29d647",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/index.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/index.md"
       },
       {
         "digest": "ae436f7e578d03899c20940f72c6f578302d25fc4591c478a195a9633e9357e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-01-schema-migration.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-01-schema-migration.md"
       },
       {
         "digest": "db18b051cd70646e71530a2882183bb62561d44aa8eb4fa230e9c3e48e69c3c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-02-archive-service.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-02-archive-service.md"
       },
       {
         "digest": "10465e2bedab392e1384de30b879b829b8f4e086989eda81d538abc830c39d28",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-03-embedding-pipeline.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-03-embedding-pipeline.md"
       },
       {
         "digest": "3f2303c783399e6a89da6df2f7818b58cd9badd95088b76375ad4d570e911e19",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-04-fact-extractor.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-04-fact-extractor.md"
       },
       {
         "digest": "8229e6117c2f19d7cadd8b3155ddab0ca1494f08fa3a76e2839963ce09aad57b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-05-message-chunker.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-05-message-chunker.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/055-chat-memory-vector-rag/spec.md",
     "digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.688971Z",
+      "last_evidence_at": "2026-10-06T03:28:15.040167Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-03-27T07:08:29+07:00",
       "spec_last_changed_at": "2026-03-27T07:08:29+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.688971Z"
+    "updated_at": "2026-10-06T03:28:15.040167Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.688971Z",
+    "reconciled_at": "2026-10-06T03:28:15.040167Z",
     "sources": [
       {
         "digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
@@ -409,132 +409,132 @@
       {
         "digest": "16da3a053dfffa217d26b83bd23b3c7b4875c69f09a1d184ff25b5f62066088a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/claude-plan.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/claude-plan.md"
       },
       {
         "digest": "e5a7e0adfc96cfe74eed11a57139f4c51a9ea71914b6fa50ec07144a96547bf2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/claude-spec.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/claude-spec.md"
       },
       {
         "digest": "6c91b44eccc6373bc0603c44bb334e81bfc4b0e605ae74b739583660f524a9be",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/decision-log.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/decision-log.md"
       },
       {
         "digest": "23181a793f1ff8722d16637305c78339c43936f0fde24c78096ecf715ef66bb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/deep_implement_config.json"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/deep_implement_config.json"
       },
       {
         "digest": "2191e43780c3f512761dd1bb5d4bc72c6b14d8f2f31afad13cb1672e3b0c2a8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan-tdd.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan-tdd.md"
       },
       {
         "digest": "45a275c75aa0bac163f6f09a830e2025ec28357cf0c36d5fed39a96aa5de9287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan.md"
       },
       {
         "digest": "0d6797d7f6894414008880a444a015a8782d9c5d17e45a3009152e833e1bf470",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/request.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/request.md"
       },
       {
         "digest": "567df8967bcb0a6b780db926034625fc7bfd9e4beb885610d529cd2e67f016bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/research-notes.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/research-notes.md"
       },
       {
         "digest": "0cc0c570427f8d7f4e0299104186ffc2789de06f0b89a491a489cc196abdb187",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/index.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/index.md"
       },
       {
         "digest": "f5199fd965d35fcdbc94fcf2a1b8b28366afd4fbe95da0d1c3bd653e1de9ed27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-01-retrieval-policy.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-01-retrieval-policy.md"
       },
       {
         "digest": "ad2a93d7351ef9fdacaaa2979d378a1abcb7778457a1df70e943ad51e8805ccd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-02-context-assembly.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-02-context-assembly.md"
       },
       {
         "digest": "fafc75838212c36daa16631841e80dac763d0f009854862af175879ef9fc5594",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-03-writeback-and-rollout.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-03-writeback-and-rollout.md"
       },
       {
         "digest": "f68d97b5e8cb5d639379adab41d6e22b694c651267058754de8a2d88e20a55fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/reviews/self-review-round-1.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/reviews/self-review-round-1.md"
       },
       {
         "digest": "d48cbc0ac24265351b5ed2b4b89f9bdbb30dfa00c91561da2670ea34fb29d647",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/index.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/index.md"
       },
       {
         "digest": "ae436f7e578d03899c20940f72c6f578302d25fc4591c478a195a9633e9357e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-01-schema-migration.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-01-schema-migration.md"
       },
       {
         "digest": "db18b051cd70646e71530a2882183bb62561d44aa8eb4fa230e9c3e48e69c3c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-02-archive-service.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-02-archive-service.md"
       },
       {
         "digest": "10465e2bedab392e1384de30b879b829b8f4e086989eda81d538abc830c39d28",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-03-embedding-pipeline.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-03-embedding-pipeline.md"
       },
       {
         "digest": "3f2303c783399e6a89da6df2f7818b58cd9badd95088b76375ad4d570e911e19",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-04-fact-extractor.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-04-fact-extractor.md"
       },
       {
         "digest": "8229e6117c2f19d7cadd8b3155ddab0ca1494f08fa3a76e2839963ce09aad57b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-05-message-chunker.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-05-message-chunker.md"
       },
       {
         "digest": "17049ba6dccc4c96f41574f6dc46a9cae2735f95a0f168c0d3995fd94db850ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-06-smart-summarizer.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-06-smart-summarizer.md"
       },
       {
         "digest": "68611a969a0b03271a0d32e1b62e6d6d6d12e24b3ac390ee53a689eaaabc6ea3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-07-context-retrieval.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-07-context-retrieval.md"
       },
       {
         "digest": "843fad5dc94f1e65d939c0094e83592b054e44fe3d36219b1bf5d822d7da07a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-08-process-integration.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-08-process-integration.md"
       },
       {
         "digest": "664622ac921e8a499e4493f380471dbd0fc9cecc353280fb7e5cebfed6ed092b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-09-background-tasks.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-09-background-tasks.md"
       },
       {
         "digest": "cccbcabae107ea36ddca152112f3cafed6b20828c85214610a774c16318a58e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-10-trpc-endpoints.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-10-trpc-endpoints.md"
       },
       {
         "digest": "b93d63693bd9c100edf686f482a785af97a7fdc130d0319090b33ef34f7846f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-11-memory-panel-ui.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-11-memory-panel-ui.md"
       },
       {
         "digest": "ab0cd473df32d21ef3fba2ed7140544e62c7b900a2bcb7449fe07c61c9cb33ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-12-feature-flags-tests.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-12-feature-flags-tests.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -584,132 +584,132 @@
       {
         "digest": "16da3a053dfffa217d26b83bd23b3c7b4875c69f09a1d184ff25b5f62066088a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/claude-plan.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/claude-plan.md"
       },
       {
         "digest": "e5a7e0adfc96cfe74eed11a57139f4c51a9ea71914b6fa50ec07144a96547bf2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/claude-spec.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/claude-spec.md"
       },
       {
         "digest": "6c91b44eccc6373bc0603c44bb334e81bfc4b0e605ae74b739583660f524a9be",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/decision-log.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/decision-log.md"
       },
       {
         "digest": "23181a793f1ff8722d16637305c78339c43936f0fde24c78096ecf715ef66bb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/deep_implement_config.json"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/deep_implement_config.json"
       },
       {
         "digest": "2191e43780c3f512761dd1bb5d4bc72c6b14d8f2f31afad13cb1672e3b0c2a8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan-tdd.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan-tdd.md"
       },
       {
         "digest": "45a275c75aa0bac163f6f09a830e2025ec28357cf0c36d5fed39a96aa5de9287",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/implementation-plan.md"
       },
       {
         "digest": "0d6797d7f6894414008880a444a015a8782d9c5d17e45a3009152e833e1bf470",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/request.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/request.md"
       },
       {
         "digest": "567df8967bcb0a6b780db926034625fc7bfd9e4beb885610d529cd2e67f016bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/research-notes.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/research-notes.md"
       },
       {
         "digest": "0cc0c570427f8d7f4e0299104186ffc2789de06f0b89a491a489cc196abdb187",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/index.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/index.md"
       },
       {
         "digest": "f5199fd965d35fcdbc94fcf2a1b8b28366afd4fbe95da0d1c3bd653e1de9ed27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-01-retrieval-policy.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-01-retrieval-policy.md"
       },
       {
         "digest": "ad2a93d7351ef9fdacaaa2979d378a1abcb7778457a1df70e943ad51e8805ccd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-02-context-assembly.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-02-context-assembly.md"
       },
       {
         "digest": "fafc75838212c36daa16631841e80dac763d0f009854862af175879ef9fc5594",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/implementation/sections/section-03-writeback-and-rollout.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/implementation/sections/section-03-writeback-and-rollout.md"
       },
       {
         "digest": "f68d97b5e8cb5d639379adab41d6e22b694c651267058754de8a2d88e20a55fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/reviews/self-review-round-1.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/reviews/self-review-round-1.md"
       },
       {
         "digest": "d48cbc0ac24265351b5ed2b4b89f9bdbb30dfa00c91561da2670ea34fb29d647",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/index.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/index.md"
       },
       {
         "digest": "ae436f7e578d03899c20940f72c6f578302d25fc4591c478a195a9633e9357e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-01-schema-migration.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-01-schema-migration.md"
       },
       {
         "digest": "db18b051cd70646e71530a2882183bb62561d44aa8eb4fa230e9c3e48e69c3c8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-02-archive-service.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-02-archive-service.md"
       },
       {
         "digest": "10465e2bedab392e1384de30b879b829b8f4e086989eda81d538abc830c39d28",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-03-embedding-pipeline.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-03-embedding-pipeline.md"
       },
       {
         "digest": "3f2303c783399e6a89da6df2f7818b58cd9badd95088b76375ad4d570e911e19",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-04-fact-extractor.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-04-fact-extractor.md"
       },
       {
         "digest": "8229e6117c2f19d7cadd8b3155ddab0ca1494f08fa3a76e2839963ce09aad57b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-05-message-chunker.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-05-message-chunker.md"
       },
       {
         "digest": "17049ba6dccc4c96f41574f6dc46a9cae2735f95a0f168c0d3995fd94db850ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-06-smart-summarizer.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-06-smart-summarizer.md"
       },
       {
         "digest": "68611a969a0b03271a0d32e1b62e6d6d6d12e24b3ac390ee53a689eaaabc6ea3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-07-context-retrieval.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-07-context-retrieval.md"
       },
       {
         "digest": "843fad5dc94f1e65d939c0094e83592b054e44fe3d36219b1bf5d822d7da07a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-08-process-integration.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-08-process-integration.md"
       },
       {
         "digest": "664622ac921e8a499e4493f380471dbd0fc9cecc353280fb7e5cebfed6ed092b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-09-background-tasks.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-09-background-tasks.md"
       },
       {
         "digest": "cccbcabae107ea36ddca152112f3cafed6b20828c85214610a774c16318a58e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-10-trpc-endpoints.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-10-trpc-endpoints.md"
       },
       {
         "digest": "b93d63693bd9c100edf686f482a785af97a7fdc130d0319090b33ef34f7846f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-11-memory-panel-ui.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-11-memory-panel-ui.md"
       },
       {
         "digest": "ab0cd473df32d21ef3fba2ed7140544e62c7b900a2bcb7449fe07c61c9cb33ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/055-chat-memory-vector-rag/sections/section-12-feature-flags-tests.md"
+        "path": "specs/feature/055-chat-memory-vector-rag/sections/section-12-feature-flags-tests.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -727,7 +727,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.688971Z",
+  "updated_at": "2026-10-06T03:28:15.040167Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

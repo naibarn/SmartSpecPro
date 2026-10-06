@@ -12,6 +12,7 @@
         "kind": "DUPLICATE_SPEC_ID",
         "paths": [
           "specs/project/012-chat-agency-control-plane/requirements.deep-project/05-recurring-execution-and-notifications",
+          "specs/project/013-features-195-200/requirements.deep-project/05-feature-199-external-mcp-gateway",
           "specs/project/canonical-spec-handoff-reconciliation/05-workflow-lifecycle-integration"
         ]
       }
@@ -79,7 +80,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/project/013-features-195-200/requirements.deep-project/05-feature-199-external-mcp-gateway/spec.md",
     "digest": "a3c8ba15178bd400e4ce776f2d3861f3ae66dda580bcacdb5d2ca138f8868fa8",

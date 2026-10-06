@@ -1,0 +1,382 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "133",
+        "referenced_spec_id": "133",
+        "referencing_spec_id": "286",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md#L127",
+        "source_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "successor_spec_id": "286"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "133",
+        "referenced_spec_id": "133",
+        "referencing_spec_id": "286",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md#L2667",
+        "source_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "successor_spec_id": "286"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "256",
+        "referenced_spec_id": "256",
+        "referencing_spec_id": "286",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md#L2672",
+        "source_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "successor_spec_id": "286"
+      }
+    ],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
+      },
+      {
+        "digest": "bd957f83f420598b302b15396c61bb8e5f2b28da831b6e5b138e845cd713f69c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
+      },
+      {
+        "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+      },
+      {
+        "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/next-task-packet.md"
+      },
+      {
+        "digest": "d5acf9c26da19d2cf8a6ca7dca9d7bcb5b641807f07ced27d92078dc9af54fdf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
+      },
+      {
+        "digest": "eb06f7609f2cffc8a6e96df006117f39e3b7beb2e477f0c7d37886591861828f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/source-inventory.md"
+      },
+      {
+        "digest": "31183ade544f8248774b787485645bebc30d388b6d314ea576afed27c2491d96",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/work-packages-slo.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
+      },
+      {
+        "digest": "bd957f83f420598b302b15396c61bb8e5f2b28da831b6e5b138e845cd713f69c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
+      },
+      {
+        "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+      },
+      {
+        "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/next-task-packet.md"
+      },
+      {
+        "digest": "d5acf9c26da19d2cf8a6ca7dca9d7bcb5b641807f07ced27d92078dc9af54fdf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
+      },
+      {
+        "digest": "eb06f7609f2cffc8a6e96df006117f39e3b7beb2e477f0c7d37886591861828f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/source-inventory.md"
+      },
+      {
+        "digest": "31183ade544f8248774b787485645bebc30d388b6d314ea576afed27c2491d96",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/work-packages-slo.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
+      },
+      {
+        "digest": "bd957f83f420598b302b15396c61bb8e5f2b28da831b6e5b138e845cd713f69c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
+      },
+      {
+        "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+      },
+      {
+        "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/next-task-packet.md"
+      },
+      {
+        "digest": "d5acf9c26da19d2cf8a6ca7dca9d7bcb5b641807f07ced27d92078dc9af54fdf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
+      },
+      {
+        "digest": "eb06f7609f2cffc8a6e96df006117f39e3b7beb2e477f0c7d37886591861828f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/source-inventory.md"
+      },
+      {
+        "digest": "31183ade544f8248774b787485645bebc30d388b6d314ea576afed27c2491d96",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/work-packages-slo.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
+    "digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T03:28:18.966922Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-10-06T09:55:22+07:00",
+      "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
+    },
+    "revision": "1.7",
+    "slug": "286-agentic-video-production-creative-quality-runtime",
+    "spec_id": "286",
+    "title": "SmartAIHub Agentic Video Production & Creative Quality Runtime"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-06T03:28:18.966922Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T03:28:18.966922Z",
+    "sources": [
+      {
+        "digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
+      },
+      {
+        "digest": "bd957f83f420598b302b15396c61bb8e5f2b28da831b6e5b138e845cd713f69c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
+      },
+      {
+        "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+      },
+      {
+        "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/next-task-packet.md"
+      },
+      {
+        "digest": "d5acf9c26da19d2cf8a6ca7dca9d7bcb5b641807f07ced27d92078dc9af54fdf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
+      },
+      {
+        "digest": "eb06f7609f2cffc8a6e96df006117f39e3b7beb2e477f0c7d37886591861828f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/source-inventory.md"
+      },
+      {
+        "digest": "31183ade544f8248774b787485645bebc30d388b6d314ea576afed27c2491d96",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/work-packages-slo.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 7,
+        "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
+        "source_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "value": "ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION",
+        "line": 7,
+        "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
+        "source_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "value": "ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
+      },
+      {
+        "digest": "bd957f83f420598b302b15396c61bb8e5f2b28da831b6e5b138e845cd713f69c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
+      },
+      {
+        "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+      },
+      {
+        "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/next-task-packet.md"
+      },
+      {
+        "digest": "d5acf9c26da19d2cf8a6ca7dca9d7bcb5b641807f07ced27d92078dc9af54fdf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
+      },
+      {
+        "digest": "eb06f7609f2cffc8a6e96df006117f39e3b7beb2e477f0c7d37886591861828f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/source-inventory.md"
+      },
+      {
+        "digest": "31183ade544f8248774b787485645bebc30d388b6d314ea576afed27c2491d96",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/work-packages-slo.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 684,
+    "unresolved": 684
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T03:28:18.966922Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

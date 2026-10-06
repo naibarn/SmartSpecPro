@@ -17,82 +17,82 @@
       {
         "digest": "40600ab5bc15adbabe0176847201da8bf3aec55d9e5d0f7f10b1028c8ef6e84f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-plan.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-plan.md"
       },
       {
         "digest": "db93599e3b18cf40ecdbd7a12cc8abf767444506dc9b1bf70b10a0c3ea190fe0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-spec.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-spec.md"
       },
       {
         "digest": "2fc4ebc454957c8efc1d816530183ea717e9cb63abb12d8f99029d53a9ab8b9e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/deep_implement_config.json"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/deep_implement_config.json"
       },
       {
         "digest": "21eaf26fda1e5eb2428eb7ad33c4a5a86feeac4f2cca9d81f280b76f3cc1dde8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
       },
       {
         "digest": "0fe98ea78a03b66e1a784500703fadb620ce13aafbda6e044ca1ecb59b2178ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/usage.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/usage.md"
       },
       {
         "digest": "0e100292ee17d50e1b2462596e9f7427c3b574d70d45189c4f75d8bc20055653",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/cross-section-review-round-1.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/cross-section-review-round-1.md"
       },
       {
         "digest": "ff60c29717f8d562503f681326da1fd4664c07f2b9147b5d2e158ddb6b0926e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/self-review-round-1.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/self-review-round-1.md"
       },
       {
         "digest": "99bc16f46c6cbd1f8e87f743b6c0f488226c410a9c5fd92f505e9e37f918ceb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/index.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/index.md"
       },
       {
         "digest": "56a4c1618f72a797d1d720c87df458c28fdd0df847abd1d0b29b81985794085e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-01-transport-discovery.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-01-transport-discovery.md"
       },
       {
         "digest": "9e89829f4d7b314eaf0889dad79adfb99e2c844a7b0c7cb0f9f28478b08a96b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-02-registry-results.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-02-registry-results.md"
       },
       {
         "digest": "3d442c014cc2e44d0ee4d0d081818c3676395104ed8ccd652dd366588417157d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-03-resources-files.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-03-resources-files.md"
       },
       {
         "digest": "1c43f277bb7312e1ced7c623d59b5141ee1faf2177e6f522f09643c319812c9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-04-auth-oauth-security.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-04-auth-oauth-security.md"
       },
       {
         "digest": "c0f31b4b57d8e65c38e78848ba2782eef35c637d14e536002d1b31e26a09a854",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-05-jobs-credits-workers.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-05-jobs-credits-workers.md"
       },
       {
         "digest": "3fdd7b77282abb5d9b6f7b15d4b65b69b01b9248d352b1ae6fd7619553863610",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-06-observability-rollout.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-06-observability-rollout.md"
       },
       {
         "digest": "01e74335850b0b0d65eef95f9ed6e68b23960979169de400ffab787e986e0f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-07-test-matrix.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-07-test-matrix.md"
       },
       {
         "digest": "65a85d25674055efc46a16a690152bcc2165c1ff31c9c2c7defabeafe4e2cad5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-08-implementation-gates.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-08-implementation-gates.md"
       }
     ],
     "predecessors": [],
@@ -123,82 +123,82 @@
       {
         "digest": "40600ab5bc15adbabe0176847201da8bf3aec55d9e5d0f7f10b1028c8ef6e84f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-plan.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-plan.md"
       },
       {
         "digest": "db93599e3b18cf40ecdbd7a12cc8abf767444506dc9b1bf70b10a0c3ea190fe0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-spec.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-spec.md"
       },
       {
         "digest": "2fc4ebc454957c8efc1d816530183ea717e9cb63abb12d8f99029d53a9ab8b9e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/deep_implement_config.json"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/deep_implement_config.json"
       },
       {
         "digest": "21eaf26fda1e5eb2428eb7ad33c4a5a86feeac4f2cca9d81f280b76f3cc1dde8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
       },
       {
         "digest": "0fe98ea78a03b66e1a784500703fadb620ce13aafbda6e044ca1ecb59b2178ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/usage.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/usage.md"
       },
       {
         "digest": "0e100292ee17d50e1b2462596e9f7427c3b574d70d45189c4f75d8bc20055653",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/cross-section-review-round-1.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/cross-section-review-round-1.md"
       },
       {
         "digest": "ff60c29717f8d562503f681326da1fd4664c07f2b9147b5d2e158ddb6b0926e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/self-review-round-1.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/self-review-round-1.md"
       },
       {
         "digest": "99bc16f46c6cbd1f8e87f743b6c0f488226c410a9c5fd92f505e9e37f918ceb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/index.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/index.md"
       },
       {
         "digest": "56a4c1618f72a797d1d720c87df458c28fdd0df847abd1d0b29b81985794085e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-01-transport-discovery.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-01-transport-discovery.md"
       },
       {
         "digest": "9e89829f4d7b314eaf0889dad79adfb99e2c844a7b0c7cb0f9f28478b08a96b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-02-registry-results.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-02-registry-results.md"
       },
       {
         "digest": "3d442c014cc2e44d0ee4d0d081818c3676395104ed8ccd652dd366588417157d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-03-resources-files.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-03-resources-files.md"
       },
       {
         "digest": "1c43f277bb7312e1ced7c623d59b5141ee1faf2177e6f522f09643c319812c9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-04-auth-oauth-security.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-04-auth-oauth-security.md"
       },
       {
         "digest": "c0f31b4b57d8e65c38e78848ba2782eef35c637d14e536002d1b31e26a09a854",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-05-jobs-credits-workers.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-05-jobs-credits-workers.md"
       },
       {
         "digest": "3fdd7b77282abb5d9b6f7b15d4b65b69b01b9248d352b1ae6fd7619553863610",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-06-observability-rollout.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-06-observability-rollout.md"
       },
       {
         "digest": "01e74335850b0b0d65eef95f9ed6e68b23960979169de400ffab787e986e0f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-07-test-matrix.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-07-test-matrix.md"
       },
       {
         "digest": "65a85d25674055efc46a16a690152bcc2165c1ff31c9c2c7defabeafe4e2cad5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-08-implementation-gates.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-08-implementation-gates.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -230,99 +230,99 @@
       {
         "digest": "40600ab5bc15adbabe0176847201da8bf3aec55d9e5d0f7f10b1028c8ef6e84f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-plan.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-plan.md"
       },
       {
         "digest": "db93599e3b18cf40ecdbd7a12cc8abf767444506dc9b1bf70b10a0c3ea190fe0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-spec.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-spec.md"
       },
       {
         "digest": "2fc4ebc454957c8efc1d816530183ea717e9cb63abb12d8f99029d53a9ab8b9e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/deep_implement_config.json"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/deep_implement_config.json"
       },
       {
         "digest": "21eaf26fda1e5eb2428eb7ad33c4a5a86feeac4f2cca9d81f280b76f3cc1dde8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
       },
       {
         "digest": "0fe98ea78a03b66e1a784500703fadb620ce13aafbda6e044ca1ecb59b2178ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/usage.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/usage.md"
       },
       {
         "digest": "0e100292ee17d50e1b2462596e9f7427c3b574d70d45189c4f75d8bc20055653",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/cross-section-review-round-1.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/cross-section-review-round-1.md"
       },
       {
         "digest": "ff60c29717f8d562503f681326da1fd4664c07f2b9147b5d2e158ddb6b0926e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/self-review-round-1.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/self-review-round-1.md"
       },
       {
         "digest": "99bc16f46c6cbd1f8e87f743b6c0f488226c410a9c5fd92f505e9e37f918ceb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/index.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/index.md"
       },
       {
         "digest": "56a4c1618f72a797d1d720c87df458c28fdd0df847abd1d0b29b81985794085e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-01-transport-discovery.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-01-transport-discovery.md"
       },
       {
         "digest": "9e89829f4d7b314eaf0889dad79adfb99e2c844a7b0c7cb0f9f28478b08a96b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-02-registry-results.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-02-registry-results.md"
       },
       {
         "digest": "3d442c014cc2e44d0ee4d0d081818c3676395104ed8ccd652dd366588417157d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-03-resources-files.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-03-resources-files.md"
       },
       {
         "digest": "1c43f277bb7312e1ced7c623d59b5141ee1faf2177e6f522f09643c319812c9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-04-auth-oauth-security.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-04-auth-oauth-security.md"
       },
       {
         "digest": "c0f31b4b57d8e65c38e78848ba2782eef35c637d14e536002d1b31e26a09a854",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-05-jobs-credits-workers.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-05-jobs-credits-workers.md"
       },
       {
         "digest": "3fdd7b77282abb5d9b6f7b15d4b65b69b01b9248d352b1ae6fd7619553863610",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-06-observability-rollout.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-06-observability-rollout.md"
       },
       {
         "digest": "01e74335850b0b0d65eef95f9ed6e68b23960979169de400ffab787e986e0f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-07-test-matrix.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-07-test-matrix.md"
       },
       {
         "digest": "65a85d25674055efc46a16a690152bcc2165c1ff31c9c2c7defabeafe4e2cad5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-08-implementation-gates.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-08-implementation-gates.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md",
     "digest": "0e486c7b766df33ceb60986b15c3846f59a9ad0a65c02ed30ed8017f6cb4a8d2",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.325489Z",
+      "last_evidence_at": "2026-10-06T03:28:16.187594Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-19T02:18:53+07:00",
       "spec_last_changed_at": "2026-08-19T02:18:53+07:00"
     },
-    "revision": null,
+    "revision": "1.0.0",
     "slug": "146-smartaihub-mcp-server-v2-compatibility",
     "spec_id": "146",
     "title": "Feature 146: SmartAIHub MCP Server v2 Compatibility, Discovery, Resources, and Production Hardening"
@@ -344,7 +344,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.325489Z"
+    "updated_at": "2026-10-06T03:28:16.187594Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -354,7 +354,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.325489Z",
+    "reconciled_at": "2026-10-06T03:28:16.187594Z",
     "sources": [
       {
         "digest": "0e486c7b766df33ceb60986b15c3846f59a9ad0a65c02ed30ed8017f6cb4a8d2",
@@ -364,82 +364,82 @@
       {
         "digest": "40600ab5bc15adbabe0176847201da8bf3aec55d9e5d0f7f10b1028c8ef6e84f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-plan.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-plan.md"
       },
       {
         "digest": "db93599e3b18cf40ecdbd7a12cc8abf767444506dc9b1bf70b10a0c3ea190fe0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-spec.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-spec.md"
       },
       {
         "digest": "2fc4ebc454957c8efc1d816530183ea717e9cb63abb12d8f99029d53a9ab8b9e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/deep_implement_config.json"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/deep_implement_config.json"
       },
       {
         "digest": "21eaf26fda1e5eb2428eb7ad33c4a5a86feeac4f2cca9d81f280b76f3cc1dde8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
       },
       {
         "digest": "0fe98ea78a03b66e1a784500703fadb620ce13aafbda6e044ca1ecb59b2178ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/usage.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/usage.md"
       },
       {
         "digest": "0e100292ee17d50e1b2462596e9f7427c3b574d70d45189c4f75d8bc20055653",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/cross-section-review-round-1.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/cross-section-review-round-1.md"
       },
       {
         "digest": "ff60c29717f8d562503f681326da1fd4664c07f2b9147b5d2e158ddb6b0926e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/self-review-round-1.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/self-review-round-1.md"
       },
       {
         "digest": "99bc16f46c6cbd1f8e87f743b6c0f488226c410a9c5fd92f505e9e37f918ceb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/index.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/index.md"
       },
       {
         "digest": "56a4c1618f72a797d1d720c87df458c28fdd0df847abd1d0b29b81985794085e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-01-transport-discovery.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-01-transport-discovery.md"
       },
       {
         "digest": "9e89829f4d7b314eaf0889dad79adfb99e2c844a7b0c7cb0f9f28478b08a96b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-02-registry-results.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-02-registry-results.md"
       },
       {
         "digest": "3d442c014cc2e44d0ee4d0d081818c3676395104ed8ccd652dd366588417157d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-03-resources-files.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-03-resources-files.md"
       },
       {
         "digest": "1c43f277bb7312e1ced7c623d59b5141ee1faf2177e6f522f09643c319812c9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-04-auth-oauth-security.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-04-auth-oauth-security.md"
       },
       {
         "digest": "c0f31b4b57d8e65c38e78848ba2782eef35c637d14e536002d1b31e26a09a854",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-05-jobs-credits-workers.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-05-jobs-credits-workers.md"
       },
       {
         "digest": "3fdd7b77282abb5d9b6f7b15d4b65b69b01b9248d352b1ae6fd7619553863610",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-06-observability-rollout.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-06-observability-rollout.md"
       },
       {
         "digest": "01e74335850b0b0d65eef95f9ed6e68b23960979169de400ffab787e986e0f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-07-test-matrix.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-07-test-matrix.md"
       },
       {
         "digest": "65a85d25674055efc46a16a690152bcc2165c1ff31c9c2c7defabeafe4e2cad5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-08-implementation-gates.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-08-implementation-gates.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -489,82 +489,82 @@
       {
         "digest": "40600ab5bc15adbabe0176847201da8bf3aec55d9e5d0f7f10b1028c8ef6e84f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-plan.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-plan.md"
       },
       {
         "digest": "db93599e3b18cf40ecdbd7a12cc8abf767444506dc9b1bf70b10a0c3ea190fe0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-spec.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/claude-spec.md"
       },
       {
         "digest": "2fc4ebc454957c8efc1d816530183ea717e9cb63abb12d8f99029d53a9ab8b9e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/deep_implement_config.json"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/deep_implement_config.json"
       },
       {
         "digest": "21eaf26fda1e5eb2428eb7ad33c4a5a86feeac4f2cca9d81f280b76f3cc1dde8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
       },
       {
         "digest": "0fe98ea78a03b66e1a784500703fadb620ce13aafbda6e044ca1ecb59b2178ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/usage.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/usage.md"
       },
       {
         "digest": "0e100292ee17d50e1b2462596e9f7427c3b574d70d45189c4f75d8bc20055653",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/cross-section-review-round-1.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/cross-section-review-round-1.md"
       },
       {
         "digest": "ff60c29717f8d562503f681326da1fd4664c07f2b9147b5d2e158ddb6b0926e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/self-review-round-1.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/reviews/self-review-round-1.md"
       },
       {
         "digest": "99bc16f46c6cbd1f8e87f743b6c0f488226c410a9c5fd92f505e9e37f918ceb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/index.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/index.md"
       },
       {
         "digest": "56a4c1618f72a797d1d720c87df458c28fdd0df847abd1d0b29b81985794085e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-01-transport-discovery.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-01-transport-discovery.md"
       },
       {
         "digest": "9e89829f4d7b314eaf0889dad79adfb99e2c844a7b0c7cb0f9f28478b08a96b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-02-registry-results.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-02-registry-results.md"
       },
       {
         "digest": "3d442c014cc2e44d0ee4d0d081818c3676395104ed8ccd652dd366588417157d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-03-resources-files.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-03-resources-files.md"
       },
       {
         "digest": "1c43f277bb7312e1ced7c623d59b5141ee1faf2177e6f522f09643c319812c9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-04-auth-oauth-security.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-04-auth-oauth-security.md"
       },
       {
         "digest": "c0f31b4b57d8e65c38e78848ba2782eef35c637d14e536002d1b31e26a09a854",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-05-jobs-credits-workers.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-05-jobs-credits-workers.md"
       },
       {
         "digest": "3fdd7b77282abb5d9b6f7b15d4b65b69b01b9248d352b1ae6fd7619553863610",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-06-observability-rollout.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-06-observability-rollout.md"
       },
       {
         "digest": "01e74335850b0b0d65eef95f9ed6e68b23960979169de400ffab787e986e0f0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-07-test-matrix.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-07-test-matrix.md"
       },
       {
         "digest": "65a85d25674055efc46a16a690152bcc2165c1ff31c9c2c7defabeafe4e2cad5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-08-implementation-gates.md"
+        "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-08-implementation-gates.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -582,7 +582,7 @@
     "unresolved": 212
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.325489Z",
+  "updated_at": "2026-10-06T03:28:16.187594Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

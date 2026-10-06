@@ -17,72 +17,72 @@
       {
         "digest": "0112c584338167447545acf753c96332bd39b3c0d1c929a7be380ed68380a3d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/claude-plan.md"
+        "path": "specs/feature/025-AI-Layout-Generation/claude-plan.md"
       },
       {
         "digest": "a5f2ab6b5c64f90898bb23cfc6fcca242f4840c390938a4931255cb574f43a47",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/claude-spec.md"
+        "path": "specs/feature/025-AI-Layout-Generation/claude-spec.md"
       },
       {
         "digest": "024a5d28cd4b9927d982cb840c4c624807bfebc96b30f7aa61ef95de2294da1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/implementation/deep_implement_config.json"
+        "path": "specs/feature/025-AI-Layout-Generation/implementation/deep_implement_config.json"
       },
       {
         "digest": "a9920ece532c2acb7b4fc35f13ba9e8b969f410c3697d85dc83ef046319756ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/implementation/usage.md"
+        "path": "specs/feature/025-AI-Layout-Generation/implementation/usage.md"
       },
       {
         "digest": "537c9183f30ae1b552e2136a0c07058f794a55aa7a02ed039b7d19fa4990f656",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/reviews/iteration-1-opus.md"
+        "path": "specs/feature/025-AI-Layout-Generation/reviews/iteration-1-opus.md"
       },
       {
         "digest": "fa05247a2285f42144a75ae637905d18b0d8281484c6d9cca88eb6feb9d7a35c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/index.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/index.md"
       },
       {
         "digest": "deb04b89cd777bde4c218fb3ab012848a87cfd4c710668026490212057202deb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-01-shared-types-presets.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-01-shared-types-presets.md"
       },
       {
         "digest": "65e24f374fe2d3014ca6e41c4a6081c48f412f675e128c376462b40894a314e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-02-callllm-structured.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-02-callllm-structured.md"
       },
       {
         "digest": "4e960c4b689d8d7a75ffcd1d693277635e6637046c7f6db18f5a29464731f950",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-03-layout-engine.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-03-layout-engine.md"
       },
       {
         "digest": "9f5ffe564639f07979409b070b85383d518c5d35c01c501574d7ddb6c296ab67",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-04-error-codes-feature-flag.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-04-error-codes-feature-flag.md"
       },
       {
         "digest": "53fe7c050f741bf2b605600869b0147dfed5bb592d1c6bee6a1a6fcde7cbf2e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-05-built-in-skills.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-05-built-in-skills.md"
       },
       {
         "digest": "19fe6bc0987301788e21425f30c1f753c0f362e2e456f0b92769618fe2e52aa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-06-orchestrator.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-06-orchestrator.md"
       },
       {
         "digest": "797cf694f41fe5ed2641d653e4b65c2b4adc425d4bc3c6fc87e0571eccfd0923",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-07-trpc-router.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-07-trpc-router.md"
       },
       {
         "digest": "60d0851b1a06dc1ff4d558b61f0aa5b33a5c306ee8b3ba91f57cb2f6b1576d6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-08-frontend-modal.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-08-frontend-modal.md"
       }
     ],
     "predecessors": [],
@@ -113,72 +113,72 @@
       {
         "digest": "0112c584338167447545acf753c96332bd39b3c0d1c929a7be380ed68380a3d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/claude-plan.md"
+        "path": "specs/feature/025-AI-Layout-Generation/claude-plan.md"
       },
       {
         "digest": "a5f2ab6b5c64f90898bb23cfc6fcca242f4840c390938a4931255cb574f43a47",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/claude-spec.md"
+        "path": "specs/feature/025-AI-Layout-Generation/claude-spec.md"
       },
       {
         "digest": "024a5d28cd4b9927d982cb840c4c624807bfebc96b30f7aa61ef95de2294da1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/implementation/deep_implement_config.json"
+        "path": "specs/feature/025-AI-Layout-Generation/implementation/deep_implement_config.json"
       },
       {
         "digest": "a9920ece532c2acb7b4fc35f13ba9e8b969f410c3697d85dc83ef046319756ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/implementation/usage.md"
+        "path": "specs/feature/025-AI-Layout-Generation/implementation/usage.md"
       },
       {
         "digest": "537c9183f30ae1b552e2136a0c07058f794a55aa7a02ed039b7d19fa4990f656",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/reviews/iteration-1-opus.md"
+        "path": "specs/feature/025-AI-Layout-Generation/reviews/iteration-1-opus.md"
       },
       {
         "digest": "fa05247a2285f42144a75ae637905d18b0d8281484c6d9cca88eb6feb9d7a35c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/index.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/index.md"
       },
       {
         "digest": "deb04b89cd777bde4c218fb3ab012848a87cfd4c710668026490212057202deb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-01-shared-types-presets.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-01-shared-types-presets.md"
       },
       {
         "digest": "65e24f374fe2d3014ca6e41c4a6081c48f412f675e128c376462b40894a314e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-02-callllm-structured.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-02-callllm-structured.md"
       },
       {
         "digest": "4e960c4b689d8d7a75ffcd1d693277635e6637046c7f6db18f5a29464731f950",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-03-layout-engine.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-03-layout-engine.md"
       },
       {
         "digest": "9f5ffe564639f07979409b070b85383d518c5d35c01c501574d7ddb6c296ab67",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-04-error-codes-feature-flag.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-04-error-codes-feature-flag.md"
       },
       {
         "digest": "53fe7c050f741bf2b605600869b0147dfed5bb592d1c6bee6a1a6fcde7cbf2e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-05-built-in-skills.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-05-built-in-skills.md"
       },
       {
         "digest": "19fe6bc0987301788e21425f30c1f753c0f362e2e456f0b92769618fe2e52aa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-06-orchestrator.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-06-orchestrator.md"
       },
       {
         "digest": "797cf694f41fe5ed2641d653e4b65c2b4adc425d4bc3c6fc87e0571eccfd0923",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-07-trpc-router.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-07-trpc-router.md"
       },
       {
         "digest": "60d0851b1a06dc1ff4d558b61f0aa5b33a5c306ee8b3ba91f57cb2f6b1576d6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-08-frontend-modal.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-08-frontend-modal.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -210,89 +210,89 @@
       {
         "digest": "0112c584338167447545acf753c96332bd39b3c0d1c929a7be380ed68380a3d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/claude-plan.md"
+        "path": "specs/feature/025-AI-Layout-Generation/claude-plan.md"
       },
       {
         "digest": "a5f2ab6b5c64f90898bb23cfc6fcca242f4840c390938a4931255cb574f43a47",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/claude-spec.md"
+        "path": "specs/feature/025-AI-Layout-Generation/claude-spec.md"
       },
       {
         "digest": "024a5d28cd4b9927d982cb840c4c624807bfebc96b30f7aa61ef95de2294da1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/implementation/deep_implement_config.json"
+        "path": "specs/feature/025-AI-Layout-Generation/implementation/deep_implement_config.json"
       },
       {
         "digest": "a9920ece532c2acb7b4fc35f13ba9e8b969f410c3697d85dc83ef046319756ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/implementation/usage.md"
+        "path": "specs/feature/025-AI-Layout-Generation/implementation/usage.md"
       },
       {
         "digest": "537c9183f30ae1b552e2136a0c07058f794a55aa7a02ed039b7d19fa4990f656",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/reviews/iteration-1-opus.md"
+        "path": "specs/feature/025-AI-Layout-Generation/reviews/iteration-1-opus.md"
       },
       {
         "digest": "fa05247a2285f42144a75ae637905d18b0d8281484c6d9cca88eb6feb9d7a35c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/index.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/index.md"
       },
       {
         "digest": "deb04b89cd777bde4c218fb3ab012848a87cfd4c710668026490212057202deb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-01-shared-types-presets.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-01-shared-types-presets.md"
       },
       {
         "digest": "65e24f374fe2d3014ca6e41c4a6081c48f412f675e128c376462b40894a314e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-02-callllm-structured.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-02-callllm-structured.md"
       },
       {
         "digest": "4e960c4b689d8d7a75ffcd1d693277635e6637046c7f6db18f5a29464731f950",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-03-layout-engine.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-03-layout-engine.md"
       },
       {
         "digest": "9f5ffe564639f07979409b070b85383d518c5d35c01c501574d7ddb6c296ab67",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-04-error-codes-feature-flag.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-04-error-codes-feature-flag.md"
       },
       {
         "digest": "53fe7c050f741bf2b605600869b0147dfed5bb592d1c6bee6a1a6fcde7cbf2e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-05-built-in-skills.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-05-built-in-skills.md"
       },
       {
         "digest": "19fe6bc0987301788e21425f30c1f753c0f362e2e456f0b92769618fe2e52aa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-06-orchestrator.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-06-orchestrator.md"
       },
       {
         "digest": "797cf694f41fe5ed2641d653e4b65c2b4adc425d4bc3c6fc87e0571eccfd0923",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-07-trpc-router.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-07-trpc-router.md"
       },
       {
         "digest": "60d0851b1a06dc1ff4d558b61f0aa5b33a5c306ee8b3ba91f57cb2f6b1576d6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-08-frontend-modal.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-08-frontend-modal.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/025-AI-Layout-Generation/spec.md",
     "digest": "71747ce8800e759bfb3db58b5ac54b072ad561149b45ce5d76aca86202eb7e6b",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.481514Z",
+      "last_evidence_at": "2026-10-06T03:28:14.755993Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-02-28T15:37:20+07:00",
       "spec_last_changed_at": "2026-02-28T15:37:20+07:00"
     },
-    "revision": null,
+    "revision": "5.1",
     "slug": "025-AI-Layout-Generation",
     "spec_id": "025",
     "title": "Specification: AI Presentation Layout Auto-Generation (Gamma-Style)"
@@ -314,7 +314,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.481514Z"
+    "updated_at": "2026-10-06T03:28:14.755993Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -324,7 +324,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.481514Z",
+    "reconciled_at": "2026-10-06T03:28:14.755993Z",
     "sources": [
       {
         "digest": "71747ce8800e759bfb3db58b5ac54b072ad561149b45ce5d76aca86202eb7e6b",
@@ -334,72 +334,72 @@
       {
         "digest": "0112c584338167447545acf753c96332bd39b3c0d1c929a7be380ed68380a3d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/claude-plan.md"
+        "path": "specs/feature/025-AI-Layout-Generation/claude-plan.md"
       },
       {
         "digest": "a5f2ab6b5c64f90898bb23cfc6fcca242f4840c390938a4931255cb574f43a47",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/claude-spec.md"
+        "path": "specs/feature/025-AI-Layout-Generation/claude-spec.md"
       },
       {
         "digest": "024a5d28cd4b9927d982cb840c4c624807bfebc96b30f7aa61ef95de2294da1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/implementation/deep_implement_config.json"
+        "path": "specs/feature/025-AI-Layout-Generation/implementation/deep_implement_config.json"
       },
       {
         "digest": "a9920ece532c2acb7b4fc35f13ba9e8b969f410c3697d85dc83ef046319756ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/implementation/usage.md"
+        "path": "specs/feature/025-AI-Layout-Generation/implementation/usage.md"
       },
       {
         "digest": "537c9183f30ae1b552e2136a0c07058f794a55aa7a02ed039b7d19fa4990f656",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/reviews/iteration-1-opus.md"
+        "path": "specs/feature/025-AI-Layout-Generation/reviews/iteration-1-opus.md"
       },
       {
         "digest": "fa05247a2285f42144a75ae637905d18b0d8281484c6d9cca88eb6feb9d7a35c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/index.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/index.md"
       },
       {
         "digest": "deb04b89cd777bde4c218fb3ab012848a87cfd4c710668026490212057202deb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-01-shared-types-presets.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-01-shared-types-presets.md"
       },
       {
         "digest": "65e24f374fe2d3014ca6e41c4a6081c48f412f675e128c376462b40894a314e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-02-callllm-structured.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-02-callllm-structured.md"
       },
       {
         "digest": "4e960c4b689d8d7a75ffcd1d693277635e6637046c7f6db18f5a29464731f950",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-03-layout-engine.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-03-layout-engine.md"
       },
       {
         "digest": "9f5ffe564639f07979409b070b85383d518c5d35c01c501574d7ddb6c296ab67",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-04-error-codes-feature-flag.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-04-error-codes-feature-flag.md"
       },
       {
         "digest": "53fe7c050f741bf2b605600869b0147dfed5bb592d1c6bee6a1a6fcde7cbf2e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-05-built-in-skills.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-05-built-in-skills.md"
       },
       {
         "digest": "19fe6bc0987301788e21425f30c1f753c0f362e2e456f0b92769618fe2e52aa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-06-orchestrator.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-06-orchestrator.md"
       },
       {
         "digest": "797cf694f41fe5ed2641d653e4b65c2b4adc425d4bc3c6fc87e0571eccfd0923",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-07-trpc-router.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-07-trpc-router.md"
       },
       {
         "digest": "60d0851b1a06dc1ff4d558b61f0aa5b33a5c306ee8b3ba91f57cb2f6b1576d6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-08-frontend-modal.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-08-frontend-modal.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -665,72 +665,72 @@
       {
         "digest": "0112c584338167447545acf753c96332bd39b3c0d1c929a7be380ed68380a3d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/claude-plan.md"
+        "path": "specs/feature/025-AI-Layout-Generation/claude-plan.md"
       },
       {
         "digest": "a5f2ab6b5c64f90898bb23cfc6fcca242f4840c390938a4931255cb574f43a47",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/claude-spec.md"
+        "path": "specs/feature/025-AI-Layout-Generation/claude-spec.md"
       },
       {
         "digest": "024a5d28cd4b9927d982cb840c4c624807bfebc96b30f7aa61ef95de2294da1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/implementation/deep_implement_config.json"
+        "path": "specs/feature/025-AI-Layout-Generation/implementation/deep_implement_config.json"
       },
       {
         "digest": "a9920ece532c2acb7b4fc35f13ba9e8b969f410c3697d85dc83ef046319756ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/implementation/usage.md"
+        "path": "specs/feature/025-AI-Layout-Generation/implementation/usage.md"
       },
       {
         "digest": "537c9183f30ae1b552e2136a0c07058f794a55aa7a02ed039b7d19fa4990f656",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/reviews/iteration-1-opus.md"
+        "path": "specs/feature/025-AI-Layout-Generation/reviews/iteration-1-opus.md"
       },
       {
         "digest": "fa05247a2285f42144a75ae637905d18b0d8281484c6d9cca88eb6feb9d7a35c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/index.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/index.md"
       },
       {
         "digest": "deb04b89cd777bde4c218fb3ab012848a87cfd4c710668026490212057202deb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-01-shared-types-presets.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-01-shared-types-presets.md"
       },
       {
         "digest": "65e24f374fe2d3014ca6e41c4a6081c48f412f675e128c376462b40894a314e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-02-callllm-structured.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-02-callllm-structured.md"
       },
       {
         "digest": "4e960c4b689d8d7a75ffcd1d693277635e6637046c7f6db18f5a29464731f950",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-03-layout-engine.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-03-layout-engine.md"
       },
       {
         "digest": "9f5ffe564639f07979409b070b85383d518c5d35c01c501574d7ddb6c296ab67",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-04-error-codes-feature-flag.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-04-error-codes-feature-flag.md"
       },
       {
         "digest": "53fe7c050f741bf2b605600869b0147dfed5bb592d1c6bee6a1a6fcde7cbf2e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-05-built-in-skills.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-05-built-in-skills.md"
       },
       {
         "digest": "19fe6bc0987301788e21425f30c1f753c0f362e2e456f0b92769618fe2e52aa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-06-orchestrator.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-06-orchestrator.md"
       },
       {
         "digest": "797cf694f41fe5ed2641d653e4b65c2b4adc425d4bc3c6fc87e0571eccfd0923",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-07-trpc-router.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-07-trpc-router.md"
       },
       {
         "digest": "60d0851b1a06dc1ff4d558b61f0aa5b33a5c306ee8b3ba91f57cb2f6b1576d6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/025-AI-Layout-Generation/sections/section-08-frontend-modal.md"
+        "path": "specs/feature/025-AI-Layout-Generation/sections/section-08-frontend-modal.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -748,7 +748,7 @@
     "unresolved": 49
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.481514Z",
+  "updated_at": "2026-10-06T03:28:14.755993Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

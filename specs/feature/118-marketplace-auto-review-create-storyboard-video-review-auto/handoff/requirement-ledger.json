@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md#L197"
+        "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md#L197"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md#L197",
+      "authority_source": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md#L197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md#L283"
+        "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md#L283"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md#L283",
+      "authority_source": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md#L283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

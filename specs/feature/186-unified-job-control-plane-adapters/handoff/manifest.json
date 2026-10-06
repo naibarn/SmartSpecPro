@@ -14,7 +14,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L185",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L185",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2893",
+        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2893",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1259",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L1259",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1449",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L1449",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1524",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L1524",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -86,7 +86,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L441",
+        "source": "specs/feature/250-Development-Reliability/spec.md#L441",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -98,7 +98,7 @@
         "referencing_spec_id": "256",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
         "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "successor_spec_id": "256"
       },
@@ -107,12 +107,26 @@
         "direction": "SUCCESSOR_CANDIDATE",
         "predecessor_spec_id": "186",
         "referenced_spec_id": "186",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
+        "referencing_spec_id": "276",
+        "relation_text": "replacement",
+        "requirement_ids": [
+          "R2"
+        ],
+        "source": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md#L10",
+        "source_digest": "7ffdd84c990ae6353bc95e3c8710153a54e653633ab6454c8fbf67e681c828a0",
+        "successor_spec_id": "276"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "186",
+        "referenced_spec_id": "186",
+        "referencing_spec_id": "276",
+        "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
+        "source": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md#L2311",
+        "source_digest": "7ffdd84c990ae6353bc95e3c8710153a54e653633ab6454c8fbf67e681c828a0",
+        "successor_spec_id": "276"
       }
     ],
     "confidence": "UNRESOLVED",
@@ -126,97 +140,97 @@
       {
         "digest": "0700f666b149e81bf9a950f52eb52b9cefb14b2f6e3cda7407e8aea1b72f825e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/claude-plan.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/claude-plan.md"
       },
       {
         "digest": "64629867e46e0c3891b0a3f6f84c8cf226d266bc5cf3543abfdff870542d5341",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/claude-spec.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/claude-spec.md"
       },
       {
         "digest": "ecd9184a101f130db432e976f4b065d3f84249306a18c739a9da7993ca973d88",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
       },
       {
         "digest": "fc92a3950659ab5a39ce30371d8e4fc31753d8aaac901890ad4684045b50f8b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
       },
       {
         "digest": "b7c9fb1cfb2f40ed76d53ef61b1e546287f5c76f52001c514753e19b46cebe98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
       },
       {
         "digest": "59d419e16826dfd14f06f6ccd5893528d5dece65a32c508ce940e162fa1c24e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
       },
       {
         "digest": "afa399a629d049759b2b24466044abd00ac47c513e04a963c939daa7b78bbc9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
       },
       {
         "digest": "ff3040b8d8e5c56663a492e953bfe519b653ef31892839a0b99f5ec997efb9d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
       },
       {
         "digest": "97a959edf1d904ff248a4bfeb4da4dcb820d5f5b6af4d46215f28a5a5262f58f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
       },
       {
         "digest": "eb2bf72f413993dbe20c8f90cc57e30fe50e0c1edbb10534ec47e401a01c261b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
       },
       {
         "digest": "70d34fe8a8f6a44b8c326a08c8e7d7cb0dfe44a500cc9cd4cd8a54753cb8b53b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
       },
       {
         "digest": "0165fb83126fc36a8d3b3de7c2078ae2dcb0b5665a0945e08456da67847932ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
       },
       {
         "digest": "78c538e2e324c41e6df21ad394582f61d62b5e4a913de3e72c4d2e1fc96d5fee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
       },
       {
         "digest": "514657c942747abf7ba2234d8cb112d5922d687a9b7de10fce455a06a41d556e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/implementation/deep_implement_config.json"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/implementation/deep_implement_config.json"
       },
       {
         "digest": "c636958b5b72607d1a120217b5518aa1ea66c014e064bede898a31a37559e1d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/cloudflare-readiness-implementation-review-rounds-2026-09-14.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/cloudflare-readiness-implementation-review-rounds-2026-09-14.md"
       },
       {
         "digest": "56806c6c6d4b53fd49fcab8b3a2b1b4b7574a0d73b9cedb948957d1aef976362",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/cross-spec-187-189-review-rounds.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/cross-spec-187-189-review-rounds.md"
       },
       {
         "digest": "540d389b4c916fac92706e56d51a502c4f8f9d606853d2d0b42eb334384c0c75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-current.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-current.md"
       },
       {
         "digest": "c4f0d2803f404005075c975bf222d7a84fa9ee325ef71a9cdf138d12b95abb5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-final.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-final.md"
       },
       {
         "digest": "396b2103432f046256ff6af6f992527d7430386eefb673110f061445ae69d2df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-rerun.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-rerun.md"
       }
     ],
     "predecessors": [],
@@ -247,97 +261,97 @@
       {
         "digest": "0700f666b149e81bf9a950f52eb52b9cefb14b2f6e3cda7407e8aea1b72f825e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/claude-plan.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/claude-plan.md"
       },
       {
         "digest": "64629867e46e0c3891b0a3f6f84c8cf226d266bc5cf3543abfdff870542d5341",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/claude-spec.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/claude-spec.md"
       },
       {
         "digest": "ecd9184a101f130db432e976f4b065d3f84249306a18c739a9da7993ca973d88",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
       },
       {
         "digest": "fc92a3950659ab5a39ce30371d8e4fc31753d8aaac901890ad4684045b50f8b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
       },
       {
         "digest": "b7c9fb1cfb2f40ed76d53ef61b1e546287f5c76f52001c514753e19b46cebe98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
       },
       {
         "digest": "59d419e16826dfd14f06f6ccd5893528d5dece65a32c508ce940e162fa1c24e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
       },
       {
         "digest": "afa399a629d049759b2b24466044abd00ac47c513e04a963c939daa7b78bbc9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
       },
       {
         "digest": "ff3040b8d8e5c56663a492e953bfe519b653ef31892839a0b99f5ec997efb9d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
       },
       {
         "digest": "97a959edf1d904ff248a4bfeb4da4dcb820d5f5b6af4d46215f28a5a5262f58f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
       },
       {
         "digest": "eb2bf72f413993dbe20c8f90cc57e30fe50e0c1edbb10534ec47e401a01c261b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
       },
       {
         "digest": "70d34fe8a8f6a44b8c326a08c8e7d7cb0dfe44a500cc9cd4cd8a54753cb8b53b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
       },
       {
         "digest": "0165fb83126fc36a8d3b3de7c2078ae2dcb0b5665a0945e08456da67847932ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
       },
       {
         "digest": "78c538e2e324c41e6df21ad394582f61d62b5e4a913de3e72c4d2e1fc96d5fee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
       },
       {
         "digest": "514657c942747abf7ba2234d8cb112d5922d687a9b7de10fce455a06a41d556e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/implementation/deep_implement_config.json"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/implementation/deep_implement_config.json"
       },
       {
         "digest": "c636958b5b72607d1a120217b5518aa1ea66c014e064bede898a31a37559e1d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/cloudflare-readiness-implementation-review-rounds-2026-09-14.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/cloudflare-readiness-implementation-review-rounds-2026-09-14.md"
       },
       {
         "digest": "56806c6c6d4b53fd49fcab8b3a2b1b4b7574a0d73b9cedb948957d1aef976362",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/cross-spec-187-189-review-rounds.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/cross-spec-187-189-review-rounds.md"
       },
       {
         "digest": "540d389b4c916fac92706e56d51a502c4f8f9d606853d2d0b42eb334384c0c75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-current.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-current.md"
       },
       {
         "digest": "c4f0d2803f404005075c975bf222d7a84fa9ee325ef71a9cdf138d12b95abb5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-final.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-final.md"
       },
       {
         "digest": "396b2103432f046256ff6af6f992527d7430386eefb673110f061445ae69d2df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-rerun.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-rerun.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -369,109 +383,109 @@
       {
         "digest": "0700f666b149e81bf9a950f52eb52b9cefb14b2f6e3cda7407e8aea1b72f825e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/claude-plan.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/claude-plan.md"
       },
       {
         "digest": "64629867e46e0c3891b0a3f6f84c8cf226d266bc5cf3543abfdff870542d5341",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/claude-spec.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/claude-spec.md"
       },
       {
         "digest": "ecd9184a101f130db432e976f4b065d3f84249306a18c739a9da7993ca973d88",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
       },
       {
         "digest": "fc92a3950659ab5a39ce30371d8e4fc31753d8aaac901890ad4684045b50f8b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
       },
       {
         "digest": "b7c9fb1cfb2f40ed76d53ef61b1e546287f5c76f52001c514753e19b46cebe98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
       },
       {
         "digest": "59d419e16826dfd14f06f6ccd5893528d5dece65a32c508ce940e162fa1c24e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
       },
       {
         "digest": "afa399a629d049759b2b24466044abd00ac47c513e04a963c939daa7b78bbc9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
       },
       {
         "digest": "ff3040b8d8e5c56663a492e953bfe519b653ef31892839a0b99f5ec997efb9d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
       },
       {
         "digest": "97a959edf1d904ff248a4bfeb4da4dcb820d5f5b6af4d46215f28a5a5262f58f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
       },
       {
         "digest": "eb2bf72f413993dbe20c8f90cc57e30fe50e0c1edbb10534ec47e401a01c261b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
       },
       {
         "digest": "70d34fe8a8f6a44b8c326a08c8e7d7cb0dfe44a500cc9cd4cd8a54753cb8b53b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
       },
       {
         "digest": "0165fb83126fc36a8d3b3de7c2078ae2dcb0b5665a0945e08456da67847932ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
       },
       {
         "digest": "78c538e2e324c41e6df21ad394582f61d62b5e4a913de3e72c4d2e1fc96d5fee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
       },
       {
         "digest": "514657c942747abf7ba2234d8cb112d5922d687a9b7de10fce455a06a41d556e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/implementation/deep_implement_config.json"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/implementation/deep_implement_config.json"
       },
       {
         "digest": "c636958b5b72607d1a120217b5518aa1ea66c014e064bede898a31a37559e1d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/cloudflare-readiness-implementation-review-rounds-2026-09-14.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/cloudflare-readiness-implementation-review-rounds-2026-09-14.md"
       },
       {
         "digest": "56806c6c6d4b53fd49fcab8b3a2b1b4b7574a0d73b9cedb948957d1aef976362",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/cross-spec-187-189-review-rounds.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/cross-spec-187-189-review-rounds.md"
       },
       {
         "digest": "540d389b4c916fac92706e56d51a502c4f8f9d606853d2d0b42eb334384c0c75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-current.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-current.md"
       },
       {
         "digest": "c4f0d2803f404005075c975bf222d7a84fa9ee325ef71a9cdf138d12b95abb5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-final.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-final.md"
       },
       {
         "digest": "396b2103432f046256ff6af6f992527d7430386eefb673110f061445ae69d2df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-rerun.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-rerun.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/186-unified-job-control-plane-adapters/spec.md",
     "digest": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.593259Z",
+      "last_evidence_at": "2026-10-06T03:28:16.688136Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-13T07:28:45+07:00",
       "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
@@ -498,7 +512,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.593259Z"
+    "updated_at": "2026-10-06T03:28:16.688136Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -508,7 +522,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.593259Z",
+    "reconciled_at": "2026-10-06T03:28:16.688136Z",
     "sources": [
       {
         "digest": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
@@ -518,177 +532,177 @@
       {
         "digest": "0700f666b149e81bf9a950f52eb52b9cefb14b2f6e3cda7407e8aea1b72f825e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/claude-plan.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/claude-plan.md"
       },
       {
         "digest": "64629867e46e0c3891b0a3f6f84c8cf226d266bc5cf3543abfdff870542d5341",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/claude-spec.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/claude-spec.md"
       },
       {
         "digest": "ecd9184a101f130db432e976f4b065d3f84249306a18c739a9da7993ca973d88",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
       },
       {
         "digest": "fc92a3950659ab5a39ce30371d8e4fc31753d8aaac901890ad4684045b50f8b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
       },
       {
         "digest": "b7c9fb1cfb2f40ed76d53ef61b1e546287f5c76f52001c514753e19b46cebe98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
       },
       {
         "digest": "59d419e16826dfd14f06f6ccd5893528d5dece65a32c508ce940e162fa1c24e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
       },
       {
         "digest": "afa399a629d049759b2b24466044abd00ac47c513e04a963c939daa7b78bbc9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
       },
       {
         "digest": "ff3040b8d8e5c56663a492e953bfe519b653ef31892839a0b99f5ec997efb9d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
       },
       {
         "digest": "97a959edf1d904ff248a4bfeb4da4dcb820d5f5b6af4d46215f28a5a5262f58f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
       },
       {
         "digest": "eb2bf72f413993dbe20c8f90cc57e30fe50e0c1edbb10534ec47e401a01c261b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
       },
       {
         "digest": "70d34fe8a8f6a44b8c326a08c8e7d7cb0dfe44a500cc9cd4cd8a54753cb8b53b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
       },
       {
         "digest": "0165fb83126fc36a8d3b3de7c2078ae2dcb0b5665a0945e08456da67847932ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
       },
       {
         "digest": "78c538e2e324c41e6df21ad394582f61d62b5e4a913de3e72c4d2e1fc96d5fee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
       },
       {
         "digest": "514657c942747abf7ba2234d8cb112d5922d687a9b7de10fce455a06a41d556e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/implementation/deep_implement_config.json"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/implementation/deep_implement_config.json"
       },
       {
         "digest": "c636958b5b72607d1a120217b5518aa1ea66c014e064bede898a31a37559e1d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/cloudflare-readiness-implementation-review-rounds-2026-09-14.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/cloudflare-readiness-implementation-review-rounds-2026-09-14.md"
       },
       {
         "digest": "56806c6c6d4b53fd49fcab8b3a2b1b4b7574a0d73b9cedb948957d1aef976362",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/cross-spec-187-189-review-rounds.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/cross-spec-187-189-review-rounds.md"
       },
       {
         "digest": "540d389b4c916fac92706e56d51a502c4f8f9d606853d2d0b42eb334384c0c75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-current.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-current.md"
       },
       {
         "digest": "c4f0d2803f404005075c975bf222d7a84fa9ee325ef71a9cdf138d12b95abb5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-final.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-final.md"
       },
       {
         "digest": "396b2103432f046256ff6af6f992527d7430386eefb673110f061445ae69d2df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-rerun.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-rerun.md"
       },
       {
         "digest": "6a60e9ab270a1336cd325346aef19dfa88bb682530cb9864b31572835da9750d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-rounds-01-10.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-rounds-01-10.md"
       },
       {
         "digest": "f66727cda742f9197f5d634a204e5101607994f63a8efb52018be5f04fdd710a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/queued-job-audit-10-rounds-2026-09-14.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/queued-job-audit-10-rounds-2026-09-14.md"
       },
       {
         "digest": "d2e8d0694c8ff669f4611d6c9fd2c94471c61e06bd7f796ad744600bed753230",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/queued-job-stability-20-rounds-2026-09-14.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/queued-job-stability-20-rounds-2026-09-14.md"
       },
       {
         "digest": "afece4cc655e9195fa9014811cb2688f68ee3af5b1c857909b701238a3bbe7ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/self-review-round-1.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/self-review-round-1.md"
       },
       {
         "digest": "e98c29849bf6ba1cef65d898801223a38325714ea27bc6246f1d93ceea15b5c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/spec-plan-completeness-rounds-01-10.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/spec-plan-completeness-rounds-01-10.md"
       },
       {
         "digest": "8ff736e0e150e592f5f0f3e3cf4eccb10351ffe9251e6ea3287faf8b2a34e998",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/storyboard-generation-10-rounds-2026-09-15.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/storyboard-generation-10-rounds-2026-09-15.md"
       },
       {
         "digest": "f38d5e6c69336c2b5aa9b94b86699169550b3a304c8da919cdba5338ecaaa19d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/vectorize-readiness-review-rounds-2026-09-14.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/vectorize-readiness-review-rounds-2026-09-14.md"
       },
       {
         "digest": "932caa20a5a7f6b475b1fb613b376b2f4d549345659f5fb451873c8c58cea11c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/index.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/index.md"
       },
       {
         "digest": "caaaea81cea05792c07895ad7f69e3ebca0dd920e10ec00e242b001b51b5f33d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-01-contracts.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-01-contracts.md"
       },
       {
         "digest": "6fdc76c85e5888121dec98f07d0633d6ae0031b0adfafcb0fda83c4665d05c05",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-02-persistence-migration.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-02-persistence-migration.md"
       },
       {
         "digest": "e29f31eedadebc8df2a67f7a73530fd2641253c47133ffb460eb28139a0fb14f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-03-lifecycle-service.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-03-lifecycle-service.md"
       },
       {
         "digest": "d3a509bb8a6222be7c1fc0fce2089359a74780f91b3b12366fbd5a7dc3aa54d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-04-outbox-adapters.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-04-outbox-adapters.md"
       },
       {
         "digest": "228876db59e48312083b08413f7ae152857984a01070e1e0e0795106a74afba8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-05-runtime-reconciler.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-05-runtime-reconciler.md"
       },
       {
         "digest": "754909320de390fe4c16a2a07db1bdc622e0ef8d44480dc11730477628712466",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-06-monitor-security.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-06-monitor-security.md"
       },
       {
         "digest": "92a9fbc67889eb99bd35a669dc452a26aa38d0ffff506309ac064c8439db3754",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-07-python-celery-compatibility.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-07-python-celery-compatibility.md"
       },
       {
         "digest": "2b176e18a18cd0301fc7c762fb2aefb42e91b1dd3209574ebc8ce5bc0de7a4ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-08-verification-operations.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-08-verification-operations.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -738,177 +752,177 @@
       {
         "digest": "0700f666b149e81bf9a950f52eb52b9cefb14b2f6e3cda7407e8aea1b72f825e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/claude-plan.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/claude-plan.md"
       },
       {
         "digest": "64629867e46e0c3891b0a3f6f84c8cf226d266bc5cf3543abfdff870542d5341",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/claude-spec.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/claude-spec.md"
       },
       {
         "digest": "ecd9184a101f130db432e976f4b065d3f84249306a18c739a9da7993ca973d88",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-plan.md"
       },
       {
         "digest": "fc92a3950659ab5a39ce30371d8e4fc31753d8aaac901890ad4684045b50f8b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/claude-spec.md"
       },
       {
         "digest": "b7c9fb1cfb2f40ed76d53ef61b1e546287f5c76f52001c514753e19b46cebe98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/implementation/deep_implement_config.json"
       },
       {
         "digest": "59d419e16826dfd14f06f6ccd5893528d5dece65a32c508ce940e162fa1c24e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/reviews/ten-round-review.md"
       },
       {
         "digest": "afa399a629d049759b2b24466044abd00ac47c513e04a963c939daa7b78bbc9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/index.md"
       },
       {
         "digest": "ff3040b8d8e5c56663a492e953bfe519b653ef31892839a0b99f5ec997efb9d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-01-gateway-registry.md"
       },
       {
         "digest": "97a959edf1d904ff248a4bfeb4da4dcb820d5f5b6af4d46215f28a5a5262f58f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-02-outbox-runtime.md"
       },
       {
         "digest": "eb2bf72f413993dbe20c8f90cc57e30fe50e0c1edbb10534ec47e401a01c261b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-03-generic-consumers.md"
       },
       {
         "digest": "70d34fe8a8f6a44b8c326a08c8e7d7cb0dfe44a500cc9cd4cd8a54753cb8b53b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-04-node-wave.md"
       },
       {
         "digest": "0165fb83126fc36a8d3b3de7c2078ae2dcb0b5665a0945e08456da67847932ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-05-python-wave.md"
       },
       {
         "digest": "78c538e2e324c41e6df21ad394582f61d62b5e4a913de3e72c4d2e1fc96d5fee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
       },
       {
         "digest": "514657c942747abf7ba2234d8cb112d5922d687a9b7de10fce455a06a41d556e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/implementation/deep_implement_config.json"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/implementation/deep_implement_config.json"
       },
       {
         "digest": "c636958b5b72607d1a120217b5518aa1ea66c014e064bede898a31a37559e1d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/cloudflare-readiness-implementation-review-rounds-2026-09-14.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/cloudflare-readiness-implementation-review-rounds-2026-09-14.md"
       },
       {
         "digest": "56806c6c6d4b53fd49fcab8b3a2b1b4b7574a0d73b9cedb948957d1aef976362",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/cross-spec-187-189-review-rounds.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/cross-spec-187-189-review-rounds.md"
       },
       {
         "digest": "540d389b4c916fac92706e56d51a502c4f8f9d606853d2d0b42eb334384c0c75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-current.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-current.md"
       },
       {
         "digest": "c4f0d2803f404005075c975bf222d7a84fa9ee325ef71a9cdf138d12b95abb5c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-final.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-final.md"
       },
       {
         "digest": "396b2103432f046256ff6af6f992527d7430386eefb673110f061445ae69d2df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-rerun.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-review-rounds-rerun.md"
       },
       {
         "digest": "6a60e9ab270a1336cd325346aef19dfa88bb682530cb9864b31572835da9750d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-rounds-01-10.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/implementation-rounds-01-10.md"
       },
       {
         "digest": "f66727cda742f9197f5d634a204e5101607994f63a8efb52018be5f04fdd710a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/queued-job-audit-10-rounds-2026-09-14.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/queued-job-audit-10-rounds-2026-09-14.md"
       },
       {
         "digest": "d2e8d0694c8ff669f4611d6c9fd2c94471c61e06bd7f796ad744600bed753230",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/queued-job-stability-20-rounds-2026-09-14.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/queued-job-stability-20-rounds-2026-09-14.md"
       },
       {
         "digest": "afece4cc655e9195fa9014811cb2688f68ee3af5b1c857909b701238a3bbe7ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/self-review-round-1.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/self-review-round-1.md"
       },
       {
         "digest": "e98c29849bf6ba1cef65d898801223a38325714ea27bc6246f1d93ceea15b5c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/spec-plan-completeness-rounds-01-10.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/spec-plan-completeness-rounds-01-10.md"
       },
       {
         "digest": "8ff736e0e150e592f5f0f3e3cf4eccb10351ffe9251e6ea3287faf8b2a34e998",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/storyboard-generation-10-rounds-2026-09-15.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/storyboard-generation-10-rounds-2026-09-15.md"
       },
       {
         "digest": "f38d5e6c69336c2b5aa9b94b86699169550b3a304c8da919cdba5338ecaaa19d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/reviews/vectorize-readiness-review-rounds-2026-09-14.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/reviews/vectorize-readiness-review-rounds-2026-09-14.md"
       },
       {
         "digest": "932caa20a5a7f6b475b1fb613b376b2f4d549345659f5fb451873c8c58cea11c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/index.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/index.md"
       },
       {
         "digest": "caaaea81cea05792c07895ad7f69e3ebca0dd920e10ec00e242b001b51b5f33d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-01-contracts.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-01-contracts.md"
       },
       {
         "digest": "6fdc76c85e5888121dec98f07d0633d6ae0031b0adfafcb0fda83c4665d05c05",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-02-persistence-migration.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-02-persistence-migration.md"
       },
       {
         "digest": "e29f31eedadebc8df2a67f7a73530fd2641253c47133ffb460eb28139a0fb14f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-03-lifecycle-service.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-03-lifecycle-service.md"
       },
       {
         "digest": "d3a509bb8a6222be7c1fc0fce2089359a74780f91b3b12366fbd5a7dc3aa54d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-04-outbox-adapters.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-04-outbox-adapters.md"
       },
       {
         "digest": "228876db59e48312083b08413f7ae152857984a01070e1e0e0795106a74afba8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-05-runtime-reconciler.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-05-runtime-reconciler.md"
       },
       {
         "digest": "754909320de390fe4c16a2a07db1bdc622e0ef8d44480dc11730477628712466",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-06-monitor-security.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-06-monitor-security.md"
       },
       {
         "digest": "92a9fbc67889eb99bd35a669dc452a26aa38d0ffff506309ac064c8439db3754",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-07-python-celery-compatibility.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-07-python-celery-compatibility.md"
       },
       {
         "digest": "2b176e18a18cd0301fc7c762fb2aefb42e91b1dd3209574ebc8ce5bc0de7a4ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/186-unified-job-control-plane-adapters/sections/section-08-verification-operations.md"
+        "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-08-verification-operations.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -926,7 +940,7 @@
     "unresolved": 159
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.593259Z",
+  "updated_at": "2026-10-06T03:28:16.688136Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

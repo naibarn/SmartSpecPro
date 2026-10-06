@@ -14,7 +14,7 @@
         "referencing_spec_id": "216",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L75",
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L75",
         "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
         "successor_spec_id": "216"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
+        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "240",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L421",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L421",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "240",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       }
@@ -66,82 +66,82 @@
       {
         "digest": "71eee09b44a29446617108157e36098b97ec21d63a26b54fea0afdfda46b10e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/claude-plan.md"
+        "path": "specs/feature/214-node-type-contract-architecture/claude-plan.md"
       },
       {
         "digest": "d2efa5d94dca64b980df6777a555dde8d9e61c836f157bb233abdbcf8106b883",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/claude-spec.md"
+        "path": "specs/feature/214-node-type-contract-architecture/claude-spec.md"
       },
       {
         "digest": "618b43bfa785835aba7fec603243e4d2fabdc6b81dafe70059cca02456670f18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/implementation/deep_implement_config.json"
+        "path": "specs/feature/214-node-type-contract-architecture/implementation/deep_implement_config.json"
       },
       {
         "digest": "2c784ac7cfb05498f70d2494e32d305138dcca06f76acf5127da18a244538b92",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/implementation/usage.md"
+        "path": "specs/feature/214-node-type-contract-architecture/implementation/usage.md"
       },
       {
         "digest": "435ef745061fe7aeb306ed4aa06014c1337a861e31afcacf950b7ff837ff74fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/section-cross-consistency.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/section-cross-consistency.md"
       },
       {
         "digest": "8f7b64d944fecd3cd30b23a46093434b12323b4b1734df20d1ba2523d92a878d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/self-review-round-1.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/self-review-round-1.md"
       },
       {
         "digest": "73ac2d7bd9e519b72523431aa3890ca2811d89ebc43b0a7cc3b3db0f46680d21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/self-review-round-2.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/self-review-round-2.md"
       },
       {
         "digest": "374cc089d937143713a88c92ab2e97dcda648d10654363fe84c0ac7233c92684",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/index.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/index.md"
       },
       {
         "digest": "5f1bf3354a0c1a9712cebbecee966f35850fa63b4af5b79bd4090f1446660ef6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-01-manifest-contract.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-01-manifest-contract.md"
       },
       {
         "digest": "b9199142ac0610d2f20402332a2b8ac991adec45ba064072a677287163d4f76a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-02-registry-version-search.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-02-registry-version-search.md"
       },
       {
         "digest": "26847eff8b8e862b64afccecb36ff3c7c31d8bde47acaf0ed55cf755b8ca799f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-03-instance-projection-admission.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-03-instance-projection-admission.md"
       },
       {
         "digest": "3d497309a9e319357e9f175bd7eec1714b257fab92e81c2f1b0376f03bf87d7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-04-spec215-compiler-consumption.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-04-spec215-compiler-consumption.md"
       },
       {
         "digest": "88112f6e1061ca0b4005cb20e9ee9b3be06dd4076fd661c40cb654e4cf493a9e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-05-studio-adapter-boundary.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-05-studio-adapter-boundary.md"
       },
       {
         "digest": "f81cf80c99bb318a5006fba4454754fd946c64e84634415845be3c7b3bc972d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-06-ai-builder-canonical-selection.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-06-ai-builder-canonical-selection.md"
       },
       {
         "digest": "93e0f5350ea77d9a626836ec2173c430f826e69c1b0db585239ff37c985d91d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-07-extension-and-legacy-disposition.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-07-extension-and-legacy-disposition.md"
       },
       {
         "digest": "65ac4c958e154121a6aded3d0cbd6705fe9f0131352cbc273623613d2d02ea42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-08-r20-coverage-and-integration.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-08-r20-coverage-and-integration.md"
       }
     ],
     "predecessors": [],
@@ -172,82 +172,82 @@
       {
         "digest": "71eee09b44a29446617108157e36098b97ec21d63a26b54fea0afdfda46b10e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/claude-plan.md"
+        "path": "specs/feature/214-node-type-contract-architecture/claude-plan.md"
       },
       {
         "digest": "d2efa5d94dca64b980df6777a555dde8d9e61c836f157bb233abdbcf8106b883",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/claude-spec.md"
+        "path": "specs/feature/214-node-type-contract-architecture/claude-spec.md"
       },
       {
         "digest": "618b43bfa785835aba7fec603243e4d2fabdc6b81dafe70059cca02456670f18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/implementation/deep_implement_config.json"
+        "path": "specs/feature/214-node-type-contract-architecture/implementation/deep_implement_config.json"
       },
       {
         "digest": "2c784ac7cfb05498f70d2494e32d305138dcca06f76acf5127da18a244538b92",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/implementation/usage.md"
+        "path": "specs/feature/214-node-type-contract-architecture/implementation/usage.md"
       },
       {
         "digest": "435ef745061fe7aeb306ed4aa06014c1337a861e31afcacf950b7ff837ff74fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/section-cross-consistency.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/section-cross-consistency.md"
       },
       {
         "digest": "8f7b64d944fecd3cd30b23a46093434b12323b4b1734df20d1ba2523d92a878d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/self-review-round-1.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/self-review-round-1.md"
       },
       {
         "digest": "73ac2d7bd9e519b72523431aa3890ca2811d89ebc43b0a7cc3b3db0f46680d21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/self-review-round-2.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/self-review-round-2.md"
       },
       {
         "digest": "374cc089d937143713a88c92ab2e97dcda648d10654363fe84c0ac7233c92684",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/index.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/index.md"
       },
       {
         "digest": "5f1bf3354a0c1a9712cebbecee966f35850fa63b4af5b79bd4090f1446660ef6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-01-manifest-contract.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-01-manifest-contract.md"
       },
       {
         "digest": "b9199142ac0610d2f20402332a2b8ac991adec45ba064072a677287163d4f76a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-02-registry-version-search.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-02-registry-version-search.md"
       },
       {
         "digest": "26847eff8b8e862b64afccecb36ff3c7c31d8bde47acaf0ed55cf755b8ca799f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-03-instance-projection-admission.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-03-instance-projection-admission.md"
       },
       {
         "digest": "3d497309a9e319357e9f175bd7eec1714b257fab92e81c2f1b0376f03bf87d7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-04-spec215-compiler-consumption.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-04-spec215-compiler-consumption.md"
       },
       {
         "digest": "88112f6e1061ca0b4005cb20e9ee9b3be06dd4076fd661c40cb654e4cf493a9e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-05-studio-adapter-boundary.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-05-studio-adapter-boundary.md"
       },
       {
         "digest": "f81cf80c99bb318a5006fba4454754fd946c64e84634415845be3c7b3bc972d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-06-ai-builder-canonical-selection.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-06-ai-builder-canonical-selection.md"
       },
       {
         "digest": "93e0f5350ea77d9a626836ec2173c430f826e69c1b0db585239ff37c985d91d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-07-extension-and-legacy-disposition.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-07-extension-and-legacy-disposition.md"
       },
       {
         "digest": "65ac4c958e154121a6aded3d0cbd6705fe9f0131352cbc273623613d2d02ea42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-08-r20-coverage-and-integration.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-08-r20-coverage-and-integration.md"
       },
       {
         "excerpt": "it(\"compiles every registered Spec 214 core type without hidden type switches\", () => {",
@@ -335,99 +335,99 @@
       {
         "digest": "71eee09b44a29446617108157e36098b97ec21d63a26b54fea0afdfda46b10e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/claude-plan.md"
+        "path": "specs/feature/214-node-type-contract-architecture/claude-plan.md"
       },
       {
         "digest": "d2efa5d94dca64b980df6777a555dde8d9e61c836f157bb233abdbcf8106b883",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/claude-spec.md"
+        "path": "specs/feature/214-node-type-contract-architecture/claude-spec.md"
       },
       {
         "digest": "618b43bfa785835aba7fec603243e4d2fabdc6b81dafe70059cca02456670f18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/implementation/deep_implement_config.json"
+        "path": "specs/feature/214-node-type-contract-architecture/implementation/deep_implement_config.json"
       },
       {
         "digest": "2c784ac7cfb05498f70d2494e32d305138dcca06f76acf5127da18a244538b92",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/implementation/usage.md"
+        "path": "specs/feature/214-node-type-contract-architecture/implementation/usage.md"
       },
       {
         "digest": "435ef745061fe7aeb306ed4aa06014c1337a861e31afcacf950b7ff837ff74fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/section-cross-consistency.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/section-cross-consistency.md"
       },
       {
         "digest": "8f7b64d944fecd3cd30b23a46093434b12323b4b1734df20d1ba2523d92a878d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/self-review-round-1.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/self-review-round-1.md"
       },
       {
         "digest": "73ac2d7bd9e519b72523431aa3890ca2811d89ebc43b0a7cc3b3db0f46680d21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/self-review-round-2.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/self-review-round-2.md"
       },
       {
         "digest": "374cc089d937143713a88c92ab2e97dcda648d10654363fe84c0ac7233c92684",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/index.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/index.md"
       },
       {
         "digest": "5f1bf3354a0c1a9712cebbecee966f35850fa63b4af5b79bd4090f1446660ef6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-01-manifest-contract.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-01-manifest-contract.md"
       },
       {
         "digest": "b9199142ac0610d2f20402332a2b8ac991adec45ba064072a677287163d4f76a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-02-registry-version-search.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-02-registry-version-search.md"
       },
       {
         "digest": "26847eff8b8e862b64afccecb36ff3c7c31d8bde47acaf0ed55cf755b8ca799f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-03-instance-projection-admission.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-03-instance-projection-admission.md"
       },
       {
         "digest": "3d497309a9e319357e9f175bd7eec1714b257fab92e81c2f1b0376f03bf87d7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-04-spec215-compiler-consumption.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-04-spec215-compiler-consumption.md"
       },
       {
         "digest": "88112f6e1061ca0b4005cb20e9ee9b3be06dd4076fd661c40cb654e4cf493a9e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-05-studio-adapter-boundary.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-05-studio-adapter-boundary.md"
       },
       {
         "digest": "f81cf80c99bb318a5006fba4454754fd946c64e84634415845be3c7b3bc972d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-06-ai-builder-canonical-selection.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-06-ai-builder-canonical-selection.md"
       },
       {
         "digest": "93e0f5350ea77d9a626836ec2173c430f826e69c1b0db585239ff37c985d91d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-07-extension-and-legacy-disposition.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-07-extension-and-legacy-disposition.md"
       },
       {
         "digest": "65ac4c958e154121a6aded3d0cbd6705fe9f0131352cbc273623613d2d02ea42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-08-r20-coverage-and-integration.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-08-r20-coverage-and-integration.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/214-node-type-contract-architecture/spec.md",
     "digest": "88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.081293Z",
+      "last_evidence_at": "2026-10-06T03:28:17.530746Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-20T12:59:58+07:00",
       "spec_last_changed_at": "2026-09-26T09:18:01+07:00"
     },
-    "revision": "20",
+    "revision": "6",
     "slug": "214-node-type-contract-architecture",
     "spec_id": "214",
     "title": "Spec 214 — Canonical Node Type Contract Architecture v6"
@@ -449,7 +449,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.081293Z"
+    "updated_at": "2026-10-06T03:28:17.530746Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -459,7 +459,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.081293Z",
+    "reconciled_at": "2026-10-06T03:28:17.530746Z",
     "sources": [
       {
         "digest": "88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
@@ -469,82 +469,82 @@
       {
         "digest": "71eee09b44a29446617108157e36098b97ec21d63a26b54fea0afdfda46b10e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/claude-plan.md"
+        "path": "specs/feature/214-node-type-contract-architecture/claude-plan.md"
       },
       {
         "digest": "d2efa5d94dca64b980df6777a555dde8d9e61c836f157bb233abdbcf8106b883",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/claude-spec.md"
+        "path": "specs/feature/214-node-type-contract-architecture/claude-spec.md"
       },
       {
         "digest": "618b43bfa785835aba7fec603243e4d2fabdc6b81dafe70059cca02456670f18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/implementation/deep_implement_config.json"
+        "path": "specs/feature/214-node-type-contract-architecture/implementation/deep_implement_config.json"
       },
       {
         "digest": "2c784ac7cfb05498f70d2494e32d305138dcca06f76acf5127da18a244538b92",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/implementation/usage.md"
+        "path": "specs/feature/214-node-type-contract-architecture/implementation/usage.md"
       },
       {
         "digest": "435ef745061fe7aeb306ed4aa06014c1337a861e31afcacf950b7ff837ff74fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/section-cross-consistency.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/section-cross-consistency.md"
       },
       {
         "digest": "8f7b64d944fecd3cd30b23a46093434b12323b4b1734df20d1ba2523d92a878d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/self-review-round-1.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/self-review-round-1.md"
       },
       {
         "digest": "73ac2d7bd9e519b72523431aa3890ca2811d89ebc43b0a7cc3b3db0f46680d21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/self-review-round-2.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/self-review-round-2.md"
       },
       {
         "digest": "374cc089d937143713a88c92ab2e97dcda648d10654363fe84c0ac7233c92684",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/index.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/index.md"
       },
       {
         "digest": "5f1bf3354a0c1a9712cebbecee966f35850fa63b4af5b79bd4090f1446660ef6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-01-manifest-contract.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-01-manifest-contract.md"
       },
       {
         "digest": "b9199142ac0610d2f20402332a2b8ac991adec45ba064072a677287163d4f76a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-02-registry-version-search.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-02-registry-version-search.md"
       },
       {
         "digest": "26847eff8b8e862b64afccecb36ff3c7c31d8bde47acaf0ed55cf755b8ca799f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-03-instance-projection-admission.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-03-instance-projection-admission.md"
       },
       {
         "digest": "3d497309a9e319357e9f175bd7eec1714b257fab92e81c2f1b0376f03bf87d7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-04-spec215-compiler-consumption.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-04-spec215-compiler-consumption.md"
       },
       {
         "digest": "88112f6e1061ca0b4005cb20e9ee9b3be06dd4076fd661c40cb654e4cf493a9e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-05-studio-adapter-boundary.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-05-studio-adapter-boundary.md"
       },
       {
         "digest": "f81cf80c99bb318a5006fba4454754fd946c64e84634415845be3c7b3bc972d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-06-ai-builder-canonical-selection.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-06-ai-builder-canonical-selection.md"
       },
       {
         "digest": "93e0f5350ea77d9a626836ec2173c430f826e69c1b0db585239ff37c985d91d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-07-extension-and-legacy-disposition.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-07-extension-and-legacy-disposition.md"
       },
       {
         "digest": "65ac4c958e154121a6aded3d0cbd6705fe9f0131352cbc273623613d2d02ea42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-08-r20-coverage-and-integration.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-08-r20-coverage-and-integration.md"
       },
       {
         "excerpt": "it(\"compiles every registered Spec 214 core type without hidden type switches\", () => {",
@@ -923,82 +923,82 @@
       {
         "digest": "71eee09b44a29446617108157e36098b97ec21d63a26b54fea0afdfda46b10e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/claude-plan.md"
+        "path": "specs/feature/214-node-type-contract-architecture/claude-plan.md"
       },
       {
         "digest": "d2efa5d94dca64b980df6777a555dde8d9e61c836f157bb233abdbcf8106b883",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/claude-spec.md"
+        "path": "specs/feature/214-node-type-contract-architecture/claude-spec.md"
       },
       {
         "digest": "618b43bfa785835aba7fec603243e4d2fabdc6b81dafe70059cca02456670f18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/implementation/deep_implement_config.json"
+        "path": "specs/feature/214-node-type-contract-architecture/implementation/deep_implement_config.json"
       },
       {
         "digest": "2c784ac7cfb05498f70d2494e32d305138dcca06f76acf5127da18a244538b92",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/implementation/usage.md"
+        "path": "specs/feature/214-node-type-contract-architecture/implementation/usage.md"
       },
       {
         "digest": "435ef745061fe7aeb306ed4aa06014c1337a861e31afcacf950b7ff837ff74fb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/section-cross-consistency.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/section-cross-consistency.md"
       },
       {
         "digest": "8f7b64d944fecd3cd30b23a46093434b12323b4b1734df20d1ba2523d92a878d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/self-review-round-1.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/self-review-round-1.md"
       },
       {
         "digest": "73ac2d7bd9e519b72523431aa3890ca2811d89ebc43b0a7cc3b3db0f46680d21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/reviews/self-review-round-2.md"
+        "path": "specs/feature/214-node-type-contract-architecture/reviews/self-review-round-2.md"
       },
       {
         "digest": "374cc089d937143713a88c92ab2e97dcda648d10654363fe84c0ac7233c92684",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/index.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/index.md"
       },
       {
         "digest": "5f1bf3354a0c1a9712cebbecee966f35850fa63b4af5b79bd4090f1446660ef6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-01-manifest-contract.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-01-manifest-contract.md"
       },
       {
         "digest": "b9199142ac0610d2f20402332a2b8ac991adec45ba064072a677287163d4f76a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-02-registry-version-search.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-02-registry-version-search.md"
       },
       {
         "digest": "26847eff8b8e862b64afccecb36ff3c7c31d8bde47acaf0ed55cf755b8ca799f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-03-instance-projection-admission.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-03-instance-projection-admission.md"
       },
       {
         "digest": "3d497309a9e319357e9f175bd7eec1714b257fab92e81c2f1b0376f03bf87d7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-04-spec215-compiler-consumption.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-04-spec215-compiler-consumption.md"
       },
       {
         "digest": "88112f6e1061ca0b4005cb20e9ee9b3be06dd4076fd661c40cb654e4cf493a9e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-05-studio-adapter-boundary.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-05-studio-adapter-boundary.md"
       },
       {
         "digest": "f81cf80c99bb318a5006fba4454754fd946c64e84634415845be3c7b3bc972d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-06-ai-builder-canonical-selection.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-06-ai-builder-canonical-selection.md"
       },
       {
         "digest": "93e0f5350ea77d9a626836ec2173c430f826e69c1b0db585239ff37c985d91d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-07-extension-and-legacy-disposition.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-07-extension-and-legacy-disposition.md"
       },
       {
         "digest": "65ac4c958e154121a6aded3d0cbd6705fe9f0131352cbc273623613d2d02ea42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/214-node-type-contract-architecture/sections/section-08-r20-coverage-and-integration.md"
+        "path": "specs/feature/214-node-type-contract-architecture/sections/section-08-r20-coverage-and-integration.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -1016,7 +1016,7 @@
     "unresolved": 99
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.081293Z",
+  "updated_at": "2026-10-06T03:28:17.530746Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

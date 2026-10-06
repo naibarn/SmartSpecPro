@@ -17,97 +17,97 @@
       {
         "digest": "696bc7fa845e7f34e876e561ec0b9f737d0c1d79b037149e475b2734554392a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-plan.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-plan.md"
       },
       {
         "digest": "5ae812ab86488d309354422bdeb5b436be728540d08dc0620360b0d919360bba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-spec.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-spec.md"
       },
       {
         "digest": "f515e02dda1f1757caaa4825b9495614a2ce94aaf6ed64b0fd33a2ea135e8484",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/deep_implement_config.json"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/deep_implement_config.json"
       },
       {
         "digest": "17c1c85d2afa1a091416b4d9b648bc9968b818ca8f44f21fc11ba4f55d24719b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/usage.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/usage.md"
       },
       {
         "digest": "c23c9a73e8bfe889e1455757fc180dc2e57dc0790602515dee0c1accba46f278",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-round-6-vision-grounding.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-round-6-vision-grounding.md"
       },
       {
         "digest": "9bba8f5525f8b3ba28ba6cc829253f74b8987b425c15c5d7643f754694fbd732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-rounds-1-5.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-rounds-1-5.md"
       },
       {
         "digest": "8a2f3abfaf1e94a34eba76ee995250b7a75da9ae012fa71aae6b6e4b0ca966fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "bbcbfa80fef206ccb16359fcbad47aa554b8205e782234b9dbb63505ceadc52e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-2.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-2.md"
       },
       {
         "digest": "ad6c6f83d3510f63fcf2a6f3eaa63f5f8977d6a6fe63df9ebf56dd405494ce05",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/section-cross-consistency.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/section-cross-consistency.md"
       },
       {
         "digest": "b86808564eaf7fddfb4ef63614da285265809f91a356044f6b2fe4c5d0a32e62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-1.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-1.md"
       },
       {
         "digest": "2684bce988bcb3816daa50e56a8406904546b9fe70b4828bda2ff3c46d60b61b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-2.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-2.md"
       },
       {
         "digest": "7a4a2fa96932ffb17a5df1a261b74e7c92c026c2d8fd8b9aec22971e68020cf9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-21-34.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-21-34.md"
       },
       {
         "digest": "d5dcdf6fd3f4efd69e241d8a56710bb603aaa9d9724eca0e910b546439d7eca8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-3-20.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-3-20.md"
       },
       {
         "digest": "07314e00170c67de9073aa024b1f0694949d88673772b61b2101b65a6d28647b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-35-36.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-35-36.md"
       },
       {
         "digest": "827bf8645b8c995065087614828a9c51e87830841d1a4fd86b4e652d7467e374",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-37-48.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-37-48.md"
       },
       {
         "digest": "12c77e64e79c3f591b0819ff2f855efc63b11bf73a2b52591191c2b5f743550d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-49-52.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-49-52.md"
       },
       {
         "digest": "58f2d19341d7e4e01e8229ff90e1d56045fd58cad97a2e10ba11edc41047566c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/index.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/index.md"
       },
       {
         "digest": "c0a823f384ca7c89a9e115405ac70e744e008b0849120f05b53af870cdccec08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-01-variant-contract.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-01-variant-contract.md"
       },
       {
         "digest": "581525e5b2f9b7552ee796fa3feca7ef26add127b2fc925069af4b8608b5fa4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-02-enhanced-runtime-and-jobs.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-02-enhanced-runtime-and-jobs.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "696bc7fa845e7f34e876e561ec0b9f737d0c1d79b037149e475b2734554392a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-plan.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-plan.md"
       },
       {
         "digest": "5ae812ab86488d309354422bdeb5b436be728540d08dc0620360b0d919360bba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-spec.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-spec.md"
       },
       {
         "digest": "f515e02dda1f1757caaa4825b9495614a2ce94aaf6ed64b0fd33a2ea135e8484",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/deep_implement_config.json"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/deep_implement_config.json"
       },
       {
         "digest": "17c1c85d2afa1a091416b4d9b648bc9968b818ca8f44f21fc11ba4f55d24719b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/usage.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/usage.md"
       },
       {
         "digest": "c23c9a73e8bfe889e1455757fc180dc2e57dc0790602515dee0c1accba46f278",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-round-6-vision-grounding.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-round-6-vision-grounding.md"
       },
       {
         "digest": "9bba8f5525f8b3ba28ba6cc829253f74b8987b425c15c5d7643f754694fbd732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-rounds-1-5.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-rounds-1-5.md"
       },
       {
         "digest": "8a2f3abfaf1e94a34eba76ee995250b7a75da9ae012fa71aae6b6e4b0ca966fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "bbcbfa80fef206ccb16359fcbad47aa554b8205e782234b9dbb63505ceadc52e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-2.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-2.md"
       },
       {
         "digest": "ad6c6f83d3510f63fcf2a6f3eaa63f5f8977d6a6fe63df9ebf56dd405494ce05",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/section-cross-consistency.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/section-cross-consistency.md"
       },
       {
         "digest": "b86808564eaf7fddfb4ef63614da285265809f91a356044f6b2fe4c5d0a32e62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-1.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-1.md"
       },
       {
         "digest": "2684bce988bcb3816daa50e56a8406904546b9fe70b4828bda2ff3c46d60b61b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-2.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-2.md"
       },
       {
         "digest": "7a4a2fa96932ffb17a5df1a261b74e7c92c026c2d8fd8b9aec22971e68020cf9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-21-34.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-21-34.md"
       },
       {
         "digest": "d5dcdf6fd3f4efd69e241d8a56710bb603aaa9d9724eca0e910b546439d7eca8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-3-20.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-3-20.md"
       },
       {
         "digest": "07314e00170c67de9073aa024b1f0694949d88673772b61b2101b65a6d28647b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-35-36.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-35-36.md"
       },
       {
         "digest": "827bf8645b8c995065087614828a9c51e87830841d1a4fd86b4e652d7467e374",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-37-48.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-37-48.md"
       },
       {
         "digest": "12c77e64e79c3f591b0819ff2f855efc63b11bf73a2b52591191c2b5f743550d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-49-52.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-49-52.md"
       },
       {
         "digest": "58f2d19341d7e4e01e8229ff90e1d56045fd58cad97a2e10ba11edc41047566c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/index.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/index.md"
       },
       {
         "digest": "c0a823f384ca7c89a9e115405ac70e744e008b0849120f05b53af870cdccec08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-01-variant-contract.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-01-variant-contract.md"
       },
       {
         "digest": "581525e5b2f9b7552ee796fa3feca7ef26add127b2fc925069af4b8608b5fa4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-02-enhanced-runtime-and-jobs.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-02-enhanced-runtime-and-jobs.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,109 +260,109 @@
       {
         "digest": "696bc7fa845e7f34e876e561ec0b9f737d0c1d79b037149e475b2734554392a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-plan.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-plan.md"
       },
       {
         "digest": "5ae812ab86488d309354422bdeb5b436be728540d08dc0620360b0d919360bba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-spec.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-spec.md"
       },
       {
         "digest": "f515e02dda1f1757caaa4825b9495614a2ce94aaf6ed64b0fd33a2ea135e8484",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/deep_implement_config.json"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/deep_implement_config.json"
       },
       {
         "digest": "17c1c85d2afa1a091416b4d9b648bc9968b818ca8f44f21fc11ba4f55d24719b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/usage.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/usage.md"
       },
       {
         "digest": "c23c9a73e8bfe889e1455757fc180dc2e57dc0790602515dee0c1accba46f278",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-round-6-vision-grounding.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-round-6-vision-grounding.md"
       },
       {
         "digest": "9bba8f5525f8b3ba28ba6cc829253f74b8987b425c15c5d7643f754694fbd732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-rounds-1-5.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-rounds-1-5.md"
       },
       {
         "digest": "8a2f3abfaf1e94a34eba76ee995250b7a75da9ae012fa71aae6b6e4b0ca966fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "bbcbfa80fef206ccb16359fcbad47aa554b8205e782234b9dbb63505ceadc52e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-2.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-2.md"
       },
       {
         "digest": "ad6c6f83d3510f63fcf2a6f3eaa63f5f8977d6a6fe63df9ebf56dd405494ce05",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/section-cross-consistency.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/section-cross-consistency.md"
       },
       {
         "digest": "b86808564eaf7fddfb4ef63614da285265809f91a356044f6b2fe4c5d0a32e62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-1.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-1.md"
       },
       {
         "digest": "2684bce988bcb3816daa50e56a8406904546b9fe70b4828bda2ff3c46d60b61b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-2.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-2.md"
       },
       {
         "digest": "7a4a2fa96932ffb17a5df1a261b74e7c92c026c2d8fd8b9aec22971e68020cf9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-21-34.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-21-34.md"
       },
       {
         "digest": "d5dcdf6fd3f4efd69e241d8a56710bb603aaa9d9724eca0e910b546439d7eca8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-3-20.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-3-20.md"
       },
       {
         "digest": "07314e00170c67de9073aa024b1f0694949d88673772b61b2101b65a6d28647b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-35-36.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-35-36.md"
       },
       {
         "digest": "827bf8645b8c995065087614828a9c51e87830841d1a4fd86b4e652d7467e374",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-37-48.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-37-48.md"
       },
       {
         "digest": "12c77e64e79c3f591b0819ff2f855efc63b11bf73a2b52591191c2b5f743550d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-49-52.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-49-52.md"
       },
       {
         "digest": "58f2d19341d7e4e01e8229ff90e1d56045fd58cad97a2e10ba11edc41047566c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/index.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/index.md"
       },
       {
         "digest": "c0a823f384ca7c89a9e115405ac70e744e008b0849120f05b53af870cdccec08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-01-variant-contract.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-01-variant-contract.md"
       },
       {
         "digest": "581525e5b2f9b7552ee796fa3feca7ef26add127b2fc925069af4b8608b5fa4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-02-enhanced-runtime-and-jobs.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-02-enhanced-runtime-and-jobs.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md",
     "digest": "cfd5a138c657998688fab684b9c04ab156eacc3373190fb9bf3986c40992ac1c",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:00.509307Z",
+      "last_evidence_at": "2026-10-06T03:28:16.552353Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-03T09:03:20+07:00",
       "spec_last_changed_at": "2026-09-03T09:03:20+07:00"
@@ -389,7 +389,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:00.509307Z"
+    "updated_at": "2026-10-06T03:28:16.552353Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,7 +399,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:00.509307Z",
+    "reconciled_at": "2026-10-06T03:28:16.552353Z",
     "sources": [
       {
         "digest": "cfd5a138c657998688fab684b9c04ab156eacc3373190fb9bf3986c40992ac1c",
@@ -409,107 +409,107 @@
       {
         "digest": "696bc7fa845e7f34e876e561ec0b9f737d0c1d79b037149e475b2734554392a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-plan.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-plan.md"
       },
       {
         "digest": "5ae812ab86488d309354422bdeb5b436be728540d08dc0620360b0d919360bba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-spec.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-spec.md"
       },
       {
         "digest": "f515e02dda1f1757caaa4825b9495614a2ce94aaf6ed64b0fd33a2ea135e8484",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/deep_implement_config.json"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/deep_implement_config.json"
       },
       {
         "digest": "17c1c85d2afa1a091416b4d9b648bc9968b818ca8f44f21fc11ba4f55d24719b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/usage.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/usage.md"
       },
       {
         "digest": "c23c9a73e8bfe889e1455757fc180dc2e57dc0790602515dee0c1accba46f278",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-round-6-vision-grounding.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-round-6-vision-grounding.md"
       },
       {
         "digest": "9bba8f5525f8b3ba28ba6cc829253f74b8987b425c15c5d7643f754694fbd732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-rounds-1-5.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-rounds-1-5.md"
       },
       {
         "digest": "8a2f3abfaf1e94a34eba76ee995250b7a75da9ae012fa71aae6b6e4b0ca966fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "bbcbfa80fef206ccb16359fcbad47aa554b8205e782234b9dbb63505ceadc52e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-2.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-2.md"
       },
       {
         "digest": "ad6c6f83d3510f63fcf2a6f3eaa63f5f8977d6a6fe63df9ebf56dd405494ce05",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/section-cross-consistency.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/section-cross-consistency.md"
       },
       {
         "digest": "b86808564eaf7fddfb4ef63614da285265809f91a356044f6b2fe4c5d0a32e62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-1.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-1.md"
       },
       {
         "digest": "2684bce988bcb3816daa50e56a8406904546b9fe70b4828bda2ff3c46d60b61b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-2.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-2.md"
       },
       {
         "digest": "7a4a2fa96932ffb17a5df1a261b74e7c92c026c2d8fd8b9aec22971e68020cf9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-21-34.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-21-34.md"
       },
       {
         "digest": "d5dcdf6fd3f4efd69e241d8a56710bb603aaa9d9724eca0e910b546439d7eca8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-3-20.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-3-20.md"
       },
       {
         "digest": "07314e00170c67de9073aa024b1f0694949d88673772b61b2101b65a6d28647b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-35-36.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-35-36.md"
       },
       {
         "digest": "827bf8645b8c995065087614828a9c51e87830841d1a4fd86b4e652d7467e374",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-37-48.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-37-48.md"
       },
       {
         "digest": "12c77e64e79c3f591b0819ff2f855efc63b11bf73a2b52591191c2b5f743550d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-49-52.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-49-52.md"
       },
       {
         "digest": "58f2d19341d7e4e01e8229ff90e1d56045fd58cad97a2e10ba11edc41047566c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/index.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/index.md"
       },
       {
         "digest": "c0a823f384ca7c89a9e115405ac70e744e008b0849120f05b53af870cdccec08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-01-variant-contract.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-01-variant-contract.md"
       },
       {
         "digest": "581525e5b2f9b7552ee796fa3feca7ef26add127b2fc925069af4b8608b5fa4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-02-enhanced-runtime-and-jobs.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-02-enhanced-runtime-and-jobs.md"
       },
       {
         "digest": "980c76045a693e8d2ed02132f362f282eaaa83676bc17002c4388b963135870e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-03-storyboard-ui.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-03-storyboard-ui.md"
       },
       {
         "digest": "416bd31ccc5d2b10b4eba16e0445ccacb01597537b06c8eba41da0530ed0aa67",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-04-model-routing-rollout-and-proof.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-04-model-routing-rollout-and-proof.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -559,107 +559,107 @@
       {
         "digest": "696bc7fa845e7f34e876e561ec0b9f737d0c1d79b037149e475b2734554392a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-plan.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-plan.md"
       },
       {
         "digest": "5ae812ab86488d309354422bdeb5b436be728540d08dc0620360b0d919360bba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-spec.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/claude-spec.md"
       },
       {
         "digest": "f515e02dda1f1757caaa4825b9495614a2ce94aaf6ed64b0fd33a2ea135e8484",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/deep_implement_config.json"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/deep_implement_config.json"
       },
       {
         "digest": "17c1c85d2afa1a091416b4d9b648bc9968b818ca8f44f21fc11ba4f55d24719b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/usage.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/implementation/usage.md"
       },
       {
         "digest": "c23c9a73e8bfe889e1455757fc180dc2e57dc0790602515dee0c1accba46f278",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-round-6-vision-grounding.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-round-6-vision-grounding.md"
       },
       {
         "digest": "9bba8f5525f8b3ba28ba6cc829253f74b8987b425c15c5d7643f754694fbd732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-rounds-1-5.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/implementation-audit-rounds-1-5.md"
       },
       {
         "digest": "8a2f3abfaf1e94a34eba76ee995250b7a75da9ae012fa71aae6b6e4b0ca966fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-1.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-1.md"
       },
       {
         "digest": "bbcbfa80fef206ccb16359fcbad47aa554b8205e782234b9dbb63505ceadc52e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-2.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/plan-self-review-round-2.md"
       },
       {
         "digest": "ad6c6f83d3510f63fcf2a6f3eaa63f5f8977d6a6fe63df9ebf56dd405494ce05",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/section-cross-consistency.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/section-cross-consistency.md"
       },
       {
         "digest": "b86808564eaf7fddfb4ef63614da285265809f91a356044f6b2fe4c5d0a32e62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-1.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-1.md"
       },
       {
         "digest": "2684bce988bcb3816daa50e56a8406904546b9fe70b4828bda2ff3c46d60b61b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-2.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-round-2.md"
       },
       {
         "digest": "7a4a2fa96932ffb17a5df1a261b74e7c92c026c2d8fd8b9aec22971e68020cf9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-21-34.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-21-34.md"
       },
       {
         "digest": "d5dcdf6fd3f4efd69e241d8a56710bb603aaa9d9724eca0e910b546439d7eca8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-3-20.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-3-20.md"
       },
       {
         "digest": "07314e00170c67de9073aa024b1f0694949d88673772b61b2101b65a6d28647b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-35-36.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-35-36.md"
       },
       {
         "digest": "827bf8645b8c995065087614828a9c51e87830841d1a4fd86b4e652d7467e374",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-37-48.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-37-48.md"
       },
       {
         "digest": "12c77e64e79c3f591b0819ff2f855efc63b11bf73a2b52591191c2b5f743550d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-49-52.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/reviews/self-review-rounds-49-52.md"
       },
       {
         "digest": "58f2d19341d7e4e01e8229ff90e1d56045fd58cad97a2e10ba11edc41047566c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/index.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/index.md"
       },
       {
         "digest": "c0a823f384ca7c89a9e115405ac70e744e008b0849120f05b53af870cdccec08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-01-variant-contract.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-01-variant-contract.md"
       },
       {
         "digest": "581525e5b2f9b7552ee796fa3feca7ef26add127b2fc925069af4b8608b5fa4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-02-enhanced-runtime-and-jobs.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-02-enhanced-runtime-and-jobs.md"
       },
       {
         "digest": "980c76045a693e8d2ed02132f362f282eaaa83676bc17002c4388b963135870e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-03-storyboard-ui.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-03-storyboard-ui.md"
       },
       {
         "digest": "416bd31ccc5d2b10b4eba16e0445ccacb01597537b06c8eba41da0530ed0aa67",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-04-model-routing-rollout-and-proof.md"
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-04-model-routing-rollout-and-proof.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -677,7 +677,7 @@
     "unresolved": 192
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:00.509307Z",
+  "updated_at": "2026-10-06T03:28:16.552353Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

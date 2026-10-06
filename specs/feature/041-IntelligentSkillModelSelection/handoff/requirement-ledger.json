@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L13"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L13"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L13",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L13",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L20"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L20"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L20",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L20",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L21"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L21"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L21",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L21",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L22"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L22"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L22",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L22",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L23"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L23"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L23",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L23",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L28"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L28"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L28",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L28",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L29"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L29"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L29",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L30"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L30"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L30",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L30",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L31"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L31"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L31",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L36"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L36"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L36",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L36",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L37"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L37"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L37",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L38"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L38"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L38",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L38",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L39"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L39"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L39",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L39",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L40"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L40"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L40",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L40",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L46"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L46"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L46",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L47"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L47"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L47",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L47",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L48"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L48"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L48",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L49"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L49"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L49",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L49",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L50"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L50"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L50",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L66"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L66"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L66",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L69"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L69"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L69",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L70"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L70"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L70",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L75"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L75"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L75",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L76"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L76"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L76",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L76",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L77"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L77"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L77",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L77",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L78"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L78"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L78",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L79"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L79"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L79",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L80"
+        "specs/feature/041-IntelligentSkillModelSelection/spec.md#L80"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/041-IntelligentSkillModelSelection/spec.md#L80",
+      "authority_source": "specs/feature/041-IntelligentSkillModelSelection/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

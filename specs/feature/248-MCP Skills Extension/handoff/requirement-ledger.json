@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L19"
+        "specs/feature/248-MCP Skills Extension/spec.md#L19"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L19",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L19",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L21"
+        "specs/feature/248-MCP Skills Extension/spec.md#L21"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L21",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L21",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L27"
+        "specs/feature/248-MCP Skills Extension/spec.md#L27"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L27",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L27",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L29"
+        "specs/feature/248-MCP Skills Extension/spec.md#L29"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L29",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L36"
+        "specs/feature/248-MCP Skills Extension/spec.md#L36"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L36",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L36",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L37"
+        "specs/feature/248-MCP Skills Extension/spec.md#L37"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L37",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L47"
+        "specs/feature/248-MCP Skills Extension/spec.md#L47"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L47",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L47",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L49"
+        "specs/feature/248-MCP Skills Extension/spec.md#L49"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L49",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L49",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L51"
+        "specs/feature/248-MCP Skills Extension/spec.md#L51"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L51",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L56"
+        "specs/feature/248-MCP Skills Extension/spec.md#L56"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L56",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L56",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L58"
+        "specs/feature/248-MCP Skills Extension/spec.md#L58"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L58",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L60"
+        "specs/feature/248-MCP Skills Extension/spec.md#L60"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L60",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L60",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L108"
+        "specs/feature/248-MCP Skills Extension/spec.md#L108"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L108",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L112"
+        "specs/feature/248-MCP Skills Extension/spec.md#L112"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L112",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L117"
+        "specs/feature/248-MCP Skills Extension/spec.md#L117"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L117",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L120"
+        "specs/feature/248-MCP Skills Extension/spec.md#L120"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L120",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L120",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L125"
+        "specs/feature/248-MCP Skills Extension/spec.md#L125"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L125",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L133"
+        "specs/feature/248-MCP Skills Extension/spec.md#L133"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L133",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L137"
+        "specs/feature/248-MCP Skills Extension/spec.md#L137"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L137",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L139"
+        "specs/feature/248-MCP Skills Extension/spec.md#L139"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L139",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L143"
+        "specs/feature/248-MCP Skills Extension/spec.md#L143"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L143",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L151"
+        "specs/feature/248-MCP Skills Extension/spec.md#L151"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L151",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L182"
+        "specs/feature/248-MCP Skills Extension/spec.md#L182"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L182",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L188"
+        "specs/feature/248-MCP Skills Extension/spec.md#L188"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L188",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L194"
+        "specs/feature/248-MCP Skills Extension/spec.md#L194"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L194",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L196"
+        "specs/feature/248-MCP Skills Extension/spec.md#L196"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L196",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L196",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L205"
+        "specs/feature/248-MCP Skills Extension/spec.md#L205"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L205",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L211"
+        "specs/feature/248-MCP Skills Extension/spec.md#L211"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L211",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L213"
+        "specs/feature/248-MCP Skills Extension/spec.md#L213"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L213",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L217"
+        "specs/feature/248-MCP Skills Extension/spec.md#L217"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L217",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L219"
+        "specs/feature/248-MCP Skills Extension/spec.md#L219"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L219",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L227"
+        "specs/feature/248-MCP Skills Extension/spec.md#L227"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L227",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L246"
+        "specs/feature/248-MCP Skills Extension/spec.md#L246"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L246",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L248"
+        "specs/feature/248-MCP Skills Extension/spec.md#L248"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L248",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L250"
+        "specs/feature/248-MCP Skills Extension/spec.md#L250"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L250",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L251"
+        "specs/feature/248-MCP Skills Extension/spec.md#L251"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L251",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L252"
+        "specs/feature/248-MCP Skills Extension/spec.md#L252"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L252",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L252",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L253"
+        "specs/feature/248-MCP Skills Extension/spec.md#L253"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L253",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L253",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L254"
+        "specs/feature/248-MCP Skills Extension/spec.md#L254"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L254",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L255"
+        "specs/feature/248-MCP Skills Extension/spec.md#L255"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L255",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L256"
+        "specs/feature/248-MCP Skills Extension/spec.md#L256"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L256",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L257"
+        "specs/feature/248-MCP Skills Extension/spec.md#L257"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L257",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L258"
+        "specs/feature/248-MCP Skills Extension/spec.md#L258"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L258",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L259"
+        "specs/feature/248-MCP Skills Extension/spec.md#L259"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L259",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L260"
+        "specs/feature/248-MCP Skills Extension/spec.md#L260"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L260",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L261"
+        "specs/feature/248-MCP Skills Extension/spec.md#L261"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L261",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L262"
+        "specs/feature/248-MCP Skills Extension/spec.md#L262"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L262",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L263"
+        "specs/feature/248-MCP Skills Extension/spec.md#L263"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L263",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L263",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L264"
+        "specs/feature/248-MCP Skills Extension/spec.md#L264"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L264",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L265"
+        "specs/feature/248-MCP Skills Extension/spec.md#L265"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L265",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L265",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L266"
+        "specs/feature/248-MCP Skills Extension/spec.md#L266"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L266",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L267"
+        "specs/feature/248-MCP Skills Extension/spec.md#L267"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L267",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L268"
+        "specs/feature/248-MCP Skills Extension/spec.md#L268"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L268",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L269"
+        "specs/feature/248-MCP Skills Extension/spec.md#L269"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L269",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L271"
+        "specs/feature/248-MCP Skills Extension/spec.md#L271"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L271",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L288"
+        "specs/feature/248-MCP Skills Extension/spec.md#L288"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L288",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L348"
+        "specs/feature/248-MCP Skills Extension/spec.md#L348"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L348",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L356"
+        "specs/feature/248-MCP Skills Extension/spec.md#L356"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L356",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L358"
+        "specs/feature/248-MCP Skills Extension/spec.md#L358"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L358",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L358",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L372"
+        "specs/feature/248-MCP Skills Extension/spec.md#L372"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L372",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L396"
+        "specs/feature/248-MCP Skills Extension/spec.md#L396"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L396",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L397"
+        "specs/feature/248-MCP Skills Extension/spec.md#L397"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L397",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L398"
+        "specs/feature/248-MCP Skills Extension/spec.md#L398"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L398",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L398",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L399"
+        "specs/feature/248-MCP Skills Extension/spec.md#L399"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L399",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L400"
+        "specs/feature/248-MCP Skills Extension/spec.md#L400"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L400",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L400",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L401"
+        "specs/feature/248-MCP Skills Extension/spec.md#L401"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L401",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L402"
+        "specs/feature/248-MCP Skills Extension/spec.md#L402"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L402",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L403"
+        "specs/feature/248-MCP Skills Extension/spec.md#L403"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L403",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L403",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L404"
+        "specs/feature/248-MCP Skills Extension/spec.md#L404"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L404",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L405"
+        "specs/feature/248-MCP Skills Extension/spec.md#L405"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L405",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L405",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L409"
+        "specs/feature/248-MCP Skills Extension/spec.md#L409"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L409",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L413"
+        "specs/feature/248-MCP Skills Extension/spec.md#L413"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L413",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L413",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L414"
+        "specs/feature/248-MCP Skills Extension/spec.md#L414"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L414",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L414",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L415"
+        "specs/feature/248-MCP Skills Extension/spec.md#L415"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L415",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L416"
+        "specs/feature/248-MCP Skills Extension/spec.md#L416"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L416",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L416",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L417"
+        "specs/feature/248-MCP Skills Extension/spec.md#L417"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L417",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L430"
+        "specs/feature/248-MCP Skills Extension/spec.md#L430"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L430",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L446"
+        "specs/feature/248-MCP Skills Extension/spec.md#L446"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L446",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L452"
+        "specs/feature/248-MCP Skills Extension/spec.md#L452"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L452",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L452",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L454"
+        "specs/feature/248-MCP Skills Extension/spec.md#L454"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L454",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L454",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L462"
+        "specs/feature/248-MCP Skills Extension/spec.md#L462"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L462",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L462",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L470"
+        "specs/feature/248-MCP Skills Extension/spec.md#L470"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L470",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L470",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L494"
+        "specs/feature/248-MCP Skills Extension/spec.md#L494"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L494",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L494",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L502"
+        "specs/feature/248-MCP Skills Extension/spec.md#L502"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L502",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L502",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L508"
+        "specs/feature/248-MCP Skills Extension/spec.md#L508"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L508",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L508",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L510"
+        "specs/feature/248-MCP Skills Extension/spec.md#L510"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L510",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L510",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L511"
+        "specs/feature/248-MCP Skills Extension/spec.md#L511"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L511",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L512"
+        "specs/feature/248-MCP Skills Extension/spec.md#L512"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L512",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L512",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L513"
+        "specs/feature/248-MCP Skills Extension/spec.md#L513"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L513",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L513",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L514"
+        "specs/feature/248-MCP Skills Extension/spec.md#L514"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L514",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L514",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L515"
+        "specs/feature/248-MCP Skills Extension/spec.md#L515"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L515",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L516"
+        "specs/feature/248-MCP Skills Extension/spec.md#L516"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L516",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L516",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L517"
+        "specs/feature/248-MCP Skills Extension/spec.md#L517"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L517",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L517",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L518"
+        "specs/feature/248-MCP Skills Extension/spec.md#L518"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L518",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L519"
+        "specs/feature/248-MCP Skills Extension/spec.md#L519"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L519",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L519",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L520"
+        "specs/feature/248-MCP Skills Extension/spec.md#L520"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L520",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L520",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L521"
+        "specs/feature/248-MCP Skills Extension/spec.md#L521"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L521",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L522"
+        "specs/feature/248-MCP Skills Extension/spec.md#L522"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L522",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L522",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L523"
+        "specs/feature/248-MCP Skills Extension/spec.md#L523"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L523",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L523",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L524"
+        "specs/feature/248-MCP Skills Extension/spec.md#L524"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L524",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L524",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L534"
+        "specs/feature/248-MCP Skills Extension/spec.md#L534"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L534",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L534",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L535"
+        "specs/feature/248-MCP Skills Extension/spec.md#L535"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L535",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L535",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L536"
+        "specs/feature/248-MCP Skills Extension/spec.md#L536"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L536",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L536",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L537"
+        "specs/feature/248-MCP Skills Extension/spec.md#L537"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L537",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L537",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L538"
+        "specs/feature/248-MCP Skills Extension/spec.md#L538"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L538",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L538",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L548"
+        "specs/feature/248-MCP Skills Extension/spec.md#L548"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L548",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L548",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L550"
+        "specs/feature/248-MCP Skills Extension/spec.md#L550"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L550",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L550",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L552"
+        "specs/feature/248-MCP Skills Extension/spec.md#L552"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L552",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L552",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L554"
+        "specs/feature/248-MCP Skills Extension/spec.md#L554"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L554",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L554",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L558"
+        "specs/feature/248-MCP Skills Extension/spec.md#L558"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L558",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L558",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L560"
+        "specs/feature/248-MCP Skills Extension/spec.md#L560"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L560",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L560",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L566"
+        "specs/feature/248-MCP Skills Extension/spec.md#L566"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L566",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L566",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L572"
+        "specs/feature/248-MCP Skills Extension/spec.md#L572"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L572",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L572",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L574"
+        "specs/feature/248-MCP Skills Extension/spec.md#L574"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L574",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L574",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L584"
+        "specs/feature/248-MCP Skills Extension/spec.md#L584"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L584",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L584",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L606"
+        "specs/feature/248-MCP Skills Extension/spec.md#L606"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L606",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L606",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L609"
+        "specs/feature/248-MCP Skills Extension/spec.md#L609"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L609",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L609",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L613"
+        "specs/feature/248-MCP Skills Extension/spec.md#L613"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L613",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L613",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L616"
+        "specs/feature/248-MCP Skills Extension/spec.md#L616"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L616",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L621"
+        "specs/feature/248-MCP Skills Extension/spec.md#L621"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L621",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L623"
+        "specs/feature/248-MCP Skills Extension/spec.md#L623"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L623",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L625"
+        "specs/feature/248-MCP Skills Extension/spec.md#L625"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L625",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L642"
+        "specs/feature/248-MCP Skills Extension/spec.md#L642"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L642",
+      "authority_source": "specs/feature/248-MCP Skills Extension/spec.md#L642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

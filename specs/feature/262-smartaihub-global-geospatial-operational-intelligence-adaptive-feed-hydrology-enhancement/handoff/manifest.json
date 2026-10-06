@@ -17,7 +17,7 @@
           "R1.7",
           "R1.8"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10150",
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10150",
         "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
         "successor_spec_id": "262"
       },
@@ -33,7 +33,7 @@
           "R1.7",
           "R1.8"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L5",
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L5",
         "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
         "successor_spec_id": "262"
       },
@@ -45,7 +45,7 @@
         "referencing_spec_id": "262",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L72",
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L72",
         "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
         "successor_spec_id": "262"
       },
@@ -59,7 +59,7 @@
         "requirement_ids": [
           "R1.38"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10082",
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10082",
         "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
         "successor_spec_id": null
       },
@@ -71,7 +71,7 @@
         "referencing_spec_id": "262",
         "relation_text": "predecessor",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10141",
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10141",
         "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
         "successor_spec_id": null
       },
@@ -87,7 +87,7 @@
           "R1.38",
           "R1.8"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10142",
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10142",
         "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
         "successor_spec_id": null
       },
@@ -99,7 +99,7 @@
         "referencing_spec_id": "262",
         "relation_text": "predecessor",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10148",
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L10148",
         "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
         "successor_spec_id": null
       },
@@ -111,7 +111,7 @@
         "referencing_spec_id": "262",
         "relation_text": "predecessor",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L2172",
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L2172",
         "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
         "successor_spec_id": null
       },
@@ -123,7 +123,7 @@
         "referencing_spec_id": "262",
         "relation_text": "predecessor",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L6",
+        "source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L6",
         "source_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
         "successor_spec_id": null
       },
@@ -138,7 +138,7 @@
           "R1.0",
           "R1.37"
         ],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L22144",
+        "source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L22144",
         "source_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
         "successor_spec_id": "260"
       },
@@ -150,7 +150,7 @@
         "referencing_spec_id": "266",
         "relation_text": "absorbed",
         "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2105",
+        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2105",
         "source_digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
         "successor_spec_id": "266"
       }
@@ -166,97 +166,97 @@
       {
         "digest": "4f5f392a49c3cd81d532490319399c3b3a9d1a3f7a3c711629a5ed12f852f854",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-plan.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-plan.md"
       },
       {
         "digest": "76dd389f2583fec971f0f7d0b2b637a69f69fbf7ddc5092dafa11fd0ea99e04f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-spec.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-spec.md"
       },
       {
         "digest": "de6570f940fdc26c7af5680ec6805c32545fae2ef9d60ac4549a74c9e6f3443e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/implementation/deep_implement_config.json"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/implementation/deep_implement_config.json"
       },
       {
         "digest": "af1a11dd42041a1d87493e3c323ce870cac3bbe1b986e05d134b11d751159772",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/index.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/index.md"
       },
       {
         "digest": "fa6a3afd613af162124ae1a40f5b6317713cc31e5ef7a3226f72be50f6d074b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-01-baseline-map-provider.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-01-baseline-map-provider.md"
       },
       {
         "digest": "580828360daeab38816f64bf9a9fc02fe4f65e5d2cfebda97047f38c0255b8f5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-02-platform-routing-chat-context.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-02-platform-routing-chat-context.md"
       },
       {
         "digest": "c7d63bed2071eeccbb80e4914c56005e2a03dd9e99854ccc2097bb9d7207ebb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-03-map-ux-and-commands.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-03-map-ux-and-commands.md"
       },
       {
         "digest": "9936ba543162a643b187aea8247141faff7420b236913fb0e4063598f540b719",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-04-viewport-adaptive-feed.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-04-viewport-adaptive-feed.md"
       },
       {
         "digest": "08fb57b6e35eea38f425ad97db8e4f964d24ac16df6939600a59309d67af141b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-05-feed-semantics-and-weather.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-05-feed-semantics-and-weather.md"
       },
       {
         "digest": "bddbfce252a057a25d0d99f73be506d1a19560b9bb2f41a815c0862e9880544e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-06-source-acquisition-durable-jobs.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-06-source-acquisition-durable-jobs.md"
       },
       {
         "digest": "8fd20f68a1c8164dafcfa4718f34046bfaf5c5b1929438f8b3b30f3e0019b4ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-07-hydrology-observations-timeseries.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-07-hydrology-observations-timeseries.md"
       },
       {
         "digest": "409902fd548efb863e32f973811e8066ee31e13b6162746e1ee76a3d5af65ffa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-08-hydro-network-impact.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-08-hydro-network-impact.md"
       },
       {
         "digest": "cc158bd866b0a6fe0669621b4e3e689dd91db1665cfcc330f4b19dfe54f298ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-09-thailand-provider-pack.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-09-thailand-provider-pack.md"
       },
       {
         "digest": "aa9d58d5932055115699b644f2a7bf22fbffe387dc5cadab79f1e3e5a59c67d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-10-compound-hazards-and-exposure.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-10-compound-hazards-and-exposure.md"
       },
       {
         "digest": "f33b2c39938de446ea93f30cd4a52b182f77a92f94eaccf0e3d8aa10fffecbaa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-11-global-regional-capabilities.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-11-global-regional-capabilities.md"
       },
       {
         "digest": "92058512656dfe70ebc4f275351de07f3af8dc28f48f3bd3938df4efb794d1b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-12-localization-and-geographic-search.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-12-localization-and-geographic-search.md"
       },
       {
         "digest": "0eb629c091e619909abd38cd34e6d9b4c776f2bff582e003b111d97f3e2c9e77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-13-watches-api-mcp-chat-actions.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-13-watches-api-mcp-chat-actions.md"
       },
       {
         "digest": "50169a12a0c53609962e51e476afab5b8dba091ea20ad0a030e3849431c5fe33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-14-privacy-federation-retention.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-14-privacy-federation-retention.md"
       },
       {
         "digest": "2fbb60a5e9da2eb5b794ad6ba677711ff5147e0c00feebfdb7feecc8b25fec96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-15-offline-accessibility-device-sync.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-15-offline-accessibility-device-sync.md"
       }
     ],
     "predecessors": [],
@@ -287,97 +287,97 @@
       {
         "digest": "4f5f392a49c3cd81d532490319399c3b3a9d1a3f7a3c711629a5ed12f852f854",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-plan.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-plan.md"
       },
       {
         "digest": "76dd389f2583fec971f0f7d0b2b637a69f69fbf7ddc5092dafa11fd0ea99e04f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-spec.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-spec.md"
       },
       {
         "digest": "de6570f940fdc26c7af5680ec6805c32545fae2ef9d60ac4549a74c9e6f3443e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/implementation/deep_implement_config.json"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/implementation/deep_implement_config.json"
       },
       {
         "digest": "af1a11dd42041a1d87493e3c323ce870cac3bbe1b986e05d134b11d751159772",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/index.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/index.md"
       },
       {
         "digest": "fa6a3afd613af162124ae1a40f5b6317713cc31e5ef7a3226f72be50f6d074b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-01-baseline-map-provider.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-01-baseline-map-provider.md"
       },
       {
         "digest": "580828360daeab38816f64bf9a9fc02fe4f65e5d2cfebda97047f38c0255b8f5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-02-platform-routing-chat-context.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-02-platform-routing-chat-context.md"
       },
       {
         "digest": "c7d63bed2071eeccbb80e4914c56005e2a03dd9e99854ccc2097bb9d7207ebb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-03-map-ux-and-commands.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-03-map-ux-and-commands.md"
       },
       {
         "digest": "9936ba543162a643b187aea8247141faff7420b236913fb0e4063598f540b719",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-04-viewport-adaptive-feed.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-04-viewport-adaptive-feed.md"
       },
       {
         "digest": "08fb57b6e35eea38f425ad97db8e4f964d24ac16df6939600a59309d67af141b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-05-feed-semantics-and-weather.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-05-feed-semantics-and-weather.md"
       },
       {
         "digest": "bddbfce252a057a25d0d99f73be506d1a19560b9bb2f41a815c0862e9880544e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-06-source-acquisition-durable-jobs.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-06-source-acquisition-durable-jobs.md"
       },
       {
         "digest": "8fd20f68a1c8164dafcfa4718f34046bfaf5c5b1929438f8b3b30f3e0019b4ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-07-hydrology-observations-timeseries.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-07-hydrology-observations-timeseries.md"
       },
       {
         "digest": "409902fd548efb863e32f973811e8066ee31e13b6162746e1ee76a3d5af65ffa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-08-hydro-network-impact.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-08-hydro-network-impact.md"
       },
       {
         "digest": "cc158bd866b0a6fe0669621b4e3e689dd91db1665cfcc330f4b19dfe54f298ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-09-thailand-provider-pack.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-09-thailand-provider-pack.md"
       },
       {
         "digest": "aa9d58d5932055115699b644f2a7bf22fbffe387dc5cadab79f1e3e5a59c67d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-10-compound-hazards-and-exposure.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-10-compound-hazards-and-exposure.md"
       },
       {
         "digest": "f33b2c39938de446ea93f30cd4a52b182f77a92f94eaccf0e3d8aa10fffecbaa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-11-global-regional-capabilities.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-11-global-regional-capabilities.md"
       },
       {
         "digest": "92058512656dfe70ebc4f275351de07f3af8dc28f48f3bd3938df4efb794d1b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-12-localization-and-geographic-search.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-12-localization-and-geographic-search.md"
       },
       {
         "digest": "0eb629c091e619909abd38cd34e6d9b4c776f2bff582e003b111d97f3e2c9e77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-13-watches-api-mcp-chat-actions.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-13-watches-api-mcp-chat-actions.md"
       },
       {
         "digest": "50169a12a0c53609962e51e476afab5b8dba091ea20ad0a030e3849431c5fe33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-14-privacy-federation-retention.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-14-privacy-federation-retention.md"
       },
       {
         "digest": "2fbb60a5e9da2eb5b794ad6ba677711ff5147e0c00feebfdb7feecc8b25fec96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-15-offline-accessibility-device-sync.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-15-offline-accessibility-device-sync.md"
       },
       {
         "excerpt": "* Shared, authority-neutral intent for the Spec 262 adaptive emergency feed.",
@@ -465,114 +465,114 @@
       {
         "digest": "4f5f392a49c3cd81d532490319399c3b3a9d1a3f7a3c711629a5ed12f852f854",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-plan.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-plan.md"
       },
       {
         "digest": "76dd389f2583fec971f0f7d0b2b637a69f69fbf7ddc5092dafa11fd0ea99e04f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-spec.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-spec.md"
       },
       {
         "digest": "de6570f940fdc26c7af5680ec6805c32545fae2ef9d60ac4549a74c9e6f3443e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/implementation/deep_implement_config.json"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/implementation/deep_implement_config.json"
       },
       {
         "digest": "af1a11dd42041a1d87493e3c323ce870cac3bbe1b986e05d134b11d751159772",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/index.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/index.md"
       },
       {
         "digest": "fa6a3afd613af162124ae1a40f5b6317713cc31e5ef7a3226f72be50f6d074b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-01-baseline-map-provider.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-01-baseline-map-provider.md"
       },
       {
         "digest": "580828360daeab38816f64bf9a9fc02fe4f65e5d2cfebda97047f38c0255b8f5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-02-platform-routing-chat-context.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-02-platform-routing-chat-context.md"
       },
       {
         "digest": "c7d63bed2071eeccbb80e4914c56005e2a03dd9e99854ccc2097bb9d7207ebb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-03-map-ux-and-commands.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-03-map-ux-and-commands.md"
       },
       {
         "digest": "9936ba543162a643b187aea8247141faff7420b236913fb0e4063598f540b719",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-04-viewport-adaptive-feed.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-04-viewport-adaptive-feed.md"
       },
       {
         "digest": "08fb57b6e35eea38f425ad97db8e4f964d24ac16df6939600a59309d67af141b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-05-feed-semantics-and-weather.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-05-feed-semantics-and-weather.md"
       },
       {
         "digest": "bddbfce252a057a25d0d99f73be506d1a19560b9bb2f41a815c0862e9880544e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-06-source-acquisition-durable-jobs.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-06-source-acquisition-durable-jobs.md"
       },
       {
         "digest": "8fd20f68a1c8164dafcfa4718f34046bfaf5c5b1929438f8b3b30f3e0019b4ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-07-hydrology-observations-timeseries.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-07-hydrology-observations-timeseries.md"
       },
       {
         "digest": "409902fd548efb863e32f973811e8066ee31e13b6162746e1ee76a3d5af65ffa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-08-hydro-network-impact.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-08-hydro-network-impact.md"
       },
       {
         "digest": "cc158bd866b0a6fe0669621b4e3e689dd91db1665cfcc330f4b19dfe54f298ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-09-thailand-provider-pack.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-09-thailand-provider-pack.md"
       },
       {
         "digest": "aa9d58d5932055115699b644f2a7bf22fbffe387dc5cadab79f1e3e5a59c67d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-10-compound-hazards-and-exposure.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-10-compound-hazards-and-exposure.md"
       },
       {
         "digest": "f33b2c39938de446ea93f30cd4a52b182f77a92f94eaccf0e3d8aa10fffecbaa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-11-global-regional-capabilities.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-11-global-regional-capabilities.md"
       },
       {
         "digest": "92058512656dfe70ebc4f275351de07f3af8dc28f48f3bd3938df4efb794d1b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-12-localization-and-geographic-search.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-12-localization-and-geographic-search.md"
       },
       {
         "digest": "0eb629c091e619909abd38cd34e6d9b4c776f2bff582e003b111d97f3e2c9e77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-13-watches-api-mcp-chat-actions.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-13-watches-api-mcp-chat-actions.md"
       },
       {
         "digest": "50169a12a0c53609962e51e476afab5b8dba091ea20ad0a030e3849431c5fe33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-14-privacy-federation-retention.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-14-privacy-federation-retention.md"
       },
       {
         "digest": "2fbb60a5e9da2eb5b794ad6ba677711ff5147e0c00feebfdb7feecc8b25fec96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-15-offline-accessibility-device-sync.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-15-offline-accessibility-device-sync.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md",
     "digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.666743Z",
+      "last_evidence_at": "2026-10-06T03:28:18.573233Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-02T19:34:42+07:00",
       "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
     },
-    "revision": null,
+    "revision": "1.8",
     "slug": "262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement",
     "spec_id": "262",
     "title": "Spec 262 — SmartAIHub Global Geospatial Operational Intelligence, Adaptive Situation Feed & Hydrology Enhancement"
@@ -594,7 +594,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.666743Z"
+    "updated_at": "2026-10-06T03:28:18.573233Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -604,7 +604,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.666743Z",
+    "reconciled_at": "2026-10-06T03:28:18.573233Z",
     "sources": [
       {
         "digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
@@ -614,112 +614,112 @@
       {
         "digest": "4f5f392a49c3cd81d532490319399c3b3a9d1a3f7a3c711629a5ed12f852f854",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-plan.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-plan.md"
       },
       {
         "digest": "76dd389f2583fec971f0f7d0b2b637a69f69fbf7ddc5092dafa11fd0ea99e04f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-spec.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-spec.md"
       },
       {
         "digest": "de6570f940fdc26c7af5680ec6805c32545fae2ef9d60ac4549a74c9e6f3443e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/implementation/deep_implement_config.json"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/implementation/deep_implement_config.json"
       },
       {
         "digest": "af1a11dd42041a1d87493e3c323ce870cac3bbe1b986e05d134b11d751159772",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/index.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/index.md"
       },
       {
         "digest": "fa6a3afd613af162124ae1a40f5b6317713cc31e5ef7a3226f72be50f6d074b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-01-baseline-map-provider.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-01-baseline-map-provider.md"
       },
       {
         "digest": "580828360daeab38816f64bf9a9fc02fe4f65e5d2cfebda97047f38c0255b8f5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-02-platform-routing-chat-context.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-02-platform-routing-chat-context.md"
       },
       {
         "digest": "c7d63bed2071eeccbb80e4914c56005e2a03dd9e99854ccc2097bb9d7207ebb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-03-map-ux-and-commands.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-03-map-ux-and-commands.md"
       },
       {
         "digest": "9936ba543162a643b187aea8247141faff7420b236913fb0e4063598f540b719",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-04-viewport-adaptive-feed.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-04-viewport-adaptive-feed.md"
       },
       {
         "digest": "08fb57b6e35eea38f425ad97db8e4f964d24ac16df6939600a59309d67af141b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-05-feed-semantics-and-weather.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-05-feed-semantics-and-weather.md"
       },
       {
         "digest": "bddbfce252a057a25d0d99f73be506d1a19560b9bb2f41a815c0862e9880544e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-06-source-acquisition-durable-jobs.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-06-source-acquisition-durable-jobs.md"
       },
       {
         "digest": "8fd20f68a1c8164dafcfa4718f34046bfaf5c5b1929438f8b3b30f3e0019b4ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-07-hydrology-observations-timeseries.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-07-hydrology-observations-timeseries.md"
       },
       {
         "digest": "409902fd548efb863e32f973811e8066ee31e13b6162746e1ee76a3d5af65ffa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-08-hydro-network-impact.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-08-hydro-network-impact.md"
       },
       {
         "digest": "cc158bd866b0a6fe0669621b4e3e689dd91db1665cfcc330f4b19dfe54f298ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-09-thailand-provider-pack.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-09-thailand-provider-pack.md"
       },
       {
         "digest": "aa9d58d5932055115699b644f2a7bf22fbffe387dc5cadab79f1e3e5a59c67d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-10-compound-hazards-and-exposure.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-10-compound-hazards-and-exposure.md"
       },
       {
         "digest": "f33b2c39938de446ea93f30cd4a52b182f77a92f94eaccf0e3d8aa10fffecbaa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-11-global-regional-capabilities.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-11-global-regional-capabilities.md"
       },
       {
         "digest": "92058512656dfe70ebc4f275351de07f3af8dc28f48f3bd3938df4efb794d1b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-12-localization-and-geographic-search.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-12-localization-and-geographic-search.md"
       },
       {
         "digest": "0eb629c091e619909abd38cd34e6d9b4c776f2bff582e003b111d97f3e2c9e77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-13-watches-api-mcp-chat-actions.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-13-watches-api-mcp-chat-actions.md"
       },
       {
         "digest": "50169a12a0c53609962e51e476afab5b8dba091ea20ad0a030e3849431c5fe33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-14-privacy-federation-retention.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-14-privacy-federation-retention.md"
       },
       {
         "digest": "2fbb60a5e9da2eb5b794ad6ba677711ff5147e0c00feebfdb7feecc8b25fec96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-15-offline-accessibility-device-sync.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-15-offline-accessibility-device-sync.md"
       },
       {
         "digest": "deea0c08c38f5583a1afd1519ecabf8cca6a395a12ab571533eadcf6f6230a51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-16-provider-admin-operations.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-16-provider-admin-operations.md"
       },
       {
         "digest": "c53c743f9839c9565f11c63b79a75cf7b1db8847cceaec4fb7c525203d49e6de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-17-model-governance-replay-recovery.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-17-model-governance-replay-recovery.md"
       },
       {
         "digest": "f3a063b2639697edde75057088c21d72e760694d2dac7af7d16e53ed4abcf5b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-18-integrated-acceptance-release-evidence.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-18-integrated-acceptance-release-evidence.md"
       },
       {
         "excerpt": "* Shared, authority-neutral intent for the Spec 262 adaptive emergency feed.",
@@ -882,112 +882,112 @@
       {
         "digest": "4f5f392a49c3cd81d532490319399c3b3a9d1a3f7a3c711629a5ed12f852f854",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-plan.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-plan.md"
       },
       {
         "digest": "76dd389f2583fec971f0f7d0b2b637a69f69fbf7ddc5092dafa11fd0ea99e04f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-spec.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/claude-spec.md"
       },
       {
         "digest": "de6570f940fdc26c7af5680ec6805c32545fae2ef9d60ac4549a74c9e6f3443e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/implementation/deep_implement_config.json"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/implementation/deep_implement_config.json"
       },
       {
         "digest": "af1a11dd42041a1d87493e3c323ce870cac3bbe1b986e05d134b11d751159772",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/index.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/index.md"
       },
       {
         "digest": "fa6a3afd613af162124ae1a40f5b6317713cc31e5ef7a3226f72be50f6d074b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-01-baseline-map-provider.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-01-baseline-map-provider.md"
       },
       {
         "digest": "580828360daeab38816f64bf9a9fc02fe4f65e5d2cfebda97047f38c0255b8f5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-02-platform-routing-chat-context.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-02-platform-routing-chat-context.md"
       },
       {
         "digest": "c7d63bed2071eeccbb80e4914c56005e2a03dd9e99854ccc2097bb9d7207ebb6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-03-map-ux-and-commands.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-03-map-ux-and-commands.md"
       },
       {
         "digest": "9936ba543162a643b187aea8247141faff7420b236913fb0e4063598f540b719",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-04-viewport-adaptive-feed.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-04-viewport-adaptive-feed.md"
       },
       {
         "digest": "08fb57b6e35eea38f425ad97db8e4f964d24ac16df6939600a59309d67af141b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-05-feed-semantics-and-weather.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-05-feed-semantics-and-weather.md"
       },
       {
         "digest": "bddbfce252a057a25d0d99f73be506d1a19560b9bb2f41a815c0862e9880544e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-06-source-acquisition-durable-jobs.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-06-source-acquisition-durable-jobs.md"
       },
       {
         "digest": "8fd20f68a1c8164dafcfa4718f34046bfaf5c5b1929438f8b3b30f3e0019b4ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-07-hydrology-observations-timeseries.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-07-hydrology-observations-timeseries.md"
       },
       {
         "digest": "409902fd548efb863e32f973811e8066ee31e13b6162746e1ee76a3d5af65ffa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-08-hydro-network-impact.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-08-hydro-network-impact.md"
       },
       {
         "digest": "cc158bd866b0a6fe0669621b4e3e689dd91db1665cfcc330f4b19dfe54f298ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-09-thailand-provider-pack.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-09-thailand-provider-pack.md"
       },
       {
         "digest": "aa9d58d5932055115699b644f2a7bf22fbffe387dc5cadab79f1e3e5a59c67d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-10-compound-hazards-and-exposure.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-10-compound-hazards-and-exposure.md"
       },
       {
         "digest": "f33b2c39938de446ea93f30cd4a52b182f77a92f94eaccf0e3d8aa10fffecbaa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-11-global-regional-capabilities.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-11-global-regional-capabilities.md"
       },
       {
         "digest": "92058512656dfe70ebc4f275351de07f3af8dc28f48f3bd3938df4efb794d1b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-12-localization-and-geographic-search.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-12-localization-and-geographic-search.md"
       },
       {
         "digest": "0eb629c091e619909abd38cd34e6d9b4c776f2bff582e003b111d97f3e2c9e77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-13-watches-api-mcp-chat-actions.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-13-watches-api-mcp-chat-actions.md"
       },
       {
         "digest": "50169a12a0c53609962e51e476afab5b8dba091ea20ad0a030e3849431c5fe33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-14-privacy-federation-retention.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-14-privacy-federation-retention.md"
       },
       {
         "digest": "2fbb60a5e9da2eb5b794ad6ba677711ff5147e0c00feebfdb7feecc8b25fec96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-15-offline-accessibility-device-sync.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-15-offline-accessibility-device-sync.md"
       },
       {
         "digest": "deea0c08c38f5583a1afd1519ecabf8cca6a395a12ab571533eadcf6f6230a51",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-16-provider-admin-operations.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-16-provider-admin-operations.md"
       },
       {
         "digest": "c53c743f9839c9565f11c63b79a75cf7b1db8847cceaec4fb7c525203d49e6de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-17-model-governance-replay-recovery.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-17-model-governance-replay-recovery.md"
       },
       {
         "digest": "f3a063b2639697edde75057088c21d72e760694d2dac7af7d16e53ed4abcf5b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-18-integrated-acceptance-release-evidence.md"
+        "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/sections/section-18-integrated-acceptance-release-evidence.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -1005,7 +1005,7 @@
     "unresolved": 1193
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.666743Z",
+  "updated_at": "2026-10-06T03:28:18.573233Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

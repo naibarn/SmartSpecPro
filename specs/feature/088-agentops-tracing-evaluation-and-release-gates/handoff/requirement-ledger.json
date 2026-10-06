@@ -5,9 +5,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L32"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L32"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L32",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L32",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L37"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L37"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L37",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L64"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L64"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L64",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L64",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L65"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L65"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L65",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L66"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L66"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L66",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L67"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L67"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L67",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L68"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L68"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L68",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L69"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L69"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L69",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L98"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L98"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L98",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L107"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L107"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L107",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L145"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L145"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L145",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L145",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L146"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L146"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L146",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L147"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L147"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L147",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L148"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L148"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L148",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L149"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L149"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L149",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L153"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L153"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L153",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L154"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L154"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L154",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L155"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L155"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L155",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L156"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L156"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L156",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L157"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L157"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L157",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L161"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L161"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L161",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L162"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L162"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L162",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L163"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L163"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L163",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L164"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L164"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L164",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L165"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L165"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L165",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L166"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L166"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L166",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L167"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L167"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L167",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L167",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L168"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L168"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L168",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L169"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L169"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L169",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L170"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L170"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L170",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L170",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L171"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L171"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L171",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L175"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L175"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L175",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L175",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L176"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L176"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L176",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L177"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L177"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L177",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L177",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L178"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L178"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L178",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L179"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L179"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L179",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L180"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L180"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L180",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L181"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L181"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L181",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L182"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L182"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L182",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L183"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L183"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L183",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L184"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L184"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L184",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L185"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L185"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L185",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L186"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L186"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L186",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L201"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L201"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L201",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L201",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L206"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L206"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L206",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L207"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L207"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L207",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L208"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L208"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L208",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L208",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L212"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L212"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L212",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L213"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L213"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L213",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L214"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L214"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L214",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L215"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L215"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L215",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L216"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L216"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L216",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L217"
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L217"
       ],
-      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L217",
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

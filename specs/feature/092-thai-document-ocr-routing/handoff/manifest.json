@@ -17,52 +17,52 @@
       {
         "digest": "5b4d7156d89c6f5e3743e0be1884dca434358a883b00b1bab3f9d1b6960854aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/claude-plan.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/claude-plan.md"
       },
       {
         "digest": "2eb73422aafc6669f7e15880f095ee5677f2c49a45941e3b4f0bb4251a4475fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/claude-spec.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/claude-spec.md"
       },
       {
         "digest": "bd97b7a937d62800b1525413b9e7099b6fb5c0f5fa3dc11cb9bc144fdfc5f03c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/implementation/deep_implement_config.json"
+        "path": "specs/feature/092-thai-document-ocr-routing/implementation/deep_implement_config.json"
       },
       {
         "digest": "6be13767542c6e7217ef56f2243cfef81dc39064936b1e8803f5dcd24ae11134",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
       },
       {
         "digest": "8e6fe3e8adab21b34db798b6f29c13ac1ab76b4b334d1274ba546319df497b3d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/index.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/index.md"
       },
       {
         "digest": "da89de31316ce9d57122535ef10b96d95a3c872091400d385957c70b55275c65",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-01-ocr-routing-contract.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-01-ocr-routing-contract.md"
       },
       {
         "digest": "77371105bafc8c323a72469309aefa279583ff49e720a158dfa33157db664bd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-02-backend-routing-and-policy.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-02-backend-routing-and-policy.md"
       },
       {
         "digest": "e56f4cbdcc4f97ceee078af15cf99ff6d7d5ef9c8ca7656b0b17d13b3692cf53",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-03-admin-settings-ui.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-03-admin-settings-ui.md"
       },
       {
         "digest": "38774f633ac1c710716d8682d94794c84f36873ff20fd3936e037919b4004732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-04-observability-and-compatibility.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-04-observability-and-compatibility.md"
       },
       {
         "digest": "17154058543a4cb137482acf8a7fa74d0f9f31e100a100713956bf94444dedf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-05-tests-and-rollout.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-05-tests-and-rollout.md"
       }
     ],
     "predecessors": [],
@@ -93,52 +93,52 @@
       {
         "digest": "5b4d7156d89c6f5e3743e0be1884dca434358a883b00b1bab3f9d1b6960854aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/claude-plan.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/claude-plan.md"
       },
       {
         "digest": "2eb73422aafc6669f7e15880f095ee5677f2c49a45941e3b4f0bb4251a4475fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/claude-spec.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/claude-spec.md"
       },
       {
         "digest": "bd97b7a937d62800b1525413b9e7099b6fb5c0f5fa3dc11cb9bc144fdfc5f03c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/implementation/deep_implement_config.json"
+        "path": "specs/feature/092-thai-document-ocr-routing/implementation/deep_implement_config.json"
       },
       {
         "digest": "6be13767542c6e7217ef56f2243cfef81dc39064936b1e8803f5dcd24ae11134",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
       },
       {
         "digest": "8e6fe3e8adab21b34db798b6f29c13ac1ab76b4b334d1274ba546319df497b3d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/index.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/index.md"
       },
       {
         "digest": "da89de31316ce9d57122535ef10b96d95a3c872091400d385957c70b55275c65",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-01-ocr-routing-contract.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-01-ocr-routing-contract.md"
       },
       {
         "digest": "77371105bafc8c323a72469309aefa279583ff49e720a158dfa33157db664bd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-02-backend-routing-and-policy.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-02-backend-routing-and-policy.md"
       },
       {
         "digest": "e56f4cbdcc4f97ceee078af15cf99ff6d7d5ef9c8ca7656b0b17d13b3692cf53",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-03-admin-settings-ui.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-03-admin-settings-ui.md"
       },
       {
         "digest": "38774f633ac1c710716d8682d94794c84f36873ff20fd3936e037919b4004732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-04-observability-and-compatibility.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-04-observability-and-compatibility.md"
       },
       {
         "digest": "17154058543a4cb137482acf8a7fa74d0f9f31e100a100713956bf94444dedf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-05-tests-and-rollout.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-05-tests-and-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -170,64 +170,64 @@
       {
         "digest": "5b4d7156d89c6f5e3743e0be1884dca434358a883b00b1bab3f9d1b6960854aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/claude-plan.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/claude-plan.md"
       },
       {
         "digest": "2eb73422aafc6669f7e15880f095ee5677f2c49a45941e3b4f0bb4251a4475fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/claude-spec.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/claude-spec.md"
       },
       {
         "digest": "bd97b7a937d62800b1525413b9e7099b6fb5c0f5fa3dc11cb9bc144fdfc5f03c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/implementation/deep_implement_config.json"
+        "path": "specs/feature/092-thai-document-ocr-routing/implementation/deep_implement_config.json"
       },
       {
         "digest": "6be13767542c6e7217ef56f2243cfef81dc39064936b1e8803f5dcd24ae11134",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
       },
       {
         "digest": "8e6fe3e8adab21b34db798b6f29c13ac1ab76b4b334d1274ba546319df497b3d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/index.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/index.md"
       },
       {
         "digest": "da89de31316ce9d57122535ef10b96d95a3c872091400d385957c70b55275c65",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-01-ocr-routing-contract.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-01-ocr-routing-contract.md"
       },
       {
         "digest": "77371105bafc8c323a72469309aefa279583ff49e720a158dfa33157db664bd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-02-backend-routing-and-policy.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-02-backend-routing-and-policy.md"
       },
       {
         "digest": "e56f4cbdcc4f97ceee078af15cf99ff6d7d5ef9c8ca7656b0b17d13b3692cf53",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-03-admin-settings-ui.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-03-admin-settings-ui.md"
       },
       {
         "digest": "38774f633ac1c710716d8682d94794c84f36873ff20fd3936e037919b4004732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-04-observability-and-compatibility.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-04-observability-and-compatibility.md"
       },
       {
         "digest": "17154058543a4cb137482acf8a7fa74d0f9f31e100a100713956bf94444dedf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-05-tests-and-rollout.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-05-tests-and-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/092-thai-document-ocr-routing/spec.md",
     "digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:42:59.889783Z",
+      "last_evidence_at": "2026-10-06T03:28:15.405830Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-15T08:00:16+07:00",
       "spec_last_changed_at": "2026-04-15T08:00:16+07:00"
@@ -254,7 +254,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:42:59.889783Z"
+    "updated_at": "2026-10-06T03:28:15.405830Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -264,7 +264,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:42:59.889783Z",
+    "reconciled_at": "2026-10-06T03:28:15.405830Z",
     "sources": [
       {
         "digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
@@ -274,52 +274,52 @@
       {
         "digest": "5b4d7156d89c6f5e3743e0be1884dca434358a883b00b1bab3f9d1b6960854aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/claude-plan.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/claude-plan.md"
       },
       {
         "digest": "2eb73422aafc6669f7e15880f095ee5677f2c49a45941e3b4f0bb4251a4475fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/claude-spec.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/claude-spec.md"
       },
       {
         "digest": "bd97b7a937d62800b1525413b9e7099b6fb5c0f5fa3dc11cb9bc144fdfc5f03c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/implementation/deep_implement_config.json"
+        "path": "specs/feature/092-thai-document-ocr-routing/implementation/deep_implement_config.json"
       },
       {
         "digest": "6be13767542c6e7217ef56f2243cfef81dc39064936b1e8803f5dcd24ae11134",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
       },
       {
         "digest": "8e6fe3e8adab21b34db798b6f29c13ac1ab76b4b334d1274ba546319df497b3d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/index.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/index.md"
       },
       {
         "digest": "da89de31316ce9d57122535ef10b96d95a3c872091400d385957c70b55275c65",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-01-ocr-routing-contract.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-01-ocr-routing-contract.md"
       },
       {
         "digest": "77371105bafc8c323a72469309aefa279583ff49e720a158dfa33157db664bd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-02-backend-routing-and-policy.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-02-backend-routing-and-policy.md"
       },
       {
         "digest": "e56f4cbdcc4f97ceee078af15cf99ff6d7d5ef9c8ca7656b0b17d13b3692cf53",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-03-admin-settings-ui.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-03-admin-settings-ui.md"
       },
       {
         "digest": "38774f633ac1c710716d8682d94794c84f36873ff20fd3936e037919b4004732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-04-observability-and-compatibility.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-04-observability-and-compatibility.md"
       },
       {
         "digest": "17154058543a4cb137482acf8a7fa74d0f9f31e100a100713956bf94444dedf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-05-tests-and-rollout.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-05-tests-and-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -369,52 +369,52 @@
       {
         "digest": "5b4d7156d89c6f5e3743e0be1884dca434358a883b00b1bab3f9d1b6960854aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/claude-plan.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/claude-plan.md"
       },
       {
         "digest": "2eb73422aafc6669f7e15880f095ee5677f2c49a45941e3b4f0bb4251a4475fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/claude-spec.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/claude-spec.md"
       },
       {
         "digest": "bd97b7a937d62800b1525413b9e7099b6fb5c0f5fa3dc11cb9bc144fdfc5f03c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/implementation/deep_implement_config.json"
+        "path": "specs/feature/092-thai-document-ocr-routing/implementation/deep_implement_config.json"
       },
       {
         "digest": "6be13767542c6e7217ef56f2243cfef81dc39064936b1e8803f5dcd24ae11134",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
       },
       {
         "digest": "8e6fe3e8adab21b34db798b6f29c13ac1ab76b4b334d1274ba546319df497b3d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/index.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/index.md"
       },
       {
         "digest": "da89de31316ce9d57122535ef10b96d95a3c872091400d385957c70b55275c65",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-01-ocr-routing-contract.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-01-ocr-routing-contract.md"
       },
       {
         "digest": "77371105bafc8c323a72469309aefa279583ff49e720a158dfa33157db664bd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-02-backend-routing-and-policy.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-02-backend-routing-and-policy.md"
       },
       {
         "digest": "e56f4cbdcc4f97ceee078af15cf99ff6d7d5ef9c8ca7656b0b17d13b3692cf53",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-03-admin-settings-ui.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-03-admin-settings-ui.md"
       },
       {
         "digest": "38774f633ac1c710716d8682d94794c84f36873ff20fd3936e037919b4004732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-04-observability-and-compatibility.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-04-observability-and-compatibility.md"
       },
       {
         "digest": "17154058543a4cb137482acf8a7fa74d0f9f31e100a100713956bf94444dedf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/092-thai-document-ocr-routing/sections/section-05-tests-and-rollout.md"
+        "path": "specs/feature/092-thai-document-ocr-routing/sections/section-05-tests-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -432,7 +432,7 @@
     "unresolved": 40
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:42:59.889783Z",
+  "updated_at": "2026-10-06T03:28:15.405830Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -11,7 +11,8 @@
       {
         "kind": "DUPLICATE_SPEC_ID",
         "paths": [
-          "specs/feature/014-Core-Funnel-Dashboard"
+          "specs/feature/014-Core-Funnel-Dashboard",
+          "specs/quick/014-presentation-ai-layout-intelligence"
         ]
       }
     ],
@@ -24,77 +25,77 @@
       {
         "digest": "d2f17dbd29cb754ca029b734c7ce7ea616b8e121b8d6bf7b56b1b6b05c722311",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-01-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-01-review.md"
       },
       {
         "digest": "b0749bec766958a100c986eac93fc055ed8a55f17be6219ee5735964078ff96c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-02-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-02-review.md"
       },
       {
         "digest": "0fb001fd66dae00c21dc8c1a53337aee31d0b7675f365abe593f639b317c8fd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-03-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-03-review.md"
       },
       {
         "digest": "916b60c1c6c143fbc973995db3377b0a02efaf9763f160cb04d0af59ad28cdde",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-04-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-04-review.md"
       },
       {
         "digest": "4c9e37e57571e35baeef5532ffbca42c313f8048c54921d22e76a0c04f0ffc0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-05-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-05-review.md"
       },
       {
         "digest": "0233849251f8263f5afc6d037113ec6bc341c0912fe16ef5edd235098e320fc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-06-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-06-review.md"
       },
       {
         "digest": "820d520875da33dd85bfdb93d027206efd8536be3c19f4587835a8556fea3ba0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-07-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-07-review.md"
       },
       {
         "digest": "599360f9d7fd41ea5aefde3cefc832aba6f687fe00be976f955fc38f6ae5d247",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/index.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/index.md"
       },
       {
         "digest": "23c37947c8453fef8af4d17524f9eb504a9bba1ae3e549604810fe0f1741ddb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-01-content-profiler-and-mode-router.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-01-content-profiler-and-mode-router.md"
       },
       {
         "digest": "85d8111918fae56624f29cceab48816bf640a34f1462975b59e86f8274b815e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-02-long-form-block-family.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-02-long-form-block-family.md"
       },
       {
         "digest": "d197502d46632845edd3c028c5d0dc73bc73606b5b00f3fd386b91855121e878",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-03-llm-recipe-aware-compaction.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-03-llm-recipe-aware-compaction.md"
       },
       {
         "digest": "be83077df868c4fe41e132fc7c929f96cd24021a9f56d5f6cdc9cdeda139e6fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-04-overflow-fallback-and-slide-splitting.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-04-overflow-fallback-and-slide-splitting.md"
       },
       {
         "digest": "be53539fe60874d9a38a48ab53b3c0b871f31da5854a79398b08b46afc1c6a39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-05-constrained-layout-dsl.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-05-constrained-layout-dsl.md"
       },
       {
         "digest": "d1117dfabc676e86c6c3df7f5081c0b5f8dbb73f7536fe73fad9490d6bbd9c10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-06-full-slide-media-mode.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-06-full-slide-media-mode.md"
       },
       {
         "digest": "aed89c14d4da7ae0245f7c54352a7b5e9adb21c710950e8278f0420394414800",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-07-explainability-telemetry-and-hardening.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-07-explainability-telemetry-and-hardening.md"
       }
     ],
     "predecessors": [],
@@ -125,77 +126,77 @@
       {
         "digest": "d2f17dbd29cb754ca029b734c7ce7ea616b8e121b8d6bf7b56b1b6b05c722311",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-01-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-01-review.md"
       },
       {
         "digest": "b0749bec766958a100c986eac93fc055ed8a55f17be6219ee5735964078ff96c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-02-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-02-review.md"
       },
       {
         "digest": "0fb001fd66dae00c21dc8c1a53337aee31d0b7675f365abe593f639b317c8fd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-03-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-03-review.md"
       },
       {
         "digest": "916b60c1c6c143fbc973995db3377b0a02efaf9763f160cb04d0af59ad28cdde",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-04-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-04-review.md"
       },
       {
         "digest": "4c9e37e57571e35baeef5532ffbca42c313f8048c54921d22e76a0c04f0ffc0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-05-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-05-review.md"
       },
       {
         "digest": "0233849251f8263f5afc6d037113ec6bc341c0912fe16ef5edd235098e320fc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-06-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-06-review.md"
       },
       {
         "digest": "820d520875da33dd85bfdb93d027206efd8536be3c19f4587835a8556fea3ba0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-07-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-07-review.md"
       },
       {
         "digest": "599360f9d7fd41ea5aefde3cefc832aba6f687fe00be976f955fc38f6ae5d247",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/index.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/index.md"
       },
       {
         "digest": "23c37947c8453fef8af4d17524f9eb504a9bba1ae3e549604810fe0f1741ddb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-01-content-profiler-and-mode-router.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-01-content-profiler-and-mode-router.md"
       },
       {
         "digest": "85d8111918fae56624f29cceab48816bf640a34f1462975b59e86f8274b815e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-02-long-form-block-family.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-02-long-form-block-family.md"
       },
       {
         "digest": "d197502d46632845edd3c028c5d0dc73bc73606b5b00f3fd386b91855121e878",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-03-llm-recipe-aware-compaction.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-03-llm-recipe-aware-compaction.md"
       },
       {
         "digest": "be83077df868c4fe41e132fc7c929f96cd24021a9f56d5f6cdc9cdeda139e6fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-04-overflow-fallback-and-slide-splitting.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-04-overflow-fallback-and-slide-splitting.md"
       },
       {
         "digest": "be53539fe60874d9a38a48ab53b3c0b871f31da5854a79398b08b46afc1c6a39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-05-constrained-layout-dsl.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-05-constrained-layout-dsl.md"
       },
       {
         "digest": "d1117dfabc676e86c6c3df7f5081c0b5f8dbb73f7536fe73fad9490d6bbd9c10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-06-full-slide-media-mode.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-06-full-slide-media-mode.md"
       },
       {
         "digest": "aed89c14d4da7ae0245f7c54352a7b5e9adb21c710950e8278f0420394414800",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-07-explainability-telemetry-and-hardening.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-07-explainability-telemetry-and-hardening.md"
       },
       {
         "excerpt": "* Deck-Level Consistency Evaluator (Spec 014 — Section 07)",
@@ -248,89 +249,89 @@
       {
         "digest": "d2f17dbd29cb754ca029b734c7ce7ea616b8e121b8d6bf7b56b1b6b05c722311",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-01-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-01-review.md"
       },
       {
         "digest": "b0749bec766958a100c986eac93fc055ed8a55f17be6219ee5735964078ff96c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-02-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-02-review.md"
       },
       {
         "digest": "0fb001fd66dae00c21dc8c1a53337aee31d0b7675f365abe593f639b317c8fd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-03-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-03-review.md"
       },
       {
         "digest": "916b60c1c6c143fbc973995db3377b0a02efaf9763f160cb04d0af59ad28cdde",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-04-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-04-review.md"
       },
       {
         "digest": "4c9e37e57571e35baeef5532ffbca42c313f8048c54921d22e76a0c04f0ffc0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-05-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-05-review.md"
       },
       {
         "digest": "0233849251f8263f5afc6d037113ec6bc341c0912fe16ef5edd235098e320fc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-06-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-06-review.md"
       },
       {
         "digest": "820d520875da33dd85bfdb93d027206efd8536be3c19f4587835a8556fea3ba0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-07-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-07-review.md"
       },
       {
         "digest": "599360f9d7fd41ea5aefde3cefc832aba6f687fe00be976f955fc38f6ae5d247",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/index.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/index.md"
       },
       {
         "digest": "23c37947c8453fef8af4d17524f9eb504a9bba1ae3e549604810fe0f1741ddb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-01-content-profiler-and-mode-router.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-01-content-profiler-and-mode-router.md"
       },
       {
         "digest": "85d8111918fae56624f29cceab48816bf640a34f1462975b59e86f8274b815e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-02-long-form-block-family.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-02-long-form-block-family.md"
       },
       {
         "digest": "d197502d46632845edd3c028c5d0dc73bc73606b5b00f3fd386b91855121e878",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-03-llm-recipe-aware-compaction.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-03-llm-recipe-aware-compaction.md"
       },
       {
         "digest": "be83077df868c4fe41e132fc7c929f96cd24021a9f56d5f6cdc9cdeda139e6fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-04-overflow-fallback-and-slide-splitting.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-04-overflow-fallback-and-slide-splitting.md"
       },
       {
         "digest": "be53539fe60874d9a38a48ab53b3c0b871f31da5854a79398b08b46afc1c6a39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-05-constrained-layout-dsl.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-05-constrained-layout-dsl.md"
       },
       {
         "digest": "d1117dfabc676e86c6c3df7f5081c0b5f8dbb73f7536fe73fad9490d6bbd9c10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-06-full-slide-media-mode.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-06-full-slide-media-mode.md"
       },
       {
         "digest": "aed89c14d4da7ae0245f7c54352a7b5e9adb21c710950e8278f0420394414800",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-07-explainability-telemetry-and-hardening.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-07-explainability-telemetry-and-hardening.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/quick/014-presentation-ai-layout-intelligence/spec.md",
     "digest": "e9ec857685227abc47be7bde28ddc793751c9e9f92ca0a582c69a9c7a248d110",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T00:43:01.842611Z",
+      "last_evidence_at": "2026-10-06T03:28:19.048069Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-03-15T13:32:30+07:00",
       "spec_last_changed_at": "2026-03-15T13:32:30+07:00"
@@ -357,7 +358,7 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T00:43:01.842611Z"
+    "updated_at": "2026-10-06T03:28:19.048069Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -367,7 +368,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T00:43:01.842611Z",
+    "reconciled_at": "2026-10-06T03:28:19.048069Z",
     "sources": [
       {
         "digest": "e9ec857685227abc47be7bde28ddc793751c9e9f92ca0a582c69a9c7a248d110",
@@ -377,77 +378,77 @@
       {
         "digest": "d2f17dbd29cb754ca029b734c7ce7ea616b8e121b8d6bf7b56b1b6b05c722311",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-01-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-01-review.md"
       },
       {
         "digest": "b0749bec766958a100c986eac93fc055ed8a55f17be6219ee5735964078ff96c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-02-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-02-review.md"
       },
       {
         "digest": "0fb001fd66dae00c21dc8c1a53337aee31d0b7675f365abe593f639b317c8fd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-03-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-03-review.md"
       },
       {
         "digest": "916b60c1c6c143fbc973995db3377b0a02efaf9763f160cb04d0af59ad28cdde",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-04-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-04-review.md"
       },
       {
         "digest": "4c9e37e57571e35baeef5532ffbca42c313f8048c54921d22e76a0c04f0ffc0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-05-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-05-review.md"
       },
       {
         "digest": "0233849251f8263f5afc6d037113ec6bc341c0912fe16ef5edd235098e320fc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-06-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-06-review.md"
       },
       {
         "digest": "820d520875da33dd85bfdb93d027206efd8536be3c19f4587835a8556fea3ba0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-07-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-07-review.md"
       },
       {
         "digest": "599360f9d7fd41ea5aefde3cefc832aba6f687fe00be976f955fc38f6ae5d247",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/index.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/index.md"
       },
       {
         "digest": "23c37947c8453fef8af4d17524f9eb504a9bba1ae3e549604810fe0f1741ddb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-01-content-profiler-and-mode-router.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-01-content-profiler-and-mode-router.md"
       },
       {
         "digest": "85d8111918fae56624f29cceab48816bf640a34f1462975b59e86f8274b815e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-02-long-form-block-family.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-02-long-form-block-family.md"
       },
       {
         "digest": "d197502d46632845edd3c028c5d0dc73bc73606b5b00f3fd386b91855121e878",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-03-llm-recipe-aware-compaction.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-03-llm-recipe-aware-compaction.md"
       },
       {
         "digest": "be83077df868c4fe41e132fc7c929f96cd24021a9f56d5f6cdc9cdeda139e6fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-04-overflow-fallback-and-slide-splitting.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-04-overflow-fallback-and-slide-splitting.md"
       },
       {
         "digest": "be53539fe60874d9a38a48ab53b3c0b871f31da5854a79398b08b46afc1c6a39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-05-constrained-layout-dsl.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-05-constrained-layout-dsl.md"
       },
       {
         "digest": "d1117dfabc676e86c6c3df7f5081c0b5f8dbb73f7536fe73fad9490d6bbd9c10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-06-full-slide-media-mode.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-06-full-slide-media-mode.md"
       },
       {
         "digest": "aed89c14d4da7ae0245f7c54352a7b5e9adb21c710950e8278f0420394414800",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-07-explainability-telemetry-and-hardening.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-07-explainability-telemetry-and-hardening.md"
       },
       {
         "excerpt": "* Deck-Level Consistency Evaluator (Spec 014 — Section 07)",
@@ -518,77 +519,77 @@
       {
         "digest": "d2f17dbd29cb754ca029b734c7ce7ea616b8e121b8d6bf7b56b1b6b05c722311",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-01-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-01-review.md"
       },
       {
         "digest": "b0749bec766958a100c986eac93fc055ed8a55f17be6219ee5735964078ff96c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-02-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-02-review.md"
       },
       {
         "digest": "0fb001fd66dae00c21dc8c1a53337aee31d0b7675f365abe593f639b317c8fd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-03-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-03-review.md"
       },
       {
         "digest": "916b60c1c6c143fbc973995db3377b0a02efaf9763f160cb04d0af59ad28cdde",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-04-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-04-review.md"
       },
       {
         "digest": "4c9e37e57571e35baeef5532ffbca42c313f8048c54921d22e76a0c04f0ffc0a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-05-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-05-review.md"
       },
       {
         "digest": "0233849251f8263f5afc6d037113ec6bc341c0912fe16ef5edd235098e320fc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-06-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-06-review.md"
       },
       {
         "digest": "820d520875da33dd85bfdb93d027206efd8536be3c19f4587835a8556fea3ba0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/reviews/section-07-review.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/reviews/section-07-review.md"
       },
       {
         "digest": "599360f9d7fd41ea5aefde3cefc832aba6f687fe00be976f955fc38f6ae5d247",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/index.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/index.md"
       },
       {
         "digest": "23c37947c8453fef8af4d17524f9eb504a9bba1ae3e549604810fe0f1741ddb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-01-content-profiler-and-mode-router.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-01-content-profiler-and-mode-router.md"
       },
       {
         "digest": "85d8111918fae56624f29cceab48816bf640a34f1462975b59e86f8274b815e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-02-long-form-block-family.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-02-long-form-block-family.md"
       },
       {
         "digest": "d197502d46632845edd3c028c5d0dc73bc73606b5b00f3fd386b91855121e878",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-03-llm-recipe-aware-compaction.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-03-llm-recipe-aware-compaction.md"
       },
       {
         "digest": "be83077df868c4fe41e132fc7c929f96cd24021a9f56d5f6cdc9cdeda139e6fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-04-overflow-fallback-and-slide-splitting.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-04-overflow-fallback-and-slide-splitting.md"
       },
       {
         "digest": "be53539fe60874d9a38a48ab53b3c0b871f31da5854a79398b08b46afc1c6a39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-05-constrained-layout-dsl.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-05-constrained-layout-dsl.md"
       },
       {
         "digest": "d1117dfabc676e86c6c3df7f5081c0b5f8dbb73f7536fe73fad9490d6bbd9c10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-06-full-slide-media-mode.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-06-full-slide-media-mode.md"
       },
       {
         "digest": "aed89c14d4da7ae0245f7c54352a7b5e9adb21c710950e8278f0420394414800",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/quick/014-presentation-ai-layout-intelligence/sections/section-07-explainability-telemetry-and-hardening.md"
+        "path": "specs/quick/014-presentation-ai-layout-intelligence/sections/section-07-explainability-telemetry-and-hardening.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -606,7 +607,7 @@
     "unresolved": 117
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.842611Z",
+  "updated_at": "2026-10-06T03:28:19.048069Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
