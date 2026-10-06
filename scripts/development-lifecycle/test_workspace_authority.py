@@ -122,6 +122,24 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(facts["session_state"], "STALE_CLOSED_SESSION")
         self.assertEqual(facts["workspace_id"], workspace["workspace_id"])
 
+    def test_zero_session_closeout_keeps_dirty_workspaces_visible(self) -> None:
+        for repetition in range(3):
+            with self.subTest(repetition=repetition + 1):
+                (self.canonical / "tracked.txt").write_text(f"uncommitted-{repetition}\n", encoding="utf-8")
+                authority.register_workspace(
+                    self.canonical,
+                    self.policy,
+                    self.canonical,
+                    role="CANONICAL_USER_WORKSPACE",
+                )
+
+                project = authority.resolve_project_authority(self.canonical, self.policy)
+
+                self.assertEqual(project["active_sessions"], 0)
+                self.assertEqual(project["workspace_count"], 1)
+                self.assertTrue(project["workspaces"][0]["dirty"])
+                self.assertEqual(project["workspaces"][0]["session_state"], "NO_ACTIVE_SESSION")
+
     def test_live_process_lease_is_active_even_when_workspace_is_clean(self) -> None:
         authority.register_workspace(
             self.canonical,
@@ -346,6 +364,37 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         git(self.canonical, "worktree", "remove", "--force", str(task))
         missing = authority.retire_completed_worktree(self.canonical, self.policy, workspace["workspace_id"], apply=True)
         self.assertEqual(missing["status"], "RETIREMENT_BLOCKED_MISSING_WITHOUT_RECOVERY_PROOF")
+
+    def test_recovery_workspace_is_never_automatically_retired(self) -> None:
+        recovery = self.root / "recovery-worktree"
+        git(self.canonical, "worktree", "add", "-b", "recovery/keep", str(recovery), "HEAD")
+        (recovery / "tracked.txt").write_text("recovery copy\n", encoding="utf-8")
+        workspace = authority.register_workspace(
+            self.canonical, self.policy, recovery, role="RECOVERY_WORKSPACE"
+        )
+
+        result = authority.retire_completed_worktree(
+            self.canonical, self.policy, workspace["workspace_id"], apply=True
+        )
+
+        self.assertEqual(result["status"], "RETIREMENT_BLOCKED_ROLE")
+        self.assertTrue(recovery.exists())
+        self.assertEqual((recovery / "tracked.txt").read_text(encoding="utf-8"), "recovery copy\n")
+
+    def test_missing_worktree_metadata_is_preserved_as_nonretirable_record(self) -> None:
+        task = self.root / "stale-metadata-worktree"
+        git(self.canonical, "worktree", "add", "-b", "task/stale-metadata", str(task), "HEAD")
+        workspace = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE")
+        git(self.canonical, "worktree", "remove", "--force", str(task))
+
+        result = authority.retire_completed_worktree(
+            self.canonical, self.policy, workspace["workspace_id"], apply=True
+        )
+
+        self.assertEqual(result["status"], "RETIREMENT_BLOCKED_MISSING_WITHOUT_RECOVERY_PROOF")
+        project = authority.resolve_project_authority(self.canonical, self.policy)
+        stale_record = next(row for row in project["workspaces"] if row["workspace_id"] == workspace["workspace_id"])
+        self.assertEqual(stale_record["location"], str(task))
 
     def test_retirement_requires_fresh_dry_run_and_writes_receipt(self) -> None:
         task = self.root / "task-safe-retire"
